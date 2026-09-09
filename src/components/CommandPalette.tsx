@@ -16,10 +16,17 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ workspaceId, onS
   // Global keydown handler for Cmd+K / Ctrl+K, / and Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = document.activeElement as HTMLElement | null;
+      const isEditable =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable ||
+        !!target?.closest('[contenteditable="true"]');
+
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setSearchOpen(!isSearchOpen);
-      } else if (e.key === '/' && !isSearchOpen && (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA')) {
+      } else if (e.key === '/' && !isSearchOpen && !isEditable) {
         e.preventDefault();
         setSearchOpen(true);
       } else if (e.key === 'Escape' && isSearchOpen) {

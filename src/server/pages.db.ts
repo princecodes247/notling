@@ -193,8 +193,29 @@ export async function getOrCreateDefaultWorkspace() {
   }
 }
 
+async function resolveWorkspaceId(providedWorkspaceId?: string): Promise<string> {
+  if (providedWorkspaceId) {
+    try {
+      const existing = await db
+        .select({ id: workspaces.id })
+        .from(workspaces)
+        .where(eq(workspaces.id, providedWorkspaceId))
+        .limit(1);
+      if (existing.length > 0) {
+        return existing[0].id;
+      }
+    } catch {
+      // If query fails (e.g. invalid UUID format or missing record), fall through
+    }
+  }
+  const { workspace } = await getOrCreateDefaultWorkspace();
+  return workspace.id;
+}
+
 export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]> {
   try {
+    const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
+
     const allPages = await db
       .select({
         id: pages.id,
@@ -207,7 +228,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
         updatedAt: pages.updatedAt,
       })
       .from(pages)
-      .where(and(eq(pages.workspaceId, workspaceId), eq(pages.isDeleted, false)))
+      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false)))
       .orderBy(asc(pages.order), asc(pages.createdAt));
 
     const pageMap = new Map<string, PageTreeNode>();
@@ -246,12 +267,14 @@ export async function fetchPage(pageId: string) {
 
 export async function createNewPage(input: { workspaceId: string; parentId?: string | null; title?: string; icon?: string }) {
   try {
+    const targetWorkspaceId = await resolveWorkspaceId(input.workspaceId);
+
     const existingInParent = await db
       .select({ order: pages.order })
       .from(pages)
       .where(
         and(
-          eq(pages.workspaceId, input.workspaceId),
+          eq(pages.workspaceId, targetWorkspaceId),
           input.parentId ? eq(pages.parentId, input.parentId) : isNull(pages.parentId),
           eq(pages.isDeleted, false)
         )
@@ -264,7 +287,7 @@ export async function createNewPage(input: { workspaceId: string; parentId?: str
     const [newPage] = await db
       .insert(pages)
       .values({
-        workspaceId: input.workspaceId,
+        workspaceId: targetWorkspaceId,
         parentId: input.parentId || null,
         title: input.title || 'Untitled',
         icon: input.icon || '📄',
@@ -365,6 +388,7 @@ export async function performRestore(pageId: string) {
 
 export async function fetchTrashPages(workspaceId: string) {
   try {
+    const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
     return await db
       .select({
         id: pages.id,
@@ -373,7 +397,7 @@ export async function fetchTrashPages(workspaceId: string) {
         deletedAt: pages.deletedAt,
       })
       .from(pages)
-      .where(and(eq(pages.workspaceId, workspaceId), eq(pages.isDeleted, true)))
+      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, true)))
       .orderBy(desc(pages.deletedAt));
   } catch (err) {
     console.error('Error fetching trash pages:', err);
@@ -395,6 +419,8 @@ export async function performSearchPages(workspaceId: string, query: string) {
   try {
     if (!query || !query.trim()) return [];
 
+    const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
+
     const formattedQuery = query
       .trim()
       .split(/\s+/)
@@ -412,7 +438,7 @@ export async function performSearchPages(workspaceId: string, query: string) {
       .from(pages)
       .where(
         and(
-          eq(pages.workspaceId, workspaceId),
+          eq(pages.workspaceId, targetWorkspaceId),
           eq(pages.isDeleted, false),
           sql`to_tsvector('english', coalesce(${pages.title}, '') || ' ' || coalesce(${pages.contentText}, '')) @@ to_tsquery('english', ${formattedQuery})`
         )
