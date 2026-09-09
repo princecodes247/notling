@@ -7,13 +7,14 @@ import {
   createPage,
   softDeletePage,
   updatePageMeta,
+  type PageTreeNode,
 } from '~/server/pages';
 import { Sidebar } from '~/components/Sidebar';
+import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
-import { useUIStore } from '~/store/uiStore';
+import { useUIStore, type TabItem } from '~/store/uiStore';
 import { Route as rootRoute } from './__root';
-import { ArrowLeft } from 'lucide-react';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -29,11 +30,30 @@ const DEFAULT_SESSION = {
   workspaceId: '00000000-0000-0000-0000-000000000002',
 };
 
+function findNodeInTree(nodes: PageTreeNode[], id: string): PageTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (node.children?.length) {
+      const found = findNodeInTree(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const { sidebarOpen, setActivePageId } = useUIStore();
+  const {
+    sidebarOpen,
+    setActivePageId,
+    openTabs,
+    activeTabId,
+    openTab,
+    closeTab,
+    setActiveTabId,
+  } = useUIStore();
 
   // 1. Fetch Session
   const { data: session = DEFAULT_SESSION } = useQuery({
@@ -73,6 +93,45 @@ function DashboardLayout() {
     activeNav = 'home';
   }
 
+  // Synchronize URL pathname with Open Tabs
+  React.useEffect(() => {
+    const doOpenTab = useUIStore.getState().openTab;
+    if (currentPath.includes('/dashboard/p/')) {
+      const match = currentPath.match(/\/dashboard\/p\/([^/]+)/);
+      if (match && match[1]) {
+        const pageId = match[1];
+        const node = findNodeInTree(treeNodes, pageId);
+        doOpenTab({
+          id: pageId,
+          title: node?.title || 'Untitled Document',
+          icon: node?.icon || '📄',
+          path: currentPath,
+        });
+      }
+    } else if (currentPath.includes('/dashboard/folders')) {
+      doOpenTab({
+        id: 'folders',
+        title: 'Folders',
+        icon: '📁',
+        path: '/dashboard/folders',
+      });
+    } else if (currentPath.includes('/dashboard/settings')) {
+      doOpenTab({
+        id: 'settings',
+        title: 'Settings',
+        icon: '⚙️',
+        path: '/dashboard/settings',
+      });
+    } else if (currentPath === '/dashboard') {
+      doOpenTab({
+        id: 'home',
+        title: 'Home',
+        icon: '🏠',
+        path: '/dashboard',
+      });
+    }
+  }, [currentPath, treeNodes]);
+
   // Create Page Mutation
   const createPageMutation = useMutation({
     mutationFn: async (parentId?: string) => {
@@ -105,9 +164,13 @@ function DashboardLayout() {
     mutationFn: async (pageId: string) => {
       return await softDeletePage({ data: pageId });
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       refetchTree();
-      navigate({ to: '/dashboard/folders' });
+      if (deletedId) {
+        const nextPath = closeTab(deletedId as string);
+        if (nextPath) navigate({ to: nextPath as any });
+        else navigate({ to: '/dashboard/folders' });
+      }
     },
   });
 
@@ -121,6 +184,18 @@ function DashboardLayout() {
       queryClient.invalidateQueries({ queryKey: ['page'] });
     },
   });
+
+  const handleSelectTab = (tab: TabItem) => {
+    setActiveTabId(tab.id);
+    navigate({ to: tab.path as any });
+  };
+
+  const handleCloseTab = (tabId: string) => {
+    const nextPath = closeTab(tabId);
+    if (nextPath) {
+      navigate({ to: nextPath as any });
+    }
+  };
 
   return (
     <div className="h-screen w-screen bg-[#eef2f6] p-0 flex font-sans select-none">
@@ -148,7 +223,15 @@ function DashboardLayout() {
         />
       )}
       {/* Framed Workspace Card */}
-      <div className="flex-1 bg-[#fafaf9] p-2 overflow-hidden flex relative">
+      <div className="flex-1 bg-[#fafaf9] p-2 overflow-hidden flex flex-col relative min-w-0">
+        {/* Tab Bar Header */}
+        <TabBar
+          tabs={openTabs}
+          activeTabId={activeTabId}
+          onSelectTab={handleSelectTab}
+          onCloseTab={handleCloseTab}
+          onNewTab={() => createPageMutation.mutate()}
+        />
 
         {/* Dynamic Route Outlet */}
         <main className="flex-1 flex flex-col min-w-0 h-full relative bg-white border border-neutral-200/90 rounded-xl overflow-hidden">
