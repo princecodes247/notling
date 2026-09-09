@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, Plus, Trash2, Edit3, MoreHorizontal } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  ArrowRight01Icon,
+  ArrowDown01Icon,
+  PlusSignIcon,
+  Delete02Icon,
+  Edit02Icon,
+  MoreHorizontalIcon,
+} from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
 import { clsx } from 'clsx';
@@ -64,9 +72,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             }}
           >
             {isExpanded ? (
-              <ChevronDown className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={ArrowDown01Icon} size={13} />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
             )}
           </button>
 
@@ -104,7 +112,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               onCreateChild(node.id);
             }}
           >
-            <Plus className="w-3 h-3" />
+            <HugeiconsIcon icon={PlusSignIcon} size={13} />
           </button>
 
           {/* Context Options */}
@@ -118,7 +126,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 setShowMenu(!showMenu);
               }}
             >
-              <MoreHorizontal className="w-3 h-3" />
+              <HugeiconsIcon icon={MoreHorizontalIcon} size={13} />
             </button>
 
             {showMenu && (
@@ -140,7 +148,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       setIsEditing(true);
                     }}
                   >
-                    <Edit3 className="w-3.5 h-3.5 text-neutral-500" />
+                    <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500" />
                     Rename
                   </button>
                   <button
@@ -152,7 +160,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       onSoftDelete(node.id);
                     }}
                   >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                    <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500" />
                     Delete
                   </button>
                 </div>

@@ -61,7 +61,8 @@ export const useUIStore = create<UIState>((set, get) => ({
     })),
 
   activePageId: null,
-  setActivePageId: (pageId) => set({ activePageId: pageId }),
+  setActivePageId: (pageId) =>
+    set((state) => (state.activePageId === pageId ? state : { activePageId: pageId })),
 
   openTabs: [],
   activeTabId: 'home',

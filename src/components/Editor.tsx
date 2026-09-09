@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Check,
-  Loader2,
-  PanelLeftOpen,
-  MessageSquare,
-  X,
-  Plus,
-  FileText,
-  ChevronRight,
-} from 'lucide-react';
+  SidebarLeftIcon,
+  Comment01Icon,
+  PlusSignIcon,
+  File01Icon,
+  ArrowRight01Icon,
+  CheckmarkCircle01Icon,
+  Loading02Icon,
+} from '@hugeicons/core-free-icons';
 import { updatePageMeta, getChildPages, createPage } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -48,7 +48,7 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     setTitle(page.title);
     setIcon(page.icon || '📄');
-  }, [page.id, page.title, page.icon]);
+  }, [page.title, page.icon]);
 
   // Query child pages if this page is a folder
   const { data: childPages = [], refetch: refetchChildren } = useQuery({
@@ -57,10 +57,9 @@ export const Editor: React.FC<EditorProps> = ({
       if (!isFolder) return [];
       return await getChildPages({ data: page.id });
     },
-    enabled: isFolder && !!page.id,
+    enabled: isFolder,
   });
 
-  // Mutation to create a document inside this folder
   const createDocumentInFolderMutation = useMutation({
     mutationFn: async () => {
       return await createPage({
@@ -115,7 +114,7 @@ export const Editor: React.FC<EditorProps> = ({
               className="p-1 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 transition-colors mr-1 cursor-pointer"
               title="Open sidebar"
             >
-              <PanelLeftOpen className="w-4 h-4" />
+              <HugeiconsIcon icon={SidebarLeftIcon} size={16} />
             </button>
           )}
         </div>
@@ -125,12 +124,12 @@ export const Editor: React.FC<EditorProps> = ({
           <div className="flex items-center gap-2 text-xs">
             {saveStatus === 'saving' ? (
               <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
-                <Loader2 className="w-3 h-3 animate-spin text-neutral-600" />
+                <HugeiconsIcon icon={Loading02Icon} size={13} className="animate-spin text-neutral-600" />
                 Saving...
               </span>
             ) : saveStatus === 'saved' ? (
               <span className="flex items-center gap-1 text-neutral-500 font-medium">
-                <Check className="w-3 h-3 text-emerald-600" />
+                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-emerald-600" />
                 Saved
               </span>
             ) : null}
@@ -141,7 +140,7 @@ export const Editor: React.FC<EditorProps> = ({
             className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 transition-colors cursor-pointer"
             title="Comments & Discussion"
           >
-            <MessageSquare className="w-4 h-4 stroke-[1.8]" />
+            <HugeiconsIcon icon={Comment01Icon} size={16} />
           </button>
         </div>
       </header>
@@ -201,14 +200,14 @@ export const Editor: React.FC<EditorProps> = ({
                   onClick={() => createDocumentInFolderMutation.mutate()}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-colors shadow-2xs cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <HugeiconsIcon icon={PlusSignIcon} size={14} />
                   <span>New Document</span>
                 </button>
               </div>
 
               {childPages.length === 0 ? (
                 <div className="py-12 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-neutral-400">
-                  <FileText className="w-8 h-8 stroke-1 text-neutral-300" />
+                  <HugeiconsIcon icon={File01Icon} size={32} className="stroke-1 text-neutral-300" />
                   <span className="text-xs font-medium text-neutral-500">This folder is empty</span>
                   <span className="text-[11px]">Click "+ New Document" above to add a document to this folder.</span>
                 </div>
@@ -232,7 +231,7 @@ export const Editor: React.FC<EditorProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" />
+                        <HugeiconsIcon icon={ArrowRight01Icon} size={15} className="text-neutral-400 group-hover:text-neutral-700 transition-colors" />
                       </div>
                     </div>
                   ))}

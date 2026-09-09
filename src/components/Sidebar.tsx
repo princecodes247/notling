@@ -1,21 +1,20 @@
 import React from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Home,
-  Folder,
-  FolderPlus,
-  Search,
-  Settings,
-  Plus,
-  Trash2,
-  LogOut,
-  ChevronRight,
-  FileText,
-} from 'lucide-react';
+  Home01Icon,
+  Folder01Icon,
+  FolderAddIcon,
+  Search01Icon,
+  Settings02Icon,
+  PlusSignIcon,
+  Logout01Icon,
+  LeftToRightListDashIcon,
+} from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
 import { useUIStore } from '~/store/uiStore';
 import type { UserSession } from '~/server/auth';
-import { DanceLogoIcon, PanelCollapseIcon } from './Icons';
+import { DanceLogoIcon } from './Icons';
 
 interface SidebarProps {
   workspaceName: string;
@@ -67,7 +66,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="p-1 rounded text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
           title="Collapse sidebar"
         >
-          <PanelCollapseIcon className="w-4 h-4" />
+          <HugeiconsIcon icon={LeftToRightListDashIcon} size={16} className="text-neutral-500" />
         </button>
       </div>
 
@@ -79,7 +78,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-neutral-100/90 hover:bg-neutral-200/80 border border-neutral-200/50 text-neutral-500 text-xs transition-colors group cursor-pointer"
         >
           <div className="flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-600" />
+            <HugeiconsIcon icon={Search01Icon} size={15} className="text-neutral-400 group-hover:text-neutral-600" />
             <span className="font-normal">Search</span>
           </div>
           <kbd className="px-1.5 py-0.5 text-[11px] font-mono text-neutral-400 bg-white rounded border border-neutral-200 shadow-2xs">
@@ -99,11 +98,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
             }`}
         >
-          <Home className="w-4 h-4 text-neutral-400 shrink-0 stroke-[1.75]" />
+          <HugeiconsIcon icon={Home01Icon} size={16} className="text-neutral-500 shrink-0" />
           <span>Home</span>
         </button>
 
-        {/* Folders (Replaces Calendar, Events, Inbox) */}
+        {/* Folders */}
         <button
           type="button"
           onClick={() => onNavClick?.('folders')}
@@ -113,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
         >
           <div className="flex items-center gap-2.5">
-            <Folder className="w-4 h-4 text-neutral-700 shrink-0 stroke-[1.8]" />
+            <HugeiconsIcon icon={Folder01Icon} size={16} className="text-neutral-600 shrink-0" />
             <span>Folders</span>
           </div>
           <span className="text-[11px] text-neutral-400">
@@ -133,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="p-0.5 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors"
               title="Create new folder"
             >
-              <FolderPlus className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={FolderAddIcon} size={15} />
             </button>
             <button
               type="button"
@@ -141,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="p-0.5 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors"
               title="Create new page"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={PlusSignIcon} size={15} />
             </button>
           </div>
         </div>
@@ -198,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-opacity"
               title="Sign out"
             >
-              <LogOut className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={Logout01Icon} size={15} />
             </button>
           )}
         </div>
@@ -212,7 +211,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             : 'text-neutral-700 hover:bg-neutral-50'
             }`}
         >
-          <Settings className="w-3.5 h-3.5 text-neutral-400" />
+          <HugeiconsIcon icon={Settings02Icon} size={15} className="text-neutral-500" />
           <span>Settings</span>
         </button>
 

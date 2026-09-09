@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Folder,
-  FolderPlus,
-  Plus,
-  FileText,
-  ChevronRight,
-  MoreHorizontal,
-  ChevronDown,
-} from 'lucide-react';
+  Folder01Icon,
+  FolderAddIcon,
+  PlusSignIcon,
+  File01Icon,
+  ArrowRight01Icon,
+  ArrowDown01Icon,
+} from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 
 interface FoldersViewProps {
@@ -23,9 +23,14 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   onCreateFolder,
   onCreateDocument,
 }) => {
+  // Filter treeNodes so only actual folders are shown in FoldersView
+  const folders = treeNodes.filter(
+    (node) => node.icon === '📁' || node.icon === '📂' || (node.children && node.children.length > 0)
+  );
+
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    treeNodes.forEach((n) => {
+    folders.forEach((n) => {
       init[n.id] = true;
     });
     return init;
@@ -34,9 +39,6 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   const toggleFolder = (id: string) => {
     setExpandedFolders((prev) => ({ ...prev, [id]: !prev[id] }));
   };
-
-  // Group into folders (pages with children or designated root pages)
-  const folders = treeNodes;
 
   return (
     <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-6 sm:p-10">
@@ -56,7 +58,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               onClick={() => onCreateDocument()}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 text-xs font-medium transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={PlusSignIcon} size={15} />
               <span>New Document</span>
             </button>
             <button
@@ -64,7 +66,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               onClick={onCreateFolder}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-colors shadow-2xs cursor-pointer"
             >
-              <FolderPlus className="w-3.5 h-3.5" />
+              <HugeiconsIcon icon={FolderAddIcon} size={15} />
               <span>New Folder</span>
             </button>
           </div>
@@ -74,12 +76,12 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {folders.length === 0 ? (
             <div className="col-span-2 py-16 text-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded-2xl flex flex-col items-center gap-3">
-              <Folder className="w-8 h-8 text-neutral-300 stroke-1" />
-              <span>No folders created yet. Click "+ New Folder" to organize documents.</span>
+              <HugeiconsIcon icon={Folder01Icon} size={32} className="text-neutral-300 stroke-1" />
+              <span>No folders created yet. Click "+ New Folder" to organize documents into folders.</span>
               <button
                 type="button"
                 onClick={onCreateFolder}
-                className="px-3 py-1.5 rounded-lg bg-black text-white text-xs font-medium"
+                className="px-3 py-1.5 rounded-lg bg-black text-white text-xs font-medium cursor-pointer"
               >
                 Create First Folder
               </button>
@@ -120,7 +122,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         className="p-1.5 rounded-lg hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900 transition-colors"
                         title="Add document to folder"
                       >
-                        <Plus className="w-4 h-4" />
+                        <HugeiconsIcon icon={PlusSignIcon} size={15} />
                       </button>
                       <button
                         type="button"
@@ -129,9 +131,9 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         title="Toggle view"
                       >
                         {isExpanded ? (
-                          <ChevronDown className="w-4 h-4" />
+                          <HugeiconsIcon icon={ArrowDown01Icon} size={15} />
                         ) : (
-                          <ChevronRight className="w-4 h-4" />
+                          <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
                         )}
                       </button>
                     </div>
@@ -146,7 +148,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                           <button
                             type="button"
                             onClick={() => onCreateDocument(folder.id)}
-                            className="text-neutral-900 font-medium hover:underline"
+                            className="text-neutral-900 font-medium hover:underline cursor-pointer"
                           >
                             + Add page
                           </button>
@@ -164,7 +166,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                                 {child.title || 'Untitled Page'}
                               </span>
                             </div>
-                            <ChevronRight className="w-3.5 h-3.5 text-neutral-300 group-hover:text-neutral-600 transition-colors shrink-0" />
+                            <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-neutral-300 group-hover:text-neutral-600 transition-colors shrink-0" />
                           </div>
                         ))
                       )}

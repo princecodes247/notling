@@ -95,11 +95,12 @@ function DashboardLayout() {
 
   // Synchronize URL pathname with Open Tabs
   React.useEffect(() => {
-    const doOpenTab = useUIStore.getState().openTab;
+    const { openTab: doOpenTab, setActivePageId: doSetActivePageId } = useUIStore.getState();
     if (currentPath.includes('/dashboard/p/')) {
       const match = currentPath.match(/\/dashboard\/p\/([^/]+)/);
       if (match && match[1]) {
         const pageId = match[1];
+        doSetActivePageId(pageId);
         const node = findNodeInTree(treeNodes, pageId);
         doOpenTab({
           id: pageId,
@@ -109,6 +110,7 @@ function DashboardLayout() {
         });
       }
     } else if (currentPath.includes('/dashboard/folders')) {
+      doSetActivePageId(null);
       doOpenTab({
         id: 'folders',
         title: 'Folders',
@@ -116,6 +118,7 @@ function DashboardLayout() {
         path: '/dashboard/folders',
       });
     } else if (currentPath.includes('/dashboard/settings')) {
+      doSetActivePageId(null);
       doOpenTab({
         id: 'settings',
         title: 'Settings',
@@ -123,6 +126,7 @@ function DashboardLayout() {
         path: '/dashboard/settings',
       });
     } else if (currentPath === '/dashboard') {
+      doSetActivePageId(null);
       doOpenTab({
         id: 'home',
         title: 'Home',
@@ -187,6 +191,11 @@ function DashboardLayout() {
 
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
+    if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings') {
+      setActivePageId(tab.id);
+    } else {
+      setActivePageId(null);
+    }
     navigate({ to: tab.path as any });
   };
 

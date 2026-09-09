@@ -1,5 +1,15 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { X, Plus, Home, Folder, Settings, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Home01Icon,
+  Folder01Icon,
+  Settings02Icon,
+  File01Icon,
+  PlusSignIcon,
+  Cancel01Icon,
+  ArrowLeft01Icon,
+  ArrowRight01Icon,
+} from '@hugeicons/core-free-icons';
 import type { TabItem } from '~/store/uiStore';
 
 interface TabBarProps {
@@ -59,13 +69,14 @@ export const TabBar: React.FC<TabBarProps> = ({
         onClick={() =>
           onSelectTab({ id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' })
         }
-        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${isHomeActive
-          ? 'bg-white border-neutral-200/90 text-neutral-900 shadow-2xs'
-          : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
-          }`}
+        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
+          isHomeActive
+            ? 'bg-white border-neutral-200/90 text-neutral-900 shadow-2xs'
+            : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
+        }`}
         title="Home"
       >
-        <Home className="w-3.5 h-3.5 stroke-[1.8]" />
+        <HugeiconsIcon icon={Home01Icon} size={15} />
       </button>
 
       {/* Scrollable Track with Fade & Carets */}
@@ -76,10 +87,10 @@ export const TabBar: React.FC<TabBarProps> = ({
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
-              className="p-1 text-neutral-500 hover:text-neutral-800 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md bg-white/95 shadow-2xs border border-neutral-200/90 text-neutral-500 hover:text-neutral-800 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll left"
             >
-              <ChevronLeft className="w-3 h-3" />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
             </button>
           </div>
         )}
@@ -97,20 +108,21 @@ export const TabBar: React.FC<TabBarProps> = ({
                 key={tab.id}
                 data-active={isActive}
                 onClick={() => onSelectTab(tab)}
-                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${isActive
-                  ? 'bg-white border-neutral-200/90 text-neutral-900 font-medium shadow-2xs'
-                  : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
-                  }`}
+                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${
+                  isActive
+                    ? 'bg-white border-neutral-200/90 text-neutral-900 font-medium shadow-2xs'
+                    : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
+                }`}
               >
                 {/* Tab Icon */}
                 {tab.icon ? (
                   <span className="text-xs shrink-0">{tab.icon}</span>
                 ) : tab.id === 'folders' ? (
-                  <Folder className="w-3.5 h-3.5 text-neutral-400 shrink-0 stroke-[1.75]" />
+                  <HugeiconsIcon icon={Folder01Icon} size={14} className="text-neutral-400 shrink-0" />
                 ) : tab.id === 'settings' ? (
-                  <Settings className="w-3.5 h-3.5 text-neutral-400 shrink-0 stroke-[1.75]" />
+                  <HugeiconsIcon icon={Settings02Icon} size={14} className="text-neutral-400 shrink-0" />
                 ) : (
-                  <FileText className="w-3.5 h-3.5 text-neutral-400 shrink-0 stroke-[1.75]" />
+                  <HugeiconsIcon icon={File01Icon} size={14} className="text-neutral-400 shrink-0" />
                 )}
 
                 {/* Tab Title */}
@@ -125,11 +137,12 @@ export const TabBar: React.FC<TabBarProps> = ({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className={`p-0.5 rounded hover:bg-neutral-200/70 text-neutral-400 hover:text-neutral-700 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                    }`}
+                  className={`p-0.5 rounded hover:bg-neutral-200/70 text-neutral-400 hover:text-neutral-700 transition-opacity ${
+                    isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`}
                   title="Close tab"
                 >
-                  <X className="w-3 h-3" />
+                  <HugeiconsIcon icon={Cancel01Icon} size={12} />
                 </button>
               </div>
             );
@@ -142,10 +155,10 @@ export const TabBar: React.FC<TabBarProps> = ({
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-              className="p-1 text-neutral-500 hover:text-neutral-800 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md bg-white/95 shadow-2xs border border-neutral-200/90 text-neutral-500 hover:text-neutral-800 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll right"
             >
-              <ChevronRight className="w-3 h-3" />
+              <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
             </button>
           </div>
         )}
@@ -158,7 +171,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10"
         title="New document tab"
       >
-        <Plus className="w-3.5 h-3.5" />
+        <HugeiconsIcon icon={PlusSignIcon} size={15} />
       </button>
     </div>
   );
