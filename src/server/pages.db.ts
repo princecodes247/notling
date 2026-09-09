@@ -452,3 +452,25 @@ export async function performSearchPages(workspaceId: string, query: string) {
     return [];
   }
 }
+
+export async function fetchChildPages(parentId: string) {
+  try {
+    return await db
+      .select({
+        id: pages.id,
+        workspaceId: pages.workspaceId,
+        parentId: pages.parentId,
+        title: pages.title,
+        icon: pages.icon,
+        order: pages.order,
+        createdAt: pages.createdAt,
+        updatedAt: pages.updatedAt,
+      })
+      .from(pages)
+      .where(and(eq(pages.parentId, parentId), eq(pages.isDeleted, false)))
+      .orderBy(asc(pages.order), asc(pages.createdAt));
+  } catch (err) {
+    console.error('Error fetching child pages:', err);
+    return [];
+  }
+}

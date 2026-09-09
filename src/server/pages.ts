@@ -82,3 +82,10 @@ export const searchPages = createServerFn({ method: 'GET' })
     const { performSearchPages } = await import('./pages.db');
     return performSearchPages(data.workspaceId, data.query);
   });
+
+export const getChildPages = createServerFn({ method: 'GET' })
+  .validator((parentId: string) => parentId)
+  .handler(async ({ data }: { data: string }) => {
+    const { fetchChildPages } = await import('./pages.db');
+    return fetchChildPages(data);
+  });

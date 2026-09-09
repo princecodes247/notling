@@ -7,9 +7,14 @@ import {
   PanelLeftOpen,
   MessageSquare,
   X,
+  Plus,
+  FileText,
+  ChevronRight,
 } from 'lucide-react';
-import { updatePageMeta } from '~/server/pages';
+import { updatePageMeta, getChildPages, createPage } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 
 interface EditorProps {
   page: Page;
@@ -18,7 +23,7 @@ interface EditorProps {
   onBack?: () => void;
 }
 
-const EMOJI_OPTIONS = ['📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
+const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
 
 export const Editor: React.FC<EditorProps> = ({
   page,
@@ -26,11 +31,15 @@ export const Editor: React.FC<EditorProps> = ({
   onTitleOrIconChange,
   onBack,
 }) => {
-  const { sidebarOpen, toggleSidebar, saveStatus, setSaveStatus } = useUIStore();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { sidebarOpen, toggleSidebar, saveStatus, setSaveStatus, setActivePageId } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || '📄');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  const isFolder = icon === '📁' || icon === '📂';
 
   useEffect(() => {
     setMounted(true);
@@ -40,6 +49,37 @@ export const Editor: React.FC<EditorProps> = ({
     setTitle(page.title);
     setIcon(page.icon || '📄');
   }, [page.id, page.title, page.icon]);
+
+  // Query child pages if this page is a folder
+  const { data: childPages = [], refetch: refetchChildren } = useQuery({
+    queryKey: ['childPages', page.id],
+    queryFn: async () => {
+      if (!isFolder) return [];
+      return await getChildPages({ data: page.id });
+    },
+    enabled: isFolder && !!page.id,
+  });
+
+  // Mutation to create a document inside this folder
+  const createDocumentInFolderMutation = useMutation({
+    mutationFn: async () => {
+      return await createPage({
+        data: {
+          workspaceId: page.workspaceId,
+          parentId: page.id,
+          title: 'Untitled Document',
+        },
+      });
+    },
+    onSuccess: (newPage) => {
+      refetchChildren();
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      if (newPage) {
+        setActivePageId(newPage.id);
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
+      }
+    },
+  });
 
   const handleTitleBlur = async () => {
     if (title !== page.title) {
@@ -90,7 +130,7 @@ export const Editor: React.FC<EditorProps> = ({
                 type="button"
                 onClick={onBack}
                 className="text-neutral-400 hover:text-neutral-700 p-0.5 rounded hover:bg-neutral-200/60 transition-colors cursor-pointer"
-                title="Close document"
+                title="Close"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -98,7 +138,7 @@ export const Editor: React.FC<EditorProps> = ({
           </div>
         </div>
 
-        {/* Right Header Actions: Autosave status & Comments */}
+        {/* Right Header Actions */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-xs">
             {saveStatus === 'saving' ? (
@@ -124,16 +164,16 @@ export const Editor: React.FC<EditorProps> = ({
         </div>
       </header>
 
-      {/* Notion-style Block Editor Canvas */}
+      {/* Main Canvas */}
       <div className="flex-1 overflow-y-auto px-6 py-8 md:px-16 lg:px-24 bg-white">
         <div className="max-w-3xl mx-auto flex flex-col">
-          {/* Page Icon Picker */}
+          {/* Page/Folder Icon Picker */}
           <div className="relative mb-3 group">
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="text-4xl p-1.5 rounded-xl hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200 flex items-center justify-center w-14 h-14 cursor-pointer"
-              title="Change page icon"
+              title="Change icon"
             >
               {icon}
             </button>
@@ -163,17 +203,69 @@ export const Editor: React.FC<EditorProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={handleTitleBlur}
-            placeholder="Untitled"
-            className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-neutral-900 placeholder-neutral-300 focus:outline-none mb-6 border-b border-transparent focus:border-neutral-200 pb-1"
+            placeholder={isFolder ? 'Folder Name' : 'Untitled'}
+            className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-neutral-900 placeholder-neutral-300 focus:outline-none mb-4 border-b border-transparent focus:border-neutral-200 pb-1"
           />
 
-          {/* BlockNote Document Canvas */}
-          {mounted ? (
-            <BlockEditorInner page={page} />
-          ) : (
-            <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
-              Loading block editor...
+          {isFolder ? (
+            /* FOLDER VIEW: Read-only list of documents inside (No text editing inside folders) */
+            <div className="flex flex-col gap-6 mt-2">
+              <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+                  Documents in this Folder ({childPages.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => createDocumentInFolderMutation.mutate()}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Document</span>
+                </button>
+              </div>
+
+              {childPages.length === 0 ? (
+                <div className="py-12 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-neutral-400">
+                  <FileText className="w-8 h-8 stroke-1 text-neutral-300" />
+                  <span className="text-xs font-medium text-neutral-500">This folder is empty</span>
+                  <span className="text-[11px]">Click "+ New Document" above to add a document to this folder.</span>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {childPages.map((child: { id: string; title: string; icon?: string | null; updatedAt?: Date }) => (
+                    <div
+                      key={child.id}
+                      onClick={() => {
+                        setActivePageId(child.id);
+                        navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
+                      }}
+                      className="p-3.5 rounded-xl border border-neutral-200/80 hover:border-neutral-300 bg-white hover:bg-neutral-50/80 transition-all flex items-center justify-between cursor-pointer group shadow-2xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-lg shrink-0">{child.icon || '📄'}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-semibold text-neutral-900 group-hover:text-black truncate">
+                            {child.title || 'Untitled Page'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <ChevronRight className="w-4 h-4 text-neutral-400 group-hover:text-neutral-700 transition-colors" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          ) : (
+            /* DOCUMENT VIEW: Notion-style BlockNote Editor */
+            mounted ? (
+              <BlockEditorInner page={page} />
+            ) : (
+              <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
+                Loading block editor...
+              </div>
+            )
           )}
         </div>
       </div>
