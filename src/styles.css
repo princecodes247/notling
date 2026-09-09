@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@source "./";
+@source "../app";
+@source "./**/*.{ts,tsx}";
+
+@layer base {
+  :root {
+    --bg-canvas: #eef2f6;
+    --bg-card: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-subtle: #f8fafc;
+    --bg-hover: #f1f5f9;
+    --border-color: #e2e8f0;
+    --border-light: #f1f5f9;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --accent-orange: #f59e0b;
+    --accent-blue: #3b82f6;
+  }
+
+  body {
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    letter-spacing: -0.015em;
+    overflow-x: hidden;
+  }
+}
+
+/* BlockNote Light Mode Overrides */
+.bn-container {
+  --bn-colors-editor-text: #0f172a !important;
+  --bn-colors-editor-background: transparent !important;
+  --bn-colors-menu-text: #0f172a !important;
+  --bn-colors-menu-background: #ffffff !important;
+  --bn-colors-tooltip-text: #ffffff !important;
+  --bn-colors-tooltip-background: #0f172a !important;
+  --bn-colors-hovered-text: #0f172a !important;
+  --bn-colors-hovered-background: #f1f5f9 !important;
+  --bn-colors-selected-text: #0f172a !important;
+  --bn-colors-selected-background: #e2e8f0 !important;
+  --bn-colors-disabled-text: #94a3b8 !important;
+  --bn-colors-disabled-background: transparent !important;
+  --bn-colors-shadow: rgba(0, 0, 0, 0.06) !important;
+  --bn-colors-border: #e2e8f0 !important;
+  --bn-colors-side-menu: #94a3b8 !important;
+  --bn-colors-highlights-gray-background: #f1f5f9 !important;
+  --bn-colors-highlights-gray-text: #64748b !important;
+  font-family: inherit !important;
+}
+
+.bn-editor {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  min-height: 420px;
+  color: #0f172a !important;
+}
+
+.bn-block-content {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #0f172a !important;
+}
+
+/* Clean scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
