@@ -9,8 +9,9 @@ import {
   Cancel01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  SidebarLeftIcon,
 } from '@hugeicons/core-free-icons';
-import type { TabItem } from '~/store/uiStore';
+import { useUIStore, type TabItem } from '~/store/uiStore';
 
 interface TabBarProps {
   tabs: TabItem[];
@@ -27,6 +28,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   onCloseTab,
   onNewTab,
 }) => {
+  const { sidebarOpen, toggleSidebar } = useUIStore();
   const isHomeActive = activeTabId === 'home' || (!activeTabId && tabs.length === 0);
   const fileTabs = tabs.filter((t) => t.id !== 'home');
 
@@ -63,6 +65,18 @@ export const TabBar: React.FC<TabBarProps> = ({
 
   return (
     <div className="flex items-center gap-1.5 px-1 py-1 shrink-0 select-none relative w-full overflow-hidden">
+      {/* Sidebar Reopen Toggle Button (Shown when sidebar is closed) */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="p-1.5 rounded-lg transition-all cursor-pointer border border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 shrink-0 z-10"
+          title="Open sidebar"
+        >
+          <HugeiconsIcon icon={SidebarLeftIcon} size={15} />
+        </button>
+      )}
+
       {/* Fixed Pinned Home Icon Button */}
       <button
         type="button"
