@@ -164,7 +164,7 @@ function DashboardLayout() {
     mutationFn: async (pageId: string) => {
       return await softDeletePage({ data: pageId });
     },
-    onSuccess: (deletedId) => {
+    onSuccess: (_, deletedId) => {
       refetchTree();
       if (deletedId) {
         const nextPath = closeTab(deletedId as string);

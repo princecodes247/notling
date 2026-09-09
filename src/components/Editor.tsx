@@ -118,24 +118,6 @@ export const Editor: React.FC<EditorProps> = ({
               <PanelLeftOpen className="w-4 h-4" />
             </button>
           )}
-
-          {/* Active Tab Badge */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-neutral-50 border border-neutral-200/90 rounded-lg text-xs font-medium text-neutral-800 shadow-2xs">
-            <span className="shrink-0">{icon}</span>
-            <span className="truncate max-w-[200px]">
-              {title || 'Untitled'}
-            </span>
-            {onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                className="text-neutral-400 hover:text-neutral-700 p-0.5 rounded hover:bg-neutral-200/60 transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Right Header Actions */}

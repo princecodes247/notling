@@ -63,12 +63,15 @@ export const useUIStore = create<UIState>((set, get) => ({
   activePageId: null,
   setActivePageId: (pageId) => set({ activePageId: pageId }),
 
-  openTabs: [
-    { id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' }
-  ],
+  openTabs: [],
   activeTabId: 'home',
   openTab: (tab) =>
     set((state) => {
+      if (tab.id === 'home') {
+        if (state.activeTabId === 'home') return state;
+        return { activeTabId: 'home' };
+      }
+
       const existingIndex = state.openTabs.findIndex((t) => t.id === tab.id);
       if (existingIndex !== -1) {
         const existing = state.openTabs[existingIndex];
@@ -97,27 +100,26 @@ export const useUIStore = create<UIState>((set, get) => ({
   closeTab: (tabId) => {
     let nextPath: string | null = null;
     const state = get();
-    const index = state.openTabs.findIndex((t) => t.id === tabId);
+    const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
+    const index = fileTabs.findIndex((t) => t.id === tabId);
     if (index === -1) return null;
 
-    const newTabs = state.openTabs.filter((t) => t.id !== tabId);
+    const remainingTabs = fileTabs.filter((t) => t.id !== tabId);
     let nextActiveId = state.activeTabId;
 
     if (state.activeTabId === tabId) {
-      if (newTabs.length > 0) {
+      if (remainingTabs.length > 0) {
         const nextIndex = Math.max(0, index - 1);
-        nextActiveId = newTabs[nextIndex].id;
-        nextPath = newTabs[nextIndex].path;
+        nextActiveId = remainingTabs[nextIndex].id;
+        nextPath = remainingTabs[nextIndex].path;
       } else {
-        const homeTab: TabItem = { id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' };
-        newTabs.push(homeTab);
         nextActiveId = 'home';
         nextPath = '/dashboard';
       }
     }
 
     set({
-      openTabs: newTabs,
+      openTabs: remainingTabs,
       activeTabId: nextActiveId,
     });
 

@@ -17,9 +17,29 @@ export const TabBar: React.FC<TabBarProps> = ({
   onCloseTab,
   onNewTab,
 }) => {
+  const isHomeActive = activeTabId === 'home' || (!activeTabId && tabs.length === 0);
+  const fileTabs = tabs.filter((t) => t.id !== 'home');
+
   return (
     <div className="flex items-center gap-1.5 px-1 py-1 overflow-x-auto no-scrollbar shrink-0 select-none">
-      {tabs.map((tab) => {
+      {/* Pinned Compact Home Icon Button */}
+      <button
+        type="button"
+        onClick={() =>
+          onSelectTab({ id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' })
+        }
+        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center ${
+          isHomeActive
+            ? 'bg-white border-neutral-200/90 text-neutral-900 shadow-2xs'
+            : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
+        }`}
+        title="Home"
+      >
+        <Home className="w-3.5 h-3.5 stroke-[1.8]" />
+      </button>
+
+      {/* Open File / Folder Tabs */}
+      {fileTabs.map((tab) => {
         const isActive = tab.id === activeTabId;
         return (
           <div
@@ -34,8 +54,6 @@ export const TabBar: React.FC<TabBarProps> = ({
             {/* Tab Icon */}
             {tab.icon ? (
               <span className="text-xs shrink-0">{tab.icon}</span>
-            ) : tab.id === 'home' ? (
-              <Home className="w-3.5 h-3.5 text-neutral-400 shrink-0 stroke-[1.75]" />
             ) : tab.id === 'folders' ? (
               <Folder className="w-3.5 h-3.5 text-neutral-400 shrink-0 stroke-[1.75]" />
             ) : tab.id === 'settings' ? (
@@ -72,7 +90,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         type="button"
         onClick={onNewTab}
         className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 rounded-lg transition-colors cursor-pointer shrink-0"
-        title="New tab"
+        title="New document tab"
       >
         <Plus className="w-3.5 h-3.5" />
       </button>
