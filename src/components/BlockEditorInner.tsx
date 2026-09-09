@@ -5,6 +5,7 @@ import '@blocknote/mantine/style.css';
 import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
 import { updatePageContent } from '~/server/pages';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface BlockEditorInnerProps {
   page: Page;
@@ -28,7 +29,9 @@ function extractPlainTextFromBlocks(blocks: any[]): string {
 
 export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const { setSaveStatus } = useUIStore();
+  const queryClient = useQueryClient();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingSaveRef = useRef<boolean>(false);
 
   const initialContent = React.useMemo(() => {
     try {
@@ -38,35 +41,62 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       console.error('Failed to parse page content JSON', e);
     }
     return undefined;
-  }, [page.id]);
+  }, [page.id, page.content]);
 
   const editor = useCreateBlockNote({
     initialContent,
   });
 
+  const editorRef = useRef(editor);
+  const pageIdRef = useRef(page.id);
+
+  useEffect(() => {
+    editorRef.current = editor;
+    pageIdRef.current = page.id;
+  }, [editor, page.id]);
+
+  const performSave = async () => {
+    try {
+      const currentBlocks = editorRef.current.document;
+      const plainText = extractPlainTextFromBlocks(currentBlocks);
+
+      await updatePageContent({
+        data: {
+          pageId: pageIdRef.current,
+          content: currentBlocks,
+          contentText: plainText,
+        },
+      });
+      pendingSaveRef.current = false;
+      setSaveStatus('saved');
+      queryClient.invalidateQueries({ queryKey: ['page', pageIdRef.current] });
+    } catch (err) {
+      console.error('Autosave failed:', err);
+      setSaveStatus('idle');
+    }
+  };
+
   const handleContentChange = () => {
     setSaveStatus('saving');
+    pendingSaveRef.current = true;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-    saveTimeoutRef.current = setTimeout(async () => {
-      try {
-        const currentBlocks = editor.document;
-        const plainText = extractPlainTextFromBlocks(currentBlocks);
-
-        await updatePageContent({
-          data: {
-            pageId: page.id,
-            content: currentBlocks,
-            contentText: plainText,
-          },
-        });
-        setSaveStatus('saved');
-      } catch (err) {
-        console.error('Autosave failed:', err);
-        setSaveStatus('idle');
-      }
-    }, 800);
+    saveTimeoutRef.current = setTimeout(() => {
+      performSave();
+    }, 500);
   };
+
+  // Immediate save on unmount if pending changes exist
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      if (pendingSaveRef.current) {
+        performSave();
+      }
+    };
+  }, []);
 
   return (
     <div className="min-h-[420px]">
