@@ -63,6 +63,21 @@
   color: #0f172a !important;
 }
 
+/* Shift side menu & drag handle away from block text content */
+.bn-side-menu {
+  transform: translateX(-16px) !important;
+}
+
+/* Highlight block when its handle context menu is open */
+.bn-block-selected-highlight {
+  background-color: #f1f5f9 !important;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px #e2e8f0;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+
+
 /* Clean scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
