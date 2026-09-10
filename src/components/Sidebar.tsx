@@ -14,7 +14,7 @@ import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
 import { useUIStore } from '~/store/uiStore';
 import type { UserSession } from '~/server/auth';
-import { DanceLogoIcon } from './Icons';
+import { NotlingLogoIcon } from './Icons';
 
 interface SidebarProps {
   workspaceName: string;
@@ -32,7 +32,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
-  workspaceName = 'Terrace',
+  workspaceName = 'Notling Workspace',
   session,
   treeNodes,
   trashCount = 0,
@@ -53,10 +53,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="h-14 px-4 flex items-center justify-between border-b border-transparent">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="text-neutral-900 shrink-0">
-            <DanceLogoIcon className="w-5 h-5" />
+            <NotlingLogoIcon className="w-5 h-5" />
           </div>
           <span className="font-semibold text-sm text-neutral-900 truncate tracking-tight">
-            {workspaceName || 'Terrace'}
+            {workspaceName || 'Notling Workspace'}
           </span>
         </div>
 

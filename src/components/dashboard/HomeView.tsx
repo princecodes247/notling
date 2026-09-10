@@ -72,7 +72,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="flex-1 w-full h-full bg-white overflow-y-auto select-none p-6 sm:p-10 font-sans">
       <div className="max-w-5xl mx-auto flex flex-col gap-8">
-        {/* 1. Header Greeting */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100">
           <div>
             <h1 className="text-2xl sm:text-3xl font-normal text-neutral-950 tracking-tight">
@@ -103,63 +102,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* 2. Key Metrics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div
-            onClick={() => onNavigate('folders')}
-            className="p-4 rounded-xl border border-neutral-200/90 bg-white hover:border-neutral-300 hover:shadow-2xs transition-all cursor-pointer flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between text-neutral-400 mb-3">
-              <span className="text-xs font-medium text-neutral-600">Active Folders</span>
-              <HugeiconsIcon icon={Folder01Icon} size={16} className="text-neutral-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-neutral-900">{totalFolders}</div>
-              <div className="text-[11px] text-neutral-500 mt-1">Collections organized</div>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigate('folders')}
-            className="p-4 rounded-xl border border-neutral-200/90 bg-white hover:border-neutral-300 hover:shadow-2xs transition-all cursor-pointer flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between text-neutral-400 mb-3">
-              <span className="text-xs font-medium text-neutral-600">Total Documents</span>
-              <HugeiconsIcon icon={File01Icon} size={16} className="text-neutral-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-neutral-900">{totalDocs}</div>
-              <div className="text-[11px] text-neutral-500 mt-1">Instant full-text indexed</div>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-xl border border-neutral-200/90 bg-white flex flex-col justify-between">
-            <div className="flex items-center justify-between text-neutral-400 mb-3">
-              <span className="text-xs font-medium text-neutral-600">Storage Engine</span>
-              <HugeiconsIcon icon={DatabaseIcon} size={16} className="text-neutral-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-neutral-900">Postgres</div>
-              <div className="text-[11px] text-emerald-600 font-medium mt-1">GIN tsvector active</div>
-            </div>
-          </div>
-
-          <div
-            onClick={() => onNavigate('settings')}
-            className="p-4 rounded-xl border border-neutral-200/90 bg-white hover:border-neutral-300 hover:shadow-2xs transition-all cursor-pointer flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between text-neutral-400 mb-3">
-              <span className="text-xs font-medium text-neutral-600">Collaborators</span>
-              <HugeiconsIcon icon={UserGroupIcon} size={16} className="text-neutral-400" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-neutral-900">Team</div>
-              <div className="text-[11px] text-neutral-500 mt-1">Workspace synced</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Folders Quick Showcase */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-neutral-900">Workspace Folders</h3>
@@ -203,7 +145,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </div>
         </div>
 
-        {/* 4. Recent Workspace Documents (Sorted by last opened/updated first) */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -6,8 +6,19 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   name: text('name'),
   avatarUrl: text('avatar_url'),
-  provider: text('provider', { enum: ['google', 'github', 'dev'] }).notNull(),
-  providerAccountId: text('provider_account_id').notNull(),
+  passwordHash: text('password_hash'),
+  role: text('role'),
+  isOnboarded: boolean('is_onboarded').notNull().default(false),
+  provider: text('provider', { enum: ['email', 'google', 'github', 'dev'] }).notNull().default('dev'),
+  providerAccountId: text('provider_account_id').notNull().default('dev'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const sessions = pgTable('sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -15,6 +26,8 @@ export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull().default('My Workspace'),
+  icon: text('icon').default('🚀'),
+  description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -41,6 +54,8 @@ export const pages = pgTable('pages', {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
 export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type Page = typeof pages.$inferSelect;

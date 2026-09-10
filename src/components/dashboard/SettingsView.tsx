@@ -95,7 +95,7 @@ export const SettingsView: React.FC = () => {
                 />
                 <div>
                   <div className="text-xs font-medium text-neutral-900">Scotty</div>
-                  <div className="text-[10px] text-neutral-400">scotty@usedance.com</div>
+                  <div className="text-[10px] text-neutral-400">scotty@notling.dev</div>
                 </div>
               </div>
               <span className="text-xs font-medium px-2 py-0.5 rounded bg-neutral-100 text-neutral-700">
@@ -116,34 +116,6 @@ export const SettingsView: React.FC = () => {
               <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800">
                 Autonomous Agent
               </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Storage & PostgreSQL Infrastructure */}
-        <div className="p-6 rounded-2xl border border-neutral-200/90 bg-white flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <Database className="w-4 h-4 text-neutral-500" />
-            <h2 className="text-sm font-semibold text-neutral-900">Database Engine</h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200/60">
-              <span className="text-[10px] text-neutral-400 uppercase font-semibold">Engine</span>
-              <div className="text-xs font-semibold text-neutral-900 mt-0.5">PostgreSQL 16</div>
-              <span className="text-[10px] text-emerald-600 font-medium">● Connected (Port 5432)</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200/60">
-              <span className="text-[10px] text-neutral-400 uppercase font-semibold">Search Index</span>
-              <div className="text-xs font-semibold text-neutral-900 mt-0.5">GIN tsvector Index</div>
-              <span className="text-[10px] text-neutral-500 font-medium">Sub-millisecond query</span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-neutral-50 border border-neutral-200/60">
-              <span className="text-[10px] text-neutral-400 uppercase font-semibold">Schema Status</span>
-              <div className="text-xs font-semibold text-neutral-900 mt-0.5">Drizzle ORM v0.39</div>
-              <span className="text-[10px] text-neutral-500 font-medium">Synchronized</span>
             </div>
           </div>
         </div>

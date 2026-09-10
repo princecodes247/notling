@@ -1,34 +1,17 @@
-import { createRoute, Outlet, useNavigate, useLocation, Link } from '@tanstack/react-router';
+import { createFileRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
 import React from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSession } from '~/server/auth';
-import {
-  getPageTree,
-  createPage,
-  softDeletePage,
-  updatePageMeta,
-  type PageTreeNode,
-} from '~/server/pages';
 import { Sidebar } from '~/components/Sidebar';
 import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
+import { getSession, signOut, type UserSession } from '~/server/auth';
+import { getPageTree, createPage, softDeletePage, updatePageMeta, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
-import { Route as rootRoute } from './__root';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-export const Route = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/dashboard',
+export const Route = createFileRoute('/dashboard')({
   component: DashboardLayout,
 });
-
-const DEFAULT_SESSION = {
-  userId: '00000000-0000-0000-0000-000000000001',
-  email: 'scotty@usedance.com',
-  name: 'Scotty',
-  avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces',
-  workspaceId: '00000000-0000-0000-0000-000000000002',
-};
 
 function findNodeInTree(nodes: PageTreeNode[], id: string): PageTreeNode | null {
   for (const node of nodes) {
@@ -47,28 +30,36 @@ function DashboardLayout() {
   const queryClient = useQueryClient();
   const {
     sidebarOpen,
-    setActivePageId,
     openTabs,
     activeTabId,
-    openTab,
     closeTab,
     setActiveTabId,
   } = useUIStore();
 
   // 1. Fetch Session
-  const { data: session = DEFAULT_SESSION } = useQuery({
+  const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => {
       try {
         return await getSession();
       } catch (err) {
-        return DEFAULT_SESSION;
+        return null;
       }
     },
-    initialData: DEFAULT_SESSION,
   });
 
-  const workspaceId = session.workspaceId;
+  // Redirect if unauthenticated or incomplete onboarding
+  React.useEffect(() => {
+    if (!sessionLoading) {
+      if (!session) {
+        navigate({ to: '/login' });
+      } else if (!session.isOnboarded) {
+        navigate({ to: '/onboarding' });
+      }
+    }
+  }, [session, sessionLoading]);
+
+  const workspaceId = session?.workspaceId;
 
   // 2. Fetch Workspace Page Tree
   const { data: treeNodes = [], refetch: refetchTree } = useQuery({
@@ -139,12 +130,13 @@ function DashboardLayout() {
   // Create Page Mutation
   const createPageMutation = useMutation({
     mutationFn: async (parentId?: string) => {
+      if (!workspaceId) return null;
       return await createPage({ data: { workspaceId, parentId, title: 'Untitled Document' } });
     },
     onSuccess: (newPage) => {
       refetchTree();
       if (newPage) {
-        setActivePageId(newPage.id);
+        useUIStore.getState().setActivePageId(newPage.id);
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
     },
@@ -153,6 +145,7 @@ function DashboardLayout() {
   // Create Folder Mutation (Root page with folder icon)
   const createFolderMutation = useMutation({
     mutationFn: async () => {
+      if (!workspaceId) return null;
       return await createPage({ data: { workspaceId, title: 'New Folder', icon: '📁' } });
     },
     onSuccess: (newFolder) => {
@@ -192,9 +185,9 @@ function DashboardLayout() {
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
     if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings') {
-      setActivePageId(tab.id);
+      useUIStore.getState().setActivePageId(tab.id);
     } else {
-      setActivePageId(null);
+      useUIStore.getState().setActivePageId(null);
     }
     navigate({ to: tab.path as any });
   };
@@ -206,12 +199,30 @@ function DashboardLayout() {
     }
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    queryClient.invalidateQueries({ queryKey: ['session'] });
+    navigate({ to: '/login' });
+  };
+
+  if (sessionLoading) {
+    return (
+      <div className="h-screen w-screen bg-[#fafaf9] flex items-center justify-center text-xs text-neutral-400 font-sans">
+        Authenticating session...
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
+
   return (
     <div className="h-screen w-screen bg-[#eef2f6] p-0 flex font-sans select-none">
       {/* Sidebar Navigation */}
       {sidebarOpen && (
         <Sidebar
-          workspaceName="Terrace"
+          workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
           session={session}
           treeNodes={treeNodes}
           activeNav={activeNav}
@@ -223,14 +234,15 @@ function DashboardLayout() {
           onCreateFolder={() => createFolderMutation.mutate()}
           onCreatePage={(parentId) => createPageMutation.mutate(parentId)}
           onSelectPage={(id) => {
-            setActivePageId(id);
+            useUIStore.getState().setActivePageId(id);
             navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
           }}
           onSoftDelete={(id) => softDeleteMutation.mutate(id)}
           onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
-          onLogout={() => navigate({ to: '/login' })}
+          onLogout={handleLogout}
         />
       )}
+
       {/* Framed Workspace Card */}
       <div className="flex-1 bg-[#fafaf9] p-2 overflow-hidden flex flex-col relative min-w-0">
         {/* Tab Bar Header */}
@@ -239,32 +251,27 @@ function DashboardLayout() {
           activeTabId={activeTabId}
           onSelectTab={handleSelectTab}
           onCloseTab={handleCloseTab}
-          onNewTab={() => createPageMutation.mutate()}
+          onNewTab={() => createPageMutation.mutate(undefined)}
         />
 
-        {/* Dynamic Route Outlet */}
-        <main className="flex-1 flex flex-col min-w-0 h-full relative bg-white border border-neutral-200/90 rounded-xl overflow-hidden">
+        {/* Content Outlet */}
+        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white border border-neutral-200/90 rounded-2xl shadow-2xs mt-1">
           <Outlet />
         </main>
       </div>
 
-      {/* Global Modals */}
-      {workspaceId && (
-        <CommandPalette
-          workspaceId={workspaceId}
-          onSelectPage={(id) => {
-            setActivePageId(id);
-            navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
-          }}
-        />
-      )}
-
-      {workspaceId && (
-        <TrashModal
-          workspaceId={workspaceId}
-          onRefreshTree={() => refetchTree()}
-        />
-      )}
+      {/* Modals */}
+      <CommandPalette
+        workspaceId={session.workspaceId}
+        onSelectPage={(id) => {
+          useUIStore.getState().setActivePageId(id);
+          navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+        }}
+      />
+      <TrashModal
+        workspaceId={session.workspaceId}
+        onRefreshTree={() => refetchTree()}
+      />
     </div>
   );
 }

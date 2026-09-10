@@ -17,7 +17,7 @@ export const Route = createRoute({
 
 const DEFAULT_SESSION = {
   userId: '00000000-0000-0000-0000-000000000001',
-  email: 'scotty@usedance.com',
+  email: 'scotty@notling.dev',
   name: 'Scotty',
   avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces',
   workspaceId: '00000000-0000-0000-0000-000000000002',
