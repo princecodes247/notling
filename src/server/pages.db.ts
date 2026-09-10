@@ -226,6 +226,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
         order: pages.order,
         createdAt: pages.createdAt,
         updatedAt: pages.updatedAt,
+        contentText: pages.contentText,
       })
       .from(pages)
       .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false)))

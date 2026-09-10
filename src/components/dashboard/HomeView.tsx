@@ -178,8 +178,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                       <span className="text-xs font-medium text-neutral-900 group-hover:text-black truncate block">
                         {node.title || 'Untitled Document'}
                       </span>
-                      <span className="text-[10px] text-neutral-400">
-                        PostgreSQL backed &bull; Instant full-text search
+                      <span className="text-[10px] text-neutral-400 truncate block max-w-xs sm:max-w-md md:max-w-lg">
+                        {node.contentText?.trim() || 'No additional content'}
                       </span>
                     </div>
                   </div>

@@ -9,6 +9,7 @@ export interface PageTreeNode {
   order: number;
   createdAt: Date;
   updatedAt: Date;
+  contentText?: string | null;
   children: PageTreeNode[];
 }
 
