@@ -107,16 +107,7 @@ export const Editor: React.FC<EditorProps> = ({
       {/* Top Header Strip */}
       <header className="h-12 border-b border-neutral-200/80 px-4 flex items-center justify-between bg-white shrink-0">
         <div className="flex items-center gap-2 min-w-0">
-          {!sidebarOpen && (
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="p-1 rounded hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900 transition-colors mr-1 cursor-pointer"
-              title="Open sidebar"
-            >
-              <HugeiconsIcon icon={SidebarLeftIcon} size={16} />
-            </button>
-          )}
+
         </div>
 
         {/* Right Header Actions */}

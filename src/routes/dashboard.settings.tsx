@@ -1,5 +1,7 @@
-import { createFileRoute, createRoute } from '@tanstack/react-router';
+import { createRoute } from '@tanstack/react-router';
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { getSession } from '~/server/auth';
 import { SettingsView } from '~/components/dashboard/SettingsView';
 import { Route as dashboardRoute } from './dashboard';
 
@@ -9,10 +11,11 @@ export const Route = createRoute({
   component: DashboardSettingsPage,
 });
 
-// export const Route = createFileRoute('/dashboard/settings')({
-//   component: DashboardSettingsPage,
-// });
-
 function DashboardSettingsPage() {
-  return <SettingsView />;
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => await getSession(),
+  });
+
+  return <SettingsView session={session} />;
 }

@@ -1,5 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { PanelLeftOpen } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Home01Icon,
   Folder01Icon,
@@ -9,7 +11,6 @@ import {
   Cancel01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  SidebarLeftIcon,
 } from '@hugeicons/core-free-icons';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 
@@ -66,24 +67,33 @@ export const TabBar: React.FC<TabBarProps> = ({
   return (
     <div className="flex items-center gap-1.5 px-1 py-1 shrink-0 select-none relative w-full overflow-hidden">
       {/* Sidebar Reopen Toggle Button (Shown when sidebar is closed) */}
-      {!sidebarOpen && (
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          className="p-1.5 rounded-lg transition-all cursor-pointer border border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 shrink-0 z-10"
-          title="Open sidebar"
-        >
-          <HugeiconsIcon icon={SidebarLeftIcon} size={15} />
-        </button>
-      )}
+      <AnimatePresence mode="popLayout">
+        {!sidebarOpen && (
+          <motion.button
+            key="sidebar-open-btn"
+            initial={{ opacity: 0, scale: 0.8, width: 0 }}
+            animate={{ opacity: 1, scale: 1, width: 28 }}
+            exit={{ opacity: 0, scale: 0.8, width: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.7 }}
+            type="button"
+            onClick={toggleSidebar}
+            className="h-7 rounded-lg transition-colors cursor-pointer border border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 shrink-0 z-10 overflow-hidden flex items-center justify-center p-0"
+            title="Open sidebar"
+          >
+            <PanelLeftOpen className="w-4 h-4 text-neutral-500 hover:text-neutral-800 transition-colors shrink-0" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       {/* Fixed Pinned Home Icon Button */}
-      <button
+      <motion.button
+        layout
+        transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.7 }}
         type="button"
         onClick={() =>
           onSelectTab({ id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' })
         }
-        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
+        className={`p-1.5 rounded-lg transition-colors cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
           isHomeActive
             ? 'bg-white border-neutral-200/90 text-neutral-900 shadow-2xs'
             : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
@@ -91,10 +101,15 @@ export const TabBar: React.FC<TabBarProps> = ({
         title="Home"
       >
         <HugeiconsIcon icon={Home01Icon} size={15} />
-      </button>
+      </motion.button>
+
 
       {/* Scrollable Track with Fade & Carets */}
-      <div className="relative flex-1 flex items-center min-w-0 overflow-hidden">
+      <motion.div
+        layout
+        transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.7 }}
+        className="relative flex-1 flex items-center min-w-0 overflow-hidden"
+      >
         {/* Left Fade & Caret */}
         {canScrollLeft && (
           <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-[#fafaf9] via-[#fafaf9]/90 to-transparent pointer-events-none">
@@ -176,7 +191,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             </button>
           </div>
         )}
-      </div>
+      </motion.div>
 
       {/* Pinned New Tab (+) Button */}
       <button

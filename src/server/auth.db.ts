@@ -532,6 +532,51 @@ export async function completeOnboardingImpl(data: {
   };
 }
 
+export async function updateSettingsImpl(data: {
+  workspaceName?: string;
+  workspaceIcon?: string;
+  name?: string;
+  role?: string;
+  avatarUrl?: string;
+}): Promise<AuthResponse> {
+  try {
+    const currentSession = await getSessionImpl();
+    if (!currentSession) {
+      return { success: false, error: 'Unauthorized. Please sign in.' };
+    }
+
+    if (data.name !== undefined || data.role !== undefined || data.avatarUrl !== undefined) {
+      await db
+        .update(users)
+        .set({
+          ...(data.name !== undefined && { name: data.name }),
+          ...(data.role !== undefined && { role: data.role }),
+          ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl }),
+        })
+        .where(eq(users.id, currentSession.userId));
+    }
+
+    if (data.workspaceName !== undefined || data.workspaceIcon !== undefined) {
+      await db
+        .update(workspaces)
+        .set({
+          ...(data.workspaceName !== undefined && { name: data.workspaceName }),
+          ...(data.workspaceIcon !== undefined && { icon: data.workspaceIcon }),
+        })
+        .where(eq(workspaces.id, currentSession.workspaceId));
+    }
+
+    const updatedSession = await getSessionImpl();
+    return {
+      success: true,
+      session: updatedSession,
+    };
+  } catch (err: any) {
+    console.error('Error updating settings:', err);
+    return { success: false, error: err.message || 'Failed to update settings.' };
+  }
+}
+
 export async function signOutImpl(): Promise<{ success: boolean }> {
   try {
     const token = getCookie(COOKIE_NAME);
@@ -546,3 +591,4 @@ export async function signOutImpl(): Promise<{ success: boolean }> {
     return { success: true };
   }
 }
+

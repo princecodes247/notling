@@ -148,7 +148,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-neutral-900">Recent Documents</h3>
+              <h3 className="text-sm font-semibold text-neutral-900">Recents</h3>
               <HugeiconsIcon icon={Clock01Icon} size={14} className="text-neutral-400" />
             </div>
             <button

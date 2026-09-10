@@ -1,5 +1,6 @@
 import React from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
+import { PanelLeftClose } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,
@@ -8,13 +9,13 @@ import {
   Settings02Icon,
   PlusSignIcon,
   Logout01Icon,
-  LeftToRightListDashIcon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
 import { useUIStore } from '~/store/uiStore';
 import type { UserSession } from '~/server/auth';
 import { NotlingLogoIcon } from './Icons';
+
 
 interface SidebarProps {
   workspaceName: string;
@@ -63,11 +64,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={toggleSidebar}
-          className="p-1 rounded text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors cursor-pointer"
           title="Collapse sidebar"
         >
-          <HugeiconsIcon icon={LeftToRightListDashIcon} size={16} className="text-neutral-500" />
+          <PanelLeftClose className="w-4 h-4 text-neutral-500 hover:text-neutral-800 transition-colors" />
         </button>
+
       </div>
 
       {/* 2. Search Bar with '/' badge */}

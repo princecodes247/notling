@@ -72,8 +72,23 @@ export const completeOnboarding = createServerFn({ method: 'POST' })
     return completeOnboardingImpl(data);
   });
 
+// Update Workspace and User Settings
+export const updateSettings = createServerFn({ method: 'POST' })
+  .validator((data: {
+    workspaceName?: string;
+    workspaceIcon?: string;
+    name?: string;
+    role?: string;
+    avatarUrl?: string;
+  }) => data)
+  .handler(async ({ data }): Promise<AuthResponse> => {
+    const { updateSettingsImpl } = await import('./auth.db');
+    return updateSettingsImpl(data);
+  });
+
 // Sign Out
 export const signOut = createServerFn({ method: 'POST' }).handler(async (): Promise<{ success: boolean }> => {
   const { signOutImpl } = await import('./auth.db');
   return signOutImpl();
 });
+

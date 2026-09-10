@@ -1,13 +1,15 @@
 import { createFileRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
 import React from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from '~/components/Sidebar';
 import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
-import { getSession, signOut, type UserSession } from '~/server/auth';
+import { getSession, signOut } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardLayout,
@@ -220,28 +222,40 @@ function DashboardLayout() {
   return (
     <div className="h-screen w-screen bg-[#eef2f6] p-0 flex font-sans select-none">
       {/* Sidebar Navigation */}
-      {sidebarOpen && (
-        <Sidebar
-          workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
-          session={session}
-          treeNodes={treeNodes}
-          activeNav={activeNav}
-          onNavClick={(nav) => {
-            if (nav === 'home') navigate({ to: '/dashboard' });
-            else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
-            else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
-          }}
-          onCreateFolder={() => createFolderMutation.mutate()}
-          onCreatePage={(parentId) => createPageMutation.mutate(parentId)}
-          onSelectPage={(id) => {
-            useUIStore.getState().setActivePageId(id);
-            navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
-          }}
-          onSoftDelete={(id) => softDeleteMutation.mutate(id)}
-          onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
-          onLogout={handleLogout}
-        />
-      )}
+      <AnimatePresence initial={false}>
+        {sidebarOpen && (
+          <motion.div
+            key="sidebar-wrapper"
+            initial={{ width: 0, opacity: 0 }}
+            animate={{ width: 240, opacity: 1 }}
+            exit={{ width: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.7 }}
+            className="shrink-0 h-full overflow-hidden bg-[#fafaf9]"
+          >
+            <Sidebar
+              workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
+              session={session}
+              treeNodes={treeNodes}
+              activeNav={activeNav}
+              onNavClick={(nav) => {
+                if (nav === 'home') navigate({ to: '/dashboard' });
+                else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
+                else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
+              }}
+              onCreateFolder={() => createFolderMutation.mutate()}
+              onCreatePage={(parentId) => createPageMutation.mutate(parentId)}
+              onSelectPage={(id) => {
+                useUIStore.getState().setActivePageId(id);
+                navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+              }}
+              onSoftDelete={(id) => softDeleteMutation.mutate(id)}
+              onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
+              onLogout={handleLogout}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
 
       {/* Framed Workspace Card */}
       <div className="flex-1 bg-[#fafaf9] p-2 overflow-hidden flex flex-col relative min-w-0">
