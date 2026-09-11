@@ -68,6 +68,28 @@
   transform: translateX(-16px) !important;
 }
 
+/* Block highlight when context menu is open (applied via inline styles on .bn-block-outer) */
+.bn-block-outer {
+  transition: background-color 0.12s ease, outline 0.12s ease;
+}
+
+/* Highlight block when its handle context menu is open */
+.bn-block-selected-highlight,
+.bn-block-selected-highlight .bn-block,
+.bn-block-selected-highlight .bn-block-content,
+.bn-block-selected-highlight .bn-inline-content,
+.bn-block-selected-highlight p,
+.bn-block-selected-highlight h1,
+.bn-block-selected-highlight h2,
+.bn-block-selected-highlight h3,
+.bn-block-selected-highlight li,
+.bn-block-selected-highlight span,
+.bn-block-selected-highlight div {
+  background-color: #dbeafe !important;
+  border-radius: 6px !important;
+  transition: background-color 0.1s ease !important;
+}
+
 /* Highlight block when its handle context menu is open */
 .bn-block-selected-highlight {
   background-color: #f1f5f9 !important;
@@ -75,7 +97,6 @@
   box-shadow: 0 0 0 2px #e2e8f0;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
-
 
 
 /* Clean scrollbars */
