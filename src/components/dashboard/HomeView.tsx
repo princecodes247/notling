@@ -1,13 +1,9 @@
 import React, { useMemo } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Folder01Icon,
   FolderAddIcon,
-  File01Icon,
-  UserGroupIcon,
   PlusSignIcon,
   ArrowRight01Icon,
-  DatabaseIcon,
   Clock01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
@@ -58,7 +54,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
   }, [treeNodes]);
 
-  const totalFolders = folders.length;
   let totalDocs = 0;
   treeNodes.forEach((n) => {
     if (n.icon !== '📁' && n.icon !== '📂') totalDocs += 1;

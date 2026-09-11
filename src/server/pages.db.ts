@@ -1,199 +1,11 @@
 import { db } from '~/db';
-import { pages, workspaces, users } from '~/db/schema';
+import { pages, workspaces, pageShares } from '~/db/schema';
 import { eq, and, sql, desc, asc, isNull } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
+import { getSessionImpl } from './auth.db';
 
-// Ensure a default user & workspace exist for demo/dev purposes
-export async function getOrCreateDefaultWorkspace() {
-  try {
-    const existingUsers = await db.select().from(users).limit(1);
-    let user = existingUsers[0];
 
-    if (!user) {
-      const [newUser] = await db.insert(users).values({
-        email: 'demo@notling.dev',
-        name: 'Prince (Workspace Owner)',
-        avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Prince',
-        provider: 'dev',
-        providerAccountId: 'dev-owner-1',
-      }).returning();
-      user = newUser;
-    }
-
-    const existingWorkspaces = await db.select().from(workspaces).where(eq(workspaces.ownerId, user.id)).limit(1);
-    let workspace = existingWorkspaces[0];
-
-    if (!workspace) {
-      const [newWs] = await db.insert(workspaces).values({
-        ownerId: user.id,
-        name: "Prince's Workspace",
-      }).returning();
-      workspace = newWs;
-
-      // Create a welcome root page with initial block content
-      const [welcomePage] = await db.insert(pages).values({
-        workspaceId: workspace.id,
-        title: '🚀 Getting Started with Notling',
-        icon: '👋',
-        order: 0,
-        content: [
-          {
-            id: 'welcome-1',
-            type: 'heading',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left', level: 1 },
-            content: [{ type: 'text', text: 'Welcome to Notling!', styles: {} }],
-            children: []
-          },
-          {
-            id: 'welcome-2',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: 'Notling is your simplified, lightning-fast Notion alternative. Everything is organized in a nested page tree with block-based editing and instant full-text search.', styles: {} }],
-            children: []
-          },
-          {
-            id: 'welcome-3',
-            type: 'bulletListItem',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: 'Create nested pages by clicking the + button on any page in the sidebar.', styles: { bold: true } }],
-            children: []
-          },
-          {
-            id: 'welcome-4',
-            type: 'bulletListItem',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: 'Press Cmd+K (or Ctrl+K) anytime to open the full-text command search.', styles: { bold: true } }],
-            children: []
-          },
-          {
-            id: 'welcome-5',
-            type: 'bulletListItem',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: 'Autosave works seamlessly in the background while you type.', styles: { bold: true } }],
-            children: []
-          }
-        ],
-        contentText: 'Welcome to Notling! Notling is your simplified, lightning-fast Notion alternative. Everything is organized in a nested page tree with block-based editing and instant full-text search. Create nested pages by clicking the + button on any page in the sidebar. Press Cmd+K (or Ctrl+K) anytime to open the full-text command search. Autosave works seamlessly in the background while you type.',
-      }).returning();
-
-      // Create a child sample page
-      await db.insert(pages).values({
-        workspaceId: workspace.id,
-        parentId: welcomePage.id,
-        title: '📝 Meeting Notes',
-        icon: '📌',
-        order: 0,
-        content: [
-          {
-            id: 'meeting-1',
-            type: 'heading',
-            props: { level: 2 },
-            content: [{ type: 'text', text: 'Sprint Planning Notes', styles: {} }],
-            children: []
-          },
-          {
-            id: 'meeting-2',
-            type: 'checkListItem',
-            props: { checked: true },
-            content: [{ type: 'text', text: 'Define v1 scope & database schema', styles: {} }],
-            children: []
-          },
-          {
-            id: 'meeting-3',
-            type: 'checkListItem',
-            props: { checked: false },
-            content: [{ type: 'text', text: 'Setup Postgres full-text search index', styles: {} }],
-            children: []
-          }
-        ],
-        contentText: 'Sprint Planning Notes Define v1 scope & database schema Setup Postgres full-text search index',
-      });
-    }
-
-    // Ensure "Agentic Development Workshop NYC" page exists
-    const existingAgentic = await db
-      .select()
-      .from(pages)
-      .where(and(eq(pages.workspaceId, workspace.id), eq(pages.title, 'Agentic Development Workshop NYC'), isNull(pages.deletedAt)))
-      .limit(1);
-
-    if (existingAgentic.length === 0) {
-      const [workshopPage] = await db.insert(pages).values({
-        workspaceId: workspace.id,
-        title: 'Agentic Development Workshop NYC',
-        icon: '⚡',
-        order: 0,
-        content: [
-          {
-            id: 'ws-h1',
-            type: 'heading',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left', level: 1 },
-            content: [{ type: 'text', text: 'Agentic Development Workshop NYC', styles: {} }],
-            children: []
-          },
-          {
-            id: 'ws-p1',
-            type: 'paragraph',
-            props: { textColor: 'default', backgroundColor: 'default', textAlignment: 'left' },
-            content: [{ type: 'text', text: 'Collaborate with teammates and event agents to stay aligned and under budget.', styles: {} }],
-            children: []
-          }
-        ],
-        contentText: 'Agentic Development Workshop NYC Collaborate with teammates and event agents to stay aligned and under budget.',
-      }).returning();
-
-      // Insert sub-pages
-      await db.insert(pages).values([
-        {
-          workspaceId: workspace.id,
-          parentId: workshopPage.id,
-          title: 'Venue & Logistics',
-          icon: '📍',
-          order: 0,
-          content: [{ id: 'sub-1', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'Spring Street Studios reservation confirmed for May 2026.', styles: {} }], children: [] }],
-          contentText: 'Spring Street Studios reservation confirmed for May 2026.',
-        },
-        {
-          workspaceId: workspace.id,
-          parentId: workshopPage.id,
-          title: 'Workshop Curriculum',
-          icon: '📋',
-          order: 1,
-          content: [{ id: 'sub-2', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'Module 1: Agentic architecture. Module 2: Tool calling and evaluation.', styles: {} }], children: [] }],
-          contentText: 'Module 1: Agentic architecture. Module 2: Tool calling and evaluation.',
-        },
-        {
-          workspaceId: workspace.id,
-          parentId: workshopPage.id,
-          title: 'Speaker Outreach',
-          icon: '🎤',
-          order: 2,
-          content: [{ id: 'sub-3', type: 'paragraph', props: {}, content: [{ type: 'text', text: '12 invitations sent to keynote speakers.', styles: {} }], children: [] }],
-          contentText: '12 invitations sent to keynote speakers.',
-        },
-        {
-          workspaceId: workspace.id,
-          parentId: workshopPage.id,
-          title: 'Registration Launch',
-          icon: '🎟️',
-          order: 3,
-          content: [{ id: 'sub-4', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'Early bird tickets opening May 9, 2026.', styles: {} }], children: [] }],
-          contentText: 'Early bird tickets opening May 9, 2026.',
-        }
-      ]);
-    }
-
-    return { user, workspace };
-  } catch (err) {
-    console.error('Database connection error in getOrCreateDefaultWorkspace:', err);
-    return {
-      user: { id: '00000000-0000-0000-0000-000000000001', email: 'demo@notling.dev', name: 'Prince (Workspace Owner)', avatarUrl: 'https://api.dicebear.com/7.x/bottts/svg?seed=Prince', provider: 'dev', providerAccountId: 'dev-owner-1', createdAt: new Date() },
-      workspace: { id: '00000000-0000-0000-0000-000000000002', ownerId: '00000000-0000-0000-0000-000000000001', name: "Prince's Workspace", createdAt: new Date() },
-    };
-  }
-}
-
-async function resolveWorkspaceId(providedWorkspaceId?: string): Promise<string> {
+async function resolveWorkspaceId(providedWorkspaceId?: string): Promise<string | null> {
   if (providedWorkspaceId) {
     try {
       const existing = await db
@@ -205,16 +17,18 @@ async function resolveWorkspaceId(providedWorkspaceId?: string): Promise<string>
         return existing[0].id;
       }
     } catch {
-      // If query fails (e.g. invalid UUID format or missing record), fall through
+      // Invalid UUID or missing
     }
   }
-  const { workspace } = await getOrCreateDefaultWorkspace();
-  return workspace.id;
+  return null;
 }
 
 export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]> {
   try {
     const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
+    if (!targetWorkspaceId) return [];
+
+    const session = await getSessionImpl();
 
     const allPages = await db
       .select({
@@ -223,6 +37,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
         parentId: pages.parentId,
         title: pages.title,
         icon: pages.icon,
+        visibility: pages.visibility,
         order: pages.order,
         createdAt: pages.createdAt,
         updatedAt: pages.updatedAt,
@@ -232,14 +47,21 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false)))
       .orderBy(asc(pages.order), asc(pages.createdAt));
 
+    const visiblePages = allPages.filter((page) => {
+      if (session && session.workspaceId === page.workspaceId) {
+        return true;
+      }
+      return page.visibility === 'public';
+    });
+
     const pageMap = new Map<string, PageTreeNode>();
     const rootNodes: PageTreeNode[] = [];
 
-    for (const page of allPages) {
+    for (const page of visiblePages) {
       pageMap.set(page.id, { ...page, children: [] });
     }
 
-    for (const page of allPages) {
+    for (const page of visiblePages) {
       const node = pageMap.get(page.id)!;
       if (page.parentId && pageMap.has(page.parentId)) {
         pageMap.get(page.parentId)!.children.push(node);
@@ -259,16 +81,54 @@ export async function fetchPage(pageId: string) {
   try {
     const pageList = await db.select().from(pages).where(eq(pages.id, pageId)).limit(1);
     if (pageList.length === 0) return null;
-    return pageList[0];
+    const page = pageList[0];
+
+    const session = await getSessionImpl();
+    if (page.visibility === 'public') {
+      return page;
+    }
+    if (session && session.workspaceId === page.workspaceId) {
+      return page;
+    }
+    return null;
   } catch (err) {
     console.error('Error fetching page:', err);
     return null;
   }
 }
 
-export async function createNewPage(input: { workspaceId: string; parentId?: string | null; title?: string; icon?: string }) {
+export async function fetchPublicPage(pageId: string) {
+  try {
+    const pageList = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (pageList.length === 0) return null;
+    const page = pageList[0];
+
+    if (page.visibility !== 'public') {
+      return null;
+    }
+
+    return page;
+  } catch (err) {
+    console.error('Error fetching public page:', err);
+    return null;
+  }
+}
+
+export async function createNewPage(input: {
+  workspaceId: string;
+  parentId?: string | null;
+  title?: string;
+  icon?: string;
+  visibility?: 'private' | 'workspace' | 'public';
+}) {
   try {
     const targetWorkspaceId = await resolveWorkspaceId(input.workspaceId);
+    if (!targetWorkspaceId) return null;
 
     const existingInParent = await db
       .select({ order: pages.order })
@@ -292,6 +152,7 @@ export async function createNewPage(input: { workspaceId: string; parentId?: str
         parentId: input.parentId || null,
         title: input.title || 'Untitled',
         icon: input.icon || '📄',
+        visibility: input.visibility || 'workspace',
         order: nextOrder,
         content: [],
         contentText: '',
@@ -343,6 +204,24 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
   }
 }
 
+export async function savePageVisibility(input: { pageId: string; visibility: 'private' | 'workspace' | 'public' }) {
+  try {
+    const [updated] = await db
+      .update(pages)
+      .set({
+        visibility: input.visibility,
+        updatedAt: new Date(),
+      })
+      .where(eq(pages.id, input.pageId))
+      .returning();
+
+    return updated;
+  } catch (err) {
+    console.error('Error updating page visibility:', err);
+    return null;
+  }
+}
+
 export async function performSoftDelete(pageId: string) {
   try {
     const softDeleteRecursive = async (id: string) => {
@@ -390,6 +269,7 @@ export async function performRestore(pageId: string) {
 export async function fetchTrashPages(workspaceId: string) {
   try {
     const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
+    if (!targetWorkspaceId) return [];
     return await db
       .select({
         id: pages.id,
@@ -421,6 +301,7 @@ export async function performSearchPages(workspaceId: string, query: string) {
     if (!query || !query.trim()) return [];
 
     const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
+    if (!targetWorkspaceId) return [];
 
     const formattedQuery = query
       .trim()
@@ -475,3 +356,87 @@ export async function fetchChildPages(parentId: string) {
     return [];
   }
 }
+
+export async function fetchPageShares(pageId: string) {
+  try {
+    return await db
+      .select({
+        id: pageShares.id,
+        pageId: pageShares.pageId,
+        email: pageShares.email,
+        role: pageShares.role,
+        createdAt: pageShares.createdAt,
+      })
+      .from(pageShares)
+      .where(eq(pageShares.pageId, pageId))
+      .orderBy(asc(pageShares.createdAt));
+  } catch (err) {
+    console.error('Error fetching page shares:', err);
+    return [];
+  }
+}
+
+export async function inviteUserToPage(input: {
+  pageId: string;
+  email: string;
+  role: 'viewer' | 'editor';
+}) {
+  try {
+    const cleanEmail = input.email.trim().toLowerCase();
+    if (!cleanEmail) return null;
+
+    const existing = await db
+      .select()
+      .from(pageShares)
+      .where(and(eq(pageShares.pageId, input.pageId), eq(pageShares.email, cleanEmail)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const [updated] = await db
+        .update(pageShares)
+        .set({ role: input.role })
+        .where(eq(pageShares.id, existing[0].id))
+        .returning();
+      return updated;
+    }
+
+    const [newShare] = await db
+      .insert(pageShares)
+      .values({
+        pageId: input.pageId,
+        email: cleanEmail,
+        role: input.role,
+      })
+      .returning();
+
+    return newShare;
+  } catch (err) {
+    console.error('Error inviting user to page:', err);
+    return null;
+  }
+}
+
+export async function removePageShare(shareId: string) {
+  try {
+    await db.delete(pageShares).where(eq(pageShares.id, shareId));
+    return { success: true };
+  } catch (err) {
+    console.error('Error removing page share:', err);
+    return { success: false };
+  }
+}
+
+export async function updatePageShareRole(input: { shareId: string; role: 'viewer' | 'editor' }) {
+  try {
+    const [updated] = await db
+      .update(pageShares)
+      .set({ role: input.role })
+      .where(eq(pageShares.id, input.shareId))
+      .returning();
+    return updated;
+  } catch (err) {
+    console.error('Error updating page share role:', err);
+    return null;
+  }
+}
+

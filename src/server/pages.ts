@@ -6,6 +6,7 @@ export interface PageTreeNode {
   parentId: string | null;
   title: string;
   icon: string | null;
+  visibility: 'private' | 'workspace' | 'public';
   order: number;
   createdAt: Date;
   updatedAt: Date;
@@ -28,9 +29,16 @@ export const getPage = createServerFn({ method: 'GET' })
     return fetchPage(data);
   });
 
+export const getPublicPage = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data }: { data: string }) => {
+    const { fetchPublicPage } = await import('./pages.db');
+    return fetchPublicPage(data);
+  });
+
 export const createPage = createServerFn({ method: 'POST' })
-  .validator((input: { workspaceId: string; parentId?: string | null; title?: string; icon?: string }) => input)
-  .handler(async ({ data }: { data: { workspaceId: string; parentId?: string | null; title?: string; icon?: string } }) => {
+  .validator((input: { workspaceId: string; parentId?: string | null; title?: string; icon?: string; visibility?: 'private' | 'workspace' | 'public' }) => input)
+  .handler(async ({ data }: { data: { workspaceId: string; parentId?: string | null; title?: string; icon?: string; visibility?: 'private' | 'workspace' | 'public' } }) => {
     const { createNewPage } = await import('./pages.db');
     return createNewPage(data);
   });
@@ -47,6 +55,13 @@ export const updatePageMeta = createServerFn({ method: 'POST' })
   .handler(async ({ data }: { data: { pageId: string; title?: string; icon?: string | null } }) => {
     const { savePageMeta } = await import('./pages.db');
     return savePageMeta(data);
+  });
+
+export const updatePageVisibility = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; visibility: 'private' | 'workspace' | 'public' }) => input)
+  .handler(async ({ data }: { data: { pageId: string; visibility: 'private' | 'workspace' | 'public' } }) => {
+    const { savePageVisibility } = await import('./pages.db');
+    return savePageVisibility(data);
   });
 
 export const softDeletePage = createServerFn({ method: 'POST' })
@@ -90,3 +105,32 @@ export const getChildPages = createServerFn({ method: 'GET' })
     const { fetchChildPages } = await import('./pages.db');
     return fetchChildPages(data);
   });
+
+export const getPageShares = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data }: { data: string }) => {
+    const { fetchPageShares } = await import('./pages.db');
+    return fetchPageShares(data);
+  });
+
+export const inviteUserToPage = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; email: string; role: 'viewer' | 'editor' }) => input)
+  .handler(async ({ data }: { data: { pageId: string; email: string; role: 'viewer' | 'editor' } }) => {
+    const { inviteUserToPage: inviteImpl } = await import('./pages.db');
+    return inviteImpl(data);
+  });
+
+export const removePageShare = createServerFn({ method: 'POST' })
+  .validator((shareId: string) => shareId)
+  .handler(async ({ data }: { data: string }) => {
+    const { removePageShare: removeImpl } = await import('./pages.db');
+    return removeImpl(data);
+  });
+
+export const updatePageShareRole = createServerFn({ method: 'POST' })
+  .validator((input: { shareId: string; role: 'viewer' | 'editor' }) => input)
+  .handler(async ({ data }: { data: { shareId: string; role: 'viewer' | 'editor' } }) => {
+    const { updatePageShareRole: updateRoleImpl } = await import('./pages.db');
+    return updateRoleImpl(data);
+  });
+

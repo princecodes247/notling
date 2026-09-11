@@ -1,5 +1,4 @@
 import { createRoute } from '@tanstack/react-router';
-import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
 import { SettingsView } from '~/components/dashboard/SettingsView';

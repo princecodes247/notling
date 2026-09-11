@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, Clock, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Clock, MapPin } from 'lucide-react';
 
 interface CalendarEvent {
   id: string;
@@ -24,7 +24,7 @@ const MAY_EVENTS: CalendarEvent[] = [
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export const CalendarView: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState('May 2026');
+  const [currentMonth] = useState('May 2026');
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   // May 2026 starts on Friday (index 5) with 31 days

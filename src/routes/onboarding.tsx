@@ -1,17 +1,13 @@
 import { createRoute, useNavigate } from '@tanstack/react-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Route as rootRoute } from './__root';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  UserIcon,
-  Folder01Icon,
   SparklesIcon,
   ArrowRight01Icon,
   CheckmarkCircle01Icon,
-  File01Icon,
-  Settings02Icon,
 } from '@hugeicons/core-free-icons';
-import { completeOnboarding, getSession } from '~/server/auth';
+import { completeOnboarding } from '~/server/auth';
 import { NotlingLogoIcon } from '~/components/Icons';
 
 export const Route = createRoute({
@@ -67,9 +63,26 @@ function OnboardingPage() {
   const [role, setRole] = useState('Software Engineer');
   const [avatarUrl, setAvatarUrl] = useState(AVATARS[0]);
   const [workspaceName, setWorkspaceName] = useState('My Workspace');
+  const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [workspaceIcon, setWorkspaceIcon] = useState('🚀');
   const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('engineering');
+
+  const slugify = (text: string) =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]+/g, '')
+      .replace(/\-\-+/g, '-');
+
+  const handleWorkspaceNameChange = (val: string) => {
+    setWorkspaceName(val);
+    if (!slugManuallyEdited) {
+      setWorkspaceSlug(slugify(val) || 'my-workspace');
+    }
+  };
 
   const handleComplete = async () => {
     setLoading(true);
@@ -80,6 +93,7 @@ function OnboardingPage() {
           avatarUrl,
           role,
           workspaceName: workspaceName.trim() || 'My Workspace',
+          workspaceSlug: workspaceSlug.trim() || 'my-workspace',
           workspaceIcon,
           workspaceDescription,
           templateId: selectedTemplate,
@@ -233,10 +247,31 @@ function OnboardingPage() {
               <input
                 type="text"
                 value={workspaceName}
-                onChange={(e) => setWorkspaceName(e.target.value)}
+                onChange={(e) => handleWorkspaceNameChange(e.target.value)}
                 placeholder="e.g. Acme Engineering Docs"
                 className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50"
               />
+            </div>
+
+            {/* Workspace Slug */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-neutral-700">Workspace Slug / URL</label>
+              <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50/50 overflow-hidden focus-within:ring-1 focus-within:ring-black">
+                <span className="px-3 py-2.5 text-xs text-neutral-400 bg-neutral-100 border-r border-neutral-200 select-none font-mono">
+                  notling.dev/w/
+                </span>
+                <input
+                  type="text"
+                  value={workspaceSlug}
+                  onChange={(e) => {
+                    setSlugManuallyEdited(true);
+                    setWorkspaceSlug(slugify(e.target.value));
+                  }}
+                  placeholder="acme-engineering"
+                  className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none font-mono"
+                />
+              </div>
+              <p className="text-[11px] text-neutral-400">Unique identifier for your workspace web URL.</p>
             </div>
 
             {/* Description */}

@@ -1,5 +1,4 @@
-import { createFileRoute, createRoute, useNavigate } from '@tanstack/react-router';
-import React from 'react';
+import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPage } from '~/server/pages';
 import { Editor } from '~/components/Editor';

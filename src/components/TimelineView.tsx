@@ -19,7 +19,7 @@ const INITIAL_ITEMS: TimelineItem[] = [
 ];
 
 export const TimelineView: React.FC = () => {
-  const [items, setItems] = useState<TimelineItem[]>(INITIAL_ITEMS);
+  const [items] = useState<TimelineItem[]>(INITIAL_ITEMS);
 
   return (
     <div className="flex-1 w-full h-full bg-white relative overflow-x-auto overflow-y-auto select-none">

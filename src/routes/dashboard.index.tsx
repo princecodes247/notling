@@ -1,5 +1,4 @@
-import { createFileRoute, createRoute, useNavigate } from '@tanstack/react-router';
-import React from 'react';
+import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
 import { getPageTree, createPage } from '~/server/pages';

@@ -9,6 +9,7 @@ export interface UserSession {
   isOnboarded: boolean;
   workspaceId: string;
   workspaceName?: string;
+  workspaceSlug?: string;
   workspaceIcon?: string;
 }
 
@@ -63,6 +64,7 @@ export const completeOnboarding = createServerFn({ method: 'POST' })
     avatarUrl?: string;
     role?: string;
     workspaceName: string;
+    workspaceSlug?: string;
     workspaceIcon?: string;
     workspaceDescription?: string;
     templateId?: string;
@@ -76,6 +78,7 @@ export const completeOnboarding = createServerFn({ method: 'POST' })
 export const updateSettings = createServerFn({ method: 'POST' })
   .validator((data: {
     workspaceName?: string;
+    workspaceSlug?: string;
     workspaceIcon?: string;
     name?: string;
     role?: string;

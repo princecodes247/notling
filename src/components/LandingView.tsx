@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { NotlingLogoIcon } from './Icons';
-import { ArrowRight, Check, Sparkles, Shield, Zap, Layers } from 'lucide-react';
+import { ArrowRight, Sparkles, Shield, Zap, Layers } from 'lucide-react';
 
 interface LandingViewProps {
   onEnterApp: () => void;
@@ -11,7 +11,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
   onEnterApp,
   renderWorkspacePreview,
 }) => {
-  const [headlineMode, setHeadlineMode] = useState<'events' | 'notes'>('events');
 
   return (
     <div className="min-h-screen bg-[#eef2f6] text-neutral-900 font-sans antialiased flex flex-col selection:bg-neutral-900 selection:text-white">

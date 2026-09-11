@@ -51,6 +51,38 @@ async function createSessionAndCookie(userId: string): Promise<string> {
   return token;
 }
 
+// Helper to slugify workspace name
+export function slugify(text: string): string {
+  const slug = text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
+  return slug || 'workspace';
+}
+
+export async function generateUniqueWorkspaceSlug(name: string): Promise<string> {
+  const baseSlug = slugify(name);
+  let candidate = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const existing = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(eq(workspaces.slug, candidate))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return candidate;
+    }
+    candidate = `${baseSlug}-${counter}`;
+    counter++;
+  }
+}
+
 export async function getSessionImpl(): Promise<UserSession | null> {
   try {
     const token = getCookie(COOKIE_NAME);
@@ -84,11 +116,14 @@ export async function getSessionImpl(): Promise<UserSession | null> {
 
     let workspace = userWorkspaces[0];
     if (!workspace) {
+      const wsName = `${user.name || 'Personal'}'s Workspace`;
+      const wsSlug = await generateUniqueWorkspaceSlug(wsName);
       const [newWs] = await db
         .insert(workspaces)
         .values({
           ownerId: user.id,
-          name: `${user.name || 'Personal'}'s Workspace`,
+          name: wsName,
+          slug: wsSlug,
           icon: '🚀',
         })
         .returning();
@@ -104,6 +139,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       isOnboarded: user.isOnboarded,
       workspaceId: workspace.id,
       workspaceName: workspace.name,
+      workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
     };
   } catch (err) {
@@ -144,11 +180,15 @@ export async function signUpWithEmailImpl(
     })
     .returning();
 
+  const wsName = `${displayName}'s Workspace`;
+  const wsSlug = await generateUniqueWorkspaceSlug(wsName);
+
   const [workspace] = await db
     .insert(workspaces)
     .values({
       ownerId: user.id,
-      name: `${displayName}'s Workspace`,
+      name: wsName,
+      slug: wsSlug,
       icon: '🚀',
     })
     .returning();
@@ -166,6 +206,7 @@ export async function signUpWithEmailImpl(
       isOnboarded: false,
       workspaceId: workspace.id,
       workspaceName: workspace.name,
+      workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
     },
   };
@@ -193,11 +234,14 @@ export async function signInWithEmailImpl(email: string, password: string): Prom
 
   let workspace = userWorkspaces[0];
   if (!workspace) {
+    const wsName = `${user.name || 'User'}'s Workspace`;
+    const wsSlug = await generateUniqueWorkspaceSlug(wsName);
     const [newWs] = await db
       .insert(workspaces)
       .values({
         ownerId: user.id,
-        name: `${user.name || 'User'}'s Workspace`,
+        name: wsName,
+        slug: wsSlug,
         icon: '🚀',
       })
       .returning();
@@ -217,6 +261,7 @@ export async function signInWithEmailImpl(email: string, password: string): Prom
       isOnboarded: user.isOnboarded,
       workspaceId: workspace.id,
       workspaceName: workspace.name,
+      workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
     },
   };
@@ -368,11 +413,14 @@ export async function processOAuthCallbackImpl(
     let workspace = existingWs[0];
 
     if (!workspace) {
+      const wsName = `${user.name || 'User'}'s Workspace`;
+      const wsSlug = await generateUniqueWorkspaceSlug(wsName);
       const [newWs] = await db
         .insert(workspaces)
         .values({
           ownerId: user.id,
-          name: `${user.name || 'User'}'s Workspace`,
+          name: wsName,
+          slug: wsSlug,
           icon: '🚀',
         })
         .returning();
@@ -392,6 +440,7 @@ export async function processOAuthCallbackImpl(
         isOnboarded: user.isOnboarded,
         workspaceId: workspace.id,
         workspaceName: workspace.name,
+        workspaceSlug: workspace.slug,
         workspaceIcon: workspace.icon || '🚀',
       },
     };
@@ -406,6 +455,7 @@ export async function completeOnboardingImpl(data: {
   avatarUrl?: string;
   role?: string;
   workspaceName: string;
+  workspaceSlug?: string;
   workspaceIcon?: string;
   workspaceDescription?: string;
   templateId?: string;
@@ -427,11 +477,16 @@ export async function completeOnboardingImpl(data: {
     .where(eq(users.id, currentSession.userId))
     .returning();
 
+  const wsName = data.workspaceName?.trim() || `${data.name}'s Workspace`;
+  const rawSlug = data.workspaceSlug?.trim() || wsName;
+  const finalSlug = await generateUniqueWorkspaceSlug(rawSlug);
+
   // Update workspace
   const [updatedWs] = await db
     .update(workspaces)
     .set({
-      name: data.workspaceName || `${data.name}'s Workspace`,
+      name: wsName,
+      slug: finalSlug,
       icon: data.workspaceIcon || '🚀',
       description: data.workspaceDescription || null,
     })
@@ -527,6 +582,7 @@ export async function completeOnboardingImpl(data: {
       isOnboarded: true,
       workspaceId: updatedWs.id,
       workspaceName: updatedWs.name,
+      workspaceSlug: updatedWs.slug,
       workspaceIcon: updatedWs.icon || '🚀',
     },
   };
@@ -534,6 +590,7 @@ export async function completeOnboardingImpl(data: {
 
 export async function updateSettingsImpl(data: {
   workspaceName?: string;
+  workspaceSlug?: string;
   workspaceIcon?: string;
   name?: string;
   role?: string;
@@ -556,12 +613,17 @@ export async function updateSettingsImpl(data: {
         .where(eq(users.id, currentSession.userId));
     }
 
-    if (data.workspaceName !== undefined || data.workspaceIcon !== undefined) {
+    if (data.workspaceName !== undefined || data.workspaceIcon !== undefined || data.workspaceSlug !== undefined) {
+      let finalSlug = undefined;
+      if (data.workspaceSlug) {
+        finalSlug = await generateUniqueWorkspaceSlug(data.workspaceSlug);
+      }
       await db
         .update(workspaces)
         .set({
           ...(data.workspaceName !== undefined && { name: data.workspaceName }),
           ...(data.workspaceIcon !== undefined && { icon: data.workspaceIcon }),
+          ...(finalSlug !== undefined && { slug: finalSlug }),
         })
         .where(eq(workspaces.id, currentSession.workspaceId));
     }

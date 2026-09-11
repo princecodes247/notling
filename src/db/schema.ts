@@ -26,6 +26,7 @@ export const workspaces = pgTable('workspaces', {
   id: uuid('id').primaryKey().defaultRandom(),
   ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull().default('My Workspace'),
+  slug: text('slug').notNull().unique(),
   icon: text('icon').default('🚀'),
   description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -37,6 +38,7 @@ export const pages = pgTable('pages', {
   parentId: uuid('parent_id'),
   title: text('title').notNull().default('Untitled'),
   icon: text('icon'),
+  visibility: text('visibility', { enum: ['private', 'workspace', 'public'] }).notNull().default('workspace'),
   content: jsonb('content').$type<any[]>().notNull().default([]),
   contentText: text('content_text'),
   order: integer('order').notNull().default(0),
@@ -60,3 +62,15 @@ export type Workspace = typeof workspaces.$inferSelect;
 export type NewWorkspace = typeof workspaces.$inferInsert;
 export type Page = typeof pages.$inferSelect;
 export type NewPage = typeof pages.$inferInsert;
+
+export const pageShares = pgTable('page_shares', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }).notNull(),
+  email: text('email').notNull(),
+  role: text('role', { enum: ['viewer', 'editor'] }).notNull().default('viewer'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type PageShare = typeof pageShares.$inferSelect;
+export type NewPageShare = typeof pageShares.$inferInsert;
+

@@ -16,6 +16,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardFoldersRouteImport } from './routes/dashboard.folders'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as SharePageIdRouteImport } from './routes/share.$pageId'
 import { Route as AuthCallbackProviderRouteImport } from './routes/auth.callback.$provider'
 import { Route as DashboardPPageIdRouteImport } from './routes/dashboard.p.$pageId'
 
@@ -54,6 +55,11 @@ const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
+const SharePageIdRoute = SharePageIdRouteImport.update({
+  id: '/share/$pageId',
+  path: '/share/$pageId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackProviderRoute = AuthCallbackProviderRouteImport.update({
   id: '/auth/callback/$provider',
   path: '/auth/callback/$provider',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/share/$pageId': typeof SharePageIdRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/share/$pageId': typeof SharePageIdRoute
   '/dashboard': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/share/$pageId': typeof SharePageIdRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/dashboard/folders'
     | '/dashboard/settings'
+    | '/share/$pageId'
     | '/dashboard/'
     | '/auth/callback/$provider'
     | '/dashboard/p/$pageId'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/dashboard/folders'
     | '/dashboard/settings'
+    | '/share/$pageId'
     | '/dashboard'
     | '/auth/callback/$provider'
     | '/dashboard/p/$pageId'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/dashboard/folders'
     | '/dashboard/settings'
+    | '/share/$pageId'
     | '/dashboard/'
     | '/auth/callback/$provider'
     | '/dashboard/p/$pageId'
@@ -138,6 +150,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
+  SharePageIdRoute: typeof SharePageIdRoute
   AuthCallbackProviderRoute: typeof AuthCallbackProviderRoute
 }
 
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/share/$pageId': {
+      id: '/share/$pageId'
+      path: '/share/$pageId'
+      fullPath: '/share/$pageId'
+      preLoaderRoute: typeof SharePageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback/$provider': {
       id: '/auth/callback/$provider'
       path: '/auth/callback/$provider'
@@ -232,6 +252,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
+  SharePageIdRoute: SharePageIdRoute,
   AuthCallbackProviderRoute: AuthCallbackProviderRoute,
 }
 export const routeTree = rootRouteImport

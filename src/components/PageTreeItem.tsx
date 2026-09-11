@@ -94,9 +94,17 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               />
             </form>
           ) : (
-            <span className="truncate flex-1 font-medium">
-              {node.title || 'Untitled'}
-            </span>
+            <div className="truncate flex-1 flex items-center gap-1.5 min-w-0">
+              <span className="truncate font-medium">
+                {node.title || 'Untitled'}
+              </span>
+              {node.visibility === 'private' && (
+                <span className="text-[10px] text-amber-600 shrink-0" title="Private to you">🔒</span>
+              )}
+              {node.visibility === 'public' && (
+                <span className="text-[10px] text-blue-600 shrink-0" title="Publicly shared">🌐</span>
+              )}
+            </div>
           )}
         </div>
 

@@ -4,7 +4,6 @@ import {
   Folder01Icon,
   FolderAddIcon,
   PlusSignIcon,
-  File01Icon,
   ArrowRight01Icon,
   ArrowDown01Icon,
 } from '@hugeicons/core-free-icons';

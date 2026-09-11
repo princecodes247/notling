@@ -3,22 +3,22 @@ import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  SidebarLeftIcon,
   Comment01Icon,
   PlusSignIcon,
   File01Icon,
   ArrowRight01Icon,
   CheckmarkCircle01Icon,
   Loading02Icon,
+  Share01Icon,
 } from '@hugeicons/core-free-icons';
-import { updatePageMeta, getChildPages, createPage } from '~/server/pages';
+import { updatePageMeta, getChildPages, createPage, updatePageVisibility } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
+import { ShareModal } from './ShareModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 
 interface EditorProps {
   page: Page;
-  parentPath?: { id: string; title: string; icon?: string | null }[];
   onTitleOrIconChange?: (title: string, icon: string | null) => void;
   onBack?: () => void;
 }
@@ -27,16 +27,16 @@ const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '
 
 export const Editor: React.FC<EditorProps> = ({
   page,
-  parentPath = [],
   onTitleOrIconChange,
-  onBack,
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { sidebarOpen, toggleSidebar, saveStatus, setSaveStatus, setActivePageId } = useUIStore();
+  const { saveStatus, setSaveStatus, setActivePageId } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || '📄');
+  const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public'>((page as any).visibility || 'workspace');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const isFolder = icon === '📁' || icon === '📂';
@@ -48,7 +48,8 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     setTitle(page.title);
     setIcon(page.icon || '📄');
-  }, [page.title, page.icon]);
+    setVisibility((page as any).visibility || 'workspace');
+  }, [page.title, page.icon, (page as any).visibility]);
 
   // Query child pages if this page is a folder
   const { data: childPages = [], refetch: refetchChildren } = useQuery({
@@ -58,6 +59,17 @@ export const Editor: React.FC<EditorProps> = ({
       return await getChildPages({ data: page.id });
     },
     enabled: isFolder,
+  });
+
+  const updateVisibilityMutation = useMutation({
+    mutationFn: async (newVisibility: 'private' | 'workspace' | 'public') => {
+      setVisibility(newVisibility);
+      return await updatePageVisibility({ data: { pageId: page.id, visibility: newVisibility } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['page', page.id] });
+    },
   });
 
   const createDocumentInFolderMutation = useMutation({
@@ -111,7 +123,7 @@ export const Editor: React.FC<EditorProps> = ({
         </div>
 
         {/* Right Header Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs">
             {saveStatus === 'saving' ? (
               <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
@@ -125,6 +137,16 @@ export const Editor: React.FC<EditorProps> = ({
               </span>
             ) : null}
           </div>
+
+          {/* Google Docs-Style Share Button */}
+          <button
+            type="button"
+            onClick={() => setIsShareModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-medium transition-all shadow-2xs cursor-pointer active:scale-95"
+          >
+            <HugeiconsIcon icon={Share01Icon} size={14} />
+            <span>Share</span>
+          </button>
 
           <button
             type="button"
@@ -241,6 +263,15 @@ export const Editor: React.FC<EditorProps> = ({
           )}
         </div>
       </div>
+
+      {/* Google Docs-Style Share Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        page={page}
+        visibility={visibility}
+        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+      />
     </div>
   );
 };

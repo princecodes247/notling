@@ -18,6 +18,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
 
 
   const [workspaceName, setWorkspaceName] = useState('');
+  const [workspaceSlug, setWorkspaceSlug] = useState('');
   const [workspaceIcon, setWorkspaceIcon] = useState('🚀');
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('Workspace Owner');
@@ -30,6 +31,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
   useEffect(() => {
     if (session) {
       setWorkspaceName(session.workspaceName || '');
+      setWorkspaceSlug(session.workspaceSlug || '');
       setWorkspaceIcon(session.workspaceIcon || '🚀');
       setUserName(session.name || '');
       setUserRole(session.role || 'Workspace Owner');
@@ -41,6 +43,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
       return await updateSettings({
         data: {
           workspaceName,
+          workspaceSlug,
           workspaceIcon,
           name: userName,
           role: userRole,
@@ -101,7 +104,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
 
           <form onSubmit={handleSave} className="flex flex-col gap-5">
             {/* Workspace details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-medium text-neutral-700 mb-1">
                   Workspace Name
@@ -113,6 +116,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                   placeholder="Workspace Name"
                   className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-black"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  Workspace Slug / URL
+                </label>
+                <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 overflow-hidden focus-within:ring-1 focus-within:ring-black">
+                  <span className="px-2.5 py-2 text-[11px] text-neutral-400 font-mono border-r border-neutral-200">
+                    /w/
+                  </span>
+                  <input
+                    type="text"
+                    value={workspaceSlug}
+                    onChange={(e) => setWorkspaceSlug(e.target.value)}
+                    placeholder="my-workspace"
+                    className="flex-1 px-2.5 py-2 text-xs font-mono text-neutral-900 bg-transparent focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>

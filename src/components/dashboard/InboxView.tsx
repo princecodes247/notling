@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCheck, Sparkles, User, Ticket, FileText, Bell, Filter } from 'lucide-react';
+import { CheckCheck, Sparkles, User } from 'lucide-react';
 
 interface InboxItem {
   id: string;

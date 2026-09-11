@@ -36,7 +36,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   workspaceName = 'Notling Workspace',
   session,
   treeNodes,
-  trashCount = 0,
   activeNav = 'folders',
   onNavClick,
   onCreateFolder,
@@ -46,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onUpdateMeta,
   onLogout,
 }) => {
-  const { toggleSearch, toggleTrash, toggleSidebar } = useUIStore();
+  const { toggleSearch, toggleSidebar } = useUIStore();
 
   return (
     <aside className="w-60 h-full bg-[#fafaf9] flex flex-col shrink-0 select-none text-neutral-800 text-sm font-sans relative">
