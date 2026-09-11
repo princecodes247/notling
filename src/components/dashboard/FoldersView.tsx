@@ -74,13 +74,13 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         {/* Folders Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {folders.length === 0 ? (
-            <div className="col-span-2 py-16 text-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded-2xl flex flex-col items-center gap-3">
+            <div className="col-span-2 py-16 text-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center gap-3">
               <HugeiconsIcon icon={Folder01Icon} size={32} className="text-neutral-300 stroke-1" />
               <span>No folders created yet. Click "+ New Folder" to organize documents into folders.</span>
               <button
                 type="button"
                 onClick={onCreateFolder}
-                className="px-3 py-1.5 rounded-lg bg-black text-white text-xs font-medium cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium cursor-pointer shadow-2xs transition-colors"
               >
                 Create First Folder
               </button>
@@ -93,7 +93,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               return (
                 <div
                   key={folder.id}
-                  className="rounded-2xl border border-neutral-200/90 bg-white hover:border-neutral-300 transition-all overflow-hidden flex flex-col shadow-2xs"
+                  className="rounded-xl border border-neutral-200/90 bg-white hover:border-neutral-300 transition-all overflow-hidden flex flex-col shadow-2xs"
                 >
                   {/* Folder Top Bar */}
                   <div className="p-4 sm:p-5 flex items-center justify-between border-b border-neutral-100 bg-neutral-50/40">
@@ -101,7 +101,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       className="flex items-center gap-3 min-w-0 cursor-pointer"
                       onClick={() => onSelectPage(folder.id)}
                     >
-                      <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200 flex items-center justify-center text-lg shrink-0 shadow-2xs">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-neutral-200 flex items-center justify-center text-lg shrink-0 shadow-2xs">
                         {folder.icon || '📁'}
                       </div>
                       <div className="min-w-0">
@@ -118,7 +118,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onCreateDocument(folder.id)}
-                        className="p-1.5 rounded-lg hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900 transition-colors"
+                        className="p-1.5 rounded-md hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900 transition-colors"
                         title="Add document to folder"
                       >
                         <HugeiconsIcon icon={PlusSignIcon} size={15} />
@@ -126,7 +126,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleFolder(folder.id)}
-                        className="p-1.5 rounded-lg hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900 transition-colors"
+                        className="p-1.5 rounded-md hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900 transition-colors"
                         title="Toggle view"
                       >
                         {isExpanded ? (

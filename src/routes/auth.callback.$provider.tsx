@@ -48,7 +48,7 @@ function OAuthCallbackPage() {
   if (error) {
     return (
       <div className="min-h-screen bg-[#fafaf9] text-neutral-900 flex flex-col items-center justify-center p-6 select-none font-sans">
-        <div className="w-full max-w-md bg-white border border-neutral-200 rounded-2xl p-8 shadow-xs flex flex-col items-center text-center">
+        <div className="w-full max-w-md bg-white border border-neutral-200 rounded-xl p-8 shadow-xs flex flex-col items-center text-center">
           <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
             <HugeiconsIcon icon={Cancel01Icon} size={24} />
           </div>
@@ -57,7 +57,7 @@ function OAuthCallbackPage() {
           <button
             type="button"
             onClick={() => navigate({ to: '/login' })}
-            className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white font-medium rounded-lg text-xs transition-colors cursor-pointer"
+            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-medium rounded-lg text-xs transition-colors cursor-pointer shadow-2xs"
           >
             Return to Login
           </button>

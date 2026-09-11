@@ -93,7 +93,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         onClick={() =>
           onSelectTab({ id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' })
         }
-        className={`p-1.5 rounded-xl transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
+        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
           isHomeActive
             ? 'bg-white border-stone-200/90 text-stone-900 shadow-xs ring-1 ring-black/[0.02]'
             : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/50'
@@ -137,7 +137,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                 key={tab.id}
                 data-active={isActive}
                 onClick={() => onSelectTab(tab)}
-                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer border shrink-0 ${
+                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${
                   isActive
                     ? 'bg-white border-stone-200/90 text-stone-900 font-semibold shadow-xs ring-1 ring-black/[0.02]'
                     : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/40'
@@ -197,7 +197,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       <button
         type="button"
         onClick={onNewTab}
-        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-xl transition-colors cursor-pointer shrink-0 z-10"
+        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10"
         title="New document tab"
       >
         <HugeiconsIcon icon={PlusSignIcon} size={15} />

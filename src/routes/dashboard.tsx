@@ -269,7 +269,7 @@ function DashboardLayout() {
         />
 
         {/* Content Outlet */}
-        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-2xl mt-1">
+        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-xl mt-1">
           <Outlet />
         </main>
       </div>

@@ -141,7 +141,7 @@ function OnboardingPage() {
       </div>
 
       {/* Onboarding Card Container */}
-      <div className="w-full max-w-xl bg-white border border-neutral-200/90 rounded-2xl p-8 shadow-xs flex flex-col">
+      <div className="w-full max-w-xl bg-white border border-neutral-200/90 rounded-xl p-8 shadow-xs flex flex-col">
         {/* STEP 1: Profile Setup */}
         {step === 1 && (
           <div className="flex flex-col gap-6">
@@ -229,7 +229,7 @@ function OnboardingPage() {
                     key={emoji}
                     type="button"
                     onClick={() => setWorkspaceIcon(emoji)}
-                    className={`w-10 h-10 text-xl rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                    className={`w-10 h-10 text-xl rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
                       workspaceIcon === emoji
                         ? 'bg-neutral-100 border-black shadow-2xs'
                         : 'bg-white border-neutral-200 hover:bg-neutral-50'
@@ -322,7 +322,7 @@ function OnboardingPage() {
                 <div
                   key={tmpl.id}
                   onClick={() => setSelectedTemplate(tmpl.id)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3.5 ${
+                  className={`p-4 rounded-lg border transition-all cursor-pointer flex items-start gap-3.5 ${
                     selectedTemplate === tmpl.id
                       ? 'border-black bg-neutral-50/80 shadow-2xs'
                       : 'border-neutral-200 hover:border-neutral-300 bg-white'

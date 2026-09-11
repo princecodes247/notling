@@ -52,7 +52,7 @@ export const Modal: React.FC<ModalProps> = ({
 
       {/* Modal Container */}
       <div
-        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-2xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 duration-200`}
+        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -60,7 +60,7 @@ export const Modal: React.FC<ModalProps> = ({
           <div className="px-6 py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
-                <div className="w-8 h-8 rounded-xl bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
+                <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
                   {icon}
                 </div>
               )}
@@ -81,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
+                className="p-1.5 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
                 title="Close"
               >
                 <HugeiconsIcon icon={Cancel01Icon} size={16} />

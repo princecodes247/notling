@@ -93,7 +93,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
         </div>
 
         {/* 1. General Profile & Workspace */}
-        <div className="p-6 rounded-2xl border border-neutral-200/90 bg-white flex flex-col gap-5">
+        <div className="p-6 rounded-xl border border-neutral-200/90 bg-white flex flex-col gap-5">
           <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
             <div className="flex items-center gap-2">
               <Sliders className="w-4 h-4 text-neutral-500" />
@@ -242,7 +242,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
         </div>
 
         {/* 2. Team Members */}
-        <div className="p-6 rounded-2xl border border-neutral-200/90 bg-white flex flex-col gap-4">
+        <div className="p-6 rounded-xl border border-neutral-200/90 bg-white flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-neutral-500" />
@@ -257,7 +257,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
             </button>
           </div>
 
-          <div className="flex flex-col divide-y divide-neutral-100 rounded-xl border border-neutral-100 overflow-hidden">
+          <div className="flex flex-col divide-y divide-neutral-100 rounded-lg border border-neutral-100 overflow-hidden">
             {/* Logged in User */}
             <div className="p-3 flex items-center justify-between bg-white">
               <div className="flex items-center gap-2.5">
@@ -304,14 +304,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
         </div>
 
         {/* 3. Identifiers & Organization Info */}
-        <div className="p-6 rounded-2xl border border-neutral-200/90 bg-white flex flex-col gap-4">
+        <div className="p-6 rounded-xl border border-neutral-200/90 bg-white flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <Building className="w-4 h-4 text-neutral-500" />
             <h2 className="text-sm font-semibold text-neutral-900">Organization Metadata</h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-3.5 rounded-xl border border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
+            <div className="p-3.5 rounded-lg border border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-neutral-400 uppercase font-medium block">Workspace ID</span>
                 <span className="text-xs font-mono text-neutral-800 select-all truncate max-w-[200px] block">
@@ -330,7 +330,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
               )}
             </div>
 
-            <div className="p-3.5 rounded-xl border border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
+            <div className="p-3.5 rounded-lg border border-neutral-100 bg-neutral-50/50 flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-neutral-400 uppercase font-medium block">User ID</span>
                 <span className="text-xs font-mono text-neutral-800 select-all truncate max-w-[200px] block">

@@ -222,7 +222,7 @@ const FlyoutSubmenu: React.FC<FlyoutSubmenuProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`absolute top-0 z-[60] bg-white border border-neutral-200/90 shadow rounded-xl text-xs font-sans p-1.5 select-none ${className}`}
+      className={`absolute top-0 z-[60] bg-white border border-neutral-200/90 shadow-lg rounded-lg text-xs font-sans p-1.5 select-none ${className}`}
       style={positionStyle}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

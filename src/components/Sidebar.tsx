@@ -77,13 +77,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={toggleSearch}
-          className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl bg-stone-200/40 hover:bg-stone-200/70 border border-stone-200/70 text-stone-500 text-xs transition-colors group cursor-pointer shadow-2xs"
+          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-stone-200/40 hover:bg-stone-200/70 border border-stone-200/70 text-stone-500 text-xs transition-colors group cursor-pointer shadow-2xs"
         >
           <div className="flex items-center gap-2">
             <HugeiconsIcon icon={Search01Icon} size={14} className="text-stone-400 group-hover:text-stone-600" />
             <span className="font-normal text-stone-500">Search workspace</span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-stone-400 bg-white/90 rounded-md border border-stone-200 shadow-2xs">
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-stone-400 bg-white/90 rounded border border-stone-200 shadow-2xs">
             /
           </kbd>
         </button>
@@ -95,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onNavClick?.('home')}
-          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${activeNav === 'home'
+          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'home'
             ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
             : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
             }`}
@@ -108,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onNavClick?.('folders')}
-          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${activeNav === 'folders'
+          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'folders'
             ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
             : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
             }`}
@@ -117,7 +117,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <HugeiconsIcon icon={Folder01Icon} size={15} className={activeNav === 'folders' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
             <span>Folders</span>
           </div>
-          <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded-full bg-stone-200/60 text-stone-500">
+          <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 text-stone-500">
             {treeNodes.filter((n) => n.children && n.children.length > 0).length || treeNodes.length}
           </span>
         </button>
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 5. Footer: User Avatar + Name, Settings, Version */}
       <div className="p-3 border-t border-stone-200/50 flex flex-col gap-1">
         {/* User profile row */}
-        <div className="flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-stone-200/50 transition-colors cursor-pointer group">
+        <div className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-stone-200/50 transition-colors cursor-pointer group">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-6 h-6 rounded-full overflow-hidden bg-stone-200 shrink-0 border border-stone-300/80">
               <img
@@ -201,7 +201,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onLogout}
-              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition-all"
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition-all"
               title="Sign out"
             >
               <HugeiconsIcon icon={Logout01Icon} size={14} />
@@ -213,7 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onNavClick?.('settings')}
-          className={`flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${activeNav === 'settings'
+          className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${activeNav === 'settings'
             ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
             : 'text-stone-700 hover:bg-stone-200/40'
             }`}

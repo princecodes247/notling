@@ -36,8 +36,8 @@ function PublicDocumentPageRoute() {
   if (isError || !page) {
     return (
       <div className="min-h-screen w-full bg-[#fafaf9] flex flex-col items-center justify-center p-6 text-neutral-900 font-sans select-none">
-        <div className="w-full max-w-md bg-white border border-neutral-200/90 rounded-2xl p-8 shadow-xs flex flex-col items-center text-center">
-          <div className="w-12 h-12 rounded-2xl bg-neutral-100 text-neutral-500 flex items-center justify-center mb-4">
+        <div className="w-full max-w-md bg-white border border-neutral-200/90 rounded-xl p-8 shadow-xs flex flex-col items-center text-center">
+          <div className="w-12 h-12 rounded-lg bg-neutral-100 text-neutral-500 flex items-center justify-center mb-4">
             <HugeiconsIcon icon={LockIcon} size={24} />
           </div>
           <h1 className="text-xl font-semibold tracking-tight text-neutral-950">This document is private</h1>
@@ -47,7 +47,7 @@ function PublicDocumentPageRoute() {
           <button
             type="button"
             onClick={() => navigate({ to: '/login' })}
-            className="w-full py-2.5 bg-black hover:bg-neutral-800 text-white font-medium rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
           >
             <span>Sign in to Notling</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
@@ -71,7 +71,7 @@ function PublicDocumentPageRoute() {
         <button
           type="button"
           onClick={() => navigate({ to: '/login' })}
-          className="px-4 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
+          className="px-4 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
         >
           Sign in
         </button>

@@ -158,7 +158,7 @@ export const Editor: React.FC<EditorProps> = ({
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95"
           >
             <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
             <span>Share</span>
@@ -166,7 +166,7 @@ export const Editor: React.FC<EditorProps> = ({
 
           <button
             type="button"
-            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-md text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
             title="Comments & Discussion"
           >
             <HugeiconsIcon icon={Comment01Icon} size={15} />
@@ -182,7 +182,7 @@ export const Editor: React.FC<EditorProps> = ({
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="text-4xl p-1.5 rounded-xl hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200 flex items-center justify-center w-14 h-14 cursor-pointer"
+              className="text-4xl p-1.5 rounded-lg hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200 flex items-center justify-center w-14 h-14 cursor-pointer"
               title="Change icon"
             >
               {icon}
@@ -191,13 +191,13 @@ export const Editor: React.FC<EditorProps> = ({
             {showEmojiPicker && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowEmojiPicker(false)} />
-                <div className="absolute left-0 top-16 z-40 p-2.5 bg-white border border-neutral-200 rounded-xl shadow-xl flex flex-wrap gap-1.5 w-64">
+                <div className="absolute left-0 top-16 z-40 p-2.5 bg-white border border-neutral-200 rounded-lg shadow-xl flex flex-wrap gap-1.5 w-64">
                   {EMOJI_OPTIONS.map((e) => (
                     <button
                       key={e}
                       type="button"
                       onClick={() => handleSelectIcon(e)}
-                      className="text-2xl p-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer"
+                      className="text-2xl p-1.5 rounded-md hover:bg-neutral-100 transition-colors cursor-pointer"
                     >
                       {e}
                     </button>
@@ -227,7 +227,7 @@ export const Editor: React.FC<EditorProps> = ({
                 <button
                   type="button"
                   onClick={() => createDocumentInFolderMutation.mutate()}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
                 >
                   <HugeiconsIcon icon={PlusSignIcon} size={14} />
                   <span>New Document</span>
@@ -235,7 +235,7 @@ export const Editor: React.FC<EditorProps> = ({
               </div>
 
               {childPages.length === 0 ? (
-                <div className="py-14 border border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-stone-400 bg-stone-50/40">
+                <div className="py-14 border border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-stone-400 bg-stone-50/40">
                   <HugeiconsIcon icon={File01Icon} size={32} className="stroke-1 text-stone-300" />
                   <span className="text-xs font-semibold text-stone-600">This folder is empty</span>
                   <span className="text-[11px] text-stone-400">Click "+ New Document" above to start writing inside this folder.</span>
@@ -249,7 +249,7 @@ export const Editor: React.FC<EditorProps> = ({
                         setActivePageId(child.id);
                         navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
                       }}
-                      className="p-3.5 rounded-xl border border-stone-200/80 hover:border-stone-300 bg-white hover:bg-stone-50/80 transition-all flex items-center justify-between cursor-pointer group shadow-2xs"
+                      className="p-3.5 rounded-lg border border-stone-200/80 hover:border-stone-300 bg-white hover:bg-stone-50/80 transition-all flex items-center justify-between cursor-pointer group shadow-2xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="text-lg shrink-0">{child.icon || '📄'}</span>

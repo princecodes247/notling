@@ -81,7 +81,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <button
               type="button"
               onClick={onCreateFolder}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 hover:bg-stone-50 text-stone-800 text-xs font-medium transition-colors cursor-pointer shadow-2xs"
             >
               <HugeiconsIcon icon={FolderAddIcon} size={15} />
               <span>New Folder</span>
@@ -89,7 +89,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <button
               type="button"
               onClick={onCreatePage}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium transition-colors shadow-2xs cursor-pointer active:scale-98"
             >
               <HugeiconsIcon icon={PlusSignIcon} size={15} />
               <span>New Document</span>
@@ -112,7 +112,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
             {folders.length === 0 ? (
-              <div className="col-span-3 p-4 border border-dashed border-neutral-200 rounded-xl text-center text-xs text-neutral-400">
+              <div className="col-span-3 p-4 border border-dashed border-neutral-200 rounded-lg text-center text-xs text-neutral-400">
                 No folders created yet. Click "+ New Folder" to create one.
               </div>
             ) : (
@@ -120,7 +120,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 <div
                   key={folder.id}
                   onClick={() => onSelectPage(folder.id)}
-                  className="p-4 rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 transition-all cursor-pointer group flex flex-col justify-between h-28"
+                  className="p-4 rounded-lg border border-neutral-200/90 bg-white hover:border-neutral-300 transition-all cursor-pointer group flex flex-col justify-between h-28 shadow-2xs"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xl">{folder.icon || '📁'}</span>
@@ -155,7 +155,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </button>
           </div>
 
-          <div className="flex flex-col divide-y divide-neutral-100 rounded-xl border border-neutral-200/90 bg-white overflow-hidden shadow-2xs">
+          <div className="flex flex-col divide-y divide-neutral-100 rounded-lg border border-neutral-200/90 bg-white overflow-hidden shadow-2xs">
             {recentDocs.length === 0 ? (
               <div className="p-6 text-center text-xs text-neutral-400">
                 No documents created yet. Click "+ New Document" to start.

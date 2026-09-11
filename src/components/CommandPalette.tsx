@@ -51,28 +51,28 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ workspaceId, onS
   if (!isSearchOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/30 backdrop-blur-xs animate-in fade-in duration-100">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-stone-950/40 backdrop-blur-sm animate-in fade-in duration-150">
       {/* Backdrop click to dismiss */}
       <div className="fixed inset-0" onClick={() => setSearchOpen(false)} />
 
       {/* Modal Content */}
-      <div className="relative z-10 w-full max-w-xl bg-white border border-neutral-200/90 rounded-xl shadow-2xl overflow-hidden flex flex-col font-sans">
+      <div className="relative z-10 w-full max-w-xl bg-[#fdfcf9] border border-stone-200/90 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col">
         {/* Search Bar Input */}
-        <div className="flex items-center px-4 py-3 border-b border-neutral-100 gap-3">
-          <Search className="w-4 h-4 text-neutral-400 shrink-0" />
+        <div className="flex items-center px-4 py-3.5 border-b border-stone-200/60 bg-[#f8f7f4]/70 gap-3">
+          <Search className="w-4 h-4 text-stone-400 shrink-0" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search pages and documents..."
-            className="w-full bg-transparent text-neutral-900 placeholder-neutral-400 text-sm focus:outline-none"
+            placeholder="Search documents and content..."
+            className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-sm font-medium focus:outline-none"
             autoFocus
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="text-xs text-neutral-400 hover:text-neutral-700 px-1.5 py-0.5 rounded bg-neutral-100"
+              className="text-xs text-stone-500 hover:text-stone-800 px-2 py-0.5 rounded-md bg-stone-200/60 font-medium cursor-pointer transition-colors"
             >
               Clear
             </button>
@@ -80,7 +80,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ workspaceId, onS
           <button
             type="button"
             onClick={() => setSearchOpen(false)}
-            className="text-neutral-400 hover:text-neutral-700 p-1 rounded hover:bg-neutral-100"
+            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-md hover:bg-stone-200/60 cursor-pointer transition-colors"
           >
             <X className="w-4 h-4" />
           </button>

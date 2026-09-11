@@ -100,11 +100,11 @@ export const InboxView: React.FC = () => {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center gap-2 text-xs font-medium">
+        <div className="flex items-center gap-1.5 text-xs font-medium">
           <button
             type="button"
             onClick={() => setFilter('all')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               filter === 'all'
                 ? 'bg-neutral-100 text-neutral-900 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -115,7 +115,7 @@ export const InboxView: React.FC = () => {
           <button
             type="button"
             onClick={() => setFilter('unread')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
               filter === 'unread'
                 ? 'bg-neutral-100 text-neutral-900 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -129,7 +129,7 @@ export const InboxView: React.FC = () => {
           <button
             type="button"
             onClick={() => setFilter('agent')}
-            className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
               filter === 'agent'
                 ? 'bg-neutral-100 text-neutral-900 font-semibold'
                 : 'text-neutral-500 hover:bg-neutral-50'
@@ -141,7 +141,7 @@ export const InboxView: React.FC = () => {
         </div>
 
         {/* Activity Items List */}
-        <div className="flex flex-col divide-y divide-neutral-100 rounded-xl border border-neutral-200/90 bg-white overflow-hidden shadow-2xs">
+        <div className="flex flex-col divide-y divide-neutral-100 rounded-lg border border-neutral-200/90 bg-white overflow-hidden shadow-2xs">
           {filteredItems.length === 0 ? (
             <div className="py-16 text-center text-xs text-neutral-400">
               No notifications matching current filter.

@@ -165,7 +165,7 @@ export const CalendarView: React.FC = () => {
       {/* Event Details Drawer/Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/20 backdrop-blur-2xs">
-          <div className="w-full max-w-sm bg-white rounded-xl border border-neutral-200 shadow-xl p-5 flex flex-col gap-3 font-sans">
+          <div className="w-full max-w-sm bg-white rounded-lg border border-neutral-200 shadow-xl p-5 flex flex-col gap-3 font-sans">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
                 Event Milestone
