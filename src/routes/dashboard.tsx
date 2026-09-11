@@ -220,7 +220,7 @@ function DashboardLayout() {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#eef2f6] p-0 flex font-sans select-none">
+    <div className="h-screen w-screen bg-[#f3f2ee] p-0 flex select-none">
       {/* Sidebar Navigation */}
       <AnimatePresence initial={false}>
         {sidebarOpen && (
@@ -230,7 +230,7 @@ function DashboardLayout() {
             animate={{ width: 240, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.7 }}
-            className="shrink-0 h-full overflow-hidden bg-[#fafaf9]"
+            className="shrink-0 h-full overflow-hidden bg-[#f9f8f5]"
           >
             <Sidebar
               workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
@@ -258,7 +258,7 @@ function DashboardLayout() {
 
 
       {/* Framed Workspace Card */}
-      <div className="flex-1 bg-[#fafaf9] p-2 overflow-hidden flex flex-col relative min-w-0">
+      <div className="flex-1 bg-[#f3f2ee] p-2 overflow-hidden flex flex-col relative min-w-0">
         {/* Tab Bar Header */}
         <TabBar
           tabs={openTabs}
@@ -269,7 +269,7 @@ function DashboardLayout() {
         />
 
         {/* Content Outlet */}
-        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white border border-neutral-200/90 rounded-2xl shadow-2xs mt-1">
+        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-2xl mt-1">
           <Outlet />
         </main>
       </div>

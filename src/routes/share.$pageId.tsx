@@ -4,7 +4,7 @@ import { getPublicPage } from '~/server/pages';
 import { Route as rootRoute } from './__root';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { LockIcon, Globe02Icon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { LockIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -58,32 +58,32 @@ function PublicDocumentPageRoute() {
   }
 
   return (
-    <div className="min-h-screen w-full bg-white flex flex-col font-sans select-none">
+    <div className="min-h-screen w-full bg-white flex flex-col select-none">
       {/* Top Header */}
-      <header className="h-14 border-b border-neutral-200/80 px-6 sm:px-12 flex items-center justify-between bg-white sticky top-0 z-30">
+      <header className="h-14 border-b border-stone-200/70 px-6 sm:px-12 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate({ to: '/' })}>
-          <div className="w-7 h-7 rounded-lg bg-neutral-950 text-white flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-200/95 flex items-center justify-center shadow-xs">
             <NotlingLogoIcon className="w-3.5 h-3.5" />
           </div>
-          <span className="font-semibold text-sm tracking-tight text-neutral-900">Notling</span>
+          <span className="font-semibold text-sm tracking-tight text-stone-900">Notling</span>
         </div>
 
         <button
           type="button"
           onClick={() => navigate({ to: '/login' })}
-          className="px-3.5 py-1.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-medium transition-all shadow-2xs cursor-pointer"
+          className="px-4 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
         >
           Sign in
         </button>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-10 sm:py-14 bg-white min-h-screen">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12 sm:py-16 bg-white min-h-screen">
         {/* Page Icon */}
         <div className="text-4xl mb-4">{page.icon || '📄'}</div>
 
         {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-bold text-neutral-950 tracking-tight mb-6">
+        <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-8">
           {page.title || 'Untitled Document'}
         </h1>
 

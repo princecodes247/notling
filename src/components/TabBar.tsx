@@ -93,10 +93,10 @@ export const TabBar: React.FC<TabBarProps> = ({
         onClick={() =>
           onSelectTab({ id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' })
         }
-        className={`p-1.5 rounded-lg transition-colors cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
+        className={`p-1.5 rounded-xl transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
           isHomeActive
-            ? 'bg-white border-neutral-200/90 text-neutral-900 shadow-2xs'
-            : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
+            ? 'bg-white border-stone-200/90 text-stone-900 shadow-xs ring-1 ring-black/[0.02]'
+            : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/50'
         }`}
         title="Home"
       >
@@ -112,14 +112,14 @@ export const TabBar: React.FC<TabBarProps> = ({
       >
         {/* Left Fade & Caret */}
         {canScrollLeft && (
-          <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-[#fafaf9] via-[#fafaf9]/90 to-transparent pointer-events-none">
+          <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-[#f4f3ef] via-[#f4f3ef]/90 to-transparent pointer-events-none">
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
-              className="p-1 rounded-md bg-white/95 shadow-2xs border border-neutral-200/90 text-neutral-500 hover:text-neutral-800 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md bg-white shadow-xs border border-stone-200 text-stone-500 hover:text-stone-800 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll left"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
             </button>
           </div>
         )}
@@ -137,21 +137,21 @@ export const TabBar: React.FC<TabBarProps> = ({
                 key={tab.id}
                 data-active={isActive}
                 onClick={() => onSelectTab(tab)}
-                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${
+                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl transition-all cursor-pointer border shrink-0 ${
                   isActive
-                    ? 'bg-white border-neutral-200/90 text-neutral-900 font-medium shadow-2xs'
-                    : 'bg-transparent border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/50'
+                    ? 'bg-white border-stone-200/90 text-stone-900 font-semibold shadow-xs ring-1 ring-black/[0.02]'
+                    : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/40'
                 }`}
               >
                 {/* Tab Icon */}
                 {tab.icon ? (
                   <span className="text-xs shrink-0">{tab.icon}</span>
                 ) : tab.id === 'folders' ? (
-                  <HugeiconsIcon icon={Folder01Icon} size={14} className="text-neutral-400 shrink-0" />
+                  <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 shrink-0" />
                 ) : tab.id === 'settings' ? (
-                  <HugeiconsIcon icon={Settings02Icon} size={14} className="text-neutral-400 shrink-0" />
+                  <HugeiconsIcon icon={Settings02Icon} size={14} className="text-stone-400 shrink-0" />
                 ) : (
-                  <HugeiconsIcon icon={File01Icon} size={14} className="text-neutral-400 shrink-0" />
+                  <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 shrink-0" />
                 )}
 
                 {/* Tab Title */}
@@ -166,12 +166,12 @@ export const TabBar: React.FC<TabBarProps> = ({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className={`p-0.5 rounded hover:bg-neutral-200/70 text-neutral-400 hover:text-neutral-700 transition-opacity ${
+                  className={`p-0.5 rounded hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition-opacity ${
                     isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                   }`}
                   title="Close tab"
                 >
-                  <HugeiconsIcon icon={Cancel01Icon} size={12} />
+                  <HugeiconsIcon icon={Cancel01Icon} size={11} />
                 </button>
               </div>
             );
@@ -180,14 +180,14 @@ export const TabBar: React.FC<TabBarProps> = ({
 
         {/* Right Fade & Caret */}
         {canScrollRight && (
-          <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-4 bg-gradient-to-l from-[#fafaf9] via-[#fafaf9]/90 to-transparent pointer-events-none">
+          <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-4 bg-gradient-to-l from-[#f4f3ef] via-[#f4f3ef]/90 to-transparent pointer-events-none">
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-              className="p-1 rounded-md bg-white/95 shadow-2xs border border-neutral-200/90 text-neutral-500 hover:text-neutral-800 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md bg-white shadow-xs border border-stone-200 text-stone-500 hover:text-stone-800 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll right"
             >
-              <HugeiconsIcon icon={ArrowRight01Icon} size={14} />
+              <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
             </button>
           </div>
         )}
@@ -197,7 +197,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       <button
         type="button"
         onClick={onNewTab}
-        className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10"
+        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-xl transition-colors cursor-pointer shrink-0 z-10"
         title="New document tab"
       >
         <HugeiconsIcon icon={PlusSignIcon} size={15} />

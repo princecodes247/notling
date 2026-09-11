@@ -46,32 +46,32 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs font-sans select-none animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-stone-950/45 backdrop-blur-sm select-none animate-in fade-in duration-200">
       {/* Click outside backdrop */}
       <div className="fixed inset-0" onClick={onClose} />
 
       {/* Modal Container */}
       <div
-        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-white border border-neutral-200/90 rounded-2xl shadow-2xl overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 duration-150`}
+        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-2xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         {(title || icon || subtitle) && (
-          <div className="px-6 py-4 border-b border-neutral-100 flex items-center justify-between bg-neutral-50/50">
-            <div className="flex items-center gap-2.5 min-w-0">
+          <div className="px-6 py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90">
+            <div className="flex items-center gap-3 min-w-0">
               {icon && (
-                <div className="w-8 h-8 rounded-lg bg-neutral-950 text-white flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-xl bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
                   {icon}
                 </div>
               )}
               <div className="flex flex-col min-w-0">
                 {title && (
-                  <h3 className="text-sm font-semibold text-neutral-900 truncate">
+                  <h3 className="text-sm font-semibold text-stone-900 truncate tracking-tight">
                     {title}
                   </h3>
                 )}
                 {subtitle && (
-                  <span className="text-[11px] text-neutral-400">{subtitle}</span>
+                  <span className="text-[11px] text-stone-500">{subtitle}</span>
                 )}
               </div>
             </div>
@@ -81,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
                 title="Close"
               >
                 <HugeiconsIcon icon={Cancel01Icon} size={16} />
@@ -97,7 +97,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Optional Footer */}
         {footer && (
-          <div className="px-6 py-3.5 border-t border-neutral-100 bg-neutral-50/60 flex items-center justify-between">
+          <div className="px-6 py-3.5 border-t border-stone-200/60 bg-[#f8f7f4]/80 flex items-center justify-between">
             {footer}
           </div>
         )}
@@ -105,3 +105,4 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   );
 };
+

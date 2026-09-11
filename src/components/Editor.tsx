@@ -7,7 +7,6 @@ import {
   PlusSignIcon,
   File01Icon,
   ArrowRight01Icon,
-  CheckmarkCircle01Icon,
   Loading02Icon,
   Share01Icon,
 } from '@hugeicons/core-free-icons';
@@ -115,24 +114,41 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white text-neutral-900 overflow-hidden relative font-sans">
+    <div className="flex-1 flex flex-col h-full bg-white text-stone-900 overflow-hidden relative">
       {/* Top Header Strip */}
-      <header className="h-12 border-b border-neutral-200/80 px-4 flex items-center justify-between bg-white shrink-0">
+      <header className="h-12 border-b border-stone-200/70 px-6 flex items-center justify-between bg-[#fdfcf9]/80 backdrop-blur-xs shrink-0">
         <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs text-stone-400 font-medium truncate">
+            {isFolder ? 'Folder' : 'Document'}
+          </span>
+          <span className="text-stone-300 text-xs">/</span>
+          <span className="text-xs text-stone-700 font-medium truncate max-w-[200px]">
+            {title || 'Untitled'}
+          </span>
 
+          {/* Visibility pill */}
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
+            visibility === 'public'
+              ? 'bg-blue-50 text-blue-700 border-blue-200/80'
+              : visibility === 'workspace'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+              : 'bg-amber-50 text-amber-700 border-amber-200/80'
+          }`}>
+            {visibility === 'public' ? 'Public' : visibility === 'workspace' ? 'Workspace' : 'Private'}
+          </span>
         </div>
 
         {/* Right Header Actions */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-xs">
             {saveStatus === 'saving' ? (
-              <span className="flex items-center gap-1.5 text-neutral-500 font-medium">
-                <HugeiconsIcon icon={Loading02Icon} size={13} className="animate-spin text-neutral-600" />
+              <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
+                <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin text-stone-600" />
                 Saving...
               </span>
             ) : saveStatus === 'saved' ? (
-              <span className="flex items-center gap-1 text-neutral-500 font-medium">
-                <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-emerald-600" />
+              <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
                 Saved
               </span>
             ) : null}
@@ -142,24 +158,24 @@ export const Editor: React.FC<EditorProps> = ({
           <button
             type="button"
             onClick={() => setIsShareModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-950 hover:bg-neutral-800 text-white text-xs font-medium transition-all shadow-2xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95"
           >
-            <HugeiconsIcon icon={Share01Icon} size={14} />
+            <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
             <span>Share</span>
           </button>
 
           <button
             type="button"
-            className="p-1.5 rounded-lg text-neutral-500 hover:text-neutral-800 hover:bg-neutral-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
             title="Comments & Discussion"
           >
-            <HugeiconsIcon icon={Comment01Icon} size={16} />
+            <HugeiconsIcon icon={Comment01Icon} size={15} />
           </button>
         </div>
       </header>
 
       {/* Main Canvas */}
-      <div className="flex-1 overflow-y-auto px-6 py-8 md:px-16 lg:px-24 bg-white">
+      <div className="flex-1 overflow-y-auto px-6 py-10 md:px-16 lg:px-24 bg-white">
         <div className="max-w-3xl mx-auto flex flex-col">
           {/* Page/Folder Icon Picker */}
           <div className="relative mb-3 group">
@@ -197,21 +213,21 @@ export const Editor: React.FC<EditorProps> = ({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={handleTitleBlur}
-            placeholder={isFolder ? 'Folder Name' : 'Untitled'}
-            className="w-full bg-transparent text-3xl sm:text-4xl font-bold text-neutral-900 placeholder-neutral-300 focus:outline-none mb-4 border-b border-transparent focus:border-neutral-200 pb-1"
+            placeholder={isFolder ? 'Folder Name' : 'Untitled Document'}
+            className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder-stone-300 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 pb-1.5 transition-colors"
           />
 
           {isFolder ? (
-            /* FOLDER VIEW: Read-only list of documents inside (No text editing inside folders) */
+            /* FOLDER VIEW: Read-only list of documents inside */
             <div className="flex flex-col gap-6 mt-2">
-              <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
-                <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400">
+              <div className="flex items-center justify-between pb-3 border-b border-stone-200/70">
+                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
                   Documents in this Folder ({childPages.length})
                 </span>
                 <button
                   type="button"
                   onClick={() => createDocumentInFolderMutation.mutate()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
                 >
                   <HugeiconsIcon icon={PlusSignIcon} size={14} />
                   <span>New Document</span>
@@ -219,10 +235,10 @@ export const Editor: React.FC<EditorProps> = ({
               </div>
 
               {childPages.length === 0 ? (
-                <div className="py-12 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-neutral-400">
-                  <HugeiconsIcon icon={File01Icon} size={32} className="stroke-1 text-neutral-300" />
-                  <span className="text-xs font-medium text-neutral-500">This folder is empty</span>
-                  <span className="text-[11px]">Click "+ New Document" above to add a document to this folder.</span>
+                <div className="py-14 border border-dashed border-stone-200 rounded-2xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-stone-400 bg-stone-50/40">
+                  <HugeiconsIcon icon={File01Icon} size={32} className="stroke-1 text-stone-300" />
+                  <span className="text-xs font-semibold text-stone-600">This folder is empty</span>
+                  <span className="text-[11px] text-stone-400">Click "+ New Document" above to start writing inside this folder.</span>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -233,18 +249,18 @@ export const Editor: React.FC<EditorProps> = ({
                         setActivePageId(child.id);
                         navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
                       }}
-                      className="p-3.5 rounded-xl border border-neutral-200/80 hover:border-neutral-300 bg-white hover:bg-neutral-50/80 transition-all flex items-center justify-between cursor-pointer group shadow-2xs"
+                      className="p-3.5 rounded-xl border border-stone-200/80 hover:border-stone-300 bg-white hover:bg-stone-50/80 transition-all flex items-center justify-between cursor-pointer group shadow-2xs"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <span className="text-lg shrink-0">{child.icon || '📄'}</span>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-semibold text-neutral-900 group-hover:text-black truncate">
-                            {child.title || 'Untitled Page'}
+                          <span className="text-sm font-semibold text-stone-900 group-hover:text-black truncate">
+                            {child.title || 'Untitled Document'}
                           </span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <HugeiconsIcon icon={ArrowRight01Icon} size={15} className="text-neutral-400 group-hover:text-neutral-700 transition-colors" />
+                        <HugeiconsIcon icon={ArrowRight01Icon} size={15} className="text-stone-400 group-hover:text-stone-700 transition-colors" />
                       </div>
                     </div>
                   ))}

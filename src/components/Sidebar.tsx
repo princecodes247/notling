@@ -48,41 +48,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { toggleSearch, toggleSidebar } = useUIStore();
 
   return (
-    <aside className="w-60 h-full bg-[#fafaf9] flex flex-col shrink-0 select-none text-neutral-800 text-sm font-sans relative">
+    <aside className="w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative">
       {/* 1. Header: Logo + Workspace Name + Collapse Icon */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-transparent">
+      <div className="h-14 px-4 flex items-center justify-between border-b border-stone-200/40">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="text-neutral-900 shrink-0">
-            <NotlingLogoIcon className="w-5 h-5" />
+          <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-200/95 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-stone-900/10">
+            <NotlingLogoIcon className="w-3.5 h-3.5" />
           </div>
-          <span className="font-semibold text-sm text-neutral-900 truncate tracking-tight">
-            {workspaceName || 'Notling Workspace'}
-          </span>
+          <div className="flex flex-col min-w-0">
+            <span className="font-semibold text-xs text-stone-900 truncate tracking-tight">
+              {workspaceName || 'Notling Workspace'}
+            </span>
+          </div>
         </div>
 
         <button
           type="button"
           onClick={toggleSidebar}
-          className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-200/60 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
           title="Collapse sidebar"
         >
-          <PanelLeftClose className="w-4 h-4 text-neutral-500 hover:text-neutral-800 transition-colors" />
+          <PanelLeftClose className="w-4 h-4 text-stone-500 hover:text-stone-800 transition-colors" />
         </button>
-
       </div>
 
       {/* 2. Search Bar with '/' badge */}
-      <div className="px-3 pb-2 pt-1">
+      <div className="px-3 pb-2 pt-2.5">
         <button
           type="button"
           onClick={toggleSearch}
-          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-neutral-100/90 hover:bg-neutral-200/80 border border-neutral-200/50 text-neutral-500 text-xs transition-colors group cursor-pointer"
+          className="w-full flex items-center justify-between px-3 py-1.5 rounded-xl bg-stone-200/40 hover:bg-stone-200/70 border border-stone-200/70 text-stone-500 text-xs transition-colors group cursor-pointer shadow-2xs"
         >
           <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={Search01Icon} size={15} className="text-neutral-400 group-hover:text-neutral-600" />
-            <span className="font-normal">Search</span>
+            <HugeiconsIcon icon={Search01Icon} size={14} className="text-stone-400 group-hover:text-stone-600" />
+            <span className="font-normal text-stone-500">Search workspace</span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[11px] font-mono text-neutral-400 bg-white rounded border border-neutral-200 shadow-2xs">
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-stone-400 bg-white/90 rounded-md border border-stone-200 shadow-2xs">
             /
           </kbd>
         </button>
@@ -94,12 +95,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onNavClick?.('home')}
-          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${activeNav === 'home'
-            ? 'bg-neutral-100 text-neutral-900 font-semibold'
-            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${activeNav === 'home'
+            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
+            : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
             }`}
         >
-          <HugeiconsIcon icon={Home01Icon} size={16} className="text-neutral-500 shrink-0" />
+          <HugeiconsIcon icon={Home01Icon} size={15} className={activeNav === 'home' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
           <span>Home</span>
         </button>
 
@@ -107,16 +108,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onNavClick?.('folders')}
-          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${activeNav === 'folders'
-            ? 'bg-neutral-100 text-neutral-900 font-semibold'
-            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${activeNav === 'folders'
+            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
+            : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
             }`}
         >
           <div className="flex items-center gap-2.5">
-            <HugeiconsIcon icon={Folder01Icon} size={16} className="text-neutral-600 shrink-0" />
+            <HugeiconsIcon icon={Folder01Icon} size={15} className={activeNav === 'folders' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
             <span>Folders</span>
           </div>
-          <span className="text-[11px] text-neutral-400">
+          <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded-full bg-stone-200/60 text-stone-500">
             {treeNodes.filter((n) => n.children && n.children.length > 0).length || treeNodes.length}
           </span>
         </button>
@@ -124,24 +125,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 4. Folders & Document Tree Section */}
       <div className="flex-1 overflow-y-auto px-2 pt-3 pb-2 flex flex-col min-h-0">
-        <div className="flex items-center justify-between px-3 py-1 text-[11px] font-medium text-neutral-400">
-          <span className="tracking-wide">Documents & Folders</span>
+        <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+          <span>Documents & Folders</span>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => onCreateFolder ? onCreateFolder() : onCreatePage()}
-              className="p-0.5 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors"
+              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition-colors"
               title="Create new folder"
             >
-              <HugeiconsIcon icon={FolderAddIcon} size={15} />
+              <HugeiconsIcon icon={FolderAddIcon} size={14} />
             </button>
             <button
               type="button"
               onClick={() => onCreatePage()}
-              className="p-0.5 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-colors"
+              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition-colors"
               title="Create new page"
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={15} />
+              <HugeiconsIcon icon={PlusSignIcon} size={14} />
             </button>
           </div>
         </div>
@@ -175,30 +176,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* 5. Footer: User Avatar + Name, Settings, Version */}
-      <div className="p-3 border-t border-neutral-100 flex flex-col gap-1.5">
+      <div className="p-3 border-t border-stone-200/50 flex flex-col gap-1">
         {/* User profile row */}
-        <div className="flex items-center justify-between px-1 py-1 rounded-lg hover:bg-neutral-50 transition-colors cursor-pointer group">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full overflow-hidden bg-neutral-200 shrink-0 border border-neutral-200">
+        <div className="flex items-center justify-between px-2 py-1.5 rounded-xl hover:bg-stone-200/50 transition-colors cursor-pointer group">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-6 h-6 rounded-full overflow-hidden bg-stone-200 shrink-0 border border-stone-300/80">
               <img
                 src={session?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces'}
-                alt={session?.name || 'Scotty'}
+                alt={session?.name || 'User'}
                 className="w-full h-full object-cover"
               />
             </div>
-            <span className="text-xs font-medium text-neutral-800 truncate">
-              {session?.name ? session.name.split(' ')[0] : 'Scotty'}
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-semibold text-stone-800 truncate">
+                {session?.name ? session.name.split(' ')[0] : 'Workspace Member'}
+              </span>
+              <span className="text-[10px] text-stone-400 font-mono truncate">
+                {session?.email || 'authenticated'}
+              </span>
+            </div>
           </div>
 
           {onLogout && (
             <button
               type="button"
               onClick={onLogout}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-200 text-neutral-400 hover:text-neutral-700 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition-all"
               title="Sign out"
             >
-              <HugeiconsIcon icon={Logout01Icon} size={15} />
+              <HugeiconsIcon icon={Logout01Icon} size={14} />
             </button>
           )}
         </div>
@@ -207,19 +213,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => onNavClick?.('settings')}
-          className={`flex items-center gap-2 px-1 py-1 rounded-lg text-xs transition-colors cursor-pointer ${activeNav === 'settings'
-            ? 'bg-neutral-100 text-neutral-900 font-semibold'
-            : 'text-neutral-700 hover:bg-neutral-50'
+          className={`flex items-center gap-2 px-2 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${activeNav === 'settings'
+            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
+            : 'text-stone-700 hover:bg-stone-200/40'
             }`}
         >
-          <HugeiconsIcon icon={Settings02Icon} size={15} className="text-neutral-500" />
-          <span>Settings</span>
+          <HugeiconsIcon icon={Settings02Icon} size={15} className="text-stone-500" />
+          <span>Workspace Settings</span>
         </button>
-
-        {/* Version label */}
-        <div className="px-1 pt-1 text-[11px] text-neutral-400 font-normal">
-          v0.0.0
-        </div>
       </div>
     </aside>
   );

@@ -135,29 +135,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      icon={<HugeiconsIcon icon={Share01Icon} size={18} />}
-      title={`Share "${page.title || 'Untitled Document'}"`}
-      subtitle="Manage access & link sharing"
+      icon={<HugeiconsIcon icon={Share01Icon} size={16} />}
+      title={page.title ? `Share "${page.title}"` : 'Share Untitled Document'}
+      subtitle="Permissions & live collaboration"
       maxWidth="lg"
       footer={
         <>
-          <button
-            type="button"
-            onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 text-neutral-800 text-xs font-medium transition-all shadow-2xs cursor-pointer"
-          >
-            {copied ? (
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-emerald-600" />
-            ) : (
-              <HugeiconsIcon icon={Link02Icon} size={14} className="text-neutral-500" />
-            )}
-            <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+            className="px-5 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all cursor-pointer shadow-xs active:scale-98"
           >
             Done
           </button>
@@ -165,26 +156,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       }
     >
       <div className="flex flex-col gap-6">
-        {/* Section 1: Add People */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-neutral-800 flex items-center gap-1.5">
-            <HugeiconsIcon icon={UserAdd01Icon} size={14} className="text-neutral-500" />
-            Share with people and groups
+        {/* Section 1: Invite Collaborators */}
+        <div className="flex flex-col gap-2.5">
+          <label className="text-xs font-semibold text-stone-800 flex items-center gap-1.5 tracking-tight">
+            <HugeiconsIcon icon={UserAdd01Icon} size={14} className="text-stone-500" />
+            <span>Invite people</span>
           </label>
 
           <form onSubmit={handleInvite} className="flex items-center gap-2">
-            <div className="flex-1 flex items-center rounded-xl border border-neutral-200 bg-neutral-50/50 overflow-hidden focus-within:ring-1 focus-within:ring-black">
+            <div className="flex-1 flex items-center rounded-xl border border-stone-200 bg-stone-50/70 focus-within:bg-white focus-within:border-stone-400 focus-within:ring-2 focus-within:ring-stone-900/5 transition-all overflow-hidden">
               <input
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder="Add people by email..."
-                className="flex-1 px-3.5 py-2.5 text-xs bg-transparent focus:outline-none text-neutral-900 placeholder:text-neutral-400"
+                placeholder="colleague@workspace.com..."
+                className="flex-1 px-3.5 py-2.5 text-xs bg-transparent focus:outline-none text-stone-900 placeholder:text-stone-400"
               />
+              <div className="h-4 w-px bg-stone-200 shrink-0" />
               <select
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
-                className="px-2 py-2.5 text-[11px] font-medium text-neutral-600 bg-transparent border-l border-neutral-200 focus:outline-none cursor-pointer"
+                className="px-3 py-2.5 text-[11px] font-medium text-stone-600 bg-transparent focus:outline-none cursor-pointer hover:text-stone-900"
               >
                 <option value="viewer">Can view</option>
                 <option value="editor">Can edit</option>
@@ -193,37 +185,37 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <button
               type="submit"
               disabled={!inviteEmail.trim()}
-              className="px-4 py-2.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs font-medium transition-all shadow-2xs disabled:opacity-40 cursor-pointer shrink-0"
+              className="px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs disabled:opacity-40 cursor-pointer shrink-0 active:scale-98"
             >
               Invite
             </button>
           </form>
 
           {invitedSuccess && (
-            <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} />
-              {invitedSuccess}
-            </span>
+            <div className="px-3 py-1.5 rounded-lg bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-700 font-medium flex items-center gap-1.5 animate-in fade-in">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-emerald-600 shrink-0" />
+              <span>{invitedSuccess}</span>
+            </div>
           )}
 
           {/* People List */}
           {loading ? (
-            <div className="py-4 text-center text-xs text-neutral-400">Loading invitations...</div>
+            <div className="py-4 text-center text-xs text-stone-400">Loading collaborators...</div>
           ) : people.length > 0 ? (
-            <div className="mt-2 flex flex-col divide-y divide-neutral-100 rounded-xl border border-neutral-100 max-h-36 overflow-y-auto">
+            <div className="mt-1 flex flex-col divide-y divide-stone-100 rounded-xl border border-stone-200/70 bg-white/60 overflow-hidden max-h-40 overflow-y-auto shadow-2xs">
               {people.map((person) => (
-                <div key={person.id} className="p-2.5 flex items-center justify-between bg-white text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-600 text-[10px] shrink-0 font-bold uppercase">
+                <div key={person.id} className="px-3.5 py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
                       {person.email[0]}
                     </div>
-                    <span className="truncate text-neutral-800 font-medium">{person.email}</span>
+                    <span className="truncate text-stone-800 font-medium">{person.email}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <select
                       value={person.role}
                       onChange={(e) => handleRoleChange(person.id, e.target.value as 'editor' | 'viewer')}
-                      className="px-2 py-1 text-[11px] font-medium text-neutral-600 bg-neutral-50 rounded-md border border-neutral-200 focus:outline-none cursor-pointer"
+                      className="px-2 py-1 text-[11px] font-medium text-stone-600 bg-stone-100/70 rounded-md border border-stone-200/70 focus:outline-none cursor-pointer hover:border-stone-300"
                     >
                       <option value="viewer">Can view</option>
                       <option value="editor">Can edit</option>
@@ -231,7 +223,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemovePerson(person.id)}
-                      className="text-[11px] text-rose-500 hover:text-rose-700 cursor-pointer px-1 py-0.5 rounded hover:bg-rose-50"
+                      className="text-[11px] text-rose-500 hover:text-rose-700 cursor-pointer px-1.5 py-0.5 rounded hover:bg-rose-50 transition-colors"
                     >
                       Remove
                     </button>
@@ -242,41 +234,103 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           ) : null}
         </div>
 
-        {/* Section 2: Access Level / General Access */}
-        <div className="flex flex-col gap-2 pt-4 border-t border-neutral-100">
-          <label className="text-xs font-semibold text-neutral-800">General Access</label>
-          <div className="p-3 rounded-xl border border-neutral-200 bg-neutral-50/40 flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-white border border-neutral-200 shrink-0 text-neutral-700 mt-0.5">
-              {visibility === 'private' ? (
-                <HugeiconsIcon icon={LockIcon} size={16} className="text-amber-600" />
-              ) : visibility === 'public' ? (
-                <HugeiconsIcon icon={Globe02Icon} size={16} className="text-blue-600" />
-              ) : (
-                <HugeiconsIcon icon={Building01Icon} size={16} className="text-emerald-600" />
-              )}
+        {/* Section 2: General Access Tier */}
+        <div className="flex flex-col gap-3 pt-4 border-t border-stone-200/60">
+          <label className="text-xs font-semibold text-stone-800 tracking-tight flex items-center justify-between">
+            <span>General access</span>
+            <span className="text-[11px] font-normal text-stone-400">Controls who can open this link</span>
+          </label>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {/* Restricted Option */}
+            <button
+              type="button"
+              onClick={() => onUpdateVisibility('private')}
+              className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'private'
+                  ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
+                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className={`p-1 rounded-md ${visibility === 'private' ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600'}`}>
+                  <HugeiconsIcon icon={LockIcon} size={12} />
+                </div>
+                <span className="text-xs font-semibold text-stone-900">Restricted</span>
+              </div>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Only people specifically invited can view.</p>
+            </button>
+
+            {/* Workspace Option */}
+            <button
+              type="button"
+              onClick={() => onUpdateVisibility('workspace')}
+              className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'workspace'
+                  ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs'
+                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className={`p-1 rounded-md ${visibility === 'workspace' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
+                  <HugeiconsIcon icon={Building01Icon} size={12} />
+                </div>
+                <span className="text-xs font-semibold text-stone-900">Workspace</span>
+              </div>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone in {workspaceName} can view.</p>
+            </button>
+
+            {/* Public Option */}
+            <button
+              type="button"
+              onClick={() => onUpdateVisibility('public')}
+              className={`p-3 rounded-xl border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public'
+                  ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300/40 shadow-xs'
+                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className={`p-1 rounded-md ${visibility === 'public' ? 'bg-blue-100 text-blue-800' : 'bg-stone-100 text-stone-600'}`}>
+                  <HugeiconsIcon icon={Globe02Icon} size={12} />
+                </div>
+                <span className="text-xs font-semibold text-stone-900">Public</span>
+              </div>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone with the link can view without login.</p>
+            </button>
+          </div>
+        </div>
+
+        {/* Section 3: Link Preview & Copy Bar */}
+        <div className="p-3.5 rounded-xl border border-stone-200/90 bg-stone-50/80 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="p-1.5 rounded-lg bg-white border border-stone-200 text-stone-600 shrink-0">
+              <HugeiconsIcon icon={Link02Icon} size={14} />
             </div>
-
-            <div className="flex-1 flex flex-col gap-1 min-w-0">
-              <select
-                value={visibility}
-                onChange={(e) => onUpdateVisibility(e.target.value as 'private' | 'workspace' | 'public')}
-                className="w-full text-xs font-semibold text-neutral-900 bg-white border border-neutral-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-black cursor-pointer"
-              >
-                <option value="private">🔒 Restricted (Only added people)</option>
-                <option value="workspace">🏢 {workspaceName} (Anyone in workspace)</option>
-                <option value="public">🌐 Anyone with the link (Public)</option>
-              </select>
-
-              <p className="text-[11px] text-neutral-500 leading-normal">
-                {visibility === 'private' && 'Only people added above can open with this link.'}
-                {visibility === 'workspace' && `Anyone in ${workspaceName} can find and view.`}
-                {visibility === 'public' && 'Anyone on the Internet with the link can view.'}
-              </p>
+            <div className="flex flex-col min-w-0">
+              <span className="text-[10px] uppercase font-semibold tracking-wider text-stone-400">Share Link</span>
+              <span className="text-xs font-mono text-stone-700 truncate">
+                {visibility === 'public' ? `/share/${page.id}` : `/dashboard/p/${page.id}`}
+              </span>
             </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 shadow-2xs ${copied
+                ? 'bg-emerald-600 text-white'
+                : 'bg-white hover:bg-stone-100 text-stone-900 border border-stone-200'
+              }`}
+          >
+            {copied ? (
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} />
+            ) : (
+              <HugeiconsIcon icon={Link02Icon} size={14} />
+            )}
+            <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+          </button>
         </div>
       </div>
     </Modal>
   );
 };
+
 
