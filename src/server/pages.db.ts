@@ -1,6 +1,6 @@
 import { db } from '~/db';
 import { pages, workspaces, pageShares, pagePresence } from '~/db/schema';
-import { eq, and, sql, desc, asc, isNull, lt } from 'drizzle-orm';
+import { eq, and, desc, asc, isNull, lt } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import { getSessionImpl } from './auth.db';
 
@@ -558,20 +558,88 @@ export async function performPermanentDelete(pageId: string) {
   }
 }
 
-export async function performSearchPages(workspaceId: string, query: string) {
+function fuzzyMatchScore(text: string, query: string, tokens: string[]): number {
+  if (!text) return 0;
+  const lower = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+
+  if (lower === lowerQuery) return 100;
+  if (lower.startsWith(lowerQuery)) return 80;
+  if (lower.includes(lowerQuery)) return 60;
+
+  let tokenMatches = 0;
+  for (const token of tokens) {
+    if (lower.includes(token)) {
+      tokenMatches++;
+    } else {
+      let idx = 0;
+      for (let i = 0; i < lower.length && idx < token.length; i++) {
+        if (lower[i] === token[idx]) idx++;
+      }
+      if (idx === token.length && token.length > 2) {
+        tokenMatches += 0.6;
+      }
+    }
+  }
+
+  if (tokenMatches > 0) {
+    return Math.round((tokenMatches / tokens.length) * 40);
+  }
+
+  return 0;
+}
+
+function extractSnippet(contentText: string | null, query: string, tokens: string[]): string | null {
+  if (!contentText || !contentText.trim()) return null;
+  const clean = contentText.trim();
+  const lower = clean.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+
+  let matchIdx = lower.indexOf(lowerQuery);
+  if (matchIdx === -1) {
+    for (const token of tokens) {
+      const idx = lower.indexOf(token);
+      if (idx !== -1) {
+        matchIdx = idx;
+        break;
+      }
+    }
+  }
+
+  if (matchIdx === -1) {
+    return clean.slice(0, 120) + (clean.length > 120 ? '...' : '');
+  }
+
+  const start = Math.max(0, matchIdx - 30);
+  const end = Math.min(clean.length, matchIdx + 90);
+  let snippet = clean.slice(start, end);
+  if (start > 0) snippet = '...' + snippet;
+  if (end < clean.length) snippet = snippet + '...';
+  return snippet;
+}
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  icon: string | null;
+  snippet: string | null;
+  updatedAt: Date;
+  matchType: 'title' | 'content' | 'both';
+  score: number;
+}
+
+export async function performSearchPages(workspaceId: string, query: string): Promise<SearchResult[]> {
   try {
-    if (!query || !query.trim()) return [];
+    const cleanQuery = query.trim();
+    if (!cleanQuery || cleanQuery.length < 3) return [];
 
     const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
     if (!targetWorkspaceId) return [];
 
-    const formattedQuery = query
-      .trim()
-      .split(/\s+/)
-      .map((w: string) => `${w}:*`)
-      .join(' & ');
+    const session = await getSessionImpl();
+    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
 
-    const results = await db
+    const workspacePages = await db
       .select({
         id: pages.id,
         title: pages.title,
@@ -580,17 +648,57 @@ export async function performSearchPages(workspaceId: string, query: string) {
         updatedAt: pages.updatedAt,
       })
       .from(pages)
-      .where(
-        and(
-          eq(pages.workspaceId, targetWorkspaceId),
-          eq(pages.isDeleted, false),
-          sql`to_tsvector('english', coalesce(${pages.title}, '') || ' ' || coalesce(${pages.contentText}, '')) @@ to_tsquery('english', ${formattedQuery})`
-        )
-      )
-      .orderBy(desc(pages.updatedAt))
-      .limit(15);
+      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false)));
 
-    return results;
+    let sharedPagesList: typeof workspacePages = [];
+    if (userEmail) {
+      sharedPagesList = await db
+        .select({
+          id: pages.id,
+          title: pages.title,
+          icon: pages.icon,
+          contentText: pages.contentText,
+          updatedAt: pages.updatedAt,
+        })
+        .from(pageShares)
+        .innerJoin(pages, eq(pageShares.pageId, pages.id))
+        .where(and(eq(pageShares.email, userEmail), eq(pages.isDeleted, false)));
+    }
+
+    const allCandidatePagesMap = new Map<string, typeof workspacePages[0]>();
+    for (const p of [...workspacePages, ...sharedPagesList]) {
+      allCandidatePagesMap.set(p.id, p);
+    }
+
+    const tokens = cleanQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    const results: SearchResult[] = [];
+
+    for (const page of allCandidatePagesMap.values()) {
+      const titleScore = fuzzyMatchScore(page.title || '', cleanQuery, tokens);
+      const contentScore = fuzzyMatchScore(page.contentText || '', cleanQuery, tokens);
+
+      const totalScore = titleScore * 1.5 + contentScore * 0.8;
+
+      if (totalScore > 0) {
+        let matchType: 'title' | 'content' | 'both' = 'content';
+        if (titleScore > 0 && contentScore > 0) matchType = 'both';
+        else if (titleScore > 0) matchType = 'title';
+
+        results.push({
+          id: page.id,
+          title: page.title || 'Untitled',
+          icon: page.icon || '📄',
+          snippet: extractSnippet(page.contentText, cleanQuery, tokens),
+          updatedAt: page.updatedAt,
+          matchType,
+          score: totalScore,
+        });
+      }
+    }
+
+    results.sort((a, b) => b.score - a.score || b.updatedAt.getTime() - a.updatedAt.getTime());
+
+    return results.slice(0, 20);
   } catch (err) {
     console.error('Error searching pages:', err);
     return [];
