@@ -1095,7 +1095,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         setIsMentionModalOpen(false);
         hasUserEditedRef.current = true;
         handleContentChange();
-        queryClient.invalidateQueries({ queryKey: ['pageBacklinks'] });
+
       } catch (err) {
         console.error('Error inserting mention:', err);
       }
@@ -1255,7 +1255,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
             linkEl.remove();
             hasUserEditedRef.current = true;
             handleContentChange();
-            queryClient.invalidateQueries({ queryKey: ['pageBacklinks'] });
+    
             return;
           }
         }

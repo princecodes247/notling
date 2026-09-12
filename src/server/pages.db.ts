@@ -325,6 +325,8 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
       accessLevel = 'editor';
     } else if (userShare) {
       accessLevel = userShare.role;
+    } else if (page.visibility === 'public_edit') {
+      accessLevel = 'editor';
     } else if (page.visibility === 'public') {
       accessLevel = 'viewer';
     }
@@ -365,7 +367,7 @@ export async function createNewPage(input: {
   parentId?: string | null;
   title?: string;
   icon?: string;
-  visibility?: 'private' | 'workspace' | 'public';
+  visibility?: 'private' | 'workspace' | 'public' | 'public_edit';
 }) {
   try {
     const targetWorkspaceId = await resolveWorkspaceId(input.workspaceId);
@@ -475,7 +477,7 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
   }
 }
 
-export async function savePageVisibility(input: { pageId: string; visibility: 'private' | 'workspace' | 'public' }) {
+export async function savePageVisibility(input: { pageId: string; visibility: 'private' | 'workspace' | 'public' | 'public_edit' }) {
   try {
     const [updated] = await db
       .update(pages)

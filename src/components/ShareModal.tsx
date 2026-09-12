@@ -23,8 +23,8 @@ interface ShareModalProps {
   isOpen: boolean;
   onClose: () => void;
   page: Page;
-  visibility: 'private' | 'workspace' | 'public';
-  onUpdateVisibility: (newVisibility: 'private' | 'workspace' | 'public') => void;
+  visibility: 'private' | 'workspace' | 'public' | 'public_edit';
+  onUpdateVisibility: (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => void;
   workspaceName?: string;
 }
 
@@ -123,10 +123,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   const handleCopyLink = () => {
-    const url =
-      visibility === 'public'
-        ? `${window.location.origin}/share/${page.id}`
-        : `${window.location.origin}/dashboard/p/${page.id}`;
+    const isPublic = visibility === 'public' || visibility === 'public_edit';
+    const url = `${window.location.origin}${isPublic ? `/share/${page.id}` : `/dashboard/p/${page.id}`}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -141,23 +139,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       subtitle="Permissions & live collaboration"
       maxWidth="lg"
       footer={
-        <>
-          <div className="flex items-center gap-2">
-
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-9 px-5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
-          >
-            Done
-          </button>
-        </>
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-9 px-5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+        >
+          Done
+        </button>
       }
     >
-      <div className="flex flex-col gap-5">
-        {/* Section 1: Invite Collaborators */}
+      <div className="flex flex-col gap-5 select-none text-stone-900">
+        {/* Section 1: Invite People */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold text-stone-800 tracking-tight">
             Invite people
@@ -252,15 +244,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <span className="text-[11px] font-normal text-stone-400">Controls who can open this link</span>
           </label>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {/* Restricted Option */}
             <button
               type="button"
               onClick={() => onUpdateVisibility('private')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'private'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                visibility === 'private'
                   ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
                   : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-                }`}
+              }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600'}`}>
@@ -275,10 +268,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <button
               type="button"
               onClick={() => onUpdateVisibility('workspace')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'workspace'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                visibility === 'workspace'
                   ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs'
                   : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-                }`}
+              }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
@@ -286,25 +280,45 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 </div>
                 <span className="text-xs font-semibold text-stone-900">Workspace</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone in {workspaceName} can view.</p>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone in {workspaceName} can view & edit.</p>
             </button>
 
-            {/* Public Option */}
+            {/* Public (View) Option */}
             <button
               type="button"
               onClick={() => onUpdateVisibility('public')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                visibility === 'public'
                   ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300/40 shadow-xs'
                   : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-                }`}
+              }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 text-blue-800' : 'bg-stone-100 text-stone-600'}`}>
                   <HugeiconsIcon icon={Globe02Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Public</span>
+                <span className="text-xs font-semibold text-stone-900">Public (View Only)</span>
               </div>
               <p className="text-[10.5px] text-stone-500 leading-snug">Anyone with the link can view without login.</p>
+            </button>
+
+            {/* Public (Edit) Option */}
+            <button
+              type="button"
+              onClick={() => onUpdateVisibility('public_edit')}
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
+                visibility === 'public_edit'
+                  ? 'bg-indigo-50/60 border-indigo-300 ring-1 ring-indigo-300/40 shadow-xs'
+                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 text-indigo-800' : 'bg-stone-100 text-stone-600'}`}>
+                  <HugeiconsIcon icon={Globe02Icon} size={12} />
+                </div>
+                <span className="text-xs font-semibold text-stone-900">Public (Can Edit)</span>
+              </div>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone with the link can view & edit page!</p>
             </button>
           </div>
         </div>
@@ -318,7 +332,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <div className="flex flex-col min-w-0">
               <span className="text-[9.5px] uppercase font-semibold tracking-wider text-stone-400">Share Link</span>
               <span className="text-xs font-mono text-stone-700 truncate">
-                {visibility === 'public' ? `/share/${page.id}` : `/dashboard/p/${page.id}`}
+                {visibility === 'public' || visibility === 'public_edit' ? `/share/${page.id}` : `/dashboard/p/${page.id}`}
               </span>
             </div>
           </div>
@@ -326,10 +340,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           <button
             type="button"
             onClick={handleCopyLink}
-            className={`h-8 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center gap-1.5 ${copied
+            className={`h-8 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center gap-1.5 ${
+              copied
                 ? 'bg-emerald-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                 : 'bg-white hover:bg-stone-50 text-stone-800 border border-stone-200'
-              }`}
+            }`}
           >
             {copied ? (
               <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />
@@ -343,5 +358,3 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     </Modal>
   );
 };
-
-

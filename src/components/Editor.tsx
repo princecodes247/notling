@@ -9,14 +9,13 @@ import {
   Loading02Icon,
   Share01Icon,
 } from '@hugeicons/core-free-icons';
-import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence, getPageBacklinks } from '~/server/pages';
+import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
-import { BacklinksSection } from './BacklinksSection';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { AtSign, Link2 } from 'lucide-react';
+import { AtSign } from 'lucide-react';
 import { getClientId } from '~/lib/collaboration';
 
 interface EditorProps {
@@ -38,7 +37,7 @@ export const Editor: React.FC<EditorProps> = ({
   const { saveStatus, setSaveStatus, setActivePageId } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || '📄');
-  const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public'>((page as any).visibility || 'workspace');
+  const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -60,14 +59,6 @@ export const Editor: React.FC<EditorProps> = ({
     queryKey: ['activePresence', page.id],
     queryFn: async () => await getActivePresence({ data: page.id }),
     refetchInterval: 1500,
-  });
-
-  // Query backlinks for feedback indicator
-  const { data: backlinks = [] } = useQuery({
-    queryKey: ['pageBacklinks', page.id],
-    queryFn: async () => await getPageBacklinks({ data: page.id }),
-    enabled: Boolean(page.id),
-    refetchInterval: 5000,
   });
 
   // Heartbeat presence ping & immediate cleanup on unmount/leave
@@ -107,7 +98,7 @@ export const Editor: React.FC<EditorProps> = ({
   });
 
   const updateVisibilityMutation = useMutation({
-    mutationFn: async (newVisibility: 'private' | 'workspace' | 'public') => {
+    mutationFn: async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
       setVisibility(newVisibility);
       return await updatePageVisibility({ data: { pageId: page.id, visibility: newVisibility } });
     },
@@ -173,30 +164,23 @@ export const Editor: React.FC<EditorProps> = ({
           </span>
 
           {/* Visibility pill */}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public'
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
+            visibility === 'public_edit'
+              ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+              : visibility === 'public'
               ? 'bg-blue-50 text-blue-700 border-blue-200/80'
               : visibility === 'workspace'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                : 'bg-amber-50 text-amber-700 border-amber-200/80'
-            }`}>
-            {visibility === 'public' ? 'Public' : visibility === 'workspace' ? 'Workspace' : 'Private'}
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+              : 'bg-amber-50 text-amber-700 border-amber-200/80'
+          }`}>
+            {visibility === 'public_edit'
+              ? 'Public (Edit)'
+              : visibility === 'public'
+              ? 'Public (View)'
+              : visibility === 'workspace'
+              ? 'Workspace'
+              : 'Private'}
           </span>
-
-          {/* Backlink feedback badge */}
-          {backlinks.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('backlinks-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-900 border border-amber-300/80 flex items-center gap-1 hover:bg-amber-200/90 transition-colors cursor-pointer shadow-2xs"
-              title="Click to view pages linking to this document"
-            >
-              <Link2 className="w-3 h-3 text-amber-700" />
-              <span>{backlinks.length} {backlinks.length === 1 ? 'Backlink' : 'Backlinks'}</span>
-            </button>
-          )}
         </div>
 
         {/* Right Header Actions */}
@@ -343,10 +327,7 @@ export const Editor: React.FC<EditorProps> = ({
           ) : (
             /* DOCUMENT VIEW: Notion-style BlockNote Editor */
             mounted ? (
-              <>
                 <BlockEditorInner key={page.id} page={page} />
-                <BacklinksSection pageId={page.id} />
-              </>
             ) : (
               <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
                 Loading block editor...

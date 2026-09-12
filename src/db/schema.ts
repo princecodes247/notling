@@ -38,7 +38,7 @@ export const pages = pgTable('pages', {
   parentId: uuid('parent_id'),
   title: text('title').notNull().default('Untitled'),
   icon: text('icon'),
-  visibility: text('visibility', { enum: ['private', 'workspace', 'public'] }).notNull().default('workspace'),
+  visibility: text('visibility', { enum: ['private', 'workspace', 'public', 'public_edit'] }).notNull().default('workspace'),
   content: jsonb('content').$type<any[]>().notNull().default([]),
   contentText: text('content_text'),
   order: integer('order').notNull().default(0),

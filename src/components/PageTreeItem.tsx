@@ -101,7 +101,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               {node.visibility === 'private' && (
                 <span className="text-[10px] text-amber-600 shrink-0" title="Private to you">🔒</span>
               )}
-              {node.visibility === 'public' && (
+              {(node.visibility === 'public' || node.visibility === 'public_edit') && (
                 <span className="text-[10px] text-blue-600 shrink-0" title="Publicly shared">🌐</span>
               )}
             </div>

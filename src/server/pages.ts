@@ -6,7 +6,7 @@ export interface PageTreeNode {
   parentId: string | null;
   title: string;
   icon: string | null;
-  visibility: 'private' | 'workspace' | 'public';
+  visibility: 'private' | 'workspace' | 'public' | 'public_edit';
   order: number;
   createdAt: Date;
   updatedAt: Date;
@@ -38,8 +38,8 @@ export const getPublicPage = createServerFn({ method: 'GET' })
   });
 
 export const createPage = createServerFn({ method: 'POST' })
-  .validator((input: { workspaceId: string; parentId?: string | null; title?: string; icon?: string; visibility?: 'private' | 'workspace' | 'public' }) => input)
-  .handler(async ({ data }: { data: { workspaceId: string; parentId?: string | null; title?: string; icon?: string; visibility?: 'private' | 'workspace' | 'public' } }) => {
+  .validator((input: { workspaceId: string; parentId?: string | null; title?: string; icon?: string; visibility?: 'private' | 'workspace' | 'public' | 'public_edit' }) => input)
+  .handler(async ({ data }: { data: { workspaceId: string; parentId?: string | null; title?: string; icon?: string; visibility?: 'private' | 'workspace' | 'public' | 'public_edit' } }) => {
     const { createNewPage } = await import('./pages.db');
     return createNewPage(data);
   });
@@ -59,8 +59,8 @@ export const updatePageMeta = createServerFn({ method: 'POST' })
   });
 
 export const updatePageVisibility = createServerFn({ method: 'POST' })
-  .validator((input: { pageId: string; visibility: 'private' | 'workspace' | 'public' }) => input)
-  .handler(async ({ data }: { data: { pageId: string; visibility: 'private' | 'workspace' | 'public' } }) => {
+  .validator((input: { pageId: string; visibility: 'private' | 'workspace' | 'public' | 'public_edit' }) => input)
+  .handler(async ({ data }: { data: { pageId: string; visibility: 'private' | 'workspace' | 'public' | 'public_edit' } }) => {
     const { savePageVisibility } = await import('./pages.db');
     return savePageVisibility(data);
   });
