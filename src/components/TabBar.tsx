@@ -29,13 +29,79 @@ export const TabBar: React.FC<TabBarProps> = ({
   onCloseTab,
   onNewTab,
 }) => {
-  const { sidebarOpen, toggleSidebar } = useUIStore();
+  const { sidebarOpen, toggleSidebar, reorderTabs } = useUIStore();
   const isHomeActive = activeTabId === 'home' || (!activeTabId && tabs.length === 0);
   const fileTabs = tabs.filter((t) => t.id !== 'home');
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+
+  // Tab drag-and-drop sorting state
+  const [draggedTabId, setDraggedTabId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [dropPosition, setDropPosition] = useState<'left' | 'right' | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, tabId: string) => {
+    e.stopPropagation();
+    setDraggedTabId(tabId);
+    e.dataTransfer.setData('text/plain', tabId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!draggedTabId || draggedTabId === targetId) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midX = rect.left + rect.width / 2;
+    const pos = e.clientX < midX ? 'left' : 'right';
+
+    setDropTargetId(targetId);
+    setDropPosition(pos);
+  };
+
+  const handleDragLeave = (_e: React.DragEvent, targetId: string) => {
+    if (dropTargetId === targetId) {
+      setDropTargetId(null);
+      setDropPosition(null);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedTabId || draggedTabId === targetId) {
+      setDraggedTabId(null);
+      setDropTargetId(null);
+      setDropPosition(null);
+      return;
+    }
+
+    const fromIndex = tabs.findIndex((t) => t.id === draggedTabId);
+    let toIndex = tabs.findIndex((t) => t.id === targetId);
+
+    if (fromIndex !== -1 && toIndex !== -1) {
+      if (dropPosition === 'right' && fromIndex < toIndex) {
+        // Destination remains toIndex
+      } else if (dropPosition === 'left' && fromIndex > toIndex) {
+        // Destination remains toIndex
+      } else if (dropPosition === 'right') {
+        toIndex = Math.min(tabs.length - 1, toIndex + 1);
+      }
+      reorderTabs(fromIndex, toIndex);
+    }
+
+    setDraggedTabId(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTabId(null);
+    setDropTargetId(null);
+    setDropPosition(null);
+  };
 
   const checkScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -103,7 +169,6 @@ export const TabBar: React.FC<TabBarProps> = ({
         <HugeiconsIcon icon={Home01Icon} size={15} />
       </motion.button>
 
-
       {/* Scrollable Track with Fade & Carets */}
       <motion.div
         layout
@@ -132,17 +197,38 @@ export const TabBar: React.FC<TabBarProps> = ({
         >
           {fileTabs.map((tab) => {
             const isActive = tab.id === activeTabId;
+            const isDragging = draggedTabId === tab.id;
+            const isDropTarget = dropTargetId === tab.id;
+            const isDropLeft = isDropTarget && dropPosition === 'left';
+            const isDropRight = isDropTarget && dropPosition === 'right';
+
             return (
               <div
                 key={tab.id}
                 data-active={isActive}
+                draggable={true}
+                onDragStart={(e) => handleDragStart(e, tab.id)}
+                onDragOver={(e) => handleDragOver(e, tab.id)}
+                onDragLeave={(e) => handleDragLeave(e, tab.id)}
+                onDrop={(e) => handleDrop(e, tab.id)}
+                onDragEnd={handleDragEnd}
                 onClick={() => onSelectTab(tab)}
                 className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${
-                  isActive
+                  isDragging
+                    ? 'opacity-40 border-dashed border-stone-400 bg-stone-100'
+                    : isActive
                     ? 'bg-white border-stone-200/90 text-stone-900 font-semibold shadow-xs ring-1 ring-black/[0.02]'
                     : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/40'
                 }`}
               >
+                {/* Drop Indicator Lines */}
+                {isDropLeft && (
+                  <span className="absolute -left-1 top-1 bottom-1 w-0.5 bg-stone-900 rounded-full z-20 pointer-events-none" />
+                )}
+                {isDropRight && (
+                  <span className="absolute -right-1 top-1 bottom-1 w-0.5 bg-stone-900 rounded-full z-20 pointer-events-none" />
+                )}
+
                 {/* Tab Icon */}
                 {tab.icon ? (
                   <span className="text-xs shrink-0">{tab.icon}</span>

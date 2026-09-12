@@ -30,6 +30,7 @@ interface SidebarProps {
   onSelectPage: (pageId: string) => void;
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
+  onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onLogout?: () => void;
 }
 
@@ -45,9 +46,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectPage,
   onSoftDelete,
   onUpdateMeta,
+  onReorderPage,
   onLogout,
 }) => {
   const { toggleSearch, toggleSidebar } = useUIStore();
+  const [draggedPageId, setDraggedPageId] = React.useState<string | null>(null);
+  const [isRootDropTarget, setIsRootDropTarget] = React.useState(false);
 
   const workspaceNodes = treeNodes.filter((n) => !n.isShared);
   const sharedNodes = treeNodes.filter((n) => n.isShared === true);
@@ -172,7 +176,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        <div className="mt-1 flex flex-col gap-0.5">
+        <div
+          className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${
+            isRootDropTarget ? 'bg-stone-200/50 ring-1 ring-stone-300' : ''
+          }`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (draggedPageId) {
+              setIsRootDropTarget(true);
+            }
+          }}
+          onDragLeave={() => setIsRootDropTarget(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsRootDropTarget(false);
+            if (draggedPageId) {
+              onReorderPage?.({
+                pageId: draggedPageId,
+                targetParentId: null,
+                targetOrder: workspaceNodes.length,
+              });
+              setDraggedPageId(null);
+            }
+          }}
+        >
           {workspaceNodes.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-neutral-400 flex flex-col items-center gap-1.5">
               <span>No documents yet</span>
@@ -194,6 +221,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onSelectPage={onSelectPage}
                 onSoftDelete={onSoftDelete}
                 onUpdateMeta={onUpdateMeta}
+                onReorderPage={onReorderPage}
+                draggedPageId={draggedPageId}
+                setDraggedPageId={setDraggedPageId}
               />
             ))
           )}
@@ -217,6 +247,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectPage={onSelectPage}
                   onSoftDelete={onSoftDelete}
                   onUpdateMeta={onUpdateMeta}
+                  onReorderPage={onReorderPage}
+                  draggedPageId={draggedPageId}
+                  setDraggedPageId={setDraggedPageId}
                 />
               ))}
             </div>

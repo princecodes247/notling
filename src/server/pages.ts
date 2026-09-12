@@ -65,6 +65,13 @@ export const updatePageVisibility = createServerFn({ method: 'POST' })
     return savePageVisibility(data);
   });
 
+export const reorderPage = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; targetParentId?: string | null; targetOrder?: number }) => input)
+  .handler(async ({ data }: { data: { pageId: string; targetParentId?: string | null; targetOrder?: number } }) => {
+    const { reorderPageInDb } = await import('./pages.db');
+    return reorderPageInDb(data);
+  });
+
 export const softDeletePage = createServerFn({ method: 'POST' })
   .validator((pageId: string) => pageId)
   .handler(async ({ data }: { data: string }) => {

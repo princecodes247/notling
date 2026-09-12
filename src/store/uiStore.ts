@@ -24,6 +24,8 @@ interface UIState {
   closeTab: (tabId: string) => string | null;
   updateTabMeta: (id: string, title: string, icon?: string) => void;
   setActiveTabId: (id: string) => void;
+  reorderTabs: (fromIndex: number, toIndex: number) => void;
+  setOpenTabs: (tabs: TabItem[]) => void;
 
   // Modals & Panels
   isSearchOpen: boolean;
@@ -133,6 +135,23 @@ export const useUIStore = create<UIState>((set, get) => ({
       ),
     })),
   setActiveTabId: (id) => set({ activeTabId: id }),
+  reorderTabs: (fromIndex, toIndex) =>
+    set((state) => {
+      if (
+        fromIndex < 0 ||
+        fromIndex >= state.openTabs.length ||
+        toIndex < 0 ||
+        toIndex >= state.openTabs.length ||
+        fromIndex === toIndex
+      ) {
+        return state;
+      }
+      const updated = [...state.openTabs];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return { openTabs: updated };
+    }),
+  setOpenTabs: (tabs) => set({ openTabs: tabs }),
 
   isSearchOpen: false,
   setSearchOpen: (open) => set({ isSearchOpen: open }),

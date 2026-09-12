@@ -552,6 +552,57 @@ export async function savePageVisibility(input: { pageId: string; visibility: 'p
   }
 }
 
+export async function reorderPageInDb(input: {
+  pageId: string;
+  targetParentId?: string | null;
+  targetOrder?: number;
+}) {
+  try {
+    const { pageId, targetParentId = null, targetOrder = 0 } = input;
+    if (targetParentId === pageId) return null;
+
+    const canEdit = await checkCanUserEditPage(pageId);
+    if (!canEdit) return null;
+
+    const pageList = await db.select({ workspaceId: pages.workspaceId }).from(pages).where(eq(pages.id, pageId)).limit(1);
+    if (pageList.length === 0) return null;
+    const workspaceId = pageList[0].workspaceId;
+
+    const siblings = await db
+      .select({ id: pages.id, order: pages.order })
+      .from(pages)
+      .where(
+        and(
+          eq(pages.workspaceId, workspaceId),
+          targetParentId ? eq(pages.parentId, targetParentId) : isNull(pages.parentId),
+          eq(pages.isDeleted, false)
+        )
+      )
+      .orderBy(asc(pages.order));
+
+    const otherSiblings = siblings.filter((s) => s.id !== pageId);
+    const clampOrder = Math.max(0, Math.min(otherSiblings.length, targetOrder));
+    otherSiblings.splice(clampOrder, 0, { id: pageId, order: clampOrder });
+
+    for (let i = 0; i < otherSiblings.length; i++) {
+      const sib = otherSiblings[i];
+      await db
+        .update(pages)
+        .set({
+          parentId: targetParentId,
+          order: i,
+          updatedAt: new Date(),
+        })
+        .where(eq(pages.id, sib.id));
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error reordering page in db:', err);
+    return null;
+  }
+}
+
 export async function performSoftDelete(pageId: string) {
   try {
     const softDeleteRecursive = async (id: string) => {

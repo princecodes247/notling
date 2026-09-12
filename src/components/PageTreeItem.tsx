@@ -19,6 +19,9 @@ interface PageTreeItemProps {
   onSelectPage: (pageId: string) => void;
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
+  onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
+  draggedPageId?: string | null;
+  setDraggedPageId?: (id: string | null) => void;
 }
 
 export const PageTreeItem: React.FC<PageTreeItemProps> = ({
@@ -28,8 +31,11 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   onSelectPage,
   onSoftDelete,
   onUpdateMeta,
+  onReorderPage,
+  draggedPageId,
+  setDraggedPageId,
 }) => {
-  const { expandedNodeIds, toggleNodeExpand, activePageId } = useUIStore();
+  const { expandedNodeIds, toggleNodeExpand, setNodeExpand, activePageId } = useUIStore();
   const isExpanded = !!expandedNodeIds[node.id];
   const isActive = activePageId === node.id;
   const hasChildren = node.children && node.children.length > 0;
@@ -37,6 +43,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(node.title);
   const [showMenu, setShowMenu] = useState(false);
+  const [dropTargetMode, setDropTargetMode] = useState<'above' | 'below' | 'inside' | null>(null);
+
+  const isDraggingCurrent = draggedPageId === node.id;
 
   const handleTitleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -46,18 +55,109 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
     setIsEditing(false);
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
+    setDraggedPageId?.(node.id);
+    e.dataTransfer.setData('text/plain', node.id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (!draggedPageId || draggedPageId === node.id) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const offsetY = e.clientY - rect.top;
+    const height = rect.height;
+
+    if (offsetY < height * 0.25) {
+      setDropTargetMode('above');
+    } else if (offsetY > height * 0.75) {
+      setDropTargetMode('below');
+    } else {
+      setDropTargetMode('inside');
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTargetMode(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!draggedPageId || draggedPageId === node.id || !dropTargetMode) {
+      setDropTargetMode(null);
+      setDraggedPageId?.(null);
+      return;
+    }
+
+    if (dropTargetMode === 'inside') {
+      setNodeExpand(node.id, true);
+      onReorderPage?.({
+        pageId: draggedPageId,
+        targetParentId: node.id,
+        targetOrder: node.children?.length || 0,
+      });
+    } else if (dropTargetMode === 'above') {
+      onReorderPage?.({
+        pageId: draggedPageId,
+        targetParentId: node.parentId,
+        targetOrder: Math.max(0, node.order),
+      });
+    } else if (dropTargetMode === 'below') {
+      onReorderPage?.({
+        pageId: draggedPageId,
+        targetParentId: node.parentId,
+        targetOrder: node.order + 1,
+      });
+    }
+
+    setDropTargetMode(null);
+    setDraggedPageId?.(null);
+  };
+
+  const handleDragEnd = () => {
+    setDropTargetMode(null);
+    setDraggedPageId?.(null);
+  };
+
   return (
     <div className="select-none text-xs">
       <div
+        draggable={true}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
         className={clsx(
-          'group flex items-center justify-between px-2 py-1.5 rounded-lg transition-colors duration-150 cursor-pointer my-0.5',
-          isActive
+          'group relative flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150 cursor-pointer my-0.5',
+          isDraggingCurrent
+            ? 'opacity-40 border border-dashed border-stone-400 bg-stone-100'
+            : isActive
             ? 'bg-neutral-100 text-neutral-900 font-semibold'
+            : dropTargetMode === 'inside'
+            ? 'bg-stone-200/90 ring-1 ring-stone-400 text-stone-900 font-medium'
             : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
         )}
         style={{ paddingLeft: `${Math.max(6, depth * 14 + 6)}px` }}
         onClick={() => onSelectPage(node.id)}
       >
+        {/* Drop Line Indicators */}
+        {dropTargetMode === 'above' && (
+          <div className="absolute top-0 left-1 right-1 h-0.5 bg-stone-900 z-30 rounded-full pointer-events-none" />
+        )}
+        {dropTargetMode === 'below' && (
+          <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-stone-900 z-30 rounded-full pointer-events-none" />
+        )}
+
         {/* Left Side: Toggle Chevron + Icon + Title */}
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
           <button
@@ -190,6 +290,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               onSelectPage={onSelectPage}
               onSoftDelete={onSoftDelete}
               onUpdateMeta={onUpdateMeta}
+              onReorderPage={onReorderPage}
+              draggedPageId={draggedPageId}
+              setDraggedPageId={setDraggedPageId}
             />
           ))}
         </div>

@@ -6,7 +6,7 @@ import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
 import { getSession, signOut } from '~/server/auth';
-import { getPageTree, createPage, softDeletePage, updatePageMeta, type PageTreeNode } from '~/server/pages';
+import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -206,6 +206,16 @@ function DashboardLayout() {
     },
   });
 
+  // Reorder Page Mutation
+  const reorderPageMutation = useMutation({
+    mutationFn: async (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => {
+      return await reorderPage({ data: input });
+    },
+    onSuccess: () => {
+      refetchTree();
+    },
+  });
+
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
     if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings' && tab.id !== 'trash') {
@@ -274,6 +284,7 @@ function DashboardLayout() {
               }}
               onSoftDelete={(id) => softDeleteMutation.mutate(id)}
               onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
+              onReorderPage={(input) => reorderPageMutation.mutate(input)}
               onLogout={handleLogout}
             />
           </motion.div>
