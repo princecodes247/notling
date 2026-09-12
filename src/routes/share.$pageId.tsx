@@ -10,10 +10,10 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
+import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
 import { getClientId, useCollaboration } from '~/lib/collaboration';
 import { ySyncPluginKey } from 'y-prosemirror';
 import type { Page } from '~/db/schema';
-import type { ActiveUserPresence } from '~/server/pages.db';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -21,47 +21,7 @@ export const Route = createRoute({
   component: PublicDocumentPageRoute,
 });
 
-function ActiveCollaboratorsBar({ activeUsers, currentClientId }: { activeUsers: ActiveUserPresence[]; currentClientId?: string }) {
-  if (!activeUsers || activeUsers.length === 0) return null;
 
-  const displayUsers = activeUsers.slice(0, 4);
-  const extraCount = activeUsers.length - displayUsers.length;
-
-  return (
-    <div className="flex items-center gap-1">
-      <div className="flex items-center -space-x-1.5 overflow-hidden py-0.5">
-        {displayUsers.map((user) => {
-          const isEditor = user.role === 'editor';
-          const isSelf = user.clientId === currentClientId;
-          const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
-          const displayName = user.name || user.email.split('@')[0];
-          return (
-            <div
-              key={user.id || user.clientId || user.email}
-              title={`${displayName}${isSelf ? ' (You)' : ''} — ${isEditor ? 'Editing' : 'Viewing'}`}
-              className={`relative group w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-2xs cursor-pointer border-2 border-white transition-transform hover:scale-110 hover:z-10 ${
-                isEditor ? 'bg-emerald-600' : 'bg-amber-600'
-              }`}
-            >
-              <span>{initial}</span>
-              <span
-                className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${
-                  isEditor ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                }`}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {extraCount > 0 && (
-        <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-full border border-stone-200">
-          +{extraCount}
-        </span>
-      )}
-    </div>
-  );
-}
 
 function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
@@ -315,7 +275,7 @@ function PublicDocumentPageRoute() {
 
         <div className="flex items-center gap-3">
           {/* Active Collaborator Avatars */}
-          <ActiveCollaboratorsBar activeUsers={activeUsers} currentClientId={getClientId()} />
+          <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
 
           {/* Access Status Badge */}
           {accessLevel === 'editor' ? (

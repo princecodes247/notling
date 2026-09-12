@@ -12,10 +12,10 @@ import {
 } from '@hugeicons/core-free-icons';
 import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
+import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import type { ActiveUserPresence } from '~/server/pages.db';
 import { getClientId } from '~/lib/collaboration';
 
 interface EditorProps {
@@ -26,45 +26,7 @@ interface EditorProps {
 
 const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
 
-function CollaboratorAvatars({ activeUsers, currentClientId }: { activeUsers: ActiveUserPresence[]; currentClientId?: string }) {
-  if (!activeUsers || activeUsers.length === 0) return null;
-  const displayUsers = activeUsers.slice(0, 4);
-  const extraCount = activeUsers.length - displayUsers.length;
 
-  return (
-    <div className="flex items-center gap-1 mr-1">
-      <div className="flex items-center -space-x-1.5 overflow-hidden py-0.5">
-        {displayUsers.map((user) => {
-          const isEditor = user.role === 'editor';
-          const isSelf = user.clientId === currentClientId;
-          const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
-          const displayName = user.name || user.email.split('@')[0];
-          return (
-            <div
-              key={user.id || user.clientId || user.email}
-              title={`${displayName}${isSelf ? ' (You)' : ''} — ${isEditor ? 'Editing' : 'Viewing'}`}
-              className={`relative group w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-2xs cursor-pointer border-2 border-white transition-transform hover:scale-110 hover:z-10 ${
-                isEditor ? 'bg-emerald-600' : 'bg-amber-600'
-              }`}
-            >
-              <span>{initial}</span>
-              <span
-                className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${
-                  isEditor ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                }`}
-              />
-            </div>
-          );
-        })}
-      </div>
-      {extraCount > 0 && (
-        <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-full border border-stone-200">
-          +{extraCount}
-        </span>
-      )}
-    </div>
-  );
-}
 
 export const Editor: React.FC<EditorProps> = ({
   page,
