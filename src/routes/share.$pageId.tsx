@@ -10,7 +10,7 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
-import { useCollaboration, getClientId } from '~/lib/collaboration';
+import { getClientId } from '~/lib/collaboration';
 import type { Page } from '~/db/schema';
 import type { ActiveUserPresence } from '~/server/pages.db';
 
@@ -62,9 +62,8 @@ function ActiveCollaboratorsBar({ activeUsers, currentClientId }: { activeUsers:
   );
 }
 
-function PublicBlockViewer({ pageId, content, userEmail }: { pageId: string; content: any; userEmail?: string | null }) {
+function PublicBlockViewer({ content }: { pageId?: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
-  const collab = useCollaboration(pageId, 'Viewer', userEmail || `guest-${getClientId()}`);
 
   useEffect(() => {
     setMounted(true);
@@ -77,44 +76,15 @@ function PublicBlockViewer({ pageId, content, userEmail }: { pageId: string; con
     } catch (e) {
       console.error('Failed to parse page content', e);
     }
-    return [];
+    return undefined;
   }, [content]);
 
-  const editorOptions = useMemo(() => {
-    const opts: any = {
-      initialContent: parsedBlocks.length > 0 ? parsedBlocks : undefined,
-    };
-    if (collab) {
-      opts.collaboration = {
-        provider: collab.provider,
-        fragment: collab.fragment,
-        user: collab.user,
-        showCursorLabels: collab.showCursorLabels,
-      };
-    }
-    return opts;
-  }, [parsedBlocks, collab]);
-
-  const editor = useCreateBlockNote(editorOptions, [collab]);
-
-  // Seed or sync blocks if editor is blank
-  useEffect(() => {
-    if (!editor || !mounted || !parsedBlocks || parsedBlocks.length === 0) return;
-    const currentDoc = editor.document;
-    const isDocEmpty =
-      currentDoc.length === 0 ||
-      (currentDoc.length === 1 &&
-        currentDoc[0].type === 'paragraph' &&
-        (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
-
-    if (isDocEmpty) {
-      try {
-        editor.replaceBlocks(editor.document, parsedBlocks);
-      } catch (err) {
-        console.error('Error syncing remote blocks to viewer:', err);
-      }
-    }
-  }, [editor, mounted, parsedBlocks]);
+  const editor = useCreateBlockNote(
+    {
+      initialContent: parsedBlocks && parsedBlocks.length > 0 ? parsedBlocks : undefined,
+    },
+    [parsedBlocks]
+  );
 
   if (!mounted) {
     return (
