@@ -1044,9 +1044,58 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     }
   };
 
-  // Listen for '@' key typing anywhere in the editor using CAPTURE phase & beforeinput
+  // Ensure page mention links are marked contentEditable="false" so browsers treat them as atomic nodes
+  useEffect(() => {
+    const markMentionLinksAtomic = () => {
+      const links = document.querySelectorAll('.bn-editor a[href*="/dashboard/p/"], .bn-editor a[href*="/share/"]');
+      links.forEach((a) => {
+        if (a.getAttribute('contenteditable') !== 'false') {
+          a.setAttribute('contenteditable', 'false');
+        }
+      });
+    };
+
+    markMentionLinksAtomic();
+    const timer = setInterval(markMentionLinksAtomic, 1000);
+    return () => clearInterval(timer);
+  }, [page.id]);
+
+  // Listen for '@' key typing & atomic Backspace deletion of mention chips
   useEffect(() => {
     const handleKeyDownCapture = (e: KeyboardEvent) => {
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        const sel = window.getSelection();
+        if (sel && sel.anchorNode) {
+          let targetEl: HTMLElement | null =
+            sel.anchorNode.nodeType === Node.ELEMENT_NODE
+              ? (sel.anchorNode as HTMLElement)
+              : sel.anchorNode.parentElement;
+
+          let linkEl = targetEl?.closest('a[href*="/dashboard/p/"], a[href*="/share/"]');
+
+          if (!linkEl && sel.anchorNode.nodeType === Node.TEXT_NODE) {
+            const parent = sel.anchorNode.parentElement;
+            if (parent) {
+              if (sel.anchorOffset === 0 && parent.previousElementSibling?.matches('a[href*="/dashboard/p/"], a[href*="/share/"]')) {
+                linkEl = parent.previousElementSibling as HTMLElement;
+              } else if (sel.anchorOffset === (sel.anchorNode.textContent?.length || 0) && parent.nextElementSibling?.matches('a[href*="/dashboard/p/"], a[href*="/share/"]')) {
+                linkEl = parent.nextElementSibling as HTMLElement;
+              }
+            }
+          }
+
+          if (linkEl) {
+            e.preventDefault();
+            e.stopPropagation();
+            linkEl.remove();
+            hasUserEditedRef.current = true;
+            handleContentChange();
+            queryClient.invalidateQueries({ queryKey: ['pageBacklinks'] });
+            return;
+          }
+        }
+      }
+
       if (isMentionModalOpen) return;
 
       const isAtKey = e.key === '@' || (e.key === '2' && e.shiftKey) || (e.code === 'Digit2' && e.shiftKey && e.key === '@');
