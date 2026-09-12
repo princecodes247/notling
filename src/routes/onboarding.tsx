@@ -13,6 +13,7 @@ import { Select, type SelectOption } from '~/components/ui/Select';
 import { Avatar } from '@avatune/react';
 import pacovqzzTheme from '@avatune/pacovqzz-theme/react';
 import { RefreshCw } from 'lucide-react';
+import { WorkspaceAvatar } from '~/components/WorkspaceAvatar';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -27,8 +28,6 @@ const ONBOARDING_ROLE_OPTIONS: SelectOption[] = [
   { value: 'Founder / CEO', label: 'Founder / Executive' },
   { value: 'Researcher / Student', label: 'Researcher / Student' },
 ];
-
-const WORKSPACE_ICONS = ['🚀', '🧠', '⚡', '💡', '🎨', '📚', '🎯', '🔥', '💻', '📦'];
 
 const TEMPLATES = [
   {
@@ -70,7 +69,7 @@ function OnboardingPage() {
   const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
-  const [workspaceIcon, setWorkspaceIcon] = useState('🚀');
+  const [workspaceRingsSeed, setWorkspaceRingsSeed] = useState(() => 'ws-' + Math.random().toString(36).substring(2, 9));
   const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('engineering');
 
@@ -122,7 +121,7 @@ function OnboardingPage() {
           role,
           workspaceName: workspaceName.trim() || 'My Workspace',
           workspaceSlug: workspaceSlug.trim() || 'my-workspace',
-          workspaceIcon,
+          workspaceIcon: workspaceRingsSeed,
           workspaceDescription,
           templateId: selectedTemplate,
         },
@@ -246,24 +245,24 @@ function OnboardingPage() {
               </p>
             </div>
 
-            {/* Icon Picker */}
+            {/* Workspace Rings Avatar */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-neutral-700">Workspace Icon</label>
-              <div className="flex flex-wrap gap-2">
-                {WORKSPACE_ICONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => setWorkspaceIcon(emoji)}
-                    className={`w-10 h-10 text-xl rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-                      workspaceIcon === emoji
-                        ? 'bg-neutral-100 border-black shadow-2xs'
-                        : 'bg-white border-neutral-200 hover:bg-neutral-50'
-                    }`}
-                  >
-                    {emoji}
-                  </button>
-                ))}
+              <label className="text-xs font-semibold text-neutral-700">Workspace Avatar (Geometric Rings)</label>
+              <div className="flex items-center gap-3.5 bg-neutral-50/70 p-3.5 rounded-xl border border-neutral-200/80">
+                <WorkspaceAvatar
+                  seed={workspaceRingsSeed}
+                  name={workspaceName}
+                  size={54}
+                  className="rounded-xl"
+                  showReroll
+                  onReroll={() => setWorkspaceRingsSeed('ws-' + Math.random().toString(36).substring(2, 9))}
+                />
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span className="text-xs font-semibold text-neutral-900">Generative Rings Pattern</span>
+                  <span className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">
+                    Custom concentric rings generated for <span className="font-medium text-neutral-800">{workspaceName || 'your workspace'}</span>. Click the badge to reroll colors and pattern.
+                  </span>
+                </div>
               </div>
             </div>
 

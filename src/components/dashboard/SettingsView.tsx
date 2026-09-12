@@ -5,6 +5,7 @@ import { getSession, updateSettings, checkWorkspaceSlug, deleteAccount, deleteWo
 import { getWorkspaceUsers, inviteWorkspaceMember } from '~/server/pages';
 import { Select, type SelectOption } from '~/components/ui/Select';
 import { UserAvatar } from '../UserAvatar';
+import { WorkspaceAvatar } from '../WorkspaceAvatar';
 
 const TIMEZONE_OPTIONS: SelectOption[] = [
   { value: 'Eastern Time (US & Canada) - New York', label: 'Eastern Time (US & Canada) - New York' },
@@ -181,8 +182,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
     setCopiedId(label);
     setTimeout(() => setCopiedId(null), 2000);
   };
-
-  const iconsList = ['🚀', '🏢', '💻', '⚡', '🌟', '🎨', '📁', '🔬'];
 
   return (
     <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-6 sm:p-10">
@@ -446,31 +445,28 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
 
                   <div>
                     <label className="block text-xs font-medium text-neutral-700 mb-1">
-                      Workspace Icon
+                      Workspace Rings Avatar
                     </label>
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-9 h-9 rounded-lg border border-neutral-200 bg-neutral-50 flex items-center justify-center text-lg shrink-0">
-                        {workspaceIcon}
-                      </div>
-                      <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-                        {iconsList.map((ic) => (
-                          <button
-                            key={ic}
-                            type="button"
-                            disabled={!isWorkspaceOwner}
-                            onClick={() => isWorkspaceOwner && setWorkspaceIcon(ic)}
-                            className={`w-7 h-7 rounded text-xs flex items-center justify-center transition-colors ${
-                              !isWorkspaceOwner
-                                ? 'opacity-50 cursor-not-allowed'
-                                : workspaceIcon === ic
-                                ? 'bg-neutral-900 text-white shadow-2xs cursor-pointer'
-                                : 'hover:bg-neutral-100 text-neutral-700 cursor-pointer'
-                            }`}
-                          >
-                            {ic}
-                          </button>
-                        ))}
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <WorkspaceAvatar
+                        seed={workspaceIcon || workspaceSlug || session?.workspaceSlug || session?.workspaceId}
+                        slug={workspaceSlug || session?.workspaceSlug}
+                        name={workspaceName}
+                        size={36}
+                        showReroll={isWorkspaceOwner}
+                        onReroll={() => isWorkspaceOwner && setWorkspaceIcon('ws-' + Math.random().toString(36).substring(2, 9))}
+                      />
+                      {isWorkspaceOwner ? (
+                        <button
+                          type="button"
+                          onClick={() => setWorkspaceIcon('ws-' + Math.random().toString(36).substring(2, 9))}
+                          className="px-2.5 py-1 text-[11px] font-medium text-neutral-700 bg-neutral-100 hover:bg-neutral-200/80 rounded-md border border-neutral-200 transition-colors cursor-pointer"
+                        >
+                          Reroll Rings
+                        </button>
+                      ) : (
+                        <span className="text-[11px] text-neutral-400 font-medium">Generative Rings Pattern</span>
+                      )}
                     </div>
                   </div>
                 </div>

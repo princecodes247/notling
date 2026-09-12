@@ -15,8 +15,8 @@ import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
 import { useUIStore } from '~/store/uiStore';
 import type { UserSession, UserWorkspaceItem } from '~/server/auth';
-import { NotlingLogoIcon } from './Icons';
 import { UserAvatar } from './UserAvatar';
+import { WorkspaceAvatar } from './WorkspaceAvatar';
 
 
 interface SidebarProps {
@@ -74,9 +74,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
             className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-stone-200/60 transition-colors cursor-pointer w-full text-left min-w-0 group"
           >
-            <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-200/95 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-stone-900/10 text-xs">
-              {session?.workspaceIcon || <NotlingLogoIcon className="w-3.5 h-3.5" />}
-            </div>
+            <WorkspaceAvatar
+              seed={session?.workspaceIcon || session?.workspaceSlug || session?.workspaceId || workspaceName}
+              slug={session?.workspaceSlug}
+              name={workspaceName}
+              size={28}
+            />
             <div className="flex flex-col min-w-0 flex-1">
               <span className="font-semibold text-xs text-stone-900 truncate tracking-tight flex items-center gap-1">
                 <span className="truncate">{workspaceName || 'Notling Workspace'}</span>
@@ -115,7 +118,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className="text-sm shrink-0">{ws.icon || '🚀'}</span>
+                            <WorkspaceAvatar
+                              seed={ws.icon || ws.slug || ws.id || ws.name}
+                              slug={ws.slug}
+                              name={ws.name}
+                              size={20}
+                            />
                             <span className="truncate text-xs">{ws.name}</span>
                           </div>
                           {isActive && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0" />}
@@ -125,8 +133,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   ) : (
                     <div className="px-3 py-2 text-stone-700 font-semibold text-xs flex items-center justify-between bg-stone-50">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm shrink-0">{session?.workspaceIcon || '🚀'}</span>
-                        <span className="truncate">{workspaceName}</span>
+                        <WorkspaceAvatar
+                          seed={session?.workspaceIcon || session?.workspaceSlug || session?.workspaceId || workspaceName}
+                          slug={session?.workspaceSlug}
+                          name={workspaceName}
+                          size={20}
+                        />
+                        <span className="truncate text-xs">{workspaceName || 'Notling Workspace'}</span>
                       </div>
                       <Check className="w-3.5 h-3.5 text-stone-900 shrink-0" />
                     </div>
