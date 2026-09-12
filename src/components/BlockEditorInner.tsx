@@ -34,7 +34,9 @@ import {
   Quote,
   Check,
   AtSign,
+  Image as ImageIcon,
 } from 'lucide-react';
+import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
 
 interface BlockEditorInnerProps {
   page: Page;
@@ -256,9 +258,18 @@ interface CustomActionMenuProps {
   userName?: string | null;
   pageUpdatedAt?: Date | string | null;
   onOpenMentionModal?: () => void;
+  onOpenMediaPicker?: (tab: 'upload' | 'link' | 'unsplash' | 'giphy') => void;
 }
 
-const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfreezeMenu, userName, pageUpdatedAt, onOpenMentionModal }) => {
+const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
+  editor,
+  block,
+  unfreezeMenu,
+  userName,
+  pageUpdatedAt,
+  onOpenMentionModal,
+  onOpenMediaPicker,
+}) => {
   const [search, setSearch] = useState('');
   const [openFlyout, setOpenFlyout] = useState<null | 'turnInto' | 'color'>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -574,6 +585,23 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfr
           <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-amber-700 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">@</kbd>
         </button>
 
+        {/* Media (Upload, Link, Unsplash, GIPHY) */}
+        <button
+          type="button"
+          onClick={() => {
+            finishAction();
+            onOpenMediaPicker?.('upload');
+          }}
+          onMouseEnter={() => setOpenFlyout(null)}
+          className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-blue-50 text-neutral-800 hover:text-blue-900 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <ImageIcon className="w-3.5 h-3.5 text-neutral-500 group-hover:text-blue-700" />
+            <span>Upload or embed media...</span>
+          </div>
+          <span className="text-[10px] font-medium text-stone-400 group-hover:text-blue-700">Media</span>
+        </button>
+
         {/* Copy link to block */}
         <button
           type="button"
@@ -812,6 +840,10 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
 
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [mediaPickerInitialTab, setMediaPickerInitialTab] = useState<'upload' | 'link' | 'unsplash' | 'giphy'>('upload');
+  const [mediaPickerPosition, setMediaPickerPosition] = useState<{ top: number; left: number } | null>(null);
+
   const getCursorPos = () => {
     try {
       const sel = window.getSelection();
@@ -825,6 +857,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     } catch { }
     return { top: 180, left: 320 };
   };
+
+  const handleOpenMediaPicker = useCallback((tab: 'upload' | 'link' | 'unsplash' | 'giphy' = 'upload', pos?: { top: number; left: number }) => {
+    setMediaPickerInitialTab(tab);
+    setMediaPickerPosition(pos || getCursorPos());
+    setIsMediaPickerOpen(true);
+  }, []);
 
   const checkMentionTrigger = useCallback(() => {
     const sel = window.getSelection();
@@ -1270,14 +1308,59 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       setIsMentionModalOpen(true);
     };
 
+    const handleCustomMediaOpen = (e: Event) => {
+      const customEv = e as CustomEvent<{ tab?: 'upload' | 'link' | 'unsplash' | 'giphy'; top?: number; left?: number }>;
+      handleOpenMediaPicker(
+        customEv.detail?.tab || 'upload',
+        customEv.detail?.top ? { top: customEv.detail.top, left: customEv.detail.left || 300 } : getCursorPos()
+      );
+    };
+
     window.addEventListener('keydown', handleKeyDownCapture, true);
     window.addEventListener('open-page-mention', handleCustomOpen);
+    window.addEventListener('open-media-picker', handleCustomMediaOpen);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDownCapture, true);
       window.removeEventListener('open-page-mention', handleCustomOpen);
+      window.removeEventListener('open-media-picker', handleCustomMediaOpen);
     };
-  }, [isMentionModalOpen, mentionSearchQuery, mentionSelectedIndex, page.id, handleSelectMentionPage, handleContentChange, queryClient]);
+  }, [
+    isMentionModalOpen,
+    mentionSearchQuery,
+    mentionSelectedIndex,
+    page.id,
+    handleSelectMentionPage,
+    handleContentChange,
+    queryClient,
+    handleOpenMediaPicker,
+  ]);
+
+  const handleInsertMedia = useCallback(
+    (payload: MediaInsertPayload) => {
+      if (!editor) return;
+      try {
+        const selection = editor.getTextCursorPosition();
+        const currentBlock = selection?.block || editor.document[editor.document.length - 1];
+
+        const newBlock: any = {
+          type: payload.type === 'video' ? 'video' : payload.type === 'audio' ? 'audio' : payload.type === 'file' ? 'file' : 'image',
+          props: {
+            url: payload.url,
+            ...(payload.caption ? { caption: payload.caption } : {}),
+            ...(payload.name ? { name: payload.name } : {}),
+          },
+        };
+
+        editor.insertBlocks([newBlock], currentBlock, 'after');
+        hasUserEditedRef.current = true;
+        handleContentChange();
+      } catch (err) {
+        console.error('Failed to insert media block:', err);
+      }
+    },
+    [editor, handleContentChange]
+  );
 
   // Immediate save on unmount if pending changes exist
   useEffect(() => {
@@ -1535,6 +1618,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
                       setMentionSelectedIndex(0);
                       setIsMentionModalOpen(true);
                     }}
+                    onOpenMediaPicker={handleOpenMediaPicker}
                   />
                 </DragHandleMenu>
               )}
@@ -1552,6 +1636,14 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         selectedIndex={mentionSelectedIndex}
         onHoverIndex={(idx) => setMentionSelectedIndex(idx)}
         position={tooltipPosition}
+      />
+
+      <MediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => setIsMediaPickerOpen(false)}
+        onSelectMedia={handleInsertMedia}
+        initialTab={mediaPickerInitialTab}
+        position={mediaPickerPosition}
       />
     </div>
   );
