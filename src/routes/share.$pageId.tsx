@@ -93,24 +93,52 @@ function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; 
     return () => clearTimeout(timer);
   }, [editor]);
 
-  // Seed viewer blocks if editor is blank and Yjs fragment has no blocks yet
-  useEffect(() => {
-    if (!editor || !parsedBlocks || parsedBlocks.length === 0) return;
-    const currentDoc = editor.document;
-    const isDocEmpty =
-      currentDoc.length === 0 ||
-      (currentDoc.length === 1 &&
-        currentDoc[0].type === 'paragraph' &&
-        (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
-
-    if (isDocEmpty && collab && collab.fragment.length === 0 && currentDoc.length > 0) {
-      try {
-        editor.replaceBlocks(currentDoc, parsedBlocks);
-      } catch (err) {
-        console.error('Failed to populate initial viewer blocks:', err);
-      }
+function isBlocksArrayEmpty(blocks: any[]): boolean {
+  if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return true;
+  if (blocks.length === 1) {
+    const first = blocks[0];
+    const hasNoContent = !first.content || (Array.isArray(first.content) && first.content.length === 0);
+    let hasNoText = true;
+    if (typeof first.content === 'string') {
+      hasNoText = !first.content.trim();
+    } else if (Array.isArray(first.content)) {
+      hasNoText = !first.content.some((item: any) => item?.text && item.text.trim().length > 0);
+    } else if (first.text) {
+      hasNoText = !first.text.trim();
     }
-  }, [editor, collab, parsedBlocks]);
+    const hasNoChildren = !first.children || (Array.isArray(first.children) && first.children.length === 0);
+    if ((first.type === 'paragraph' || !first.type) && hasNoContent && hasNoText && hasNoChildren) {
+      return true;
+    }
+  }
+  return false;
+}
+
+  // Seed viewer blocks if editor is blank and parsedBlocks exists
+  useEffect(() => {
+    if (!editor || !parsedBlocks || isBlocksArrayEmpty(parsedBlocks)) return;
+
+    const seedViewerIfNeeded = () => {
+      const currentDoc = editor.document;
+      if (isBlocksArrayEmpty(currentDoc)) {
+        try {
+          editor.replaceBlocks(currentDoc, parsedBlocks);
+        } catch (err) {
+          console.error('Failed to populate initial viewer blocks:', err);
+        }
+      }
+    };
+
+    seedViewerIfNeeded();
+
+    const timer1 = setTimeout(seedViewerIfNeeded, 50);
+    const timer2 = setTimeout(seedViewerIfNeeded, 200);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [editor, parsedBlocks]);
 
   if (!mounted) {
     return (

@@ -53,6 +53,20 @@ function extractPlainTextFromBlocks(blocks: any[]): string {
   return text.trim();
 }
 
+function isBlocksArrayEmpty(blocks: any[]): boolean {
+  if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return true;
+  if (blocks.length === 1) {
+    const first = blocks[0];
+    const hasNoContent = !first.content || (Array.isArray(first.content) && first.content.length === 0);
+    const hasNoText = !first.text && extractPlainTextFromBlocks(blocks).trim().length === 0;
+    const hasNoChildren = !first.children || (Array.isArray(first.children) && first.children.length === 0);
+    if ((first.type === 'paragraph' || !first.type) && hasNoContent && hasNoText && hasNoChildren) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function getBlockStats(block: any): { words: number; chars: number } {
   let text = '';
   if (Array.isArray(block?.content)) {
@@ -816,48 +830,61 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
 
+  // Reset edit state whenever page ID changes
   useEffect(() => {
     editorRef.current = editor;
     pageIdRef.current = page.id;
+    hasUserEditedRef.current = false;
+    pendingSaveRef.current = false;
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
   }, [editor, page.id]);
 
-  // If editor is blank and Yjs fragment has no blocks yet, seed from database content
+  // If editor document is blank and initialContent exists, seed from database content
   useEffect(() => {
-    if (!editor || !initialContent || initialContent.length === 0) return;
-    const currentDoc = editor.document;
-    const isDocEmpty =
-      currentDoc.length === 0 ||
-      (currentDoc.length === 1 &&
-        currentDoc[0].type === 'paragraph' &&
-        (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
+    if (!editor || !initialContent || isBlocksArrayEmpty(initialContent)) return;
 
-    if (isDocEmpty && collab && collab.fragment.length === 0 && currentDoc.length > 0) {
-      try {
-        editor.replaceBlocks(currentDoc, initialContent);
-      } catch (err) {
-        console.error('Error seeding initial collaborative content:', err);
+    const seedContentIfNeeded = () => {
+      const currentDoc = editor.document;
+      if (isBlocksArrayEmpty(currentDoc)) {
+        try {
+          editor.replaceBlocks(currentDoc, initialContent);
+        } catch (err) {
+          console.error('Error seeding initial collaborative content:', err);
+        }
       }
-    }
-  }, [editor, collab, initialContent]);
+    };
+
+    seedContentIfNeeded();
+
+    const timer1 = setTimeout(seedContentIfNeeded, 50);
+    const timer2 = setTimeout(seedContentIfNeeded, 200);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [editor, initialContent]);
 
   const performSave = async () => {
     try {
       const currentBlocks = editorRef.current.document;
 
       // Critical protection against wiping content on refresh/mount:
-      // Never overwrite existing DB content if current document is empty unless the user explicitly edited.
-      if (initialContent && initialContent.length > 0) {
-        const isCurrentEmpty =
-          currentBlocks.length === 0 ||
-          (currentBlocks.length === 1 &&
-            currentBlocks[0].type === 'paragraph' &&
-            (!currentBlocks[0].content || (Array.isArray(currentBlocks[0].content) && currentBlocks[0].content.length === 0)));
-        if (isCurrentEmpty && !hasUserEditedRef.current) {
-          console.warn('Blocked autosave: editor document is blank and user has not performed explicit edits.');
-          pendingSaveRef.current = false;
-          setSaveStatus('idle');
-          return;
-        }
+      // Never overwrite existing DB content if current document is empty while initial content was non-empty.
+      if (initialContent && !isBlocksArrayEmpty(initialContent) && isBlocksArrayEmpty(currentBlocks)) {
+        console.warn('Blocked autosave: editor document is blank while initial content was non-empty.');
+        pendingSaveRef.current = false;
+        setSaveStatus('idle');
+        return;
+      }
+
+      if (!hasUserEditedRef.current) {
+        pendingSaveRef.current = false;
+        setSaveStatus('idle');
+        return;
       }
 
       const plainText = extractPlainTextFromBlocks(currentBlocks);
@@ -883,6 +910,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     // Only schedule autosave if user actually typed or interacted
     if (!hasUserEditedRef.current) return;
 
+    const currentBlocks = editorRef.current?.document;
+    if (initialContent && !isBlocksArrayEmpty(initialContent) && currentBlocks && isBlocksArrayEmpty(currentBlocks)) {
+      console.warn('Blocked handleContentChange: current blocks are empty while initial content is non-empty.');
+      return;
+    }
+
     setSaveStatus('saving');
     pendingSaveRef.current = true;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -890,7 +923,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     saveTimeoutRef.current = setTimeout(() => {
       performSave();
     }, 500);
-  }, []);
+  }, [initialContent]);
 
   // Immediate save on unmount if pending changes exist
   useEffect(() => {
@@ -1095,7 +1128,6 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     <div
       className="min-h-[420px]"
       onMouseDown={(e) => {
-        hasUserEditedRef.current = true;
         handleMouseDown(e);
       }}
       onKeyDown={() => {

@@ -3,7 +3,6 @@ import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Comment01Icon,
   PlusSignIcon,
   File01Icon,
   ArrowRight01Icon,
@@ -67,7 +66,7 @@ export const Editor: React.FC<EditorProps> = ({
     const sendPing = async () => {
       try {
         await pingPagePresence({ data: { pageId: page.id, role: 'editor', clientId: cid } });
-      } catch {}
+      } catch { }
     };
     sendPing();
     const timer = setInterval(sendPing, 3000);
@@ -151,21 +150,18 @@ export const Editor: React.FC<EditorProps> = ({
           </span>
 
           {/* Visibility pill */}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
-            visibility === 'public'
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public'
               ? 'bg-blue-50 text-blue-700 border-blue-200/80'
               : visibility === 'workspace'
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-              : 'bg-amber-50 text-amber-700 border-amber-200/80'
-          }`}>
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                : 'bg-amber-50 text-amber-700 border-amber-200/80'
+            }`}>
             {visibility === 'public' ? 'Public' : visibility === 'workspace' ? 'Workspace' : 'Private'}
           </span>
         </div>
 
         {/* Right Header Actions */}
         <div className="flex items-center gap-3">
-          <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
-
           <div className="flex items-center gap-2 text-xs">
             {saveStatus === 'saving' ? (
               <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
@@ -179,6 +175,8 @@ export const Editor: React.FC<EditorProps> = ({
               </span>
             ) : null}
           </div>
+          <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
+
 
           {/* Google Docs-Style Share Button */}
           <button
@@ -188,14 +186,6 @@ export const Editor: React.FC<EditorProps> = ({
           >
             <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
             <span>Share</span>
-          </button>
-
-          <button
-            type="button"
-            className="p-1.5 rounded-md text-stone-400 hover:text-stone-800 hover:bg-stone-100 transition-colors cursor-pointer"
-            title="Comments & Discussion"
-          >
-            <HugeiconsIcon icon={Comment01Icon} size={15} />
           </button>
         </div>
       </header>

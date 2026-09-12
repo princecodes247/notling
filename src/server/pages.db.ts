@@ -319,8 +319,38 @@ export async function createNewPage(input: {
   }
 }
 
+function isBlocksContentEmpty(content: any): boolean {
+  if (!content) return true;
+  if (!Array.isArray(content) || content.length === 0) return true;
+  if (content.length === 1) {
+    const block = content[0];
+    const hasNoContent = !block.content || (Array.isArray(block.content) && block.content.length === 0);
+    const hasNoText = !block.text;
+    const hasNoChildren = !block.children || (Array.isArray(block.children) && block.children.length === 0);
+    if ((block.type === 'paragraph' || !block.type) && hasNoContent && hasNoText && hasNoChildren) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export async function savePageContent(input: { pageId: string; content: any; contentText: string }) {
   try {
+    const isIncomingEmpty = isBlocksContentEmpty(input.content) && (!input.contentText || input.contentText.trim().length === 0);
+
+    if (isIncomingEmpty) {
+      const existing = await db
+        .select({ content: pages.content, contentText: pages.contentText })
+        .from(pages)
+        .where(eq(pages.id, input.pageId))
+        .limit(1);
+
+      if (existing.length > 0 && !isBlocksContentEmpty(existing[0].content)) {
+        console.warn(`[Anti-Wipe Shield] Preserved existing DB content for page ${input.pageId}. Rejected empty payload.`);
+        return { id: input.pageId, updatedAt: new Date() };
+      }
+    }
+
     const [updated] = await db
       .update(pages)
       .set({
