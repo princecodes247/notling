@@ -185,7 +185,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         ) : null}
                       </div>
                       <span className="text-[10px] text-neutral-400 truncate block max-w-xs sm:max-w-md md:max-w-lg">
-                        {node.contentText?.trim() || 'No additional content'}
+                        {node.contentText?.trim()
+                          ? node.contentText.trim().replace(/\s+/g, ' ')
+                          : node.icon === '📁' || node.icon === '📂'
+                            ? (node.children && node.children.length > 0 ? `${node.children.length} document${node.children.length > 1 ? 's' : ''}` : 'Empty folder')
+                            : 'Empty document'}
                       </span>
                     </div>
                   </div>

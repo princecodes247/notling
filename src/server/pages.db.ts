@@ -1,6 +1,6 @@
 import { db } from '~/db';
 import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews } from '~/db/schema';
-import { eq, and, or, desc, asc, isNull, lt, ne } from 'drizzle-orm';
+import { eq, and, or, desc, asc, isNull, lt, ne, sql } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
@@ -34,7 +34,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     // Run workspace pages, shared pages, and recently viewed public pages in PARALLEL
     const [workspacePages, sharedPages, recentViews] = await Promise.all([
-      // 1. Workspace pages (filtered at SQL level, contentText omitted for lightweight tree)
+      // 1. Workspace pages (filtered at SQL level, contentText truncated at DB level to 160 chars)
       db
         .select({
           id: pages.id,
@@ -46,6 +46,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           order: pages.order,
           createdAt: pages.createdAt,
           updatedAt: pages.updatedAt,
+          contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
         })
         .from(pages)
         .where(
@@ -70,6 +71,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
               order: pages.order,
               createdAt: pages.createdAt,
               updatedAt: pages.updatedAt,
+              contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
             })
             .from(pageShares)
             .innerJoin(pages, eq(pageShares.pageId, pages.id))
@@ -89,6 +91,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
               visibility: pages.visibility,
               order: pages.order,
               createdAt: pages.createdAt,
+              contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
             })
             .from(pageViews)
             .innerJoin(pages, eq(pageViews.pageId, pages.id))
@@ -137,6 +140,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           order: rv.order,
           createdAt: rv.createdAt,
           updatedAt: rv.viewedAt,
+          contentText: rv.contentText,
           children: [],
           isShared: true,
         };
