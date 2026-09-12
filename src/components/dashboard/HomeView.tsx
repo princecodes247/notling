@@ -170,9 +170,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="text-base shrink-0">{node.icon || '📄'}</span>
                     <div className="min-w-0">
-                      <span className="text-xs font-medium text-neutral-900 group-hover:text-black truncate block">
-                        {node.title || 'Untitled Document'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-neutral-900 group-hover:text-black truncate block">
+                          {node.title || 'Untitled Document'}
+                        </span>
+                        {node.isShared && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200/80 font-medium shrink-0">
+                            Shared
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] text-neutral-400 truncate block max-w-xs sm:max-w-md md:max-w-lg">
                         {node.contentText?.trim() || 'No additional content'}
                       </span>

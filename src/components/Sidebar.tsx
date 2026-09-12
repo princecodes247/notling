@@ -9,6 +9,7 @@ import {
   Settings02Icon,
   PlusSignIcon,
   Logout01Icon,
+  Share01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
@@ -46,6 +47,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
 }) => {
   const { toggleSearch, toggleSidebar } = useUIStore();
+
+  const workspaceNodes = treeNodes.filter((n) => !n.isShared);
+  const sharedNodes = treeNodes.filter((n) => n.isShared === true);
 
   return (
     <aside className="w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative">
@@ -118,7 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Folders</span>
           </div>
           <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 text-stone-500">
-            {treeNodes.filter((n) => n.children && n.children.length > 0).length || treeNodes.length}
+            {workspaceNodes.filter((n) => n.children && n.children.length > 0).length || workspaceNodes.length}
           </span>
         </button>
       </div>
@@ -126,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 4. Folders & Document Tree Section */}
       <div className="flex-1 overflow-y-auto px-2 pt-3 pb-2 flex flex-col min-h-0">
         <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-          <span>Documents & Folders</span>
+          <span>Workspace Pages</span>
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -148,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div className="mt-1 flex flex-col gap-0.5">
-          {treeNodes.length === 0 ? (
+          {workspaceNodes.length === 0 ? (
             <div className="px-3 py-4 text-center text-xs text-neutral-400 flex flex-col items-center gap-1.5">
               <span>No documents yet</span>
               <button
@@ -160,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             </div>
           ) : (
-            treeNodes.map((node) => (
+            workspaceNodes.map((node) => (
               <PageTreeItem
                 key={node.id}
                 node={node}
@@ -173,6 +177,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ))
           )}
         </div>
+
+        {/* 5. Shared With Me Section */}
+        {sharedNodes.length > 0 && (
+          <div className="mt-4 flex flex-col gap-0.5">
+            <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              <div className="flex items-center gap-1.5">
+                <span>Shared with me</span>
+              </div>
+            </div>
+            <div className="mt-0.5 flex flex-col gap-0.5">
+              {sharedNodes.map((node) => (
+                <PageTreeItem
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  onCreateChild={onCreatePage}
+                  onSelectPage={onSelectPage}
+                  onSoftDelete={onSoftDelete}
+                  onUpdateMeta={onUpdateMeta}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 5. Footer: User Avatar + Name, Settings, Version */}

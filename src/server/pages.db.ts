@@ -70,6 +70,34 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       }
     }
 
+    if (session?.email) {
+      const cleanEmail = session.email.trim().toLowerCase();
+      const sharedList = await db
+        .select({
+          id: pages.id,
+          workspaceId: pages.workspaceId,
+          parentId: pages.parentId,
+          title: pages.title,
+          icon: pages.icon,
+          visibility: pages.visibility,
+          order: pages.order,
+          createdAt: pages.createdAt,
+          updatedAt: pages.updatedAt,
+          contentText: pages.contentText,
+        })
+        .from(pageShares)
+        .innerJoin(pages, eq(pageShares.pageId, pages.id))
+        .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)));
+
+      for (const sp of sharedList) {
+        if (!pageMap.has(sp.id)) {
+          const node: PageTreeNode = { ...sp, children: [], isShared: true };
+          pageMap.set(sp.id, node);
+          rootNodes.push(node);
+        }
+      }
+    }
+
     return rootNodes;
   } catch (err) {
     console.error('Error fetching page tree:', err);
@@ -84,22 +112,39 @@ export async function fetchPage(pageId: string) {
     const page = pageList[0];
 
     const session = await getSessionImpl();
-    if (page.visibility === 'public') {
-      return page;
-    }
+    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
+
     if (session && session.workspaceId === page.workspaceId) {
       return page;
     }
-    if (session?.email) {
+
+    if (userEmail) {
       const shares = await db
         .select()
         .from(pageShares)
-        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, session.email.trim().toLowerCase())))
+        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, userEmail)))
         .limit(1);
+
       if (shares.length > 0) {
         return page;
       }
+
+      if (page.visibility === 'public') {
+        try {
+          await db.insert(pageShares).values({
+            pageId,
+            email: userEmail,
+            role: 'viewer',
+          });
+        } catch {}
+        return page;
+      }
     }
+
+    if (page.visibility === 'public') {
+      return page;
+    }
+
     return null;
   } catch (err) {
     console.error('Error fetching page:', err);
@@ -254,6 +299,17 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
 
     if (!accessLevel) {
       return null;
+    }
+
+    // Auto-record pageShare entry for logged-in user accessing shared link
+    if (userEmail && !userShare) {
+      try {
+        await db.insert(pageShares).values({
+          pageId,
+          email: userEmail,
+          role: accessLevel,
+        });
+      } catch {}
     }
 
     const activeUsers = await fetchActivePresence(pageId);

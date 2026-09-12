@@ -12,6 +12,7 @@ export interface PageTreeNode {
   updatedAt: Date;
   contentText?: string | null;
   children: PageTreeNode[];
+  isShared?: boolean;
 }
 
 // TanStack Start Server Functions

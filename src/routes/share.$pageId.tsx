@@ -232,6 +232,13 @@ function PublicDocumentPageRoute() {
 
   const userEmail = sharedData?.userEmail ?? null;
 
+  // Auto-redirect logged-in users directly to their dashboard document view
+  useEffect(() => {
+    if (sharedData?.isLoggedIn && pageId) {
+      navigate({ to: '/dashboard/p/$pageId', params: { pageId } });
+    }
+  }, [sharedData?.isLoggedIn, pageId, navigate]);
+
   // Heartbeat presence ping every 3 seconds
   useEffect(() => {
     if (!pageId || !sharedData) return;
