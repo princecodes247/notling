@@ -1,6 +1,6 @@
 import { db } from '~/db';
 import { uploads } from '~/db/schema';
-import { desc } from 'drizzle-orm';
+import { desc, eq, sum } from 'drizzle-orm';
 
 export interface RecordUploadInput {
   userId?: string | null;
@@ -29,14 +29,35 @@ export async function saveUploadRecord(input: RecordUploadInput) {
   }
 }
 
-export async function fetchRecentUploads(limit: number = 20) {
+export async function getUserStorageUsage(userId: string): Promise<number> {
   try {
-    const records = await db
+    const result = await db
+      .select({ total: sum(uploads.sizeBytes) })
+      .from(uploads)
+      .where(eq(uploads.userId, userId));
+    const totalBytes = result[0]?.total ? Number(result[0].total) : 0;
+    return totalBytes;
+  } catch (err) {
+    console.error('Failed to query user storage usage:', err);
+    return 0;
+  }
+}
+
+export async function fetchRecentUploads(userId?: string | null, limit: number = 20) {
+  try {
+    if (userId) {
+      return await db
+        .select()
+        .from(uploads)
+        .where(eq(uploads.userId, userId))
+        .orderBy(desc(uploads.createdAt))
+        .limit(limit);
+    }
+    return await db
       .select()
       .from(uploads)
       .orderBy(desc(uploads.createdAt))
       .limit(limit);
-    return records;
   } catch (err) {
     console.error('Failed to fetch recent uploads from DB:', err);
     return [];

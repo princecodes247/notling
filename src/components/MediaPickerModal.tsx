@@ -11,6 +11,7 @@ import {
   Film,
   Music,
   FileText,
+  AlertCircle,
 } from 'lucide-react';
 import { uploadMediaFile, getRecentUploads } from '~/server/uploads';
 
@@ -304,9 +305,25 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     return () => clearTimeout(timer);
   }, [giphyQuery, activeTab]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const processFile = (file: File) => {
     if (!file) return;
+
+    setUploadError(null);
+
+    // 1. Client-Side Extension Security Check
+    const FORBIDDEN_EXTENSIONS = ['.exe', '.dll', '.bat', '.cmd', '.sh', '.php', '.py', '.js', '.ts', '.mjs', '.cjs', '.html', '.htm', '.svg', '.vbs', '.scr', '.msi'];
+    const ext = file.name.slice(((file.name.lastIndexOf('.') - 1) >>> 0) + 2).toLowerCase();
+    if (FORBIDDEN_EXTENSIONS.includes('.' + ext)) {
+      setUploadError(`File extension .${ext} is blocked for security reasons.`);
+      return;
+    }
+
+    // 2. Client-Side 15 MB Size Check
+    const MAX_CLIENT_FILE_SIZE = 15 * 1024 * 1024;
+    if (file.size > MAX_CLIENT_FILE_SIZE) {
+      setUploadError(`File size (${(file.size / (1024 * 1024)).toFixed(1)} MB) exceeds the 15 MB limit.`);
+      return;
+    }
 
     const fileType = file.type.startsWith('video/')
       ? 'video'
@@ -317,7 +334,6 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           : 'file';
 
     setIsUploading(true);
-    setUploadError(null);
 
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -357,17 +373,35 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             });
             onClose();
           } else {
-            setUploadError('Failed to upload file');
+            setUploadError('Failed to upload file. Please try again.');
           }
         } catch (err: any) {
           console.error('Error uploading file:', err);
-          setUploadError(err.message || 'Error uploading file');
+          const rawMsg = err?.message || err?.toString() || '';
+          if (rawMsg.includes('quota') || rawMsg.includes('100 MB')) {
+            setUploadError('Workspace storage quota reached (100 MB max). Please delete old files first.');
+          } else if (rawMsg.includes('rate limit')) {
+            setUploadError('Upload rate limit reached (10 files/min). Please wait a moment.');
+          } else if (rawMsg.includes('limit') || rawMsg.includes('exceeds')) {
+            setUploadError(rawMsg);
+          } else if (rawMsg.includes('Authentication required')) {
+            setUploadError('Please sign in to upload files.');
+          } else {
+            setUploadError(rawMsg || 'Error uploading file.');
+          }
         } finally {
           setIsUploading(false);
         }
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processFile(file);
+    }
   };
 
   const handleLinkSubmit = (e: React.FormEvent) => {
@@ -481,12 +515,20 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
         {/* Tab 1: Upload */}
         {activeTab === 'upload' && (
           <div className="flex flex-col gap-4">
-            <div className="flex flex-col items-center justify-center py-6 gap-3.5 border-2 border-dashed border-stone-700/80 rounded-xl bg-stone-900/40 hover:bg-stone-900/80 hover:border-stone-500 transition-all">
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files?.[0];
+                if (file) processFile(file);
+              }}
+              className="flex flex-col items-center justify-center py-6 gap-3.5 border-2 border-dashed border-stone-700/80 rounded-xl bg-stone-900/40 hover:bg-stone-900/80 hover:border-stone-500 transition-all"
+            >
               <input
                 ref={fileInputRef}
                 type="file"
                 onChange={handleFileUpload}
-                accept="image/*,video/*,audio/*,.pdf"
+                accept="image/*,video/*,audio/*,.pdf,.zip,.csv,.txt,.json"
                 className="hidden"
               />
               {isUploading ? (
@@ -511,13 +553,14 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                       Choose a file or drag & drop
                     </span>
                     <span className="text-[11px] text-stone-500">
-                      Supports Images, GIFs, Videos, Audio, or PDFs up to 50MB
+                      Supports Images, GIFs, Videos, Audio, or PDFs up to 15MB (100MB workspace limit)
                     </span>
                   </div>
                   {uploadError && (
-                    <span className="text-xs text-red-400 font-medium px-2.5 py-1 bg-red-950/60 rounded border border-red-800">
-                      {uploadError}
-                    </span>
+                    <div className="flex items-center gap-2 text-xs text-rose-300 font-medium px-3 py-1.5 bg-rose-950/80 rounded-lg border border-rose-800/90 shadow-sm max-w-[90%] text-center">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{uploadError}</span>
+                    </div>
                   )}
                   <button
                     type="button"
