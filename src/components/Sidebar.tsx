@@ -16,6 +16,7 @@ import { PageTreeItem } from './PageTreeItem';
 import { useUIStore } from '~/store/uiStore';
 import type { UserSession, UserWorkspaceItem } from '~/server/auth';
 import { NotlingLogoIcon } from './Icons';
+import { UserAvatar } from './UserAvatar';
 
 
 interface SidebarProps {
@@ -340,13 +341,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* User profile row */}
         <div className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-stone-200/50 transition-colors cursor-pointer group">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-6 h-6 rounded-full overflow-hidden bg-stone-200 shrink-0 border border-stone-300/80">
-              <img
-                src={session?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces'}
-                alt={session?.name || 'User'}
-                className="w-full h-full object-cover"
-              />
-            </div>
+            <UserAvatar
+              avatarUrl={session?.avatarUrl}
+              name={session?.name}
+              size={24}
+              className="border border-stone-300/80 shrink-0"
+            />
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-semibold text-stone-800 truncate">
                 {session?.name ? session.name.split(' ')[0] : 'Workspace Member'}

@@ -17,6 +17,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@avatune/pacovqzz-theme": "^2.1.1",
+    "@avatune/react": "^2.2.0",
     "@aws-sdk/client-s3": "^3.1131.0",
     "@blocknote/core": "^0.23.0",
     "@blocknote/mantine": "^0.23.0",

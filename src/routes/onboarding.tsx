@@ -9,6 +9,10 @@ import {
 } from '@hugeicons/core-free-icons';
 import { completeOnboarding, checkWorkspaceSlug } from '~/server/auth';
 import { NotlingLogoIcon } from '~/components/Icons';
+import { Select, type SelectOption } from '~/components/ui/Select';
+import { Avatar } from '@avatune/react';
+import pacovqzzTheme from '@avatune/pacovqzz-theme/react';
+import { RefreshCw } from 'lucide-react';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -16,12 +20,12 @@ export const Route = createRoute({
   component: OnboardingPage,
 });
 
-const AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=128&h=128&fit=crop&crop=faces',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=128&h=128&fit=crop&crop=faces',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=128&h=128&fit=crop&crop=faces',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=128&h=128&fit=crop&crop=faces',
-  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=128&h=128&fit=crop&crop=faces',
+const ONBOARDING_ROLE_OPTIONS: SelectOption[] = [
+  { value: 'Software Engineer', label: 'Software Engineer / Tech Lead' },
+  { value: 'Product Manager', label: 'Product Manager / Owner' },
+  { value: 'Designer', label: 'UI/UX Designer' },
+  { value: 'Founder / CEO', label: 'Founder / Executive' },
+  { value: 'Researcher / Student', label: 'Researcher / Student' },
 ];
 
 const WORKSPACE_ICONS = ['🚀', '🧠', '⚡', '💡', '🎨', '📚', '🎯', '🔥', '💻', '📦'];
@@ -61,7 +65,7 @@ function OnboardingPage() {
   // Form State
   const [name, setName] = useState('');
   const [role, setRole] = useState('Software Engineer');
-  const [avatarUrl, setAvatarUrl] = useState(AVATARS[0]);
+  const [avatarSeed, setAvatarSeed] = useState(() => 'avatar-' + Math.random().toString(36).substring(2, 9));
   const [workspaceName, setWorkspaceName] = useState('My Workspace');
   const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -114,7 +118,7 @@ function OnboardingPage() {
       const res = await completeOnboarding({
         data: {
           name: name.trim() || 'Workspace Member',
-          avatarUrl,
+          avatarUrl: `avatune:${avatarSeed}`,
           role,
           workspaceName: workspaceName.trim() || 'My Workspace',
           workspaceSlug: workspaceSlug.trim() || 'my-workspace',
@@ -178,20 +182,19 @@ function OnboardingPage() {
 
             {/* Avatar Selector */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-neutral-700">Choose your avatar</label>
-              <div className="flex items-center gap-3">
-                {AVATARS.map((url, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setAvatarUrl(url)}
-                    className={`w-12 h-12 rounded-full overflow-hidden border-2 transition-all cursor-pointer ${
-                      avatarUrl === url ? 'border-black scale-105 shadow-2xs' : 'border-neutral-200 hover:border-neutral-400'
-                    }`}
-                  >
-                    <img src={url} alt="Avatar option" className="w-full h-full object-cover" />
-                  </button>
-                ))}
+              <label className="text-xs font-semibold text-neutral-700">Your Avatar</label>
+              <div className="flex flex-col items-center justify-center gap-3.5 py-4 bg-neutral-50/70 rounded-xl p-4 border border-neutral-200/80">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-neutral-900 shadow-md flex items-center justify-center bg-white shrink-0">
+                  <Avatar theme={pacovqzzTheme} seed={avatarSeed} size={96} />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAvatarSeed('avatar-' + Math.random().toString(36).substring(2, 9))}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-neutral-700 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-lg cursor-pointer transition-all active:scale-95 shadow-2xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-neutral-500" />
+                  <span>Reroll Avatar</span>
+                </button>
               </div>
             </div>
 
@@ -210,17 +213,14 @@ function OnboardingPage() {
             {/* Role */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-neutral-700">Your Primary Role</label>
-              <select
+              <Select
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50 cursor-pointer"
-              >
-                <option value="Software Engineer">Software Engineer / Tech Lead</option>
-                <option value="Product Manager">Product Manager / Owner</option>
-                <option value="Designer">UI/UX Designer</option>
-                <option value="Founder / CEO">Founder / Executive</option>
-                <option value="Researcher / Student">Researcher / Student</option>
-              </select>
+                options={ONBOARDING_ROLE_OPTIONS}
+                onChange={(newRole) => setRole(newRole)}
+                align="left"
+                matchTriggerWidth
+                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm font-normal text-neutral-900 bg-neutral-50/50 hover:bg-neutral-100/60 transition-colors"
+              />
             </div>
 
             <button

@@ -3,6 +3,15 @@ import { Users, Check, Building, Copy, CheckCircle2, AlertTriangle, Trash2, X, L
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession, updateSettings, checkWorkspaceSlug, deleteAccount, deleteWorkspace, type UserSession } from '~/server/auth';
 import { getWorkspaceUsers, inviteWorkspaceMember } from '~/server/pages';
+import { Select, type SelectOption } from '~/components/ui/Select';
+import { UserAvatar } from '../UserAvatar';
+
+const TIMEZONE_OPTIONS: SelectOption[] = [
+  { value: 'Eastern Time (US & Canada) - New York', label: 'Eastern Time (US & Canada) - New York' },
+  { value: 'Pacific Time (US & Canada) - Los Angeles', label: 'Pacific Time (US & Canada) - Los Angeles' },
+  { value: 'Central European Time - Berlin', label: 'Central European Time - Berlin' },
+  { value: 'UTC / Greenwich Mean Time', label: 'UTC / Greenwich Mean Time' },
+];
 
 interface SettingsViewProps {
   session?: UserSession | null;
@@ -291,16 +300,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                     <label className="block text-xs font-medium text-neutral-700 mb-1">
                       Primary Timezone
                     </label>
-                    <select
+                    <Select
                       value={timezone}
-                      onChange={(e) => setTimezone(e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-900 focus:outline-none focus:ring-1 focus:ring-black bg-white"
-                    >
-                      <option>Eastern Time (US & Canada) - New York</option>
-                      <option>Pacific Time (US & Canada) - Los Angeles</option>
-                      <option>Central European Time - Berlin</option>
-                      <option>UTC / Greenwich Mean Time</option>
-                    </select>
+                      options={TIMEZONE_OPTIONS}
+                      onChange={(newTz) => setTimezone(newTz)}
+                      align="left"
+                      matchTriggerWidth
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-900 bg-white hover:bg-neutral-50 transition-colors"
+                    />
                   </div>
                 </div>
 
@@ -516,17 +523,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                     return (
                       <div key={u.id} className="p-3 flex items-center justify-between bg-white hover:bg-neutral-50/50 transition-colors">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          {u.avatarUrl ? (
-                            <img
-                              src={u.avatarUrl}
-                              alt={u.name || u.email}
-                              className="w-7 h-7 rounded-full object-cover border border-neutral-200 shrink-0"
-                            />
-                          ) : (
-                            <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center font-medium text-xs shrink-0">
-                              {(u.name || u.email || 'U')[0].toUpperCase()}
-                            </div>
-                          )}
+                          <UserAvatar avatarUrl={u.avatarUrl} name={u.name || u.email} size={28} />
                           <div className="flex flex-col min-w-0">
                             <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5 truncate">
                               <span className="truncate">{u.name || u.email.split('@')[0]}</span>
@@ -544,17 +541,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                 ) : (
                   <div className="p-3 flex items-center justify-between bg-white">
                     <div className="flex items-center gap-2.5">
-                      {session?.avatarUrl ? (
-                        <img
-                          src={session.avatarUrl}
-                          alt={session.name || 'User'}
-                          className="w-7 h-7 rounded-full object-cover border border-neutral-200"
-                        />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center font-medium text-xs">
-                          {(userName || session?.name || session?.email || 'U')[0].toUpperCase()}
-                        </div>
-                      )}
+                      <UserAvatar avatarUrl={session?.avatarUrl} name={userName || session?.name || session?.email} size={28} />
                       <div>
                         <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
                           <span>{userName || session?.name || 'User'}</span>
