@@ -186,7 +186,7 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
       })
       .from(pagePresence)
       .where(eq(pagePresence.pageId, pageId))
-      .orderBy(desc(pagePresence.lastPing));
+      .orderBy(asc(pagePresence.email), asc(pagePresence.id));
 
     const seen = new Set<string>();
     const result: ActiveUserPresence[] = [];

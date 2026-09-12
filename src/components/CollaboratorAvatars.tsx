@@ -26,8 +26,18 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
         list.push(u);
       }
     }
+    // Stable deterministic sort so avatar order remains completely static
+    list.sort((a, b) => {
+      const isACurrent = currentClientId && a.clientId === currentClientId;
+      const isBCurrent = currentClientId && b.clientId === currentClientId;
+      if (isACurrent && !isBCurrent) return -1;
+      if (!isACurrent && isBCurrent) return 1;
+      const nameA = (a.name || a.email || '').toLowerCase();
+      const nameB = (b.name || b.email || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
     return list;
-  }, [activeUsers]);
+  }, [activeUsers, currentClientId]);
 
   if (uniqueUsers.length === 0) return null;
 
@@ -114,21 +124,28 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               {/* User Title Row */}
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold text-stone-100 tracking-tight">
-                  {hoveredUser.name || hoveredUser.email.split('@')[0]}
+                  {hoveredUser.name || (hoveredUser.email?.includes('@notling.app') ? 'Guest User' : hoveredUser.email.split('@')[0])}
                 </span>
-                {hoveredUser.clientId === currentClientId && (
+                {hoveredUser.clientId === currentClientId ? (
                   <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800 text-stone-300 font-mono font-medium">
                     You
                   </span>
-                )}
+                ) : (hoveredUser.email?.includes('@notling.app') || hoveredUser.email?.startsWith('guest-')) ? (
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800/80 text-stone-400 font-mono font-medium">
+                    Guest
+                  </span>
+                ) : null}
               </div>
 
-              {/* Email Subtext */}
-              {hoveredUser.email && hoveredUser.email !== (hoveredUser.name || hoveredUser.email.split('@')[0]) && (
-                <div className="text-[10px] text-stone-400 font-mono tracking-tight truncate max-w-[160px]">
-                  {hoveredUser.email}
-                </div>
-              )}
+              {/* Email Subtext (only for real authenticated users) */}
+              {hoveredUser.email &&
+                !hoveredUser.email.includes('@notling.app') &&
+                !hoveredUser.email.startsWith('guest-') &&
+                hoveredUser.email !== (hoveredUser.name || hoveredUser.email.split('@')[0]) && (
+                  <div className="text-[10px] text-stone-400 font-mono tracking-tight truncate max-w-[160px]">
+                    {hoveredUser.email}
+                  </div>
+                )}
 
               {/* Role Status Badge */}
               <div className="flex items-center gap-1.5 text-[10px] mt-1.5 pt-1.5 border-t border-stone-800/80">

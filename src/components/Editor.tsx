@@ -15,7 +15,6 @@ import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { AtSign } from 'lucide-react';
 import { getClientId } from '~/lib/collaboration';
 
 interface EditorProps {
@@ -75,7 +74,7 @@ export const Editor: React.FC<EditorProps> = ({
     const handleLeave = () => {
       try {
         removePagePresence({ data: { pageId: page.id, clientId: cid } });
-      } catch {}
+      } catch { }
     };
 
     window.addEventListener('beforeunload', handleLeave);
@@ -164,22 +163,21 @@ export const Editor: React.FC<EditorProps> = ({
           </span>
 
           {/* Visibility pill */}
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
-            visibility === 'public_edit'
-              ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
-              : visibility === 'public'
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public_edit'
+            ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+            : visibility === 'public'
               ? 'bg-blue-50 text-blue-700 border-blue-200/80'
               : visibility === 'workspace'
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-              : 'bg-amber-50 text-amber-700 border-amber-200/80'
-          }`}>
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                : 'bg-amber-50 text-amber-700 border-amber-200/80'
+            }`}>
             {visibility === 'public_edit'
               ? 'Public (Edit)'
               : visibility === 'public'
-              ? 'Public (View)'
-              : visibility === 'workspace'
-              ? 'Workspace'
-              : 'Private'}
+                ? 'Public (View)'
+                : visibility === 'workspace'
+                  ? 'Workspace'
+                  : 'Private'}
           </span>
         </div>
 
@@ -199,25 +197,6 @@ export const Editor: React.FC<EditorProps> = ({
             ) : null}
           </div>
           <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
-
-
-          {/* Mention Page Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-              window.dispatchEvent(
-                new CustomEvent('open-page-mention', {
-                  detail: { top: rect.bottom + 8, left: rect.left - 120 },
-                })
-              );
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100/80 hover:bg-amber-50 text-stone-700 hover:text-amber-900 text-xs font-semibold tracking-tight border border-stone-200/80 transition-all cursor-pointer active:scale-95 shadow-2xs"
-            title="Mention or link another page (@)"
-          >
-            <AtSign className="w-3.5 h-3.5 text-amber-600" />
-            <span>Mention</span>
-          </button>
 
           {/* Google Docs-Style Share Button */}
           <button
@@ -327,7 +306,7 @@ export const Editor: React.FC<EditorProps> = ({
           ) : (
             /* DOCUMENT VIEW: Notion-style BlockNote Editor */
             mounted ? (
-                <BlockEditorInner key={page.id} page={page} />
+              <BlockEditorInner key={page.id} page={page} />
             ) : (
               <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
                 Loading block editor...

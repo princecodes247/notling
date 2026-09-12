@@ -141,7 +141,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span>Trash</span>
           </div>
           {trashCount !== undefined && trashCount > 0 && (
-            <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded border ${activeNav === 'trash' ? 'bg-rose-100/90 text-rose-800 border-rose-300/80' : 'bg-rose-50 text-rose-700 border-rose-200/80'}`}>
+            <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800' : 'text-rose-700'}`}>
               {trashCount}
             </span>
           )}
