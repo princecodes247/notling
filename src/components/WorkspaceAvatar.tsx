@@ -9,6 +9,7 @@ export interface WorkspaceAvatarProps {
   showReroll?: boolean;
   onReroll?: () => void;
   square?: boolean;
+  variant?: 'squircle' | 'circle' | 'square';
   colors?: string[];
 }
 
@@ -74,6 +75,7 @@ export const AvatarBauhaus: React.FC<{
   colors?: string[];
   size?: number;
   square?: boolean;
+  variant?: 'squircle' | 'circle' | 'square';
   title?: boolean;
   className?: string;
 }> = ({
@@ -81,12 +83,15 @@ export const AvatarBauhaus: React.FC<{
   colors = BAUHAUS_COLORS,
   size = 80,
   square = false,
+  variant = 'squircle',
   title = false,
   className = '',
   ...otherProps
 }) => {
     const properties = generateColors(name, colors);
     const maskID = React.useId();
+
+    const rxValue = square || variant === 'square' ? 0 : variant === 'circle' ? SIZE * 2 : SIZE * 0.24;
 
     return (
       <svg
@@ -101,7 +106,7 @@ export const AvatarBauhaus: React.FC<{
       >
         {title && <title>{name}</title>}
         <mask id={maskID} maskUnits="userSpaceOnUse" x={0} y={0} width={SIZE} height={SIZE}>
-          <rect width={SIZE} height={SIZE} rx={square ? undefined : SIZE * 2} fill="#FFFFFF" />
+          <rect width={SIZE} height={SIZE} rx={rxValue} fill="#FFFFFF" />
         </mask>
         <g mask={`url(#${maskID})`}>
           <rect width={SIZE} height={SIZE} fill={properties[0].color} />
@@ -167,21 +172,24 @@ export const WorkspaceAvatar: React.FC<WorkspaceAvatarProps> = ({
   showReroll = false,
   onReroll,
   square = false,
+  variant = 'squircle',
   colors = BAUHAUS_COLORS,
 }) => {
   const effectiveSeed = seed || slug || name || 'default-workspace';
 
+  const roundedClass = square || variant === 'square' ? 'rounded-lg' : variant === 'circle' ? 'rounded-full' : 'rounded-xl';
+
   return (
     <div
       style={{ width: `${size}px`, height: `${size}px` }}
-      className={`relative shrink-0 inline-flex items-center justify-center ${square ? 'rounded-lg' : 'rounded-full'
-        } ${className}`}
+      className={`relative shrink-0 inline-flex items-center justify-center ${roundedClass} ${className}`}
     >
       <AvatarBauhaus
         name={effectiveSeed}
         colors={colors}
         size={size}
         square={square}
+        variant={variant}
       />
 
       {showReroll && onReroll && (

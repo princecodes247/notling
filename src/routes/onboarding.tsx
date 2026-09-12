@@ -69,9 +69,13 @@ function OnboardingPage() {
   const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
   const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
-  const [workspaceRingsSeed, setWorkspaceRingsSeed] = useState(() => 'ws-' + Math.random().toString(36).substring(2, 9));
+  const [workspaceRingsSeedSuffix, setWorkspaceRingsSeedSuffix] = useState<string | null>(null);
   const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('engineering');
+
+  const effectiveRingsSeed = workspaceRingsSeedSuffix
+    ? `${workspaceName.trim() || 'My Workspace'}-${workspaceRingsSeedSuffix}`
+    : (workspaceName.trim() || 'My Workspace');
 
   const slugify = (text: string) =>
     text
@@ -121,7 +125,7 @@ function OnboardingPage() {
           role,
           workspaceName: workspaceName.trim() || 'My Workspace',
           workspaceSlug: workspaceSlug.trim() || 'my-workspace',
-          workspaceIcon: workspaceRingsSeed,
+          workspaceIcon: effectiveRingsSeed,
           workspaceDescription,
           templateId: selectedTemplate,
         },
@@ -158,13 +162,12 @@ function OnboardingPage() {
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center gap-2">
             <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                step === s
-                  ? 'bg-black text-white shadow-2xs'
-                  : step > s
+              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${step === s
+                ? 'bg-black text-white shadow-2xs'
+                : step > s
                   ? 'bg-neutral-200 text-neutral-800'
                   : 'bg-neutral-100 text-neutral-400'
-              }`}
+                }`}
             >
               {step > s ? <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-emerald-600" /> : s}
             </div>
@@ -243,7 +246,7 @@ function OnboardingPage() {
 
         {/* STEP 2: Workspace Setup */}
         {step === 2 && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-2xl font-semibold text-neutral-950 tracking-tight">Customize your workspace</h2>
               <p className="text-xs text-neutral-500 mt-1">
@@ -251,36 +254,36 @@ function OnboardingPage() {
               </p>
             </div>
 
-            {/* Workspace Avatar */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-neutral-700">Workspace Avatar</label>
-              <div className="flex items-center gap-3.5 bg-neutral-50/70 p-3.5 rounded-xl border border-neutral-200/80">
+            {/* Avatar + Workspace Name Row */}
+            <div className="flex items-end gap-3">
+              {/* Compact Avatar with Reroll Badge */}
+              <div className="relative shrink-0 group">
                 <WorkspaceAvatar
-                  seed={workspaceRingsSeed}
-                  name={workspaceName}
-                  size={54}
-                  showReroll
-                  onReroll={() => setWorkspaceRingsSeed('ws-' + Math.random().toString(36).substring(2, 9))}
+                  seed={effectiveRingsSeed}
+                  size={44}
+                  variant="squircle"
                 />
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-semibold text-neutral-900">Bauhaus Avatar Pattern</span>
-                  <span className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">
-                    Custom geometric Bauhaus pattern generated for <span className="font-medium text-neutral-800">{workspaceName || 'your workspace'}</span>. Click the badge to reroll colors and shapes.
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setWorkspaceRingsSeedSuffix(Math.random().toString(36).substring(2, 8))}
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-600 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
+                  title="Reroll avatar pattern"
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                </button>
               </div>
-            </div>
 
-            {/* Workspace Name */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-neutral-700">Workspace Name</label>
-              <input
-                type="text"
-                value={workspaceName}
-                onChange={(e) => handleWorkspaceNameChange(e.target.value)}
-                placeholder="e.g. Acme Engineering Docs"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50"
-              />
+              {/* Workspace Name Input */}
+              <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                <label className="text-xs font-semibold text-neutral-700">Workspace Name</label>
+                <input
+                  type="text"
+                  value={workspaceName}
+                  onChange={(e) => handleWorkspaceNameChange(e.target.value)}
+                  placeholder="e.g. Acme Engineering Docs"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50"
+                />
+              </div>
             </div>
 
             {/* Workspace Slug */}
@@ -365,11 +368,10 @@ function OnboardingPage() {
                 <div
                   key={tmpl.id}
                   onClick={() => setSelectedTemplate(tmpl.id)}
-                  className={`p-4 rounded-lg border transition-all cursor-pointer flex items-start gap-3.5 ${
-                    selectedTemplate === tmpl.id
-                      ? 'border-black bg-neutral-50/80 shadow-2xs'
-                      : 'border-neutral-200 hover:border-neutral-300 bg-white'
-                  }`}
+                  className={`p-4 rounded-lg border transition-all cursor-pointer flex items-start gap-3.5 ${selectedTemplate === tmpl.id
+                    ? 'border-black bg-neutral-50/80 shadow-2xs'
+                    : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                    }`}
                 >
                   <span className="text-2xl p-1 bg-white rounded-lg border border-neutral-200 shrink-0 shadow-2xs">
                     {tmpl.icon}

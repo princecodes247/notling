@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Check, Building, Copy, CheckCircle2, AlertTriangle, Trash2, X, Loader2, User, Lock, Shield } from 'lucide-react';
+import { Users, Check, Building, AlertTriangle, Trash2, X, Loader2, User, Lock } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession, updateSettings, checkWorkspaceSlug, deleteAccount, deleteWorkspace, type UserSession } from '~/server/auth';
 import { getWorkspaceUsers, inviteWorkspaceMember } from '~/server/pages';
@@ -47,7 +47,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
   const [timezone, setTimezone] = useState('Eastern Time (US & Canada) - New York');
 
   const [saved, setSaved] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
@@ -175,12 +174,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateMutation.mutate();
-  };
-
-  const copyToClipboard = (text: string, label: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(label);
-    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
