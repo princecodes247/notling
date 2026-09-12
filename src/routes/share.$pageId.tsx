@@ -11,7 +11,7 @@ import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
 import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
-import { getClientId, useCollaboration } from '~/lib/collaboration';
+import { getClientId } from '~/lib/collaboration';
 import { ySyncPluginKey } from 'y-prosemirror';
 import type { Page } from '~/db/schema';
 
@@ -25,7 +25,6 @@ export const Route = createRoute({
 
 function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
-  const collab = useCollaboration(pageId);
 
   useEffect(() => {
     setMounted(true);
@@ -44,20 +43,10 @@ function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; 
   const editorOptions = useMemo(() => {
     return {
       initialContent: parsedBlocks && parsedBlocks.length > 0 ? parsedBlocks : undefined,
-      collaboration: collab
-        ? {
-            provider: {
-              ...collab.provider,
-              awareness: undefined,
-            },
-            fragment: collab.fragment,
-            user: { name: '', color: 'transparent' },
-          }
-        : undefined,
     };
-  }, [collab, parsedBlocks]);
+  }, [parsedBlocks]);
 
-  const editor = useCreateBlockNote(editorOptions, [pageId]);
+  const editor = useCreateBlockNote(editorOptions, [pageId, content]);
 
   // Prevent any local click/drag/keyboard events on the read-only viewer from modifying the shared document
   useEffect(() => {
@@ -206,7 +195,7 @@ function SharedEditablePage({ page }: { page: Page }) {
 
       {/* Interactive Block Editor */}
       {mounted ? (
-        <BlockEditorInner key={page.id} page={{ ...page, title, icon }} />
+        <BlockEditorInner key={`${page.id}-editable`} page={{ ...page, title, icon }} />
       ) : (
         <div className="min-h-[300px] flex items-center justify-center text-xs text-neutral-400">
           Loading editor...
@@ -227,7 +216,8 @@ function PublicDocumentPageRoute() {
       return await getPublicPage({ data: pageId });
     },
     enabled: !!pageId,
-    staleTime: 5000,
+    staleTime: 1000,
+    refetchInterval: 1500,
   });
 
   const userEmail = sharedData?.userEmail ?? null;

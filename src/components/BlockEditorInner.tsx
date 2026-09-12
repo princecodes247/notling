@@ -914,7 +914,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     return opts;
   }, [initialContent, collab]);
 
-  const editor = useCreateBlockNote(editorOptions, [page.id]);
+  const editor = useCreateBlockNote(editorOptions, [page.id, collab?.doc, collab?.provider]);
 
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);

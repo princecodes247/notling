@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Share01Icon,
@@ -49,6 +50,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [invitedSuccess, setInvitedSuccess] = useState<string | null>(null);
 
+  const queryClient = useQueryClient();
+
   useEffect(() => {
     if (isOpen && page?.id) {
       setLoading(true);
@@ -89,6 +92,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           return [...filtered, { id: newShare.id, email: newShare.email, role: newShare.role as 'editor' | 'viewer' }];
         });
         setInvitedSuccess(`Invitation sent to ${cleanEmail}`);
+        queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
+        queryClient.invalidateQueries({ queryKey: ['page', page.id] });
         setTimeout(() => setInvitedSuccess(null), 3000);
       }
     } catch (err) {
@@ -108,6 +113,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       setPeople((prev) =>
         prev.map((p) => (p.id === shareId ? { ...p, role: newRole } : p))
       );
+      queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
+      queryClient.invalidateQueries({ queryKey: ['page', page.id] });
     } catch (err) {
       console.error('Failed to update share role:', err);
     }
@@ -117,6 +124,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     try {
       await removePageShare({ data: shareId });
       setPeople((prev) => prev.filter((p) => p.id !== shareId));
+      queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
+      queryClient.invalidateQueries({ queryKey: ['page', page.id] });
     } catch (err) {
       console.error('Failed to remove share:', err);
     }

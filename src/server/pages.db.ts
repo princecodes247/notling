@@ -424,8 +424,59 @@ function isBlocksContentEmpty(content: any): boolean {
   return false;
 }
 
+export async function checkCanUserEditPage(pageId: string): Promise<boolean> {
+  try {
+    const pageList = await db
+      .select({ workspaceId: pages.workspaceId, visibility: pages.visibility, isDeleted: pages.isDeleted })
+      .from(pages)
+      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (pageList.length === 0) return false;
+    const page = pageList[0];
+
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    if (session && session.workspaceId === page.workspaceId) {
+      return true;
+    }
+
+    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
+
+    if (userEmail) {
+      const shares = await db
+        .select({ role: pageShares.role })
+        .from(pageShares)
+        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, userEmail)))
+        .limit(1);
+
+      if (shares.length > 0) {
+        return shares[0].role === 'editor';
+      }
+    }
+
+    if (page.visibility === 'public_edit') {
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error('Error checking edit permissions:', err);
+    return false;
+  }
+}
+
 export async function savePageContent(input: { pageId: string; content: any; contentText: string }) {
   try {
+    const canEdit = await checkCanUserEditPage(input.pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked savePageContent for page ${input.pageId}. User has view-only access or edit access was revoked.`);
+      return null;
+    }
+
     const isIncomingEmpty = isBlocksContentEmpty(input.content) && (!input.contentText || input.contentText.trim().length === 0);
 
     if (isIncomingEmpty) {
@@ -460,6 +511,12 @@ export async function savePageContent(input: { pageId: string; content: any; con
 
 export async function savePageMeta(input: { pageId: string; title?: string; icon?: string | null }) {
   try {
+    const canEdit = await checkCanUserEditPage(input.pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked savePageMeta for page ${input.pageId}. User has view-only access or edit access was revoked.`);
+      return null;
+    }
+
     const updatePayload: Record<string, any> = { updatedAt: new Date() };
     if (input.title !== undefined) updatePayload.title = input.title;
     if (input.icon !== undefined) updatePayload.icon = input.icon;
