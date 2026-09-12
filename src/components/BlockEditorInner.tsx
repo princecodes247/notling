@@ -4,7 +4,10 @@ import {
   SideMenuController,
   SideMenu,
   DragHandleMenu,
+  SuggestionMenuController,
+  getDefaultReactSlashMenuItems,
 } from '@blocknote/react';
+import { filterSuggestionItems } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import type { Page } from '~/db/schema';
@@ -35,6 +38,10 @@ import {
   Check,
   AtSign,
   Image as ImageIcon,
+  Video as VideoIcon,
+  FileText as FileTextIcon,
+  Camera as CameraIcon,
+  Sparkles as SparklesIcon,
 } from 'lucide-react';
 import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
 
@@ -254,6 +261,7 @@ const FlyoutSubmenu: React.FC<FlyoutSubmenuProps> = ({
 interface CustomActionMenuProps {
   editor: any;
   block: any;
+  freezeMenu?: () => void;
   unfreezeMenu?: () => void;
   userName?: string | null;
   pageUpdatedAt?: Date | string | null;
@@ -264,6 +272,7 @@ interface CustomActionMenuProps {
 const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
   editor,
   block,
+  freezeMenu,
   unfreezeMenu,
   userName,
   pageUpdatedAt,
@@ -274,6 +283,11 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
   const [openFlyout, setOpenFlyout] = useState<null | 'turnInto' | 'color'>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const flyoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Lock side menu frozen while action menu is open
+  useEffect(() => {
+    freezeMenu?.();
+  }, [freezeMenu]);
 
   // Highlight active block while handle context menu is open
   useEffect(() => {
@@ -954,6 +968,92 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
   const editor = useCreateBlockNote(editorOptions, [page.id, collab?.doc, collab?.provider]);
 
+  const getSlashMenuItems = useCallback(
+    async (query: string) => {
+      const defaultItems = getDefaultReactSlashMenuItems(editor);
+
+      const customMediaItems: any[] = [
+        {
+          title: 'Image',
+          subtext: 'Upload or embed an image, Unsplash photo, or GIF',
+          aliases: ['image', 'img', 'photo', 'picture', 'upload'],
+          group: 'Media',
+          icon: <ImageIcon className="w-4 h-4 text-blue-500" />,
+          onItemClick: () => {
+            window.dispatchEvent(
+              new CustomEvent('open-media-picker', {
+                detail: { tab: 'upload' },
+              })
+            );
+          },
+        },
+        {
+          title: 'Video',
+          subtext: 'Upload or embed a video file',
+          aliases: ['video', 'mp4', 'movie', 'clip'],
+          group: 'Media',
+          icon: <VideoIcon className="w-4 h-4 text-purple-500" />,
+          onItemClick: () => {
+            window.dispatchEvent(
+              new CustomEvent('open-media-picker', {
+                detail: { tab: 'link' },
+              })
+            );
+          },
+        },
+        {
+          title: 'File',
+          subtext: 'Upload any file or document',
+          aliases: ['file', 'pdf', 'doc', 'attachment', 'upload'],
+          group: 'Media',
+          icon: <FileTextIcon className="w-4 h-4 text-amber-500" />,
+          onItemClick: () => {
+            window.dispatchEvent(
+              new CustomEvent('open-media-picker', {
+                detail: { tab: 'upload' },
+              })
+            );
+          },
+        },
+        {
+          title: 'Unsplash',
+          subtext: 'Search and insert high-res photos from Unsplash',
+          aliases: ['unsplash', 'photo', 'picture', 'stock', 'gallery'],
+          group: 'Media',
+          icon: <CameraIcon className="w-4 h-4 text-emerald-500" />,
+          onItemClick: () => {
+            window.dispatchEvent(
+              new CustomEvent('open-media-picker', {
+                detail: { tab: 'unsplash' },
+              })
+            );
+          },
+        },
+        {
+          title: 'GIPHY',
+          subtext: 'Search and insert animated GIFs from GIPHY',
+          aliases: ['giphy', 'gif', 'animation', 'sticker', 'meme'],
+          group: 'Media',
+          icon: <SparklesIcon className="w-4 h-4 text-amber-400" />,
+          onItemClick: () => {
+            window.dispatchEvent(
+              new CustomEvent('open-media-picker', {
+                detail: { tab: 'giphy' },
+              })
+            );
+          },
+        },
+      ];
+
+      const filteredDefaults = defaultItems.filter(
+        (item) => !['Image', 'Video', 'File', 'Audio'].includes(item.title)
+      );
+
+      return filterSuggestionItems([...filteredDefaults, ...customMediaItems], query);
+    },
+    [editor]
+  );
+
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
@@ -1582,8 +1682,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         editor={editor}
         theme="light"
         sideMenu={false}
+        slashMenu={false}
         onChange={handleContentChange}
       >
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={getSlashMenuItems}
+        />
         <SideMenuController
           sideMenu={(props) => (
             <SideMenu
@@ -1609,6 +1714,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
                   <CustomActionMenu
                     editor={props.editor}
                     block={props.block}
+                    freezeMenu={props.freezeMenu}
                     unfreezeMenu={props.unfreezeMenu}
                     userName={userName}
                     pageUpdatedAt={page.updatedAt}

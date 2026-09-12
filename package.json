@@ -17,6 +17,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1131.0",
     "@blocknote/core": "^0.23.0",
     "@blocknote/mantine": "^0.23.0",
     "@blocknote/react": "^0.23.0",

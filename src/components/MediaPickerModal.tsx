@@ -8,6 +8,7 @@ import {
   Loader2,
   ExternalLink,
 } from 'lucide-react';
+import { uploadMediaFile } from '~/server/uploads';
 
 export interface MediaInsertPayload {
   url: string;
@@ -143,6 +144,9 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   const [giphyGifs, setGiphyGifs] = useState(CURATED_GIPHY_GIFS);
   const [loadingGiphy, setLoadingGiphy] = useState(false);
 
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const modalRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -265,17 +269,39 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       ? 'image'
       : 'file';
 
+    setIsUploading(true);
+    setUploadError(null);
+
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
       if (dataUrl) {
-        onSelectMedia({
-          url: dataUrl,
-          type: fileType,
-          name: file.name,
-          caption: file.name,
-        });
-        onClose();
+        try {
+          const res = await uploadMediaFile({
+            data: {
+              fileName: file.name,
+              fileType: file.type || 'application/octet-stream',
+              base64Data: dataUrl,
+            },
+          });
+
+          if (res?.url) {
+            onSelectMedia({
+              url: res.url,
+              type: fileType,
+              name: file.name,
+              caption: file.name,
+            });
+            onClose();
+          } else {
+            setUploadError('Failed to upload file');
+          }
+        } catch (err: any) {
+          console.error('Error uploading file:', err);
+          setUploadError(err.message || 'Error uploading file');
+        } finally {
+          setIsUploading(false);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -403,24 +429,45 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               accept="image/*,video/*,audio/*,.pdf"
               className="hidden"
             />
-            <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center text-stone-300">
-              <Upload className="w-6 h-6 stroke-[1.75]" />
-            </div>
-            <div className="text-center flex flex-col gap-1">
-              <span className="text-xs font-semibold text-stone-200">
-                Choose a file or drag & drop
-              </span>
-              <span className="text-[11px] text-stone-500">
-                Supports Images, GIFs, Videos, Audio, or PDFs up to 50MB
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="mt-1 px-5 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold tracking-tight transition-colors cursor-pointer border border-stone-700 shadow-sm"
-            >
-              Upload file
-            </button>
+            {isUploading ? (
+              <div className="flex flex-col items-center justify-center py-3 gap-3">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+                <div className="text-center flex flex-col gap-1">
+                  <span className="text-xs font-semibold text-stone-200">
+                    Uploading file to storage...
+                  </span>
+                  <span className="text-[11px] text-stone-500">
+                    Uploading your file via R2 Object Storage
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="w-12 h-12 rounded-full bg-stone-800 flex items-center justify-center text-stone-300">
+                  <Upload className="w-6 h-6 stroke-[1.75]" />
+                </div>
+                <div className="text-center flex flex-col gap-1 px-4">
+                  <span className="text-xs font-semibold text-stone-200">
+                    Choose a file or drag & drop
+                  </span>
+                  <span className="text-[11px] text-stone-500">
+                    Supports Images, GIFs, Videos, Audio, or PDFs up to 50MB
+                  </span>
+                </div>
+                {uploadError && (
+                  <span className="text-xs text-red-400 font-medium px-2.5 py-1 bg-red-950/60 rounded border border-red-800">
+                    {uploadError}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-1 px-5 py-2 rounded-lg bg-stone-800 hover:bg-stone-700 text-white text-xs font-semibold tracking-tight transition-colors cursor-pointer border border-stone-700 shadow-sm"
+                >
+                  Upload file
+                </button>
+              </>
+            )}
           </div>
         )}
 
