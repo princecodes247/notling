@@ -172,9 +172,9 @@ export const Editor: React.FC<EditorProps> = ({
                 : 'bg-amber-50 text-amber-700 border-amber-200/80'
             }`}>
             {visibility === 'public_edit'
-              ? 'Public (Edit)'
+              ? 'Anyone can edit'
               : visibility === 'public'
-                ? 'Public (View)'
+                ? 'Anyone with link'
                 : visibility === 'workspace'
                   ? 'Workspace'
                   : 'Private'}

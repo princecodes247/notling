@@ -147,7 +147,7 @@
 .collaboration-cursor__label {
   color: #ffffff !important;
   font-family: var(--font-sans);
-  font-size: 12px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   letter-spacing: -0.01em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -157,12 +157,11 @@
   left: -1px !important;
   z-index: 50;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  /* min-width: 100px; */
-  max-width: fit-content !important;
-  min-height: 20px;
-  width: auto;
-  height: max-content;
-  /* min-width: 100px; */
+  max-width: 130px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
 }
 
 /* Page Mention & Backlink Link Chips in Editor */

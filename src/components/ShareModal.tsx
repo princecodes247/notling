@@ -268,9 +268,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600'}`}>
                   <HugeiconsIcon icon={LockIcon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Restricted</span>
+                <span className="text-xs font-semibold text-stone-900">Private Access</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Only people specifically invited can view.</p>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Only invited people can access this page.</p>
             </button>
 
             {/* Workspace Option */}
@@ -287,9 +287,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
                   <HugeiconsIcon icon={Building01Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Workspace</span>
+                <span className="text-xs font-semibold text-stone-900">Workspace Members</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone in {workspaceName} can view & edit.</p>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Everyone in {workspaceName} can view and edit.</p>
             </button>
 
             {/* Public (View) Option */}
@@ -306,9 +306,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 text-blue-800' : 'bg-stone-100 text-stone-600'}`}>
                   <HugeiconsIcon icon={Globe02Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Public (View Only)</span>
+                <span className="text-xs font-semibold text-stone-900">Anyone with link</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone with the link can view without login.</p>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone on the web with the link can view.</p>
             </button>
 
             {/* Public (Edit) Option */}
@@ -325,9 +325,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 text-indigo-800' : 'bg-stone-100 text-stone-600'}`}>
                   <HugeiconsIcon icon={Globe02Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Public (Can Edit)</span>
+                <span className="text-xs font-semibold text-stone-900">Anyone with link can edit</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone with the link can view & edit page!</p>
+              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone on the web with the link can view & edit.</p>
             </button>
           </div>
         </div>

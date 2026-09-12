@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { ActiveUserPresence } from '~/server/pages.db';
 
@@ -14,6 +14,8 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
   className = '',
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [alignRight, setAlignRight] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const uniqueUsers = useMemo(() => {
     if (!activeUsers || !Array.isArray(activeUsers)) return [];
@@ -39,6 +41,20 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
     return list;
   }, [activeUsers, currentClientId]);
 
+  const handleAvatarHover = (index: number) => {
+    if (containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const distanceToRightEdge = window.innerWidth - rect.right;
+      // If container is within 180px of the right screen edge, anchor tooltip to the right
+      if (distanceToRightEdge < 180 || index >= 2) {
+        setAlignRight(true);
+      } else {
+        setAlignRight(false);
+      }
+    }
+    setHoveredIndex(index);
+  };
+
   if (uniqueUsers.length === 0) return null;
 
   const displayUsers = uniqueUsers.slice(0, 4);
@@ -47,6 +63,7 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
 
   return (
     <div
+      ref={containerRef}
       className={`flex items-center gap-1.5 relative ${className}`}
       onMouseLeave={() => setHoveredIndex(null)}
     >
@@ -60,7 +77,7 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
             <div
               key={userId}
               className="relative"
-              onMouseEnter={() => setHoveredIndex(index)}
+              onMouseEnter={() => handleAvatarHover(index)}
             >
               {/* Avatar Circle */}
               <motion.div
@@ -94,7 +111,7 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
         </span>
       )}
 
-      {/* Shared Single Floating Tooltip Card */}
+      {/* Viewport-Aware Shared Floating Tooltip Card */}
       <AnimatePresence>
         {hoveredUser !== null && hoveredIndex !== null && (
           <motion.div
@@ -105,11 +122,16 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               layout: { type: 'spring', stiffness: 450, damping: 30 },
               opacity: { duration: 0.15 },
             }}
-            className="absolute top-full mt-2.5 bg-stone-900/95 backdrop-blur-md text-white text-[11px] font-sans px-3 py-2 rounded-xl shadow-2xl border border-stone-800 z-50 whitespace-nowrap pointer-events-none min-w-[120px]"
-            style={{
-              left: `${hoveredIndex * 16}px`,
-              transform: 'translateX(-20%)',
-            }}
+            className={`absolute top-full mt-2 bg-stone-900/95 backdrop-blur-md text-white text-[11px] font-sans px-3 py-2.5 rounded-xl shadow-2xl border border-stone-800 z-50 pointer-events-none w-[170px] ${
+              alignRight ? 'right-0' : ''
+            }`}
+            style={
+              alignRight
+                ? undefined
+                : {
+                    left: `${Math.max(0, hoveredIndex * 16 - 12)}px`,
+                  }
+            }
             layout
           >
             {/* Content morph transition */}
@@ -122,35 +144,46 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               className="flex flex-col gap-0.5"
             >
               {/* User Title Row */}
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-stone-100 tracking-tight">
+              <div className="flex items-center justify-between gap-1.5 min-w-0">
+                <span
+                  className="font-semibold text-stone-100 tracking-tight truncate flex-1 min-w-0"
+                  title={hoveredUser.name || hoveredUser.email}
+                >
                   {hoveredUser.name || (hoveredUser.email?.includes('@notling.app') ? 'Guest User' : hoveredUser.email.split('@')[0])}
                 </span>
                 {hoveredUser.clientId === currentClientId ? (
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800 text-stone-300 font-mono font-medium">
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800 text-stone-300 font-mono font-medium shrink-0">
                     You
                   </span>
                 ) : (hoveredUser.email?.includes('@notling.app') || hoveredUser.email?.startsWith('guest-')) ? (
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800/80 text-stone-400 font-mono font-medium">
+                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800/80 text-stone-400 font-mono font-medium shrink-0">
                     Guest
                   </span>
                 ) : null}
               </div>
 
-              {/* Email Subtext (only for real authenticated users) */}
-              {hoveredUser.email &&
+              {/* Fixed Height Email / Status Row to prevent Card Jitter */}
+              <div className="h-4 flex items-center min-w-0">
+                {hoveredUser.email &&
                 !hoveredUser.email.includes('@notling.app') &&
-                !hoveredUser.email.startsWith('guest-') &&
-                hoveredUser.email !== (hoveredUser.name || hoveredUser.email.split('@')[0]) && (
-                  <div className="text-[10px] text-stone-400 font-mono tracking-tight truncate max-w-[160px]">
+                !hoveredUser.email.startsWith('guest-') ? (
+                  <span
+                    className="text-[10px] text-stone-400 font-mono tracking-tight truncate w-full"
+                    title={hoveredUser.email}
+                  >
                     {hoveredUser.email}
-                  </div>
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-stone-500 font-mono tracking-tight">
+                    {hoveredUser.email?.includes('@notling.app') ? 'Anonymous visitor' : 'Workspace member'}
+                  </span>
                 )}
+              </div>
 
               {/* Role Status Badge */}
-              <div className="flex items-center gap-1.5 text-[10px] mt-1.5 pt-1.5 border-t border-stone-800/80">
+              <div className="flex items-center gap-1.5 text-[10px] mt-1 pt-1.5 border-t border-stone-800/80">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full ${
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                     hoveredUser.role === 'editor'
                       ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
                       : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
