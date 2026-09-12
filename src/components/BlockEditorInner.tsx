@@ -808,6 +808,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const navigate = useNavigate();
   const { setSaveStatus, setActivePageId } = useUIStore();
   const [isMentionModalOpen, setIsMentionModalOpen] = useState(false);
+  const [mentionSearchQuery, setMentionSearchQuery] = useState('');
+  const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
 
   const getCursorPos = () => {
@@ -824,10 +826,55 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     return { top: 180, left: 320 };
   };
 
-  const triggerPageMention = (pos?: { top: number; left: number }) => {
-    setTooltipPosition(pos || getCursorPos());
+  const checkMentionTrigger = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || !sel.anchorNode) {
+      return;
+    }
+
+    const textNode =
+      sel.anchorNode.nodeType === Node.TEXT_NODE
+        ? sel.anchorNode
+        : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
+        ? sel.anchorNode.lastChild
+        : null;
+
+    if (!textNode || !textNode.textContent) {
+      return;
+    }
+
+    const text = textNode.textContent;
+    const offset = sel.anchorOffset;
+    const textBefore = text.slice(0, offset);
+
+    const atIdx = textBefore.lastIndexOf('@');
+    if (atIdx === -1) {
+      setIsMentionModalOpen(false);
+      return;
+    }
+
+    const query = textBefore.slice(atIdx + 1);
+    if (/\s/.test(query)) {
+      setIsMentionModalOpen(false);
+      return;
+    }
+
+    let rect: DOMRect | null = null;
+    try {
+      const range = document.createRange();
+      range.setStart(textNode, atIdx);
+      range.setEnd(textNode, offset);
+      rect = range.getBoundingClientRect();
+    } catch { }
+
+    const top = rect && rect.bottom > 0 ? rect.bottom + 6 : 200;
+    const left = rect && rect.left > 0 ? Math.max(16, rect.left) : 300;
+
+    setTooltipPosition({ top, left });
+    setMentionSearchQuery(query);
+    setMentionSelectedIndex(0);
     setIsMentionModalOpen(true);
-  };
+  }, []);
   const queryClient = useQueryClient();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSaveRef = useRef<boolean>(false);
@@ -971,8 +1018,36 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const handleSelectMentionPage = useCallback(
     (targetPage: { id: string; title: string; icon?: string | null }) => {
       try {
-        const linkText = `${targetPage.icon || '📄'} ${targetPage.title}`;
+        const linkText = `@${targetPage.icon || '📄'} ${targetPage.title}`;
         const href = `/dashboard/p/${targetPage.id}`;
+
+        // Consume preceding typed '@query' text from DOM selection / text node
+        const sel = window.getSelection();
+        if (sel && sel.anchorNode) {
+          const textNode =
+            sel.anchorNode.nodeType === Node.TEXT_NODE
+              ? sel.anchorNode
+              : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
+              ? sel.anchorNode.lastChild
+              : null;
+
+          if (textNode && textNode.textContent) {
+            const txt = textNode.textContent;
+            const offset = sel.anchorOffset;
+            const textBefore = txt.slice(0, offset);
+            const atIdx = textBefore.lastIndexOf('@');
+            if (atIdx !== -1) {
+              textNode.textContent = txt.slice(0, atIdx) + txt.slice(offset);
+              try {
+                const range = document.createRange();
+                range.setStart(textNode, atIdx);
+                range.collapse(true);
+                sel.removeAllRanges();
+                sel.addRange(range);
+              } catch { }
+            }
+          }
+        }
 
         const inlineLinkObj = {
           type: 'link' as const,
@@ -992,18 +1067,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           styles: {},
         };
 
-        let inserted = false;
-
         if (editor && typeof (editor as any).insertInlineContent === 'function') {
-          try {
-            (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
-            inserted = true;
-          } catch (e1) {
-            console.warn('insertInlineContent failed, trying insertBlocks fallback:', e1);
-          }
-        }
-
-        if (!inserted && editor) {
+          (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+        } else if (editor) {
           const currentBlock =
             editor.getTextCursorPosition()?.block || editor.document[editor.document.length - 1];
           editor.insertBlocks(
@@ -1018,6 +1084,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           );
         }
 
+        setIsMentionModalOpen(false);
         hasUserEditedRef.current = true;
         handleContentChange();
         queryClient.invalidateQueries({ queryKey: ['pageBacklinks'] });
@@ -1060,9 +1127,68 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     return () => clearInterval(timer);
   }, [page.id]);
 
-  // Listen for '@' key typing & atomic Backspace deletion of mention chips
+  // Listen for text selection changes to check live @ mention context
+  useEffect(() => {
+    const handleSelectionOrInput = () => {
+      setTimeout(() => checkMentionTrigger(), 10);
+    };
+
+    document.addEventListener('selectionchange', handleSelectionOrInput);
+    window.addEventListener('keyup', handleSelectionOrInput);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionOrInput);
+      window.removeEventListener('keyup', handleSelectionOrInput);
+    };
+  }, [checkMentionTrigger]);
+
+  // Handle keyboard navigation for mention popover & atomic Backspace deletion
   useEffect(() => {
     const handleKeyDownCapture = (e: KeyboardEvent) => {
+      if (isMentionModalOpen) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          setMentionSelectedIndex((prev) => prev + 1);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          setMentionSelectedIndex((prev) => Math.max(0, prev - 1));
+          return;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          e.preventDefault();
+          e.stopPropagation();
+          // Find matching page by index
+          const sessionData = queryClient.getQueryData(['session']) as any;
+          const wsId = sessionData?.workspaceId || '';
+          const tree = (queryClient.getQueryData(['pageTree', wsId]) || []) as any[];
+          const allP: any[] = [];
+          function rec(list: any[]) {
+            for (const n of list) {
+              if (n.id !== page.id) allP.push({ id: n.id, title: n.title || 'Untitled Page', icon: n.icon });
+              if (n.children) rec(n.children);
+            }
+          }
+          rec(tree);
+          const filtered = allP.filter((p) => p.title.toLowerCase().includes(mentionSearchQuery.toLowerCase()));
+          const selected = filtered[mentionSelectedIndex] || filtered[0];
+          if (selected) {
+            handleSelectMentionPage(selected);
+          } else {
+            setIsMentionModalOpen(false);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsMentionModalOpen(false);
+          return;
+        }
+      }
+
       if (e.key === 'Backspace' || e.key === 'Delete') {
         const sel = window.getSelection();
         if (sel && sel.anchorNode) {
@@ -1095,61 +1221,24 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           }
         }
       }
-
-      if (isMentionModalOpen) return;
-
-      const isAtKey = e.key === '@' || (e.key === '2' && e.shiftKey) || (e.code === 'Digit2' && e.shiftKey && e.key === '@');
-
-      if (isAtKey) {
-        const target = e.target as HTMLElement | null;
-        const isEditorTarget = target && (
-          target.closest('.bn-editor') ||
-          target.closest('.bn-block-outer') ||
-          target.closest('.bn-block-content') ||
-          target.closest('.bn-inline-content') ||
-          target.contentEditable === 'true' ||
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA'
-        );
-
-        if (isEditorTarget) {
-          triggerPageMention();
-        }
-      }
-    };
-
-    const handleBeforeInputCapture = (e: InputEvent) => {
-      if (isMentionModalOpen) return;
-      if (e.data === '@') {
-        const target = e.target as HTMLElement | null;
-        const isEditorTarget = target && (
-          target.closest('.bn-editor') ||
-          target.closest('.bn-block-outer') ||
-          target.closest('.bn-block-content') ||
-          target.closest('.bn-inline-content') ||
-          target.contentEditable === 'true'
-        );
-        if (isEditorTarget) {
-          triggerPageMention();
-        }
-      }
     };
 
     const handleCustomOpen = (e: Event) => {
       const customEv = e as CustomEvent<{ top?: number; left?: number }>;
-      triggerPageMention(customEv.detail?.top ? { top: customEv.detail.top, left: customEv.detail.left || 300 } : undefined);
+      setTooltipPosition(customEv.detail?.top ? { top: customEv.detail.top, left: customEv.detail.left || 300 } : { top: 200, left: 300 });
+      setMentionSearchQuery('');
+      setMentionSelectedIndex(0);
+      setIsMentionModalOpen(true);
     };
 
     window.addEventListener('keydown', handleKeyDownCapture, true);
-    window.addEventListener('beforeinput', handleBeforeInputCapture as any, true);
     window.addEventListener('open-page-mention', handleCustomOpen);
 
     return () => {
       window.removeEventListener('keydown', handleKeyDownCapture, true);
-      window.removeEventListener('beforeinput', handleBeforeInputCapture as any, true);
       window.removeEventListener('open-page-mention', handleCustomOpen);
     };
-  }, [isMentionModalOpen]);
+  }, [isMentionModalOpen, mentionSearchQuery, mentionSelectedIndex, page.id, handleSelectMentionPage, handleContentChange, queryClient]);
 
   // Immediate save on unmount if pending changes exist
   useEffect(() => {
@@ -1401,7 +1490,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
                     unfreezeMenu={props.unfreezeMenu}
                     userName={userName}
                     pageUpdatedAt={page.updatedAt}
-                    onOpenMentionModal={() => triggerPageMention()}
+                    onOpenMentionModal={() => {
+                      setTooltipPosition(getCursorPos());
+                      setMentionSearchQuery('');
+                      setMentionSelectedIndex(0);
+                      setIsMentionModalOpen(true);
+                    }}
                   />
                 </DragHandleMenu>
               )}
@@ -1415,6 +1509,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         onClose={() => setIsMentionModalOpen(false)}
         onSelectPage={handleSelectMentionPage}
         currentPageId={page.id}
+        searchQuery={mentionSearchQuery}
+        selectedIndex={mentionSelectedIndex}
+        onHoverIndex={(idx) => setMentionSelectedIndex(idx)}
         position={tooltipPosition}
       />
     </div>
