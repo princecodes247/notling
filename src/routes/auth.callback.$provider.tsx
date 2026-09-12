@@ -2,11 +2,19 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { processOAuthCallback } from '~/server/auth';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Loading02Icon, Cancel01Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon } from '@hugeicons/core-free-icons';
+import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
 export const Route = createFileRoute('/auth/callback/$provider')({
   component: OAuthCallbackPage,
 });
+
+const OAUTH_LOADING_WORDS = [
+  'Verifying OAuth credentials...',
+  'Securing session token...',
+  'Syncing user profile...',
+  'Preparing your workspace...',
+];
 
 function OAuthCallbackPage() {
   const { provider } = Route.useParams();
@@ -73,11 +81,8 @@ function OAuthCallbackPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-neutral-900 flex flex-col items-center justify-center p-6 select-none font-sans">
-      <div className="flex flex-col items-center gap-3">
-        <HugeiconsIcon icon={Loading02Icon} size={32} className="animate-spin text-neutral-700" />
-        <span className="text-sm font-medium text-neutral-700">Completing {provider} sign in...</span>
-      </div>
-    </div>
+    <FullScreenWordListLoader
+      words={OAUTH_LOADING_WORDS}
+    />
   );
 }

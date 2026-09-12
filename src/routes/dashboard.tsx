@@ -10,7 +10,14 @@ import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspac
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
+const DASHBOARD_LOADING_WORDS = [
+  'Verifying session credentials...',
+  'Loading workspace hierarchy...',
+  'Syncing recent pages...',
+  'Opening dashboard...',
+];
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardLayout,
@@ -293,9 +300,9 @@ function DashboardLayout() {
 
   if (sessionLoading) {
     return (
-      <div className="h-screen w-screen bg-[#fafaf9] flex items-center justify-center text-xs text-neutral-400 font-sans">
-        Authenticating session...
-      </div>
+      <FullScreenWordListLoader
+        words={DASHBOARD_LOADING_WORDS}
+      />
     );
   }
 

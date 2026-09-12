@@ -14,6 +14,14 @@ import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
 import { getClientId, useCollaboration } from '~/lib/collaboration';
 import { ySyncPluginKey } from 'y-prosemirror';
 import type { Page } from '~/db/schema';
+import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
+
+const SHARED_PAGE_LOADING_WORDS = [
+  'Locating shared document...',
+  'Verifying public access...',
+  'Rendering page blocks...',
+  'Opening document...',
+];
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -292,9 +300,9 @@ function PublicDocumentPageRoute() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen w-full bg-[#fafaf9] flex items-center justify-center text-xs text-neutral-400 font-sans">
-        Loading shared document...
-      </div>
+      <FullScreenWordListLoader
+        words={SHARED_PAGE_LOADING_WORDS}
+      />
     );
   }
 

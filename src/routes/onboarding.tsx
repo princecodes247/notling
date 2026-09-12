@@ -18,6 +18,7 @@ import { Select, type SelectOption } from '~/components/ui/Select';
 import { Avatar } from '@avatune/react';
 import pacovqzzTheme from '@avatune/pacovqzz-theme/react';
 import { WorkspaceAvatar } from '~/components/WorkspaceAvatar';
+import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -31,6 +32,15 @@ const ONBOARDING_ROLE_OPTIONS: SelectOption[] = [
   { value: 'Designer', label: 'UI/UX Designer' },
   { value: 'Founder / CEO', label: 'Founder / Executive' },
   { value: 'Researcher / Student', label: 'Researcher / Student' },
+];
+
+const ONBOARDING_LOADING_WORDS = [
+  'Designing your workspace...',
+  'Crafting page hierarchy...',
+  'Configuring starter templates...',
+  'Setting up permissions...',
+  'Polishing workspace details...',
+  'Opening your workspace...',
 ];
 
 const TEMPLATES = [
@@ -152,6 +162,14 @@ function OnboardingPage() {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <FullScreenWordListLoader
+        words={ONBOARDING_LOADING_WORDS}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafaf9] text-neutral-900 flex flex-col items-center justify-center p-6 select-none font-sans relative">
