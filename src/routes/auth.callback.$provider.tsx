@@ -32,10 +32,16 @@ function OAuthCallbackPage() {
       });
 
       if (res.success && res.session) {
+        const returnUrl = sessionStorage.getItem('notling_auth_redirect');
         if (!res.session.isOnboarded) {
           navigate({ to: '/onboarding' });
         } else {
-          navigate({ to: '/dashboard' });
+          sessionStorage.removeItem('notling_auth_redirect');
+          if (returnUrl) {
+            window.location.href = returnUrl;
+          } else {
+            navigate({ to: '/dashboard' });
+          }
         }
       } else {
         setError(res.error || 'Failed to complete OAuth login.');

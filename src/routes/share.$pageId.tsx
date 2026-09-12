@@ -276,6 +276,13 @@ function PublicDocumentPageRoute() {
     };
   }, [pageId, sharedData?.accessLevel, userEmail]);
 
+  const handleSignInToEdit = () => {
+    if (pageId) {
+      sessionStorage.setItem('notling_auth_redirect', `/share/${pageId}`);
+    }
+    navigate({ to: '/login', search: pageId ? ({ redirect: `/share/${pageId}` } as any) : undefined });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen w-full bg-[#fafaf9] flex items-center justify-center text-xs text-neutral-400 font-sans">
@@ -297,7 +304,7 @@ function PublicDocumentPageRoute() {
           </p>
           <button
             type="button"
-            onClick={() => navigate({ to: '/login' })}
+            onClick={handleSignInToEdit}
             className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
           >
             <span>Sign in to Notling</span>
@@ -366,7 +373,7 @@ function PublicDocumentPageRoute() {
           ) : (
             <button
               type="button"
-              onClick={() => navigate({ to: '/login' })}
+              onClick={handleSignInToEdit}
               className="px-4 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
             >
               Sign in
@@ -381,6 +388,28 @@ function PublicDocumentPageRoute() {
           <SharedEditablePage page={page as any} />
         ) : (
           <div className="w-full flex flex-col">
+            {/* Prompt for unauthenticated viewers if page is set to public_edit */}
+            {page.visibility === 'public_edit' && !isLoggedIn && (
+              <div className="mb-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                    <HugeiconsIcon icon={LockIcon} size={16} />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-amber-900 block text-xs">Sign in to edit this document</span>
+                    <span className="text-amber-700 text-[11px]">Editing is enabled for all signed-in users.</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSignInToEdit}
+                  className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
+                >
+                  Sign in to Edit
+                </button>
+              </div>
+            )}
+
             <div className="text-4xl mb-4">{page.icon || '📄'}</div>
             <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-8">
               {page.title || 'Untitled Document'}

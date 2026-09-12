@@ -326,7 +326,7 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
     } else if (userShare) {
       accessLevel = userShare.role;
     } else if (page.visibility === 'public_edit') {
-      accessLevel = 'editor';
+      accessLevel = session ? 'editor' : 'viewer';
     } else if (page.visibility === 'public') {
       accessLevel = 'viewer';
     }
@@ -459,7 +459,7 @@ export async function checkCanUserEditPage(pageId: string): Promise<boolean> {
     }
 
     if (page.visibility === 'public_edit') {
-      return true;
+      return !!session;
     }
 
     return false;

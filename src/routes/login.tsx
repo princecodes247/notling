@@ -1,5 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getOAuthUrl } from '~/server/auth';
 import { Route as rootRoute } from './__root';
 import { NotlingLogoIcon } from '~/components/Icons';
@@ -14,10 +14,26 @@ function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
 
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      if (redirect) {
+        sessionStorage.setItem('notling_auth_redirect', redirect);
+      }
+    } catch {}
+  }, []);
+
   const handleRealOAuth = async (provider: 'google' | 'github') => {
     setLoadingProvider(provider);
     setError(null);
     try {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      if (redirect) {
+        sessionStorage.setItem('notling_auth_redirect', redirect);
+      }
+
       const redirectUri = `${window.location.origin}/auth/callback/${provider}`;
       const { url } = await getOAuthUrl({ data: { provider, redirectUri } });
       window.location.href = url;

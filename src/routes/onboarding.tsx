@@ -128,7 +128,13 @@ function OnboardingPage() {
       });
 
       if (res.success) {
-        navigate({ to: '/dashboard' });
+        const returnUrl = sessionStorage.getItem('notling_auth_redirect');
+        sessionStorage.removeItem('notling_auth_redirect');
+        if (returnUrl) {
+          window.location.href = returnUrl;
+        } else {
+          navigate({ to: '/dashboard' });
+        }
       } else {
         alert(res.error || 'Failed to complete onboarding.');
       }
