@@ -2,6 +2,45 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowDown01Icon, CheckmarkCircle01Icon } from '@hugeicons/core-free-icons';
+import { cva, type VariantProps } from 'class-variance-authority';
+
+export const selectTriggerVariants = cva(
+  'inline-flex items-center justify-between gap-1.5 rounded-md focus:outline-none cursor-pointer transition-all active:scale-[0.98]',
+  {
+    variants: {
+      size: {
+        sm: 'px-2.5 py-1 text-[11px] font-semibold',
+        md: 'px-3 py-1.5 text-xs font-medium',
+        lg: 'px-3.5 py-2 text-sm font-medium rounded-lg',
+      },
+      variant: {
+        default: 'bg-stone-100 text-stone-700 hover:bg-stone-200/70 border border-stone-200/80',
+        subtle: 'bg-transparent text-stone-700 hover:bg-stone-100 border border-transparent',
+        outline: 'bg-white text-stone-900 hover:bg-stone-50 border border-stone-200',
+      },
+    },
+    defaultVariants: {
+      size: 'sm',
+      variant: 'default',
+    },
+  }
+);
+
+export const selectOptionVariants = cva(
+  'w-full text-left rounded-lg flex items-center justify-between transition-colors cursor-pointer',
+  {
+    variants: {
+      size: {
+        sm: 'px-2.5 py-1.5 text-[11px]',
+        md: 'px-3 py-2 text-xs',
+        lg: 'px-3.5 py-2.5 text-sm',
+      },
+    },
+    defaultVariants: {
+      size: 'sm',
+    },
+  }
+);
 
 export interface SelectOption<T extends string = string> {
   value: T;
@@ -9,7 +48,8 @@ export interface SelectOption<T extends string = string> {
   description?: string;
 }
 
-export interface SelectProps<T extends string = string> {
+export interface SelectProps<T extends string = string>
+  extends VariantProps<typeof selectTriggerVariants> {
   value: T;
   options: SelectOption<T>[];
   onChange: (newValue: T) => void;
@@ -31,6 +71,8 @@ export function Select<T extends string = string>({
   matchTriggerWidth = false,
   align = 'right',
   placeholder = 'Select option...',
+  size = 'sm',
+  variant = 'default',
 }: SelectProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number }>({
@@ -104,6 +146,7 @@ export function Select<T extends string = string>({
   }, [isOpen]);
 
   const isFullWidth = className.includes('w-full');
+  const iconSize = size === 'lg' ? 14 : size === 'md' ? 12 : 10;
 
   return (
     <div className={`text-left select-none ${isFullWidth ? 'w-full' : 'inline-block'}`}>
@@ -112,12 +155,12 @@ export function Select<T extends string = string>({
         type="button"
         disabled={disabled}
         onClick={toggleDropdown}
-        className={`inline-flex items-center justify-between gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200/70 border border-stone-200/80 rounded-md focus:outline-none cursor-pointer transition-all active:scale-[0.98] ${className}`}
+        className={selectTriggerVariants({ size, variant, className })}
       >
         <span className="truncate">{currentOption?.label || value || placeholder}</span>
         <HugeiconsIcon
           icon={ArrowDown01Icon}
-          size={10}
+          size={iconSize}
           className={`text-stone-500 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
         />
       </button>
@@ -146,18 +189,18 @@ export function Select<T extends string = string>({
                     onChange(option.value);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                  className={`${selectOptionVariants({ size })} ${
                     isSelected ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-700 hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex flex-col min-w-0">
-                    <span className="text-[11px] font-medium truncate">{option.label}</span>
+                    <span className="truncate">{option.label}</span>
                     {option.description && (
                       <span className="text-[10px] text-stone-400 font-normal truncate">{option.description}</span>
                     )}
                   </div>
                   {isSelected && (
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={12} className="text-stone-900 shrink-0 ml-1" />
+                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={iconSize + 2} className="text-stone-900 shrink-0 ml-1" />
                   )}
                 </button>
               );

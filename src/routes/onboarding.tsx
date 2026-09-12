@@ -172,42 +172,42 @@ function OnboardingPage() {
       <div className="w-full max-w-xl bg-white border border-neutral-200/90 rounded-xl p-8 shadow-xs flex flex-col">
         {/* STEP 1: Profile Setup */}
         {step === 1 && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-5">
             <div>
               <h2 className="text-2xl font-semibold text-neutral-950 tracking-tight">Set up your profile</h2>
               <p className="text-xs text-neutral-500 mt-1">
-                Tell us how you would like to be identified across documents and team collaboration.
+                How you'll show up to your team
               </p>
             </div>
 
-            {/* Avatar Selector */}
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-neutral-700">Your Avatar</label>
-              <div className="flex flex-col items-center justify-center gap-3.5 py-4 bg-neutral-50/70 rounded-xl p-4 border border-neutral-200/80">
-                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-neutral-900 shadow-md flex items-center justify-center bg-white shrink-0">
-                  <Avatar theme={pacovqzzTheme} seed={avatarSeed} size={96} />
+            {/* Avatar + Full Name Row */}
+            <div className="flex items-end gap-3">
+              {/* Compact Avatar with Reroll Badge */}
+              <div className="relative shrink-0 group">
+                <div className="w-11 h-11 rounded-full overflow-hidden border border-neutral-300 bg-neutral-100 flex items-center justify-center shadow-2xs">
+                  <Avatar theme={pacovqzzTheme} seed={avatarSeed} size={44} />
                 </div>
                 <button
                   type="button"
                   onClick={() => setAvatarSeed('avatar-' + Math.random().toString(36).substring(2, 9))}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold text-neutral-700 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-lg cursor-pointer transition-all active:scale-95 shadow-2xs"
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-600 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
+                  title="Reroll avatar"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-neutral-500" />
-                  <span>Reroll Avatar</span>
+                  <RefreshCw className="w-2.5 h-2.5" />
                 </button>
               </div>
-            </div>
 
-            {/* Full Name */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-neutral-700">Your Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Scotty Prince"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50"
-              />
+              {/* Full Name Input */}
+              <div className="flex-1 flex flex-col gap-1.5 min-w-0">
+                <label className="text-xs font-semibold text-neutral-700">Your Full Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Scotty Prince"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50"
+                />
+              </div>
             </div>
 
             {/* Role */}
@@ -217,9 +217,11 @@ function OnboardingPage() {
                 value={role}
                 options={ONBOARDING_ROLE_OPTIONS}
                 onChange={(newRole) => setRole(newRole)}
+                size="lg"
+                variant="outline"
                 align="left"
                 matchTriggerWidth
-                className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm font-normal text-neutral-900 bg-neutral-50/50 hover:bg-neutral-100/60 transition-colors"
+                className="w-full bg-neutral-50/50 hover:bg-neutral-100/60"
               />
             </div>
 

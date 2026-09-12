@@ -304,9 +304,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                       value={timezone}
                       options={TIMEZONE_OPTIONS}
                       onChange={(newTz) => setTimezone(newTz)}
+                      size="md"
+                      variant="outline"
                       align="left"
                       matchTriggerWidth
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs text-neutral-900 bg-white hover:bg-neutral-50 transition-colors"
+                      className="w-full bg-white hover:bg-neutral-50"
                     />
                   </div>
                 </div>
