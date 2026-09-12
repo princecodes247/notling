@@ -97,7 +97,15 @@ export async function fetchPage(pageId: string) {
   }
 }
 
-export async function fetchPublicPage(pageId: string) {
+export interface SharedPageData {
+  page: typeof pages.$inferSelect;
+  accessLevel: 'editor' | 'viewer';
+  isLoggedIn: boolean;
+  userEmail: string | null;
+  isWorkspaceMember: boolean;
+}
+
+export async function fetchPublicPage(pageId: string): Promise<SharedPageData | null> {
   try {
     const pageList = await db
       .select()
@@ -108,11 +116,45 @@ export async function fetchPublicPage(pageId: string) {
     if (pageList.length === 0) return null;
     const page = pageList[0];
 
-    if (page.visibility !== 'public') {
+    const session = await getSessionImpl();
+    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
+
+    let userShare: { role: 'viewer' | 'editor' } | null = null;
+    if (userEmail) {
+      const shares = await db
+        .select({ role: pageShares.role })
+        .from(pageShares)
+        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, userEmail)))
+        .limit(1);
+
+      if (shares.length > 0) {
+        userShare = shares[0];
+      }
+    }
+
+    const isWorkspaceMember = !!(session && session.workspaceId === page.workspaceId);
+
+    let accessLevel: 'editor' | 'viewer' | null = null;
+
+    if (isWorkspaceMember) {
+      accessLevel = 'editor';
+    } else if (userShare) {
+      accessLevel = userShare.role;
+    } else if (page.visibility === 'public') {
+      accessLevel = 'viewer';
+    }
+
+    if (!accessLevel) {
       return null;
     }
 
-    return page;
+    return {
+      page,
+      accessLevel,
+      isLoggedIn: !!session,
+      userEmail,
+      isWorkspaceMember,
+    };
   } catch (err) {
     console.error('Error fetching public page:', err);
     return null;
