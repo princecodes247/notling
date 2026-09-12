@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { ActiveUserPresence } from '~/server/pages.db';
 
@@ -15,10 +15,24 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  if (!activeUsers || activeUsers.length === 0) return null;
+  const uniqueUsers = useMemo(() => {
+    if (!activeUsers || !Array.isArray(activeUsers)) return [];
+    const seen = new Set<string>();
+    const list: ActiveUserPresence[] = [];
+    for (const u of activeUsers) {
+      const key = (u.email || u.name || u.id || u.clientId || '').toLowerCase().trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        list.push(u);
+      }
+    }
+    return list;
+  }, [activeUsers]);
 
-  const displayUsers = activeUsers.slice(0, 4);
-  const extraCount = activeUsers.length - displayUsers.length;
+  if (uniqueUsers.length === 0) return null;
+
+  const displayUsers = uniqueUsers.slice(0, 4);
+  const extraCount = uniqueUsers.length - displayUsers.length;
   const hoveredUser = hoveredIndex !== null ? displayUsers[hoveredIndex] : null;
 
   return (

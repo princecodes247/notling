@@ -186,16 +186,25 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
       })
       .from(pagePresence)
       .where(eq(pagePresence.pageId, pageId))
-      .orderBy(asc(pagePresence.email), asc(pagePresence.id));
+      .orderBy(desc(pagePresence.lastPing));
 
-    return list.map((item) => {
+    const seen = new Set<string>();
+    const result: ActiveUserPresence[] = [];
+
+    for (const item of list) {
       const [baseEmail, clientTag] = item.email.split('#');
-      return {
-        ...item,
-        email: baseEmail,
-        clientId: clientTag || item.id,
-      };
-    });
+      const cleanKey = baseEmail.trim().toLowerCase();
+      if (cleanKey && !seen.has(cleanKey)) {
+        seen.add(cleanKey);
+        result.push({
+          ...item,
+          email: baseEmail,
+          clientId: clientTag || item.id,
+        });
+      }
+    }
+
+    return result;
   } catch (err) {
     console.error('Error fetching active presence:', err);
     return [];
