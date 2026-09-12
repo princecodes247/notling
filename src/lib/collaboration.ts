@@ -92,7 +92,8 @@ function releaseCollab(pageId: string) {
 export function useCollaboration(
   pageId: string,
   userDisplayName?: string | null,
-  userIdentifier?: string | null
+  userIdentifier?: string | null,
+  isViewer: boolean = false
 ): CollaborationConfig | null {
   const collabData = useMemo(() => {
     if (typeof window === 'undefined' || !pageId) return null;
@@ -111,16 +112,35 @@ export function useCollaboration(
   useEffect(() => {
     if (!collabData) return;
     const clientId = getClientId();
-    const name = userDisplayName || userIdentifier || `User ${clientId.slice(-4)}`;
+    const name = userDisplayName || userIdentifier || (isViewer ? `Guest ${clientId.slice(-4)}` : `User ${clientId.slice(-4)}`);
     const color = getCursorColor(userIdentifier || userDisplayName || clientId);
-    const userInfo = { name, color };
+    const userInfo = { name, color, isViewer };
     collabData.provider.awareness.setLocalStateField('user', userInfo);
-  }, [collabData, userDisplayName, userIdentifier]);
+
+    if (isViewer) {
+      collabData.provider.awareness.setLocalStateField('cursor', null);
+
+      const preventCursorBroadcast = () => {
+        const localState = collabData.provider.awareness.getLocalState();
+        if (localState && localState.cursor !== null && localState.cursor !== undefined) {
+          collabData.provider.awareness.setLocalStateField('cursor', null);
+        }
+      };
+
+      collabData.provider.awareness.on('change', preventCursorBroadcast);
+      collabData.provider.awareness.on('update', preventCursorBroadcast);
+
+      return () => {
+        collabData.provider.awareness.off('change', preventCursorBroadcast);
+        collabData.provider.awareness.off('update', preventCursorBroadcast);
+      };
+    }
+  }, [collabData, userDisplayName, userIdentifier, isViewer]);
 
   if (!collabData) return null;
 
   const clientId = getClientId();
-  const name = userDisplayName || userIdentifier || `User ${clientId.slice(-4)}`;
+  const name = userDisplayName || userIdentifier || (isViewer ? `Guest ${clientId.slice(-4)}` : `User ${clientId.slice(-4)}`);
   const color = getCursorColor(userIdentifier || userDisplayName || clientId);
 
   return {

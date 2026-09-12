@@ -11,7 +11,7 @@ import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
 import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
-import { getClientId } from '~/lib/collaboration';
+import { getClientId, useCollaboration } from '~/lib/collaboration';
 import { ySyncPluginKey } from 'y-prosemirror';
 import type { Page } from '~/db/schema';
 
@@ -23,7 +23,7 @@ export const Route = createRoute({
 
 
 
-function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; userEmail?: string | null }) {
+function PublicBlockViewer({ pageId, content, userEmail }: { pageId: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -40,13 +40,26 @@ function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; 
     return undefined;
   }, [content]);
 
+  const cid = getClientId();
+  const viewerName = userEmail ? (userEmail.includes('@') ? userEmail.split('@')[0] : userEmail) : `Guest ${cid.slice(-4)}`;
+  const collab = useCollaboration(pageId, viewerName, userEmail || cid, true);
+
   const editorOptions = useMemo(() => {
-    return {
+    const opts: any = {
       initialContent: parsedBlocks && parsedBlocks.length > 0 ? parsedBlocks : undefined,
     };
-  }, [parsedBlocks]);
+    if (collab) {
+      opts.collaboration = {
+        provider: collab.provider,
+        fragment: collab.fragment,
+        user: collab.user,
+        showCursorLabels: collab.showCursorLabels,
+      };
+    }
+    return opts;
+  }, [parsedBlocks, collab]);
 
-  const editor = useCreateBlockNote(editorOptions, [pageId, content]);
+  const editor = useCreateBlockNote(editorOptions, [pageId, content, collab?.doc, collab?.provider]);
 
   // Prevent any local click/drag/keyboard events on the read-only viewer from modifying the shared document
   useEffect(() => {
