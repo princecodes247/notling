@@ -857,7 +857,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         sideMenuView.__dragOriginPatched = true;
         Object.defineProperty(sideMenuView, 'isDragOrigin', {
           get: () => false,
-          set: () => {},
+          set: () => { },
           configurable: true,
         });
       }
@@ -912,6 +912,40 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     [editor, handleContentChange]
   );
 
+  // Position cursor at the end of line on mousedown to prevent ProseMirror from placing cursor at start
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const blockEl =
+      target.closest('[data-id]') ||
+      target.closest('.bn-block-outer') ||
+      target.closest('.bn-block-content');
+    if (!blockEl) return;
+
+    const blockId =
+      blockEl.getAttribute('data-id') ||
+      blockEl.closest('[data-id]')?.getAttribute('data-id');
+    if (!blockId || !editor) return;
+
+    const inlineEl =
+      blockEl.querySelector('.bn-inline-content') ||
+      blockEl.querySelector('[data-content-type]');
+    if (!inlineEl) return;
+
+    const rect = inlineEl.getBoundingClientRect();
+    if (e.clientX > rect.right + 4) {
+      e.preventDefault();
+      try {
+        const block = editor.getBlock(blockId);
+        if (block) {
+          editor.setTextCursorPosition(block, 'end');
+          editor.focus();
+        }
+      } catch {
+        // fallback
+      }
+    }
+  };
+
   // Global window drag & drop event listeners in capture phase to take full control
   useEffect(() => {
     const handleDragStart = (_e: DragEvent) => {
@@ -958,7 +992,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       }
       try {
         editor.sideMenu?.blockDragEnd?.();
-      } catch {}
+      } catch { }
       draggedBlockRef.current = null;
     };
 
@@ -986,7 +1020,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   }, [editor, executeDrop]);
 
   return (
-    <div className="min-h-[420px]">
+    <div className="min-h-[420px]" onMouseDown={handleMouseDown}>
       <BlockNoteView
         editor={editor}
         theme="light"
