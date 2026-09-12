@@ -6,22 +6,21 @@ import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
 
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 async function resolveWorkspaceId(providedWorkspaceId?: string): Promise<string | null> {
-  if (providedWorkspaceId) {
-    try {
-      const existing = await db
-        .select({ id: workspaces.id })
-        .from(workspaces)
-        .where(eq(workspaces.id, providedWorkspaceId))
-        .limit(1);
-      if (existing.length > 0) {
-        return existing[0].id;
-      }
-    } catch {
-      // Invalid UUID or missing
-    }
+  if (!providedWorkspaceId) return null;
+  if (UUID_REGEX.test(providedWorkspaceId)) return providedWorkspaceId;
+  try {
+    const existing = await db
+      .select({ id: workspaces.id })
+      .from(workspaces)
+      .where(or(eq(workspaces.id, providedWorkspaceId), eq(workspaces.slug, providedWorkspaceId)))
+      .limit(1);
+    return existing[0]?.id ?? null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]> {
@@ -30,50 +29,13 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
     if (!targetWorkspaceId) return [];
 
     const session = await getSessionImpl();
+    const cleanEmail = session?.email?.trim().toLowerCase();
+    const isOwnerOrMember = session?.workspaceId === targetWorkspaceId;
 
-    const allPages = await db
-      .select({
-        id: pages.id,
-        workspaceId: pages.workspaceId,
-        parentId: pages.parentId,
-        title: pages.title,
-        icon: pages.icon,
-        visibility: pages.visibility,
-        order: pages.order,
-        createdAt: pages.createdAt,
-        updatedAt: pages.updatedAt,
-        contentText: pages.contentText,
-      })
-      .from(pages)
-      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false)))
-      .orderBy(asc(pages.order), asc(pages.createdAt));
-
-    const visiblePages = allPages.filter((page) => {
-      if (session && session.workspaceId === page.workspaceId) {
-        return true;
-      }
-      return page.visibility === 'public';
-    });
-
-    const pageMap = new Map<string, PageTreeNode>();
-    const rootNodes: PageTreeNode[] = [];
-
-    for (const page of visiblePages) {
-      pageMap.set(page.id, { ...page, children: [] });
-    }
-
-    for (const page of visiblePages) {
-      const node = pageMap.get(page.id)!;
-      if (page.parentId && pageMap.has(page.parentId)) {
-        pageMap.get(page.parentId)!.children.push(node);
-      } else {
-        rootNodes.push(node);
-      }
-    }
-
-    if (session?.email) {
-      const cleanEmail = session.email.trim().toLowerCase();
-      const sharedList = await db
+    // Run workspace pages, shared pages, and recently viewed public pages in PARALLEL
+    const [workspacePages, sharedPages, recentViews] = await Promise.all([
+      // 1. Workspace pages (filtered at SQL level, contentText omitted for lightweight tree)
+      db
         .select({
           id: pages.id,
           workspaceId: pages.workspaceId,
@@ -84,77 +46,112 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           order: pages.order,
           createdAt: pages.createdAt,
           updatedAt: pages.updatedAt,
-          contentText: pages.contentText,
         })
-        .from(pageShares)
-        .innerJoin(pages, eq(pageShares.pageId, pages.id))
-        .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)));
+        .from(pages)
+        .where(
+          and(
+            eq(pages.workspaceId, targetWorkspaceId),
+            eq(pages.isDeleted, false),
+            isOwnerOrMember ? undefined : eq(pages.visibility, 'public')
+          )
+        )
+        .orderBy(asc(pages.order), asc(pages.createdAt)),
 
-      for (const sp of sharedList) {
-        if (!pageMap.has(sp.id)) {
-          const node: PageTreeNode = { ...sp, children: [], isShared: true };
-          pageMap.set(sp.id, node);
-          rootNodes.push(node);
-        }
+      // 2. Explicitly shared pages (for this user's email)
+      cleanEmail
+        ? db
+            .select({
+              id: pages.id,
+              workspaceId: pages.workspaceId,
+              parentId: pages.parentId,
+              title: pages.title,
+              icon: pages.icon,
+              visibility: pages.visibility,
+              order: pages.order,
+              createdAt: pages.createdAt,
+              updatedAt: pages.updatedAt,
+            })
+            .from(pageShares)
+            .innerJoin(pages, eq(pageShares.pageId, pages.id))
+            .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)))
+        : Promise.resolve([]),
+
+      // 3. Recently viewed pages (combines user's recent view timestamps + external public files)
+      session?.userId
+        ? db
+            .select({
+              pageId: pageViews.pageId,
+              viewedAt: pageViews.viewedAt,
+              workspaceId: pages.workspaceId,
+              parentId: pages.parentId,
+              title: pages.title,
+              icon: pages.icon,
+              visibility: pages.visibility,
+              order: pages.order,
+              createdAt: pages.createdAt,
+            })
+            .from(pageViews)
+            .innerJoin(pages, eq(pageViews.pageId, pages.id))
+            .where(and(eq(pageViews.userId, session.userId), eq(pages.isDeleted, false)))
+            .orderBy(desc(pageViews.viewedAt))
+            .limit(30)
+        : Promise.resolve([]),
+    ]);
+
+    // Single-pass tree construction
+    const pageMap = new Map<string, PageTreeNode>();
+    const rootNodes: PageTreeNode[] = [];
+
+    // Combine workspace pages
+    for (const p of workspacePages) {
+      pageMap.set(p.id, { ...p, children: [] });
+    }
+
+    // Combine explicit shares
+    for (const sp of sharedPages) {
+      if (!pageMap.has(sp.id)) {
+        const node: PageTreeNode = { ...sp, children: [], isShared: true };
+        pageMap.set(sp.id, node);
+        rootNodes.push(node);
       }
     }
 
-    if (session?.userId) {
-      // 3. Public or Shared pages outside current workspace that this user has recently viewed
-      const recentViews = await db
-        .select({
-          id: pages.id,
-          workspaceId: pages.workspaceId,
-          parentId: pages.parentId,
-          title: pages.title,
-          icon: pages.icon,
-          visibility: pages.visibility,
-          order: pages.order,
-          createdAt: pages.createdAt,
-          updatedAt: pageViews.viewedAt,
-          contentText: pages.contentText,
-        })
-        .from(pageViews)
-        .innerJoin(pages, eq(pageViews.pageId, pages.id))
-        .where(
-          and(
-            eq(pageViews.userId, session.userId),
-            eq(pages.isDeleted, false),
-            ne(pages.workspaceId, targetWorkspaceId),
-            or(eq(pages.visibility, 'public'), eq(pages.visibility, 'public_edit'))
-          )
-        )
-        .orderBy(desc(pageViews.viewedAt))
-        .limit(20);
-
-      for (const rv of recentViews) {
-        if (!pageMap.has(rv.id)) {
-          const node: PageTreeNode = { ...rv, children: [], isShared: true };
-          pageMap.set(rv.id, node);
-          rootNodes.push(node);
+    // Merge recently viewed (update viewedAt & add external public pages)
+    for (const rv of recentViews) {
+      if (pageMap.has(rv.pageId)) {
+        const node = pageMap.get(rv.pageId)!;
+        if (new Date(rv.viewedAt) > new Date(node.updatedAt)) {
+          node.updatedAt = rv.viewedAt;
         }
+      } else if (
+        rv.workspaceId !== targetWorkspaceId &&
+        (rv.visibility === 'public' || rv.visibility === 'public_edit')
+      ) {
+        const node: PageTreeNode = {
+          id: rv.pageId,
+          workspaceId: rv.workspaceId,
+          parentId: rv.parentId,
+          title: rv.title,
+          icon: rv.icon,
+          visibility: rv.visibility,
+          order: rv.order,
+          createdAt: rv.createdAt,
+          updatedAt: rv.viewedAt,
+          children: [],
+          isShared: true,
+        };
+        pageMap.set(rv.pageId, node);
+        rootNodes.push(node);
       }
+    }
 
-      // Also update updatedAt in pageMap for workspace pages to reflect their most recent view
-      const allRecentUserViews = await db
-        .select({
-          pageId: pageViews.pageId,
-          viewedAt: pageViews.viewedAt,
-        })
-        .from(pageViews)
-        .where(eq(pageViews.userId, session.userId))
-        .orderBy(desc(pageViews.viewedAt))
-        .limit(50);
-
-      for (const v of allRecentUserViews) {
-        if (pageMap.has(v.pageId)) {
-          const node = pageMap.get(v.pageId)!;
-          const currentTime = node.updatedAt ? new Date(node.updatedAt).getTime() : 0;
-          const viewTime = new Date(v.viewedAt).getTime();
-          if (viewTime > currentTime) {
-            node.updatedAt = v.viewedAt;
-          }
-        }
+    // Link workspace hierarchy
+    for (const p of workspacePages) {
+      const node = pageMap.get(p.id)!;
+      if (p.parentId && pageMap.has(p.parentId)) {
+        pageMap.get(p.parentId)!.children.push(node);
+      } else {
+        rootNodes.push(node);
       }
     }
 
