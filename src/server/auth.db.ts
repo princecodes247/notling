@@ -63,8 +63,8 @@ export function slugify(text: string): string {
   return slug || 'workspace';
 }
 
-export async function generateUniqueWorkspaceSlug(name: string): Promise<string> {
-  const baseSlug = slugify(name);
+export async function generateUniqueWorkspaceSlug(nameOrSlug: string, excludeWorkspaceId?: string): Promise<string> {
+  const baseSlug = slugify(nameOrSlug);
   let candidate = baseSlug;
   let counter = 1;
 
@@ -75,12 +75,35 @@ export async function generateUniqueWorkspaceSlug(name: string): Promise<string>
       .where(eq(workspaces.slug, candidate))
       .limit(1);
 
-    if (existing.length === 0) {
+    if (existing.length === 0 || (excludeWorkspaceId && existing[0].id === excludeWorkspaceId)) {
       return candidate;
     }
     candidate = `${baseSlug}-${counter}`;
     counter++;
   }
+}
+
+export async function checkWorkspaceSlugImpl(input: {
+  slug: string;
+  excludeWorkspaceId?: string;
+}): Promise<{ isAvailable: boolean; candidateSlug: string; cleanSlug: string }> {
+  const cleanSlug = slugify(input.slug);
+  const existing = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.slug, cleanSlug))
+    .limit(1);
+
+  const isAvailable =
+    existing.length === 0 || (!!input.excludeWorkspaceId && existing[0].id === input.excludeWorkspaceId);
+
+  const candidateSlug = await generateUniqueWorkspaceSlug(cleanSlug, input.excludeWorkspaceId);
+
+  return {
+    isAvailable,
+    candidateSlug,
+    cleanSlug,
+  };
 }
 
 export async function getSessionImpl(): Promise<UserSession | null> {
@@ -479,7 +502,7 @@ export async function completeOnboardingImpl(data: {
 
   const wsName = data.workspaceName?.trim() || `${data.name}'s Workspace`;
   const rawSlug = data.workspaceSlug?.trim() || wsName;
-  const finalSlug = await generateUniqueWorkspaceSlug(rawSlug);
+  const finalSlug = await generateUniqueWorkspaceSlug(rawSlug, currentSession.workspaceId);
 
   // Update workspace
   const [updatedWs] = await db

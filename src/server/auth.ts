@@ -89,6 +89,14 @@ export const updateSettings = createServerFn({ method: 'POST' })
     return updateSettingsImpl(data);
   });
 
+// Check Workspace Slug Availability & Uniqueness
+export const checkWorkspaceSlug = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string; excludeWorkspaceId?: string }) => data)
+  .handler(async ({ data }): Promise<{ isAvailable: boolean; candidateSlug: string; cleanSlug: string }> => {
+    const { checkWorkspaceSlugImpl } = await import('./auth.db');
+    return checkWorkspaceSlugImpl(data);
+  });
+
 // Sign Out
 export const signOut = createServerFn({ method: 'POST' }).handler(async (): Promise<{ success: boolean }> => {
   const { signOutImpl } = await import('./auth.db');

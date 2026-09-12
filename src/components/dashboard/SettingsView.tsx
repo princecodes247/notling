@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Check, Sliders, Building, Copy, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSession, updateSettings, type UserSession } from '~/server/auth';
+import { getSession, updateSettings, checkWorkspaceSlug, type UserSession } from '~/server/auth';
 import { getWorkspaceUsers } from '~/server/pages';
 
 interface SettingsViewProps {
@@ -25,6 +25,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
 
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceSlug, setWorkspaceSlug] = useState('');
+  const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
   const [workspaceIcon, setWorkspaceIcon] = useState('🚀');
   const [userName, setUserName] = useState('');
   const [userRole, setUserRole] = useState('Workspace Owner');
@@ -43,6 +44,33 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
       setUserRole(session.role || 'Workspace Owner');
     }
   }, [session]);
+
+  // Live Check Workspace Slug Availability
+  useEffect(() => {
+    let active = true;
+    if (!workspaceSlug.trim() || !session?.workspaceId) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkWorkspaceSlug({
+          data: {
+            slug: workspaceSlug.trim(),
+            excludeWorkspaceId: session.workspaceId,
+          },
+        });
+        if (active) {
+          setSlugInfo(res);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 200);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [workspaceSlug, session?.workspaceId]);
 
   const updateMutation = useMutation({
     mutationFn: async () => {
@@ -140,6 +168,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                     className="flex-1 px-2.5 py-2 text-xs font-mono text-neutral-900 bg-transparent focus:outline-none"
                   />
                 </div>
+                {slugInfo && workspaceSlug !== session?.workspaceSlug && (
+                  <div className="text-[10px] mt-1 font-medium">
+                    {slugInfo.isAvailable ? (
+                      <span className="text-emerald-600">✓ Available</span>
+                    ) : (
+                      <span className="text-amber-600">⚠️ Taken — will be saved as "{slugInfo.candidateSlug}"</span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

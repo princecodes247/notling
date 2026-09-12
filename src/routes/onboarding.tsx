@@ -1,5 +1,5 @@
 import { createRoute, useNavigate } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Route as rootRoute } from './__root';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -7,7 +7,7 @@ import {
   ArrowRight01Icon,
   CheckmarkCircle01Icon,
 } from '@hugeicons/core-free-icons';
-import { completeOnboarding } from '~/server/auth';
+import { completeOnboarding, checkWorkspaceSlug } from '~/server/auth';
 import { NotlingLogoIcon } from '~/components/Icons';
 
 export const Route = createRoute({
@@ -65,6 +65,7 @@ function OnboardingPage() {
   const [workspaceName, setWorkspaceName] = useState('My Workspace');
   const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
+  const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
   const [workspaceIcon, setWorkspaceIcon] = useState('🚀');
   const [workspaceDescription, setWorkspaceDescription] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('engineering');
@@ -76,6 +77,29 @@ function OnboardingPage() {
       .replace(/\s+/g, '-')
       .replace(/[^\w\-]+/g, '')
       .replace(/\-\-+/g, '-');
+
+  // Live Check Workspace Slug Availability
+  useEffect(() => {
+    let active = true;
+    const clean = slugify(workspaceSlug);
+    if (!clean) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkWorkspaceSlug({ data: { slug: clean } });
+        if (active) {
+          setSlugInfo(res);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }, 200);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [workspaceSlug]);
 
   const handleWorkspaceNameChange = (val: string) => {
     setWorkspaceName(val);
@@ -271,7 +295,20 @@ function OnboardingPage() {
                   className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none font-mono"
                 />
               </div>
-              <p className="text-[11px] text-neutral-400">Unique identifier for your workspace web URL.</p>
+              <div className="flex items-center justify-between text-[11px] mt-0.5">
+                <span className="text-neutral-400">Unique identifier for your workspace web URL.</span>
+                {slugInfo && (
+                  slugInfo.isAvailable ? (
+                    <span className="text-emerald-600 font-medium flex items-center gap-1">
+                      ✓ Available
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 font-medium flex items-center gap-1" title={`Slug already taken. Will be saved as ${slugInfo.candidateSlug}`}>
+                      ⚠️ Taken (auto-adjusts to <code className="font-mono bg-amber-50 px-1 rounded border border-amber-200">{slugInfo.candidateSlug}</code>)
+                    </span>
+                  )
+                )}
+              </div>
             </div>
 
             {/* Description */}
