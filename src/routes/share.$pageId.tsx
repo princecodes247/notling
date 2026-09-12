@@ -1,3 +1,4 @@
+import { useMemo, useState, useEffect } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicPage } from '~/server/pages';
@@ -5,12 +6,56 @@ import { Route as rootRoute } from './__root';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { LockIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { useCreateBlockNote } from '@blocknote/react';
+import { BlockNoteView } from '@blocknote/mantine';
+import '@blocknote/mantine/style.css';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/share/$pageId',
   component: PublicDocumentPageRoute,
 });
+
+function PublicBlockViewer({ content }: { content: any }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const initialContent = useMemo(() => {
+    try {
+      if (typeof content === 'string') return JSON.parse(content);
+      if (Array.isArray(content) && content.length > 0) return content;
+    } catch (e) {
+      console.error('Failed to parse page content', e);
+    }
+    return undefined;
+  }, [content]);
+
+  const editor = useCreateBlockNote({
+    initialContent,
+  });
+
+  if (!mounted) {
+    return (
+      <div className="min-h-[300px] flex items-center justify-center text-xs text-neutral-400">
+        Loading document...
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-[300px] text-stone-900">
+      <BlockNoteView
+        editor={editor}
+        theme="light"
+        editable={false}
+        sideMenu={false}
+      />
+    </div>
+  );
+}
 
 function PublicDocumentPageRoute() {
   const { pageId } = Route.useParams();
@@ -88,11 +133,9 @@ function PublicDocumentPageRoute() {
         </h1>
 
         {/* Content Render */}
-        <div className="prose prose-neutral max-w-none text-neutral-800 text-sm leading-relaxed space-y-3">
-          {Array.isArray(page.content) && page.content.length > 0 ? (
-            page.content.map((block: any, idx: number) => (
-              <RenderPublicBlock key={block.id || idx} block={block} />
-            ))
+        <div className="w-full">
+          {page.content ? (
+            <PublicBlockViewer content={page.content} />
           ) : (
             <p className="text-neutral-400 italic">This public page is empty.</p>
           )}
@@ -100,45 +143,4 @@ function PublicDocumentPageRoute() {
       </main>
     </div>
   );
-}
-
-function RenderPublicBlock({ block }: { block: any }) {
-  if (!block) return null;
-
-  const type = block.type || 'paragraph';
-
-  // Extract inline text
-  let text = '';
-  if (Array.isArray(block.content)) {
-    text = block.content.map((c: any) => c.text || '').join('');
-  } else if (typeof block.content === 'string') {
-    text = block.content;
-  }
-
-  if (type === 'heading') {
-    const level = block.props?.level || 1;
-    if (level === 1) return <h1 className="text-2xl font-bold text-neutral-900 mt-6 mb-2">{text}</h1>;
-    if (level === 2) return <h2 className="text-xl font-bold text-neutral-900 mt-5 mb-2">{text}</h2>;
-    return <h3 className="text-lg font-semibold text-neutral-900 mt-4 mb-1">{text}</h3>;
-  }
-
-  if (type === 'bulletListItem') {
-    return (
-      <li className="list-disc ml-5 text-neutral-800 my-1">
-        {text}
-      </li>
-    );
-  }
-
-  if (type === 'checkListItem') {
-    const checked = block.props?.checked;
-    return (
-      <div className="flex items-center gap-2 my-1">
-        <input type="checkbox" checked={!!checked} readOnly className="rounded border-neutral-300" />
-        <span className={checked ? 'line-through text-neutral-400' : 'text-neutral-800'}>{text}</span>
-      </div>
-    );
-  }
-
-  return <p className="text-neutral-800 my-2 leading-relaxed">{text}</p>;
 }
