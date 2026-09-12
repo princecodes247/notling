@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PanelLeftClose } from 'lucide-react';
+import { PanelLeftClose, ChevronsUpDown, Check, Plus } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,
@@ -14,7 +14,7 @@ import {
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
 import { useUIStore } from '~/store/uiStore';
-import type { UserSession } from '~/server/auth';
+import type { UserSession, UserWorkspaceItem } from '~/server/auth';
 import { NotlingLogoIcon } from './Icons';
 
 
@@ -22,6 +22,9 @@ interface SidebarProps {
   workspaceName: string;
   session: UserSession | null;
   treeNodes: PageTreeNode[];
+  userWorkspaces?: UserWorkspaceItem[];
+  onSwitchWorkspace?: (workspaceId: string) => void;
+  onOpenCreateWorkspaceModal?: () => void;
   trashCount?: number;
   activeNav?: string;
   onNavClick?: (nav: string) => void;
@@ -38,6 +41,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   workspaceName = 'Notling Workspace',
   session,
   treeNodes,
+  userWorkspaces = [],
+  onSwitchWorkspace,
+  onOpenCreateWorkspaceModal,
   trashCount,
   activeNav = 'folders',
   onNavClick,
@@ -50,31 +56,105 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
 }) => {
   const { toggleSearch, toggleSidebar } = useUIStore();
-  const [draggedPageId, setDraggedPageId] = React.useState<string | null>(null);
-  const [isRootDropTarget, setIsRootDropTarget] = React.useState(false);
+  const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
+  const [isRootDropTarget, setIsRootDropTarget] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
 
   const workspaceNodes = treeNodes.filter((n) => !n.isShared);
   const sharedNodes = treeNodes.filter((n) => n.isShared === true);
 
   return (
     <aside className="w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative">
-      {/* 1. Header: Logo + Workspace Name + Collapse Icon */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-stone-200/40">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-200/95 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-stone-900/10">
-            <NotlingLogoIcon className="w-3.5 h-3.5" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="font-semibold text-xs text-stone-900 truncate tracking-tight">
-              {workspaceName || 'Notling Workspace'}
-            </span>
-          </div>
+      {/* 1. Header: Workspace Switcher Dropdown + Collapse Icon */}
+      <div className="h-14 px-3 flex items-center justify-between border-b border-stone-200/40 relative">
+        <div className="relative flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
+            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-stone-200/60 transition-colors cursor-pointer w-full text-left min-w-0 group"
+          >
+            <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-200/95 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-stone-900/10 text-xs">
+              {session?.workspaceIcon || <NotlingLogoIcon className="w-3.5 h-3.5" />}
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="font-semibold text-xs text-stone-900 truncate tracking-tight flex items-center gap-1">
+                <span className="truncate">{workspaceName || 'Notling Workspace'}</span>
+                <ChevronsUpDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 shrink-0 transition-colors" />
+              </span>
+            </div>
+          </button>
+
+          {/* Workspace Dropdown Menu */}
+          {showWorkspaceMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowWorkspaceMenu(false)}
+              />
+              <div className="absolute left-0 top-11 w-56 bg-white border border-stone-200 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Workspaces
+                </div>
+
+                <div className="flex flex-col max-h-48 overflow-y-auto my-0.5">
+                  {userWorkspaces && userWorkspaces.length > 0 ? (
+                    userWorkspaces.map((ws) => {
+                      const isActive = ws.id === session?.workspaceId;
+                      return (
+                        <button
+                          key={ws.id}
+                          type="button"
+                          onClick={() => {
+                            setShowWorkspaceMenu(false);
+                            if (!isActive) {
+                              onSwitchWorkspace?.(ws.id);
+                            }
+                          }}
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 transition-colors cursor-pointer ${
+                            isActive ? 'bg-stone-50 font-semibold text-stone-900' : 'text-stone-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-sm shrink-0">{ws.icon || '🚀'}</span>
+                            <span className="truncate text-xs">{ws.name}</span>
+                          </div>
+                          {isActive && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0" />}
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="px-3 py-2 text-stone-700 font-semibold text-xs flex items-center justify-between bg-stone-50">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm shrink-0">{session?.workspaceIcon || '🚀'}</span>
+                        <span className="truncate">{workspaceName}</span>
+                      </div>
+                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0" />
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-1.5 mt-1 border-t border-stone-100 px-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowWorkspaceMenu(false);
+                      onOpenCreateWorkspaceModal?.();
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-stone-100 flex items-center gap-2 text-stone-700 font-medium cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-stone-500" />
+                    Create new workspace
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <button
           type="button"
           onClick={toggleSidebar}
-          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
+          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer shrink-0 ml-1"
           title="Collapse sidebar"
         >
           <PanelLeftClose className="w-4 h-4 text-stone-500 hover:text-stone-800 transition-colors" />

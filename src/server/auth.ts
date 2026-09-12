@@ -13,6 +13,14 @@ export interface UserSession {
   workspaceIcon?: string;
 }
 
+export interface UserWorkspaceItem {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  role: 'owner' | 'member';
+}
+
 export interface AuthResponse {
   success: boolean;
   error?: string;
@@ -95,6 +103,28 @@ export const checkWorkspaceSlug = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<{ isAvailable: boolean; candidateSlug: string; cleanSlug: string }> => {
     const { checkWorkspaceSlugImpl } = await import('./auth.db');
     return checkWorkspaceSlugImpl(data);
+  });
+
+// Get all accessible user workspaces
+export const getUserWorkspaces = createServerFn({ method: 'GET' }).handler(async (): Promise<UserWorkspaceItem[]> => {
+  const { getUserWorkspacesImpl } = await import('./auth.db');
+  return getUserWorkspacesImpl();
+});
+
+// Switch active workspace
+export const switchWorkspace = createServerFn({ method: 'POST' })
+  .validator((data: { workspaceId: string }) => data)
+  .handler(async ({ data }): Promise<AuthResponse> => {
+    const { switchWorkspaceImpl } = await import('./auth.db');
+    return switchWorkspaceImpl(data.workspaceId);
+  });
+
+// Create new workspace
+export const createWorkspace = createServerFn({ method: 'POST' })
+  .validator((data: { name: string; icon?: string; description?: string }) => data)
+  .handler(async ({ data }): Promise<AuthResponse> => {
+    const { createWorkspaceImpl } = await import('./auth.db');
+    return createWorkspaceImpl(data);
   });
 
 // Sign Out

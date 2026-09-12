@@ -5,7 +5,8 @@ import { Sidebar } from '~/components/Sidebar';
 import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
-import { getSession, signOut } from '~/server/auth';
+import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
+import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -38,6 +39,8 @@ function DashboardLayout() {
     setActiveTabId,
   } = useUIStore();
 
+  const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = React.useState(false);
+
   // 1. Fetch Session
   const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['session'],
@@ -62,6 +65,41 @@ function DashboardLayout() {
   }, [session, sessionLoading]);
 
   const workspaceId = session?.workspaceId;
+
+  // 1b. Fetch User Workspaces
+  const { data: userWorkspaces = [] } = useQuery({
+    queryKey: ['userWorkspaces'],
+    queryFn: async () => {
+      return await getUserWorkspaces();
+    },
+    enabled: !!session,
+  });
+
+  // Switch Workspace Mutation
+  const switchWorkspaceMutation = useMutation({
+    mutationFn: async (targetWorkspaceId: string) => {
+      return await switchWorkspace({ data: { workspaceId: targetWorkspaceId } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session'] });
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['userWorkspaces'] });
+      queryClient.invalidateQueries({ queryKey: ['trashPages'] });
+    },
+  });
+
+  // Create Workspace Mutation
+  const createWorkspaceMutation = useMutation({
+    mutationFn: async ({ name, icon, description }: { name: string; icon?: string; description?: string }) => {
+      return await createWorkspace({ data: { name, icon, description } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session'] });
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['userWorkspaces'] });
+      setIsCreateWorkspaceOpen(false);
+    },
+  });
 
   // 2. Fetch Workspace Page Tree
   const { data: treeNodes = [], refetch: refetchTree } = useQuery({
@@ -268,6 +306,9 @@ function DashboardLayout() {
               workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
               session={session}
               treeNodes={treeNodes}
+              userWorkspaces={userWorkspaces}
+              onSwitchWorkspace={(id) => switchWorkspaceMutation.mutate(id)}
+              onOpenCreateWorkspaceModal={() => setIsCreateWorkspaceOpen(true)}
               trashCount={trashPages.length}
               activeNav={activeNav}
               onNavClick={(nav) => {
@@ -320,6 +361,13 @@ function DashboardLayout() {
       <TrashModal
         workspaceId={session.workspaceId}
         onRefreshTree={() => refetchTree()}
+      />
+      <CreateWorkspaceModal
+        isOpen={isCreateWorkspaceOpen}
+        onClose={() => setIsCreateWorkspaceOpen(false)}
+        onCreateWorkspace={async (data) => {
+          await createWorkspaceMutation.mutateAsync(data);
+        }}
       />
     </div>
   );

@@ -1,11 +1,12 @@
 import { db } from '~/db';
-import { users, workspaces, sessions, pages } from '~/db/schema';
+import { users, workspaces, sessions, pages, pageShares } from '~/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
-import type { UserSession, AuthResponse } from './auth';
+import type { UserSession, AuthResponse, UserWorkspaceItem } from './auth';
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server';
 import crypto from 'node:crypto';
 
 const COOKIE_NAME = 'notling_session';
+const ACTIVE_WS_COOKIE = 'notling_active_workspace_id';
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
 
 // Helper to hash password using PBKDF2
@@ -106,6 +107,134 @@ export async function checkWorkspaceSlugImpl(input: {
   };
 }
 
+export async function getUserWorkspacesImpl(): Promise<UserWorkspaceItem[]> {
+  try {
+    const session = await getSessionImpl();
+    if (!session) return [];
+
+    // 1. Owned workspaces
+    const owned = await db
+      .select({
+        id: workspaces.id,
+        name: workspaces.name,
+        slug: workspaces.slug,
+        icon: workspaces.icon,
+      })
+      .from(workspaces)
+      .where(eq(workspaces.ownerId, session.userId));
+
+    const result: UserWorkspaceItem[] = owned.map((w) => ({
+      ...w,
+      role: 'owner',
+    }));
+
+    const seenIds = new Set(result.map((w) => w.id));
+
+    // 2. Shared workspaces (via pageShares)
+    if (session.email) {
+      const cleanEmail = session.email.trim().toLowerCase();
+      const sharedList = await db
+        .select({
+          id: workspaces.id,
+          name: workspaces.name,
+          slug: workspaces.slug,
+          icon: workspaces.icon,
+        })
+        .from(pageShares)
+        .innerJoin(pages, eq(pageShares.pageId, pages.id))
+        .innerJoin(workspaces, eq(pages.workspaceId, workspaces.id))
+        .where(eq(pageShares.email, cleanEmail));
+
+      for (const sw of sharedList) {
+        if (!seenIds.has(sw.id)) {
+          seenIds.add(sw.id);
+          result.push({ ...sw, role: 'member' });
+        }
+      }
+    }
+
+    return result;
+  } catch (err) {
+    console.error('Error fetching user workspaces:', err);
+    return [];
+  }
+}
+
+export async function switchWorkspaceImpl(targetWorkspaceId: string): Promise<AuthResponse> {
+  try {
+    const session = await getSessionImpl();
+    if (!session) {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    const availableWorkspaces = await getUserWorkspacesImpl();
+    const targetWs = availableWorkspaces.find((w) => w.id === targetWorkspaceId);
+
+    if (!targetWs) {
+      return { success: false, error: 'Workspace not found or access denied.' };
+    }
+
+    setCookie(ACTIVE_WS_COOKIE, targetWorkspaceId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE,
+    });
+
+    const updatedSession = await getSessionImpl();
+    return {
+      success: true,
+      session: updatedSession,
+    };
+  } catch (err: any) {
+    console.error('Error switching workspace:', err);
+    return { success: false, error: err.message || 'Failed to switch workspace.' };
+  }
+}
+
+export async function createWorkspaceImpl(input: {
+  name: string;
+  icon?: string;
+  description?: string;
+}): Promise<AuthResponse> {
+  try {
+    const session = await getSessionImpl();
+    if (!session) {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    const wsName = input.name.trim() || 'New Workspace';
+    const wsSlug = await generateUniqueWorkspaceSlug(wsName);
+
+    const [newWs] = await db
+      .insert(workspaces)
+      .values({
+        ownerId: session.userId,
+        name: wsName,
+        slug: wsSlug,
+        icon: input.icon || '🚀',
+        description: input.description || null,
+      })
+      .returning();
+
+    setCookie(ACTIVE_WS_COOKIE, newWs.id, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: SESSION_MAX_AGE,
+    });
+
+    const updatedSession = await getSessionImpl();
+    return {
+      success: true,
+      session: updatedSession,
+    };
+  } catch (err: any) {
+    console.error('Error creating workspace:', err);
+    return { success: false, error: err.message || 'Failed to create workspace.' };
+  }
+}
+
 export async function getSessionImpl(): Promise<UserSession | null> {
   try {
     const token = getCookie(COOKIE_NAME);
@@ -130,14 +259,47 @@ export async function getSessionImpl(): Promise<UserSession | null> {
 
     const { user } = activeSession[0];
 
-    // Find owner's workspace
-    const userWorkspaces = await db
-      .select()
-      .from(workspaces)
-      .where(eq(workspaces.ownerId, user.id))
-      .limit(1);
+    // Check active workspace cookie
+    const activeWsCookie = getCookie(ACTIVE_WS_COOKIE);
+    let workspace = null;
 
-    let workspace = userWorkspaces[0];
+    if (activeWsCookie) {
+      const targetWs = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.id, activeWsCookie))
+        .limit(1);
+
+      if (targetWs.length > 0) {
+        if (targetWs[0].ownerId === user.id) {
+          workspace = targetWs[0];
+        } else if (user.email) {
+          const cleanEmail = user.email.trim().toLowerCase();
+          const hasShare = await db
+            .select({ id: pageShares.id })
+            .from(pageShares)
+            .innerJoin(pages, eq(pageShares.pageId, pages.id))
+            .where(and(eq(pages.workspaceId, targetWs[0].id), eq(pageShares.email, cleanEmail)))
+            .limit(1);
+
+          if (hasShare.length > 0) {
+            workspace = targetWs[0];
+          }
+        }
+      }
+    }
+
+    if (!workspace) {
+      // Fallback to first owned workspace
+      const userWorkspaces = await db
+        .select()
+        .from(workspaces)
+        .where(eq(workspaces.ownerId, user.id))
+        .limit(1);
+
+      workspace = userWorkspaces[0];
+    }
+
     if (!workspace) {
       const wsName = `${user.name || 'Personal'}'s Workspace`;
       const wsSlug = await generateUniqueWorkspaceSlug(wsName);
