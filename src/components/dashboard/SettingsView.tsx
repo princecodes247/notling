@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Sparkles, Check, Sliders, Building, Copy, CheckCircle2 } from 'lucide-react';
+import { Users, Check, Sliders, Building, Copy, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession, updateSettings, type UserSession } from '~/server/auth';
+import { getWorkspaceUsers } from '~/server/pages';
 
 interface SettingsViewProps {
   session?: UserSession | null;
@@ -14,6 +15,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
     queryKey: ['session'],
     queryFn: async () => await getSession(),
     initialData: initialSession || undefined,
+  });
+
+  const { data: workspaceUsers = [] } = useQuery({
+    queryKey: ['workspaceUsers', session?.workspaceId],
+    queryFn: async () => await getWorkspaceUsers({ data: session?.workspaceId }),
   });
 
 
@@ -151,8 +157,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                         type="button"
                         onClick={() => setWorkspaceIcon(ic)}
                         className={`w-7 h-7 rounded text-xs flex items-center justify-center cursor-pointer transition-colors ${workspaceIcon === ic
-                            ? 'bg-neutral-900 text-white shadow-2xs'
-                            : 'hover:bg-neutral-100 text-neutral-700'
+                          ? 'bg-neutral-900 text-white shadow-2xs'
+                          : 'hover:bg-neutral-100 text-neutral-700'
                           }`}
                       >
                         {ic}
@@ -246,60 +252,83 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-neutral-500" />
-              <h2 className="text-sm font-semibold text-neutral-900">Members & Roles</h2>
+              <h2 className="text-sm font-semibold text-neutral-900">
+                Members & Roles ({workspaceUsers.length > 0 ? workspaceUsers.length : 1})
+              </h2>
             </div>
             <button
               type="button"
-              onClick={() => alert('Invite member link copied to clipboard!')}
-              className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-medium cursor-pointer"
+              onClick={() => {
+                const inviteUrl = `${window.location.origin}/login`;
+                navigator.clipboard.writeText(inviteUrl);
+                alert(`Invite link copied to clipboard: ${inviteUrl}`);
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-medium cursor-pointer transition-colors active:scale-95"
             >
               + Invite Member
             </button>
           </div>
 
           <div className="flex flex-col divide-y divide-neutral-100 rounded-lg border border-neutral-100 overflow-hidden">
-            {/* Logged in User */}
-            <div className="p-3 flex items-center justify-between bg-white">
-              <div className="flex items-center gap-2.5">
-                {session?.avatarUrl ? (
-                  <img
-                    src={session.avatarUrl}
-                    alt={session.name || 'User'}
-                    className="w-7 h-7 rounded-full object-cover border border-neutral-200"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center font-medium text-xs">
-                    {(userName || session?.name || session?.email || 'U')[0].toUpperCase()}
+            {workspaceUsers.length > 0 ? (
+              workspaceUsers.map((u) => {
+                const isMe = u.email === session?.email || u.id === session?.userId;
+                return (
+                  <div key={u.id} className="p-3 flex items-center justify-between bg-white hover:bg-neutral-50/50 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {u.avatarUrl ? (
+                        <img
+                          src={u.avatarUrl}
+                          alt={u.name || u.email}
+                          className="w-7 h-7 rounded-full object-cover border border-neutral-200 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center font-medium text-xs shrink-0">
+                          {(u.name || u.email || 'U')[0].toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex flex-col min-w-0">
+                        <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5 truncate">
+                          <span className="truncate">{u.name || u.email.split('@')[0]}</span>
+                          {isMe && <span className="text-[10px] text-neutral-400 font-normal shrink-0">(You)</span>}
+                        </div>
+                        <div className="text-[10px] text-neutral-400 truncate">{u.email}</div>
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700 shrink-0">
+                      {u.role || (isMe ? (userRole || session?.role || 'Workspace Owner') : 'Member')}
+                    </span>
                   </div>
-                )}
-                <div>
-                  <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
-                    <span>{userName || session?.name || 'User'}</span>
-                    <span className="text-[10px] text-neutral-400 font-normal">(You)</span>
+                );
+              })
+            ) : (
+              /* Fallback to session user while loading */
+              <div className="p-3 flex items-center justify-between bg-white">
+                <div className="flex items-center gap-2.5">
+                  {session?.avatarUrl ? (
+                    <img
+                      src={session.avatarUrl}
+                      alt={session.name || 'User'}
+                      className="w-7 h-7 rounded-full object-cover border border-neutral-200"
+                    />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center font-medium text-xs">
+                      {(userName || session?.name || session?.email || 'U')[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs font-medium text-neutral-900 flex items-center gap-1.5">
+                      <span>{userName || session?.name || 'User'}</span>
+                      <span className="text-[10px] text-neutral-400 font-normal">(You)</span>
+                    </div>
+                    <div className="text-[10px] text-neutral-400">{session?.email || 'No email attached'}</div>
                   </div>
-                  <div className="text-[10px] text-neutral-400">{session?.email || 'No email attached'}</div>
                 </div>
+                <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700">
+                  {userRole || session?.role || 'Workspace Owner'}
+                </span>
               </div>
-              <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 text-neutral-700">
-                {userRole || session?.role || 'Workspace Owner'}
-              </span>
-            </div>
-
-            {/* Autonomous Agent */}
-            <div className="p-3 flex items-center justify-between bg-neutral-50/40">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-700 text-xs shrink-0">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-xs font-medium text-neutral-900">Event Coordination Agent</div>
-                  <div className="text-[10px] text-neutral-400">Autonomous planning & outreach agent</div>
-                </div>
-              </div>
-              <span className="text-xs font-medium px-2 py-0.5 rounded bg-amber-100 text-amber-800">
-                Autonomous Agent
-              </span>
-            </div>
+            )}
           </div>
         </div>
 

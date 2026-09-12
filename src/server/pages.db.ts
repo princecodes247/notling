@@ -916,9 +916,48 @@ export interface WorkspaceUserItem {
   role: string | null;
 }
 
-export async function fetchWorkspaceUsers(): Promise<WorkspaceUserItem[]> {
+export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise<WorkspaceUserItem[]> {
   try {
-    const list = await db
+    let workspaceId = providedWorkspaceId;
+    let sessionUser: any = null;
+
+    try {
+      sessionUser = await getSessionImpl();
+    } catch {}
+
+    if (!workspaceId && sessionUser) {
+      workspaceId = sessionUser.workspaceId;
+    }
+
+    if (!workspaceId) {
+      return [];
+    }
+
+    // 1. Get workspace owner
+    const wsList = await db
+      .select({ ownerId: workspaces.ownerId })
+      .from(workspaces)
+      .where(eq(workspaces.id, workspaceId))
+      .limit(1);
+
+    const ownerId = wsList.length > 0 ? wsList[0].ownerId : null;
+
+    // 2. Get emails of users invited to pages in this workspace via pageShares
+    const pageSharesList = await db
+      .select({ email: pageShares.email, role: pageShares.role })
+      .from(pageShares)
+      .innerJoin(pages, eq(pageShares.pageId, pages.id))
+      .where(eq(pages.workspaceId, workspaceId));
+
+    const invitedEmailsMap = new Map<string, string>();
+    pageSharesList.forEach((s) => {
+      if (s.email) {
+        invitedEmailsMap.set(s.email.toLowerCase().trim(), s.role || 'Viewer');
+      }
+    });
+
+    // 3. Fetch users matching workspace owner, session user, or invited collaborators
+    const allUsers = await db
       .select({
         id: users.id,
         name: users.name,
@@ -929,13 +968,46 @@ export async function fetchWorkspaceUsers(): Promise<WorkspaceUserItem[]> {
       .from(users)
       .orderBy(asc(users.name), asc(users.email));
 
-    return list.map((u) => ({
-      id: u.id,
-      name: u.name || u.email.split('@')[0],
-      email: u.email,
-      avatarUrl: u.avatarUrl,
-      role: u.role || 'Member',
-    }));
+    const result: WorkspaceUserItem[] = [];
+    const seenEmails = new Set<string>();
+
+    allUsers.forEach((u) => {
+      const emailLower = u.email.toLowerCase().trim();
+      const isOwner = ownerId && u.id === ownerId;
+      const isSessionUser = sessionUser && (u.id === sessionUser.userId || emailLower === sessionUser.email?.toLowerCase());
+      const isInvited = invitedEmailsMap.has(emailLower);
+
+      if (isOwner || isSessionUser || isInvited) {
+        seenEmails.add(emailLower);
+        let role = u.role || 'Member';
+        if (isOwner) role = 'Workspace Owner';
+        else if (isInvited) role = invitedEmailsMap.get(emailLower) === 'editor' ? 'Editor' : 'Viewer';
+
+        result.push({
+          id: u.id,
+          name: u.name || u.email.split('@')[0],
+          email: u.email,
+          avatarUrl: u.avatarUrl,
+          role,
+        });
+      }
+    });
+
+    // 4. Include pending invited emails who don't have a user account yet
+    invitedEmailsMap.forEach((role, email) => {
+      if (!seenEmails.has(email)) {
+        seenEmails.add(email);
+        result.push({
+          id: `invited-${email}`,
+          name: email.split('@')[0],
+          email,
+          avatarUrl: null,
+          role: role === 'editor' ? 'Editor (Pending)' : 'Viewer (Pending)',
+        });
+      }
+    });
+
+    return result;
   } catch (err) {
     console.error('Error fetching workspace users:', err);
     return [];

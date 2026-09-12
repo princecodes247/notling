@@ -70,8 +70,8 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
   });
 
   const { data: workspaceUsers = [] } = useQuery({
-    queryKey: ['workspaceUsers'],
-    queryFn: async () => await getWorkspaceUsers(),
+    queryKey: ['workspaceUsers', workspaceId],
+    queryFn: async () => await getWorkspaceUsers({ data: workspaceId }),
   });
 
   // Prepare user items
