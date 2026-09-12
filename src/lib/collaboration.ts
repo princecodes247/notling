@@ -81,6 +81,7 @@ function releaseCollab(pageId: string) {
   cached.refCount--;
   if (cached.refCount <= 0) {
     try {
+      cached.provider.awareness.setLocalState(null);
       cached.provider.destroy();
       cached.doc.destroy();
     } catch {}

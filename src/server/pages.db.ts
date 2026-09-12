@@ -172,8 +172,8 @@ export interface SharedPageData {
 
 export async function fetchActivePresence(pageId: string): Promise<ActiveUserPresence[]> {
   try {
-    // Delete stale presence older than 15 seconds
-    const threshold = new Date(Date.now() - 15 * 1000);
+    // Delete stale presence older than 6 seconds (ping interval is 3s)
+    const threshold = new Date(Date.now() - 6 * 1000);
     await db.delete(pagePresence).where(lt(pagePresence.lastPing, threshold));
 
     const list = await db
@@ -202,6 +202,29 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
   }
 }
 
+export async function removePagePresence(input: { pageId: string; clientId?: string }) {
+  try {
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    const cid = input.clientId || 'default';
+    const cleanEmail = session?.email
+      ? `${session.email.trim().toLowerCase()}#${cid}`
+      : `guest-${cid}@notling.app`;
+
+    await db
+      .delete(pagePresence)
+      .where(and(eq(pagePresence.pageId, input.pageId), eq(pagePresence.email, cleanEmail)));
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error removing presence:', err);
+    return { success: false };
+  }
+}
+
 export async function recordPagePresence(input: {
   pageId: string;
   role: 'viewer' | 'editor';
@@ -223,8 +246,8 @@ export async function recordPagePresence(input: {
       input.guestName ||
       (session?.email ? session.email.split('@')[0] : `Guest ${cid.slice(-4)}`);
 
-    // Clean stale presence older than 15 seconds
-    const threshold = new Date(Date.now() - 15 * 1000);
+    // Clean stale presence older than 6 seconds
+    const threshold = new Date(Date.now() - 6 * 1000);
     await db.delete(pagePresence).where(lt(pagePresence.lastPing, threshold));
 
     const existing = await db

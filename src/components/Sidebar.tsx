@@ -9,7 +9,6 @@ import {
   Settings02Icon,
   PlusSignIcon,
   Logout01Icon,
-  Share01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';

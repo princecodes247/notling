@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { getPublicPage, updatePageMeta, pingPagePresence } from '~/server/pages';
+import { getPublicPage, updatePageMeta, pingPagePresence, removePagePresence } from '~/server/pages';
 import { Route as rootRoute } from './__root';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -239,7 +239,7 @@ function PublicDocumentPageRoute() {
     }
   }, [sharedData?.isLoggedIn, pageId, navigate]);
 
-  // Heartbeat presence ping every 3 seconds
+  // Heartbeat presence ping & immediate cleanup on unmount/leave
   useEffect(() => {
     if (!pageId || !sharedData) return;
     const cid = getClientId();
@@ -257,7 +257,20 @@ function PublicDocumentPageRoute() {
     };
     sendPing();
     const timer = setInterval(sendPing, 3000);
-    return () => clearInterval(timer);
+
+    const handleLeave = () => {
+      try {
+        removePagePresence({ data: { pageId, clientId: cid } });
+      } catch {}
+    };
+
+    window.addEventListener('beforeunload', handleLeave);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('beforeunload', handleLeave);
+      handleLeave();
+    };
   }, [pageId, sharedData?.accessLevel, userEmail]);
 
   if (isLoading) {

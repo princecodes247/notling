@@ -149,3 +149,10 @@ export const getActivePresence = createServerFn({ method: 'GET' })
     return fetchActivePresence(data);
   });
 
+export const removePagePresence = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; clientId?: string }) => input)
+  .handler(async ({ data }: { data: { pageId: string; clientId?: string } }) => {
+    const { removePagePresence: removeImpl } = await import('./pages.db');
+    return removeImpl(data);
+  });
+

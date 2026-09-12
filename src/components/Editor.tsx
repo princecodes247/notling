@@ -9,7 +9,7 @@ import {
   Loading02Icon,
   Share01Icon,
 } from '@hugeicons/core-free-icons';
-import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence } from '~/server/pages';
+import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
@@ -60,7 +60,7 @@ export const Editor: React.FC<EditorProps> = ({
     refetchInterval: 1500,
   });
 
-  // Heartbeat presence ping
+  // Heartbeat presence ping & immediate cleanup on unmount/leave
   useEffect(() => {
     const cid = getClientId();
     const sendPing = async () => {
@@ -70,7 +70,20 @@ export const Editor: React.FC<EditorProps> = ({
     };
     sendPing();
     const timer = setInterval(sendPing, 3000);
-    return () => clearInterval(timer);
+
+    const handleLeave = () => {
+      try {
+        removePagePresence({ data: { pageId: page.id, clientId: cid } });
+      } catch {}
+    };
+
+    window.addEventListener('beforeunload', handleLeave);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('beforeunload', handleLeave);
+      handleLeave();
+    };
   }, [page.id]);
 
   // Query child pages if this page is a folder
