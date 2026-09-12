@@ -86,3 +86,16 @@ export const pagePresence = pgTable('page_presence', {
 export type PagePresence = typeof pagePresence.$inferSelect;
 export type NewPagePresence = typeof pagePresence.$inferInsert;
 
+export const uploads = pgTable('uploads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  fileName: text('file_name').notNull(),
+  fileType: text('file_type').notNull(),
+  url: text('url').notNull(),
+  sizeBytes: integer('size_bytes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type Upload = typeof uploads.$inferSelect;
+export type NewUpload = typeof uploads.$inferInsert;
+
