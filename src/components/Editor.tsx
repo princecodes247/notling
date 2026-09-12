@@ -9,12 +9,14 @@ import {
   Loading02Icon,
   Share01Icon,
 } from '@hugeicons/core-free-icons';
-import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
+import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence, getPageBacklinks } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
+import { BacklinksSection } from './BacklinksSection';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { AtSign, Link2 } from 'lucide-react';
 import { getClientId } from '~/lib/collaboration';
 
 interface EditorProps {
@@ -58,6 +60,14 @@ export const Editor: React.FC<EditorProps> = ({
     queryKey: ['activePresence', page.id],
     queryFn: async () => await getActivePresence({ data: page.id }),
     refetchInterval: 1500,
+  });
+
+  // Query backlinks for feedback indicator
+  const { data: backlinks = [] } = useQuery({
+    queryKey: ['pageBacklinks', page.id],
+    queryFn: async () => await getPageBacklinks({ data: page.id }),
+    enabled: Boolean(page.id),
+    refetchInterval: 5000,
   });
 
   // Heartbeat presence ping & immediate cleanup on unmount/leave
@@ -171,6 +181,22 @@ export const Editor: React.FC<EditorProps> = ({
             }`}>
             {visibility === 'public' ? 'Public' : visibility === 'workspace' ? 'Workspace' : 'Private'}
           </span>
+
+          {/* Backlink feedback badge */}
+          {backlinks.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById('backlinks-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100/90 text-amber-900 border border-amber-300/80 flex items-center gap-1 hover:bg-amber-200/90 transition-colors cursor-pointer shadow-2xs"
+              title="Click to view pages linking to this document"
+            >
+              <Link2 className="w-3 h-3 text-amber-700" />
+              <span>{backlinks.length} {backlinks.length === 1 ? 'Backlink' : 'Backlinks'}</span>
+            </button>
+          )}
         </div>
 
         {/* Right Header Actions */}
@@ -190,6 +216,24 @@ export const Editor: React.FC<EditorProps> = ({
           </div>
           <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
 
+
+          {/* Mention Page Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+              window.dispatchEvent(
+                new CustomEvent('open-page-mention', {
+                  detail: { top: rect.bottom + 8, left: rect.left - 120 },
+                })
+              );
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100/80 hover:bg-amber-50 text-stone-700 hover:text-amber-900 text-xs font-semibold tracking-tight border border-stone-200/80 transition-all cursor-pointer active:scale-95 shadow-2xs"
+            title="Mention or link another page (@)"
+          >
+            <AtSign className="w-3.5 h-3.5 text-amber-600" />
+            <span>Mention</span>
+          </button>
 
           {/* Google Docs-Style Share Button */}
           <button
@@ -299,7 +343,10 @@ export const Editor: React.FC<EditorProps> = ({
           ) : (
             /* DOCUMENT VIEW: Notion-style BlockNote Editor */
             mounted ? (
-              <BlockEditorInner key={page.id} page={page} />
+              <>
+                <BlockEditorInner key={page.id} page={page} />
+                <BacklinksSection pageId={page.id} />
+              </>
             ) : (
               <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
                 Loading block editor...

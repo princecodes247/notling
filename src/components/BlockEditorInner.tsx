@@ -13,6 +13,8 @@ import { updatePageContent } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
+import { useNavigate } from '@tanstack/react-router';
+import { PageMentionTooltip } from '~/components/PageMentionTooltip';
 import {
   Search,
   ChevronRight,
@@ -31,6 +33,7 @@ import {
   Code,
   Quote,
   Check,
+  AtSign,
 } from 'lucide-react';
 
 interface BlockEditorInnerProps {
@@ -252,9 +255,10 @@ interface CustomActionMenuProps {
   unfreezeMenu?: () => void;
   userName?: string | null;
   pageUpdatedAt?: Date | string | null;
+  onOpenMentionModal?: () => void;
 }
 
-const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfreezeMenu, userName, pageUpdatedAt }) => {
+const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfreezeMenu, userName, pageUpdatedAt, onOpenMentionModal }) => {
   const [search, setSearch] = useState('');
   const [openFlyout, setOpenFlyout] = useState<null | 'turnInto' | 'color'>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -553,6 +557,23 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfr
 
         <div className="my-1 border-t border-neutral-100" />
 
+        {/* Mention page */}
+        <button
+          type="button"
+          onClick={() => {
+            finishAction();
+            onOpenMentionModal?.();
+          }}
+          onMouseEnter={() => setOpenFlyout(null)}
+          className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-amber-50 text-neutral-800 hover:text-amber-900 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <AtSign className="w-3.5 h-3.5 text-neutral-500 group-hover:text-amber-700" />
+            <span>Mention page...</span>
+          </div>
+          <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-amber-700 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">@</kbd>
+        </button>
+
         {/* Copy link to block */}
         <button
           type="button"
@@ -784,7 +805,29 @@ function updateDropIndicator(
 }
 
 export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
-  const { setSaveStatus } = useUIStore();
+  const navigate = useNavigate();
+  const { setSaveStatus, setActivePageId } = useUIStore();
+  const [isMentionModalOpen, setIsMentionModalOpen] = useState(false);
+  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
+
+  const getCursorPos = () => {
+    try {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect && rect.top > 0) {
+          return { top: rect.bottom + 6, left: Math.max(16, rect.left) };
+        }
+      }
+    } catch { }
+    return { top: 180, left: 320 };
+  };
+
+  const triggerPageMention = (pos?: { top: number; left: number }) => {
+    setTooltipPosition(pos || getCursorPos());
+    setIsMentionModalOpen(true);
+  };
   const queryClient = useQueryClient();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSaveRef = useRef<boolean>(false);
@@ -924,6 +967,140 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       performSave();
     }, 500);
   }, [initialContent]);
+
+  const handleSelectMentionPage = useCallback(
+    (targetPage: { id: string; title: string; icon?: string | null }) => {
+      try {
+        const linkText = `${targetPage.icon || '📄'} ${targetPage.title}`;
+        const href = `/dashboard/p/${targetPage.id}`;
+
+        const inlineLinkObj = {
+          type: 'link' as const,
+          href,
+          content: [
+            {
+              type: 'text' as const,
+              text: linkText,
+              styles: {},
+            },
+          ],
+        };
+
+        const trailingSpaceObj = {
+          type: 'text' as const,
+          text: ' ',
+          styles: {},
+        };
+
+        let inserted = false;
+
+        if (editor && typeof (editor as any).insertInlineContent === 'function') {
+          try {
+            (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+            inserted = true;
+          } catch (e1) {
+            console.warn('insertInlineContent failed, trying insertBlocks fallback:', e1);
+          }
+        }
+
+        if (!inserted && editor) {
+          const currentBlock =
+            editor.getTextCursorPosition()?.block || editor.document[editor.document.length - 1];
+          editor.insertBlocks(
+            [
+              {
+                type: 'paragraph',
+                content: [inlineLinkObj],
+              },
+            ],
+            currentBlock,
+            'after'
+          );
+        }
+
+        hasUserEditedRef.current = true;
+        handleContentChange();
+        queryClient.invalidateQueries({ queryKey: ['pageBacklinks'] });
+      } catch (err) {
+        console.error('Error inserting page mention:', err);
+      }
+    },
+    [editor, handleContentChange, queryClient]
+  );
+
+  const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (anchor) {
+      const href = anchor.getAttribute('href') || '';
+      const match = href.match(/\/(?:dashboard\/p|share)\/([a-f0-9-]{36})/i);
+      if (match && match[1]) {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetId = match[1];
+        setActivePageId(targetId);
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: targetId } });
+      }
+    }
+  };
+
+  // Listen for '@' key typing anywhere in the editor using CAPTURE phase & beforeinput
+  useEffect(() => {
+    const handleKeyDownCapture = (e: KeyboardEvent) => {
+      if (isMentionModalOpen) return;
+
+      const isAtKey = e.key === '@' || (e.key === '2' && e.shiftKey) || (e.code === 'Digit2' && e.shiftKey && e.key === '@');
+
+      if (isAtKey) {
+        const target = e.target as HTMLElement | null;
+        const isEditorTarget = target && (
+          target.closest('.bn-editor') ||
+          target.closest('.bn-block-outer') ||
+          target.closest('.bn-block-content') ||
+          target.closest('.bn-inline-content') ||
+          target.contentEditable === 'true' ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA'
+        );
+
+        if (isEditorTarget) {
+          triggerPageMention();
+        }
+      }
+    };
+
+    const handleBeforeInputCapture = (e: InputEvent) => {
+      if (isMentionModalOpen) return;
+      if (e.data === '@') {
+        const target = e.target as HTMLElement | null;
+        const isEditorTarget = target && (
+          target.closest('.bn-editor') ||
+          target.closest('.bn-block-outer') ||
+          target.closest('.bn-block-content') ||
+          target.closest('.bn-inline-content') ||
+          target.contentEditable === 'true'
+        );
+        if (isEditorTarget) {
+          triggerPageMention();
+        }
+      }
+    };
+
+    const handleCustomOpen = (e: Event) => {
+      const customEv = e as CustomEvent<{ top?: number; left?: number }>;
+      triggerPageMention(customEv.detail?.top ? { top: customEv.detail.top, left: customEv.detail.left || 300 } : undefined);
+    };
+
+    window.addEventListener('keydown', handleKeyDownCapture, true);
+    window.addEventListener('beforeinput', handleBeforeInputCapture as any, true);
+    window.addEventListener('open-page-mention', handleCustomOpen);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDownCapture, true);
+      window.removeEventListener('beforeinput', handleBeforeInputCapture as any, true);
+      window.removeEventListener('open-page-mention', handleCustomOpen);
+    };
+  }, [isMentionModalOpen]);
 
   // Immediate save on unmount if pending changes exist
   useEffect(() => {
@@ -1127,6 +1304,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   return (
     <div
       className="min-h-[420px]"
+      onClick={handleContainerClick}
       onMouseDown={(e) => {
         handleMouseDown(e);
       }}
@@ -1174,6 +1352,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
                     unfreezeMenu={props.unfreezeMenu}
                     userName={userName}
                     pageUpdatedAt={page.updatedAt}
+                    onOpenMentionModal={() => triggerPageMention()}
                   />
                 </DragHandleMenu>
               )}
@@ -1181,6 +1360,14 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           )}
         />
       </BlockNoteView>
+
+      <PageMentionTooltip
+        isOpen={isMentionModalOpen}
+        onClose={() => setIsMentionModalOpen(false)}
+        onSelectPage={handleSelectMentionPage}
+        currentPageId={page.id}
+        position={tooltipPosition}
+      />
     </div>
   );
 };

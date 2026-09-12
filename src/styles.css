@@ -165,3 +165,37 @@
   /* min-width: 100px; */
 }
 
+/* Page Mention & Backlink Link Chips in Editor */
+.bn-container a[href*="/dashboard/p/"],
+.bn-container a[href*="/share/"],
+.bn-editor a[href*="/dashboard/p/"],
+.bn-editor a[href*="/share/"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 7px !important;
+  margin: 0 2px !important;
+  background-color: #fef3c7 !important;
+  color: #78350f !important;
+  border: 1px solid #fde68a !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  font-size: 0.88em !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(217, 119, 6, 0.1) !important;
+  vertical-align: baseline !important;
+}
+
+.bn-container a[href*="/dashboard/p/"]:hover,
+.bn-container a[href*="/share/"]:hover,
+.bn-editor a[href*="/dashboard/p/"]:hover,
+.bn-editor a[href*="/share/"]:hover {
+  background-color: #fde68a !important;
+  color: #451a03 !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+

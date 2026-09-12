@@ -163,3 +163,11 @@ export const removePagePresence = createServerFn({ method: 'POST' })
     return removeImpl(data);
   });
 
+export const getPageBacklinks = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data }: { data: string }) => {
+    const { fetchPageBacklinks } = await import('./pages.db');
+    return fetchPageBacklinks(data);
+  });
+
+

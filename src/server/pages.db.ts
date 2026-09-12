@@ -1,6 +1,6 @@
 import { db } from '~/db';
 import { pages, workspaces, pageShares, pagePresence } from '~/db/schema';
-import { eq, and, desc, asc, isNull, lt } from 'drizzle-orm';
+import { eq, and, desc, asc, isNull, lt, ne } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import { getSessionImpl } from './auth.db';
 
@@ -825,4 +825,76 @@ export async function updatePageShareRole(input: { shareId: string; role: 'viewe
     return null;
   }
 }
+
+export interface BacklinkItem {
+  id: string;
+  title: string;
+  icon: string | null;
+  updatedAt: Date;
+  snippet?: string | null;
+}
+
+export async function fetchPageBacklinks(pageId: string): Promise<BacklinkItem[]> {
+  try {
+    const [targetPage] = await db
+      .select({ workspaceId: pages.workspaceId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+      .limit(1);
+
+    if (!targetPage) return [];
+
+    const candidatePages = await db
+      .select({
+        id: pages.id,
+        title: pages.title,
+        icon: pages.icon,
+        content: pages.content,
+        contentText: pages.contentText,
+        updatedAt: pages.updatedAt,
+      })
+      .from(pages)
+      .where(
+        and(
+          eq(pages.workspaceId, targetPage.workspaceId),
+          eq(pages.isDeleted, false),
+          ne(pages.id, pageId)
+        )
+      )
+      .orderBy(desc(pages.updatedAt));
+
+    const backlinks: BacklinkItem[] = [];
+
+    for (const p of candidatePages) {
+      const contentStr = p.content ? JSON.stringify(p.content) : '';
+      const textStr = p.contentText || '';
+
+      const containsPageId = contentStr.includes(pageId) || textStr.includes(pageId);
+
+      if (containsPageId) {
+        let snippet = textStr.slice(0, 100);
+        const mentionIdx = textStr.indexOf(pageId);
+        if (mentionIdx !== -1) {
+          const start = Math.max(0, mentionIdx - 30);
+          const end = Math.min(textStr.length, mentionIdx + 70);
+          snippet = (start > 0 ? '...' : '') + textStr.slice(start, end) + (end < textStr.length ? '...' : '');
+        }
+
+        backlinks.push({
+          id: p.id,
+          title: p.title || 'Untitled',
+          icon: p.icon,
+          updatedAt: p.updatedAt,
+          snippet: snippet ? snippet.trim() : null,
+        });
+      }
+    }
+
+    return backlinks;
+  } catch (err) {
+    console.error('Error fetching page backlinks:', err);
+    return [];
+  }
+}
+
 
