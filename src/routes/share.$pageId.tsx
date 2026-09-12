@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import { getPublicPage, updatePageMeta } from '~/server/pages';
+import { getPublicPage, updatePageMeta, pingPagePresence } from '~/server/pages';
 import { Route as rootRoute } from './__root';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -10,7 +10,9 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
+import { useCollaboration, getClientId } from '~/lib/collaboration';
 import type { Page } from '~/db/schema';
+import type { ActiveUserPresence } from '~/server/pages.db';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -18,26 +20,101 @@ export const Route = createRoute({
   component: PublicDocumentPageRoute,
 });
 
-function PublicBlockViewer({ content }: { content: any }) {
+function ActiveCollaboratorsBar({ activeUsers, currentClientId }: { activeUsers: ActiveUserPresence[]; currentClientId?: string }) {
+  if (!activeUsers || activeUsers.length === 0) return null;
+
+  const displayUsers = activeUsers.slice(0, 4);
+  const extraCount = activeUsers.length - displayUsers.length;
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex items-center -space-x-1.5 overflow-hidden py-0.5">
+        {displayUsers.map((user) => {
+          const isEditor = user.role === 'editor';
+          const isSelf = user.clientId === currentClientId;
+          const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
+          const displayName = user.name || user.email.split('@')[0];
+          return (
+            <div
+              key={user.id || user.clientId || user.email}
+              title={`${displayName}${isSelf ? ' (You)' : ''} — ${isEditor ? 'Editing' : 'Viewing'}`}
+              className={`relative group w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-2xs cursor-pointer border-2 border-white transition-transform hover:scale-110 hover:z-10 ${
+                isEditor ? 'bg-emerald-600' : 'bg-amber-600'
+              }`}
+            >
+              <span>{initial}</span>
+              <span
+                className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${
+                  isEditor ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                }`}
+              />
+            </div>
+          );
+        })}
+      </div>
+
+      {extraCount > 0 && (
+        <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded-full border border-stone-200">
+          +{extraCount}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function PublicBlockViewer({ pageId, content, userEmail }: { pageId: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
+  const collab = useCollaboration(pageId, 'Viewer', userEmail || `guest-${getClientId()}`);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const initialContent = useMemo(() => {
+  const parsedBlocks = useMemo(() => {
     try {
       if (typeof content === 'string') return JSON.parse(content);
       if (Array.isArray(content) && content.length > 0) return content;
     } catch (e) {
       console.error('Failed to parse page content', e);
     }
-    return undefined;
+    return [];
   }, [content]);
 
-  const editor = useCreateBlockNote({
-    initialContent,
-  });
+  const editorOptions = useMemo(() => {
+    const opts: any = {
+      initialContent: parsedBlocks.length > 0 ? parsedBlocks : undefined,
+    };
+    if (collab) {
+      opts.collaboration = {
+        provider: collab.provider,
+        fragment: collab.fragment,
+        user: collab.user,
+        showCursorLabels: collab.showCursorLabels,
+      };
+    }
+    return opts;
+  }, [parsedBlocks, collab]);
+
+  const editor = useCreateBlockNote(editorOptions, [collab]);
+
+  // Seed or sync blocks if editor is blank
+  useEffect(() => {
+    if (!editor || !mounted || !parsedBlocks || parsedBlocks.length === 0) return;
+    const currentDoc = editor.document;
+    const isDocEmpty =
+      currentDoc.length === 0 ||
+      (currentDoc.length === 1 &&
+        currentDoc[0].type === 'paragraph' &&
+        (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
+
+    if (isDocEmpty) {
+      try {
+        editor.replaceBlocks(editor.document, parsedBlocks);
+      } catch (err) {
+        console.error('Error syncing remote blocks to viewer:', err);
+      }
+    }
+  }, [editor, mounted, parsedBlocks]);
 
   if (!mounted) {
     return (
@@ -67,6 +144,10 @@ function SharedEditablePage({ page }: { page: Page }) {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setTitle(page.title);
+  }, [page.title]);
 
   const handleTitleBlur = async () => {
     if (title !== page.title) {
@@ -114,7 +195,31 @@ function PublicDocumentPageRoute() {
       return await getPublicPage({ data: pageId });
     },
     enabled: !!pageId,
+    staleTime: 5000,
   });
+
+  const userEmail = sharedData?.userEmail ?? null;
+
+  // Heartbeat presence ping every 3 seconds
+  useEffect(() => {
+    if (!pageId || !sharedData) return;
+    const cid = getClientId();
+    const sendPing = async () => {
+      try {
+        await pingPagePresence({
+          data: {
+            pageId,
+            role: sharedData.accessLevel,
+            clientId: cid,
+            guestName: userEmail ? undefined : `Guest ${cid.slice(-4)}`,
+          },
+        });
+      } catch {}
+    };
+    sendPing();
+    const timer = setInterval(sendPing, 3000);
+    return () => clearInterval(timer);
+  }, [pageId, sharedData?.accessLevel, userEmail]);
 
   if (isLoading) {
     return (
@@ -148,7 +253,7 @@ function PublicDocumentPageRoute() {
     );
   }
 
-  const { page, accessLevel, isLoggedIn, userEmail, isWorkspaceMember } = sharedData;
+  const { page, accessLevel, isLoggedIn, isWorkspaceMember, activeUsers } = sharedData;
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col select-none">
@@ -165,6 +270,9 @@ function PublicDocumentPageRoute() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Active Collaborator Avatars */}
+          <ActiveCollaboratorsBar activeUsers={activeUsers} currentClientId={getClientId()} />
+
           {/* Access Status Badge */}
           {accessLevel === 'editor' ? (
             <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1.5 shadow-2xs">
@@ -223,7 +331,7 @@ function PublicDocumentPageRoute() {
               {page.title || 'Untitled Document'}
             </h1>
             {page.content ? (
-              <PublicBlockViewer content={page.content} />
+              <PublicBlockViewer pageId={page.id} content={page.content} userEmail={userEmail} />
             ) : (
               <p className="text-neutral-400 italic">This public page is empty.</p>
             )}

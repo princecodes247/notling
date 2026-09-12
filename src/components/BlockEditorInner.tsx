@@ -12,6 +12,7 @@ import { useUIStore } from '~/store/uiStore';
 import { updatePageContent } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useCollaboration } from '~/lib/collaboration';
 import {
   Search,
   ChevronRight,
@@ -585,7 +586,7 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfr
         <div className="my-1 border-t border-neutral-100" />
 
         {/* Comment */}
-        <button
+        {/* <button
           type="button"
           onClick={() => alert('Comment feature opened')}
           onMouseEnter={() => setOpenFlyout(null)}
@@ -596,10 +597,10 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfr
             <span>Comment</span>
           </div>
           <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘⇧M</kbd>
-        </button>
+        </button> */}
 
         {/* Ask AI */}
-        <button
+        {/* <button
           type="button"
           onClick={() => alert('Ask AI Assistant triggered')}
           onMouseEnter={() => setOpenFlyout(null)}
@@ -610,7 +611,7 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfr
             <span>Ask AI</span>
           </div>
           <kbd className="text-[10px] font-mono text-purple-500 group-hover:text-purple-700 bg-purple-100/60 px-1 py-0.5 rounded border border-purple-200">⌘J</kbd>
-        </button>
+        </button> */}
       </div>
 
       {/* Footer */}
@@ -784,6 +785,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   });
   const userName = session?.name ?? session?.email ?? null;
 
+  const collab = useCollaboration(page.id, userName, session?.email);
+
   const initialContent = useMemo(() => {
     try {
       if (typeof page.content === 'string') return JSON.parse(page.content);
@@ -794,21 +797,75 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     return undefined;
   }, [page.id, page.content]);
 
-  const editor = useCreateBlockNote({
-    initialContent,
-  });
+  const editorOptions = useMemo(() => {
+    const opts: any = {
+      initialContent,
+    };
+    if (collab) {
+      opts.collaboration = {
+        provider: collab.provider,
+        fragment: collab.fragment,
+        user: collab.user,
+        showCursorLabels: collab.showCursorLabels,
+      };
+    }
+    return opts;
+  }, [initialContent, collab]);
+
+  const editor = useCreateBlockNote(editorOptions, [collab]);
 
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);
+  const hasUserEditedRef = useRef<boolean>(false);
+  const isInitializedRef = useRef<boolean>(false);
 
   useEffect(() => {
     editorRef.current = editor;
     pageIdRef.current = page.id;
   }, [editor, page.id]);
 
+  // Seed editor content from database if editor document is blank
+  useEffect(() => {
+    if (!editor || !initialContent || initialContent.length === 0 || isInitializedRef.current) return;
+    const currentDoc = editor.document;
+    const isDocEmpty =
+      currentDoc.length === 0 ||
+      (currentDoc.length === 1 &&
+        currentDoc[0].type === 'paragraph' &&
+        (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
+
+    if (isDocEmpty) {
+      try {
+        editor.replaceBlocks(editor.document, initialContent);
+        isInitializedRef.current = true;
+      } catch (err) {
+        console.error('Failed to populate editor with initial content:', err);
+      }
+    } else {
+      isInitializedRef.current = true;
+    }
+  }, [editor, initialContent]);
+
   const performSave = async () => {
     try {
       const currentBlocks = editorRef.current.document;
+
+      // Critical protection against wiping content on refresh/mount:
+      // Never overwrite existing DB content if current document is empty unless the user explicitly edited.
+      if (initialContent && initialContent.length > 0) {
+        const isCurrentEmpty =
+          currentBlocks.length === 0 ||
+          (currentBlocks.length === 1 &&
+            currentBlocks[0].type === 'paragraph' &&
+            (!currentBlocks[0].content || (Array.isArray(currentBlocks[0].content) && currentBlocks[0].content.length === 0)));
+        if (isCurrentEmpty && !hasUserEditedRef.current) {
+          console.warn('Blocked autosave: editor document is blank and user has not performed explicit edits.');
+          pendingSaveRef.current = false;
+          setSaveStatus('idle');
+          return;
+        }
+      }
+
       const plainText = extractPlainTextFromBlocks(currentBlocks);
 
       await updatePageContent({
@@ -819,6 +876,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         },
       });
       pendingSaveRef.current = false;
+      hasUserEditedRef.current = false;
       setSaveStatus('saved');
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
     } catch (err) {
@@ -828,6 +886,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   };
 
   const handleContentChange = useCallback(() => {
+    // Only schedule autosave if user actually typed or interacted
+    if (!hasUserEditedRef.current) return;
+
     setSaveStatus('saving');
     pendingSaveRef.current = true;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -848,6 +909,23 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       }
     };
   }, []);
+
+  // Sync remote block updates when another editor saves in real time (only when user is not focused/typing)
+  useEffect(() => {
+    if (!editor || pendingSaveRef.current || hasUserEditedRef.current || editor.isFocused()) return;
+    try {
+      const incomingBlocks = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
+      if (Array.isArray(incomingBlocks) && incomingBlocks.length > 0) {
+        const currentJson = JSON.stringify(editor.document);
+        const incomingJson = JSON.stringify(incomingBlocks);
+        if (currentJson !== incomingJson) {
+          editor.replaceBlocks(editor.document, incomingBlocks);
+        }
+      }
+    } catch (err) {
+      console.error('Error syncing remote blocks:', err);
+    }
+  }, [editor, page.content, page.updatedAt]);
 
   // Neutralize SideMenuPlugin.isDragOrigin so BlockNote NEVER dispatches deleteSelection()
   useEffect(() => {
@@ -1020,7 +1098,22 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   }, [editor, executeDrop]);
 
   return (
-    <div className="min-h-[420px]" onMouseDown={handleMouseDown}>
+    <div
+      className="min-h-[420px]"
+      onMouseDown={(e) => {
+        hasUserEditedRef.current = true;
+        handleMouseDown(e);
+      }}
+      onKeyDown={() => {
+        hasUserEditedRef.current = true;
+      }}
+      onInput={() => {
+        hasUserEditedRef.current = true;
+      }}
+      onPaste={() => {
+        hasUserEditedRef.current = true;
+      }}
+    >
       <BlockNoteView
         editor={editor}
         theme="light"

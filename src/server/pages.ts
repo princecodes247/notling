@@ -134,3 +134,17 @@ export const updatePageShareRole = createServerFn({ method: 'POST' })
     return updateRoleImpl(data);
   });
 
+export const pingPagePresence = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; role: 'viewer' | 'editor'; clientId?: string; guestName?: string }) => input)
+  .handler(async ({ data }: { data: { pageId: string; role: 'viewer' | 'editor'; clientId?: string; guestName?: string } }) => {
+    const { recordPagePresence } = await import('./pages.db');
+    return recordPagePresence(data);
+  });
+
+export const getActivePresence = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data }: { data: string }) => {
+    const { fetchActivePresence } = await import('./pages.db');
+    return fetchActivePresence(data);
+  });
+

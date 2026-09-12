@@ -74,3 +74,15 @@ export const pageShares = pgTable('page_shares', {
 export type PageShare = typeof pageShares.$inferSelect;
 export type NewPageShare = typeof pageShares.$inferInsert;
 
+export const pagePresence = pgTable('page_presence', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }).notNull(),
+  email: text('email').notNull(),
+  name: text('name'),
+  role: text('role', { enum: ['viewer', 'editor'] }).notNull().default('viewer'),
+  lastPing: timestamp('last_ping').defaultNow().notNull(),
+});
+
+export type PagePresence = typeof pagePresence.$inferSelect;
+export type NewPagePresence = typeof pagePresence.$inferInsert;
+

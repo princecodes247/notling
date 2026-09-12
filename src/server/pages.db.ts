@@ -1,6 +1,6 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares } from '~/db/schema';
-import { eq, and, sql, desc, asc, isNull } from 'drizzle-orm';
+import { pages, workspaces, pageShares, pagePresence } from '~/db/schema';
+import { eq, and, sql, desc, asc, isNull, lt } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import { getSessionImpl } from './auth.db';
 
@@ -79,7 +79,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
 export async function fetchPage(pageId: string) {
   try {
-    const pageList = await db.select().from(pages).where(eq(pages.id, pageId)).limit(1);
+    const pageList = await db.select().from(pages).where(and(eq(pages.id, pageId), eq(pages.isDeleted, false))).limit(1);
     if (pageList.length === 0) return null;
     const page = pageList[0];
 
@@ -90,11 +90,30 @@ export async function fetchPage(pageId: string) {
     if (session && session.workspaceId === page.workspaceId) {
       return page;
     }
+    if (session?.email) {
+      const shares = await db
+        .select()
+        .from(pageShares)
+        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, session.email.trim().toLowerCase())))
+        .limit(1);
+      if (shares.length > 0) {
+        return page;
+      }
+    }
     return null;
   } catch (err) {
     console.error('Error fetching page:', err);
     return null;
   }
+}
+
+export interface ActiveUserPresence {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'viewer' | 'editor';
+  lastPing: Date;
+  clientId?: string;
 }
 
 export interface SharedPageData {
@@ -103,6 +122,92 @@ export interface SharedPageData {
   isLoggedIn: boolean;
   userEmail: string | null;
   isWorkspaceMember: boolean;
+  activeUsers: ActiveUserPresence[];
+}
+
+export async function fetchActivePresence(pageId: string): Promise<ActiveUserPresence[]> {
+  try {
+    // Delete stale presence older than 15 seconds
+    const threshold = new Date(Date.now() - 15 * 1000);
+    await db.delete(pagePresence).where(lt(pagePresence.lastPing, threshold));
+
+    const list = await db
+      .select({
+        id: pagePresence.id,
+        email: pagePresence.email,
+        name: pagePresence.name,
+        role: pagePresence.role,
+        lastPing: pagePresence.lastPing,
+      })
+      .from(pagePresence)
+      .where(eq(pagePresence.pageId, pageId))
+      .orderBy(asc(pagePresence.email), asc(pagePresence.id));
+
+    return list.map((item) => {
+      const [baseEmail, clientTag] = item.email.split('#');
+      return {
+        ...item,
+        email: baseEmail,
+        clientId: clientTag || item.id,
+      };
+    });
+  } catch (err) {
+    console.error('Error fetching active presence:', err);
+    return [];
+  }
+}
+
+export async function recordPagePresence(input: {
+  pageId: string;
+  role: 'viewer' | 'editor';
+  clientId?: string;
+  guestName?: string;
+}) {
+  try {
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    const cid = input.clientId || 'default';
+    const cleanEmail = session?.email
+      ? `${session.email.trim().toLowerCase()}#${cid}`
+      : `guest-${cid}@notling.app`;
+    const cleanName =
+      session?.name ||
+      input.guestName ||
+      (session?.email ? session.email.split('@')[0] : `Guest ${cid.slice(-4)}`);
+
+    // Clean stale presence older than 15 seconds
+    const threshold = new Date(Date.now() - 15 * 1000);
+    await db.delete(pagePresence).where(lt(pagePresence.lastPing, threshold));
+
+    const existing = await db
+      .select()
+      .from(pagePresence)
+      .where(and(eq(pagePresence.pageId, input.pageId), eq(pagePresence.email, cleanEmail)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(pagePresence)
+        .set({ role: input.role, name: cleanName, lastPing: new Date() })
+        .where(eq(pagePresence.id, existing[0].id));
+    } else {
+      await db.insert(pagePresence).values({
+        pageId: input.pageId,
+        email: cleanEmail,
+        name: cleanName,
+        role: input.role,
+        lastPing: new Date(),
+      });
+    }
+
+    return await fetchActivePresence(input.pageId);
+  } catch (err) {
+    console.error('Error recording presence:', err);
+    return [];
+  }
 }
 
 export async function fetchPublicPage(pageId: string): Promise<SharedPageData | null> {
@@ -116,7 +221,10 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
     if (pageList.length === 0) return null;
     const page = pageList[0];
 
-    const session = await getSessionImpl();
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
     const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
 
     let userShare: { role: 'viewer' | 'editor' } | null = null;
@@ -148,12 +256,15 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
       return null;
     }
 
+    const activeUsers = await fetchActivePresence(pageId);
+
     return {
       page,
       accessLevel,
       isLoggedIn: !!session,
       userEmail,
       isWorkspaceMember,
+      activeUsers,
     };
   } catch (err) {
     console.error('Error fetching public page:', err);

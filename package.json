@@ -43,6 +43,10 @@
     "react-dom": "^19.2.0",
     "tailwind-merge": "^3.0.1",
     "tailwindcss": "^4.1.18",
+    "y-protocols": "^1.0.7",
+    "y-webrtc": "^10.3.0",
+    "y-websocket": "^3.1.0",
+    "yjs": "^13.6.32",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -56,6 +60,7 @@
     "@types/pg": "^8.15.6",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.3.1",
     "tsx": "^4.21.0",

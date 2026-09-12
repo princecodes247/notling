@@ -26,7 +26,7 @@ function DocumentPageRoute() {
       return await getPage({ data: pageId });
     },
     enabled: !!pageId,
-    staleTime: 0,
+    staleTime: 5000,
   });
 
   if (isLoading) {
