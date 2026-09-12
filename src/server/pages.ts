@@ -93,6 +93,13 @@ export const permanentDeletePage = createServerFn({ method: 'POST' })
     return performPermanentDelete(data);
   });
 
+export const emptyTrashPages = createServerFn({ method: 'POST' })
+  .validator((workspaceId: string) => workspaceId)
+  .handler(async ({ data }: { data: string }) => {
+    const { performEmptyTrash } = await import('./pages.db');
+    return performEmptyTrash(data);
+  });
+
 export const searchPages = createServerFn({ method: 'GET' })
   .validator((input: { workspaceId: string; query: string }) => input)
   .handler(async ({ data }: { data: { workspaceId: string; query: string } }) => {

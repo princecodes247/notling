@@ -80,6 +80,8 @@ function DashboardLayout() {
     activeNav = 'folders';
   } else if (currentPath.includes('/dashboard/settings')) {
     activeNav = 'settings';
+  } else if (currentPath.includes('/dashboard/trash')) {
+    activeNav = 'trash';
   } else if (currentPath.includes('/dashboard/p/')) {
     activeNav = 'document';
   } else if (currentPath === '/dashboard') {
@@ -117,6 +119,14 @@ function DashboardLayout() {
         title: 'Settings',
         icon: '⚙️',
         path: '/dashboard/settings',
+      });
+    } else if (currentPath.includes('/dashboard/trash')) {
+      doSetActivePageId(null);
+      doOpenTab({
+        id: 'trash',
+        title: 'Trash',
+        icon: '🗑️',
+        path: '/dashboard/trash',
       });
     } else if (currentPath === '/dashboard') {
       doSetActivePageId(null);
@@ -158,6 +168,17 @@ function DashboardLayout() {
     },
   });
 
+  // Fetch Trash Pages
+  const { data: trashPages = [] } = useQuery({
+    queryKey: ['trashPages', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const { getTrashPages } = await import('~/server/pages');
+      return await getTrashPages({ data: workspaceId });
+    },
+    enabled: !!workspaceId,
+  });
+
   // Soft Delete Page Mutation
   const softDeleteMutation = useMutation({
     mutationFn: async (pageId: string) => {
@@ -165,6 +186,7 @@ function DashboardLayout() {
     },
     onSuccess: (_, deletedId) => {
       refetchTree();
+      queryClient.invalidateQueries({ queryKey: ['trashPages'] });
       if (deletedId) {
         const nextPath = closeTab(deletedId as string);
         if (nextPath) navigate({ to: nextPath as any });
@@ -186,7 +208,7 @@ function DashboardLayout() {
 
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
-    if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings') {
+    if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings' && tab.id !== 'trash') {
       useUIStore.getState().setActivePageId(tab.id);
     } else {
       useUIStore.getState().setActivePageId(null);
@@ -236,11 +258,13 @@ function DashboardLayout() {
               workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
               session={session}
               treeNodes={treeNodes}
+              trashCount={trashPages.length}
               activeNav={activeNav}
               onNavClick={(nav) => {
                 if (nav === 'home') navigate({ to: '/dashboard' });
                 else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
                 else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
+                else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
               }}
               onCreateFolder={() => createFolderMutation.mutate()}
               onCreatePage={(parentId) => createPageMutation.mutate(parentId)}

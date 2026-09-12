@@ -558,6 +558,22 @@ export async function performPermanentDelete(pageId: string) {
   }
 }
 
+export async function performEmptyTrash(workspaceId: string) {
+  try {
+    const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
+    if (!targetWorkspaceId) return { success: false };
+
+    await db
+      .delete(pages)
+      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, true)));
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error emptying trash:', err);
+    return { success: false };
+  }
+}
+
 function fuzzyMatchScore(text: string, query: string, tokens: string[]): number {
   if (!text) return 0;
   const lower = text.toLowerCase();

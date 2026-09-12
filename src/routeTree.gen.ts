@@ -16,6 +16,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardFoldersRouteImport } from './routes/dashboard.folders'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
+import { Route as DashboardTrashRouteImport } from './routes/dashboard.trash'
 import { Route as SharePageIdRouteImport } from './routes/share.$pageId'
 import { Route as AuthCallbackProviderRouteImport } from './routes/auth.callback.$provider'
 import { Route as DashboardPPageIdRouteImport } from './routes/dashboard.p.$pageId'
@@ -55,6 +56,11 @@ const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardTrashRoute = DashboardTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const SharePageIdRoute = SharePageIdRouteImport.update({
   id: '/share/$pageId',
   path: '/share/$pageId',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
   '/dashboard': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
@@ -102,6 +110,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
+  '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
@@ -116,6 +125,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/dashboard/folders'
     | '/dashboard/settings'
+    | '/dashboard/trash'
     | '/share/$pageId'
     | '/dashboard/'
     | '/auth/callback/$provider'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/dashboard/folders'
     | '/dashboard/settings'
+    | '/dashboard/trash'
     | '/share/$pageId'
     | '/dashboard'
     | '/auth/callback/$provider'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/dashboard/folders'
     | '/dashboard/settings'
+    | '/dashboard/trash'
     | '/share/$pageId'
     | '/dashboard/'
     | '/auth/callback/$provider'
@@ -205,6 +217,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/trash': {
+      id: '/dashboard/trash'
+      path: '/trash'
+      fullPath: '/dashboard/trash'
+      preLoaderRoute: typeof DashboardTrashRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/share/$pageId': {
       id: '/share/$pageId'
       path: '/share/$pageId'
@@ -232,6 +251,7 @@ declare module '@tanstack/react-router' {
 interface DashboardRouteChildren {
   DashboardFoldersRoute: typeof DashboardFoldersRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
+  DashboardTrashRoute: typeof DashboardTrashRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
   DashboardPPageIdRoute: typeof DashboardPPageIdRoute
 }
@@ -239,6 +259,7 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardFoldersRoute: DashboardFoldersRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
+  DashboardTrashRoute: DashboardTrashRoute,
   DashboardIndexRoute: DashboardIndexRoute,
   DashboardPPageIdRoute: DashboardPPageIdRoute,
 }

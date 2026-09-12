@@ -9,6 +9,7 @@ import {
   Settings02Icon,
   PlusSignIcon,
   Logout01Icon,
+  Delete02Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
@@ -36,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   workspaceName = 'Notling Workspace',
   session,
   treeNodes,
+  trashCount,
   activeNav = 'folders',
   onNavClick,
   onCreateFolder,
@@ -123,6 +125,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 text-stone-500">
             {workspaceNodes.filter((n) => n.children && n.children.length > 0).length || workspaceNodes.length}
           </span>
+        </button>
+
+        {/* Trash */}
+        <button
+          type="button"
+          onClick={() => onNavClick?.('trash')}
+          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'trash'
+            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
+            : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
+            }`}
+        >
+          <div className="flex items-center gap-2.5">
+            <HugeiconsIcon icon={Delete02Icon} size={15} className={activeNav === 'trash' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
+            <span>Trash</span>
+          </div>
+          {trashCount !== undefined && trashCount > 0 && (
+            <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded border ${activeNav === 'trash' ? 'bg-rose-100/90 text-rose-800 border-rose-300/80' : 'bg-rose-50 text-rose-700 border-rose-200/80'}`}>
+              {trashCount}
+            </span>
+          )}
         </button>
       </div>
 
