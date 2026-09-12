@@ -55,7 +55,6 @@ export const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       maxWidth="md"
-      icon={<WorkspaceAvatar seed={ringsSeed} name={name || 'New Workspace'} size={32} className="rounded-lg" />}
       title="Create New Workspace"
       subtitle="Organize pages and collaborate with your team"
       footer={
