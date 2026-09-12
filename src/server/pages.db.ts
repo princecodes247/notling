@@ -113,9 +113,10 @@ export async function fetchPage(pageId: string) {
 
     const session = await getSessionImpl();
     const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
+    const canEdit = await checkCanUserEditPage(pageId);
 
     if (session && session.workspaceId === page.workspaceId) {
-      return page;
+      return { ...page, canEdit };
     }
 
     if (userEmail) {
@@ -126,23 +127,12 @@ export async function fetchPage(pageId: string) {
         .limit(1);
 
       if (shares.length > 0) {
-        return page;
-      }
-
-      if (page.visibility === 'public') {
-        try {
-          await db.insert(pageShares).values({
-            pageId,
-            email: userEmail,
-            role: 'viewer',
-          });
-        } catch {}
-        return page;
+        return { ...page, canEdit };
       }
     }
 
-    if (page.visibility === 'public') {
-      return page;
+    if (page.visibility === 'public' || page.visibility === 'public_edit') {
+      return { ...page, canEdit };
     }
 
     return null;
@@ -536,6 +526,12 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
 
 export async function savePageVisibility(input: { pageId: string; visibility: 'private' | 'workspace' | 'public' | 'public_edit' }) {
   try {
+    const canEdit = await checkCanUserEditPage(input.pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked savePageVisibility for page ${input.pageId}.`);
+      return null;
+    }
+
     const [updated] = await db
       .update(pages)
       .set({

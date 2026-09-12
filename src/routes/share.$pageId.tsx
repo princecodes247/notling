@@ -23,7 +23,7 @@ export const Route = createRoute({
 
 
 
-function PublicBlockViewer({ pageId, content, userEmail }: { pageId: string; content: any; userEmail?: string | null }) {
+export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

@@ -8,28 +8,30 @@ import {
   ArrowRight01Icon,
   Loading02Icon,
   Share01Icon,
+  LockIcon,
 } from '@hugeicons/core-free-icons';
 import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
+import { PublicBlockViewer } from '~/routes/share.$pageId';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
 
 interface EditorProps {
-  page: Page;
+  page: Page & { canEdit?: boolean };
   onTitleOrIconChange?: (title: string, icon: string | null) => void;
   onBack?: () => void;
+  readOnly?: boolean;
 }
 
 const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
 
-
-
 export const Editor: React.FC<EditorProps> = ({
   page,
   onTitleOrIconChange,
+  readOnly: readOnlyProp,
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -41,6 +43,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const isReadOnly = readOnlyProp ?? (page.canEdit === false);
   const isFolder = icon === '📁' || icon === '📂';
 
   useEffect(() => {
@@ -63,9 +66,10 @@ export const Editor: React.FC<EditorProps> = ({
   // Heartbeat presence ping & immediate cleanup on unmount/leave
   useEffect(() => {
     const cid = getClientId();
+    const role = isReadOnly ? 'viewer' : 'editor';
     const sendPing = async () => {
       try {
-        await pingPagePresence({ data: { pageId: page.id, role: 'editor', clientId: cid } });
+        await pingPagePresence({ data: { pageId: page.id, role, clientId: cid } });
       } catch { }
     };
     sendPing();
@@ -84,7 +88,7 @@ export const Editor: React.FC<EditorProps> = ({
       window.removeEventListener('beforeunload', handleLeave);
       handleLeave();
     };
-  }, [page.id]);
+  }, [page.id, isReadOnly]);
 
   // Query child pages if this page is a folder
   const { data: childPages = [], refetch: refetchChildren } = useQuery({
@@ -98,6 +102,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   const updateVisibilityMutation = useMutation({
     mutationFn: async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
+      if (isReadOnly) return null;
       setVisibility(newVisibility);
       return await updatePageVisibility({ data: { pageId: page.id, visibility: newVisibility } });
     },
@@ -109,6 +114,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   const createDocumentInFolderMutation = useMutation({
     mutationFn: async () => {
+      if (isReadOnly) return null;
       return await createPage({
         data: {
           workspaceId: page.workspaceId,
@@ -128,6 +134,7 @@ export const Editor: React.FC<EditorProps> = ({
   });
 
   const handleTitleBlur = async () => {
+    if (isReadOnly) return;
     if (title !== page.title) {
       setSaveStatus('saving');
       await updatePageMeta({
@@ -139,6 +146,7 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   const handleSelectIcon = async (selectedIcon: string) => {
+    if (isReadOnly) return;
     setIcon(selectedIcon);
     setShowEmojiPicker(false);
     setSaveStatus('saving');
@@ -179,6 +187,13 @@ export const Editor: React.FC<EditorProps> = ({
                   ? 'Workspace'
                   : 'Private'}
           </span>
+
+          {isReadOnly && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 shadow-2xs">
+              <HugeiconsIcon icon={LockIcon} size={11} />
+              <span>View only</span>
+            </span>
+          )}
         </div>
 
         {/* Right Header Actions */}
@@ -198,15 +213,17 @@ export const Editor: React.FC<EditorProps> = ({
           </div>
           <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
 
-          {/* Google Docs-Style Share Button */}
-          <button
-            type="button"
-            onClick={() => setIsShareModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95"
-          >
-            <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
-            <span>Share</span>
-          </button>
+          {/* Share Button */}
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95"
+            >
+              <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
+              <span>Share</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -217,14 +234,15 @@ export const Editor: React.FC<EditorProps> = ({
           <div className="relative mb-3 group">
             <button
               type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="text-4xl p-1.5 rounded-lg hover:bg-neutral-100 transition-colors border border-transparent hover:border-neutral-200 flex items-center justify-center w-14 h-14 cursor-pointer"
-              title="Change icon"
+              disabled={isReadOnly}
+              onClick={() => !isReadOnly && setShowEmojiPicker(!showEmojiPicker)}
+              className={`text-4xl p-1.5 rounded-lg transition-colors border border-transparent flex items-center justify-center w-14 h-14 ${isReadOnly ? 'cursor-default' : 'hover:bg-neutral-100 hover:border-neutral-200 cursor-pointer'}`}
+              title={isReadOnly ? 'Icon' : 'Change icon'}
             >
               {icon}
             </button>
 
-            {showEmojiPicker && (
+            {showEmojiPicker && !isReadOnly && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setShowEmojiPicker(false)} />
                 <div className="absolute left-0 top-16 z-40 p-2.5 bg-white border border-neutral-200 rounded-lg shadow-xl flex flex-wrap gap-1.5 w-64">
@@ -246,8 +264,9 @@ export const Editor: React.FC<EditorProps> = ({
           {/* Title Input */}
           <input
             type="text"
+            readOnly={isReadOnly}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => !isReadOnly && setTitle(e.target.value)}
             onBlur={handleTitleBlur}
             placeholder={isFolder ? 'Folder Name' : 'Untitled Document'}
             className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder-stone-300 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 pb-1.5 transition-colors"
@@ -260,21 +279,23 @@ export const Editor: React.FC<EditorProps> = ({
                 <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
                   Documents in this Folder ({childPages.length})
                 </span>
-                <button
-                  type="button"
-                  onClick={() => createDocumentInFolderMutation.mutate()}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
-                >
-                  <HugeiconsIcon icon={PlusSignIcon} size={14} />
-                  <span>New Document</span>
-                </button>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => createDocumentInFolderMutation.mutate()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
+                  >
+                    <HugeiconsIcon icon={PlusSignIcon} size={14} />
+                    <span>New Document</span>
+                  </button>
+                )}
               </div>
 
               {childPages.length === 0 ? (
                 <div className="py-14 border border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-stone-400 bg-stone-50/40">
                   <HugeiconsIcon icon={File01Icon} size={32} className="stroke-1 text-stone-300" />
                   <span className="text-xs font-semibold text-stone-600">This folder is empty</span>
-                  <span className="text-[11px] text-stone-400">Click "+ New Document" above to start writing inside this folder.</span>
+                  {!isReadOnly && <span className="text-[11px] text-stone-400">Click "+ New Document" above to start writing inside this folder.</span>}
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -304,9 +325,13 @@ export const Editor: React.FC<EditorProps> = ({
               )}
             </div>
           ) : (
-            /* DOCUMENT VIEW: Notion-style BlockNote Editor */
+            /* DOCUMENT VIEW: Notion-style BlockNote Editor or Read-Only Public Viewer */
             mounted ? (
-              <BlockEditorInner key={page.id} page={page} />
+              isReadOnly ? (
+                <PublicBlockViewer pageId={page.id} content={page.content} />
+              ) : (
+                <BlockEditorInner key={page.id} page={page} />
+              )
             ) : (
               <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
                 Loading block editor...
@@ -317,13 +342,15 @@ export const Editor: React.FC<EditorProps> = ({
       </div>
 
       {/* Google Docs-Style Share Modal */}
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        page={page}
-        visibility={visibility}
-        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
-      />
+      {!isReadOnly && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          page={page}
+          visibility={visibility}
+          onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+        />
+      )}
     </div>
   );
 };
