@@ -161,7 +161,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 No documents created yet. Click "+ New Document" to start.
               </div>
             ) : (
-              recentDocs.slice(0, 6).map((node) => (
+              recentDocs.slice(0, 10).map((node) => (
                 <div
                   key={node.id}
                   onClick={() => onSelectPage(node.id)}
@@ -174,11 +174,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         <span className="text-xs font-medium text-neutral-900 group-hover:text-black truncate block">
                           {node.title || 'Untitled Document'}
                         </span>
-                        {node.isShared && (
+                        {node.visibility === 'public' || node.visibility === 'public_edit' ? (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200/80 font-medium shrink-0">
+                            Public
+                          </span>
+                        ) : node.isShared ? (
                           <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200/80 font-medium shrink-0">
                             Shared
                           </span>
-                        )}
+                        ) : null}
                       </div>
                       <span className="text-[10px] text-neutral-400 truncate block max-w-xs sm:max-w-md md:max-w-lg">
                         {node.contentText?.trim() || 'No additional content'}

@@ -52,8 +52,9 @@ function DocumentPageRoute() {
       }
 
       document.title = `${title} — Notling`;
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
     }
-  }, [page?.id, page?.title, page?.icon]);
+  }, [page?.id, page?.title, page?.icon, queryClient]);
 
   if (isLoading) {
     return (

@@ -191,6 +191,18 @@ export const inviteWorkspaceMember = createServerFn({ method: 'POST' })
     return inviteMemberImpl(data);
   });
 
+export const recordPageViewFn = createServerFn({ method: 'POST' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data: pageId }: { data: string }) => {
+    const { getSessionImpl } = await import('./auth.db');
+    const { recordPageView } = await import('./pages.db');
+    const session = await getSessionImpl();
+    if (session?.userId && pageId) {
+      await recordPageView(session.userId, pageId);
+    }
+    return { success: true };
+  });
+
 export type { WorkspaceUserItem } from './pages.db';
 
 

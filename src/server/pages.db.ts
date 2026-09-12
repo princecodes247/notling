@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews } from '~/db/schema';
 import { eq, and, or, desc, asc, isNull, lt, ne } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
@@ -99,10 +99,94 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       }
     }
 
+    if (session?.userId) {
+      // 3. Public or Shared pages outside current workspace that this user has recently viewed
+      const recentViews = await db
+        .select({
+          id: pages.id,
+          workspaceId: pages.workspaceId,
+          parentId: pages.parentId,
+          title: pages.title,
+          icon: pages.icon,
+          visibility: pages.visibility,
+          order: pages.order,
+          createdAt: pages.createdAt,
+          updatedAt: pageViews.viewedAt,
+          contentText: pages.contentText,
+        })
+        .from(pageViews)
+        .innerJoin(pages, eq(pageViews.pageId, pages.id))
+        .where(
+          and(
+            eq(pageViews.userId, session.userId),
+            eq(pages.isDeleted, false),
+            ne(pages.workspaceId, targetWorkspaceId),
+            or(eq(pages.visibility, 'public'), eq(pages.visibility, 'public_edit'))
+          )
+        )
+        .orderBy(desc(pageViews.viewedAt))
+        .limit(20);
+
+      for (const rv of recentViews) {
+        if (!pageMap.has(rv.id)) {
+          const node: PageTreeNode = { ...rv, children: [], isShared: true };
+          pageMap.set(rv.id, node);
+          rootNodes.push(node);
+        }
+      }
+
+      // Also update updatedAt in pageMap for workspace pages to reflect their most recent view
+      const allRecentUserViews = await db
+        .select({
+          pageId: pageViews.pageId,
+          viewedAt: pageViews.viewedAt,
+        })
+        .from(pageViews)
+        .where(eq(pageViews.userId, session.userId))
+        .orderBy(desc(pageViews.viewedAt))
+        .limit(50);
+
+      for (const v of allRecentUserViews) {
+        if (pageMap.has(v.pageId)) {
+          const node = pageMap.get(v.pageId)!;
+          const currentTime = node.updatedAt ? new Date(node.updatedAt).getTime() : 0;
+          const viewTime = new Date(v.viewedAt).getTime();
+          if (viewTime > currentTime) {
+            node.updatedAt = v.viewedAt;
+          }
+        }
+      }
+    }
+
     return rootNodes;
   } catch (err) {
     console.error('Error fetching page tree:', err);
     return [];
+  }
+}
+
+export async function recordPageView(userId: string, pageId: string) {
+  try {
+    const existing = await db
+      .select({ id: pageViews.id })
+      .from(pageViews)
+      .where(and(eq(pageViews.userId, userId), eq(pageViews.pageId, pageId)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      await db
+        .update(pageViews)
+        .set({ viewedAt: new Date() })
+        .where(eq(pageViews.id, existing[0].id));
+    } else {
+      await db.insert(pageViews).values({
+        userId,
+        pageId,
+        viewedAt: new Date(),
+      });
+    }
+  } catch (err) {
+    console.error('Error recording page view in DB:', err);
   }
 }
 
@@ -199,6 +283,12 @@ export async function fetchPage(pageId: string) {
 
     if (!access) {
       return null;
+    }
+
+    if (session?.userId) {
+      recordPageView(session.userId, pageId).catch((err) => {
+        console.error('Error recording page view:', err);
+      });
     }
 
     return {
@@ -366,6 +456,12 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
     const accessLevel = await getPageAccessLevel(page, session);
     if (!accessLevel) {
       return null;
+    }
+
+    if (session?.userId) {
+      recordPageView(session.userId, pageId).catch((err) => {
+        console.error('Error recording public page view:', err);
+      });
     }
 
     const userEmail = session?.email ? session.email.trim().toLowerCase() : null;

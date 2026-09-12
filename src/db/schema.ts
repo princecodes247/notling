@@ -111,3 +111,15 @@ export const workspaceMembers = pgTable('workspace_members', {
 export type WorkspaceMember = typeof workspaceMembers.$inferSelect;
 export type NewWorkspaceMember = typeof workspaceMembers.$inferInsert;
 
+export const pageViews = pgTable('page_views', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }).notNull(),
+  viewedAt: timestamp('viewed_at').defaultNow().notNull(),
+}, (table) => ({
+  userPageIdx: index('page_views_user_page_idx').on(table.userId, table.pageId),
+}));
+
+export type PageView = typeof pageViews.$inferSelect;
+export type NewPageView = typeof pageViews.$inferInsert;
+
