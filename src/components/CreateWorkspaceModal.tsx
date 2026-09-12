@@ -83,24 +83,23 @@ export const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
       }
     >
       <form id="create-workspace-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-        {/* Workspace Rings Avatar & Reroll */}
+        {/* Workspace Avatar & Reroll */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-stone-700">Workspace Rings Avatar</label>
+          <label className="text-xs font-semibold text-stone-700">Workspace Avatar</label>
           <div className="flex items-center gap-3 bg-stone-50/80 p-3.5 rounded-xl border border-stone-200/80">
             <WorkspaceAvatar
               seed={ringsSeed}
               name={name}
               size={48}
-              className="rounded-xl"
               showReroll
               onReroll={handleReroll}
             />
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-xs font-semibold text-stone-900 truncate">
-                {name.trim() || 'Generative Rings Pattern'}
+                {name.trim() || 'Workspace Bauhaus Pattern'}
               </span>
               <span className="text-[11px] text-stone-500 mt-0.5 leading-normal">
-                Custom concentric rings. Click the badge or button to reroll patterns.
+                Geometric Bauhaus pattern. Click the badge or button to reroll.
               </span>
             </div>
             <button

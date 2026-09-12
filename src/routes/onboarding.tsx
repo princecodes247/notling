@@ -251,22 +251,21 @@ function OnboardingPage() {
               </p>
             </div>
 
-            {/* Workspace Rings Avatar */}
+            {/* Workspace Avatar */}
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-semibold text-neutral-700">Workspace Avatar (Geometric Rings)</label>
+              <label className="text-xs font-semibold text-neutral-700">Workspace Avatar</label>
               <div className="flex items-center gap-3.5 bg-neutral-50/70 p-3.5 rounded-xl border border-neutral-200/80">
                 <WorkspaceAvatar
                   seed={workspaceRingsSeed}
                   name={workspaceName}
                   size={54}
-                  className="rounded-xl"
                   showReroll
                   onReroll={() => setWorkspaceRingsSeed('ws-' + Math.random().toString(36).substring(2, 9))}
                 />
                 <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-xs font-semibold text-neutral-900">Generative Rings Pattern</span>
+                  <span className="text-xs font-semibold text-neutral-900">Bauhaus Avatar Pattern</span>
                   <span className="text-[11px] text-neutral-500 mt-0.5 leading-relaxed">
-                    Custom concentric rings generated for <span className="font-medium text-neutral-800">{workspaceName || 'your workspace'}</span>. Click the badge to reroll colors and pattern.
+                    Custom geometric Bauhaus pattern generated for <span className="font-medium text-neutral-800">{workspaceName || 'your workspace'}</span>. Click the badge to reroll colors and shapes.
                   </span>
                 </div>
               </div>
