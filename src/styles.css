@@ -73,21 +73,16 @@
 }
 
 .bn-editor {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
   min-height: 420px;
   color: #0f172a !important;
+  padding-inline: 54px !important;
+  margin-inline: -54px;
 }
 
 .bn-block-content {
   font-size: 1.05rem;
   line-height: 1.7;
   color: #0f172a !important;
-}
-
-/* Shift side menu & drag handle away from block text content */
-.bn-side-menu {
-  transform: translateX(-16px) !important;
 }
 
 /* Block highlight when context menu is open (applied via inline styles on .bn-block-outer) */
@@ -118,6 +113,12 @@
   border-radius: 6px;
   box-shadow: 0 0 0 2px #e2e8f0;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Hide default ProseMirror drop cursor in favor of accurate custom drop indicator */
+.prosemirror-dropcursor-block,
+.prosemirror-dropcursor-inline {
+  display: none !important;
 }
 
 

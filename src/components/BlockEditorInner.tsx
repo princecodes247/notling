@@ -3,8 +3,6 @@ import {
   useCreateBlockNote,
   SideMenuController,
   SideMenu,
-  AddBlockButton,
-  DragHandleButton,
   DragHandleMenu,
 } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
@@ -96,8 +94,11 @@ function applyBlockHighlight(blockId: string | undefined, highlight: boolean, ed
   }
 
   elements.forEach((outerEl) => {
-
-    outerEl.classList.add('bn-block-selected-highlight');
+    if (highlight) {
+      outerEl.classList.add('bn-block-selected-highlight');
+    } else {
+      outerEl.classList.remove('bn-block-selected-highlight');
+    }
 
     const targetNodes = [
       outerEl,
@@ -622,11 +623,159 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({ editor, block, unfr
 };
 
 
+function isDescendant(parent: any, childId: string): boolean {
+  if (!parent || !Array.isArray(parent.children)) return false;
+  for (const child of parent.children) {
+    if (child.id === childId) return true;
+    if (isDescendant(child, childId)) return true;
+  }
+  return false;
+}
+
+function getOrCreateDropIndicator(): HTMLElement {
+  let indicatorEl = document.getElementById('bn-custom-drop-indicator');
+  if (!indicatorEl) {
+    indicatorEl = document.createElement('div');
+    indicatorEl.id = 'bn-custom-drop-indicator';
+    indicatorEl.style.position = 'fixed';
+    indicatorEl.style.pointerEvents = 'none';
+    indicatorEl.style.zIndex = '99999';
+    indicatorEl.style.height = '2px';
+    indicatorEl.style.backgroundColor = '#2563eb';
+    indicatorEl.style.borderRadius = '2px';
+    indicatorEl.style.display = 'none';
+    indicatorEl.style.boxShadow = '0 0 4px rgba(37, 99, 235, 0.4)';
+
+    const dot = document.createElement('div');
+    dot.className = 'bn-drop-dot';
+    dot.style.position = 'absolute';
+    dot.style.left = '-3px';
+    dot.style.top = '-2.5px';
+    dot.style.width = '7px';
+    dot.style.height = '7px';
+    dot.style.borderRadius = '50%';
+    dot.style.backgroundColor = '#2563eb';
+    indicatorEl.appendChild(dot);
+
+    document.body.appendChild(indicatorEl);
+  }
+  return indicatorEl;
+}
+
+function removeDropIndicator() {
+  const indicatorEl = document.getElementById('bn-custom-drop-indicator');
+  if (indicatorEl) {
+    indicatorEl.style.display = 'none';
+  }
+}
+
+function getDropTarget(
+  editor: any,
+  clientX: number,
+  clientY: number,
+  draggedId?: string
+) {
+  const editorEl = editor?.prosemirrorView?.dom;
+  if (!editorEl) return null;
+
+  const blockEls = Array.from(
+    editorEl.querySelectorAll('.bn-block-outer[data-id]')
+  ) as HTMLElement[];
+
+  if (blockEls.length === 0) return null;
+
+  let targetEl: HTMLElement | null = null;
+  let placement: 'before' | 'after' = 'after';
+
+  const firstRect = blockEls[0].getBoundingClientRect();
+  const lastRect = blockEls[blockEls.length - 1].getBoundingClientRect();
+
+  if (clientY < firstRect.top + 4) {
+    targetEl = blockEls[0];
+    placement = 'before';
+  } else if (clientY > lastRect.bottom - 4) {
+    targetEl = blockEls[blockEls.length - 1];
+    placement = 'after';
+  } else {
+    for (const el of blockEls) {
+      const rect = el.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) {
+        targetEl = el;
+        const midY = rect.top + rect.height / 2;
+        placement = clientY < midY ? 'before' : 'after';
+        break;
+      }
+    }
+
+    if (!targetEl) {
+      let minDistance = Infinity;
+      for (const el of blockEls) {
+        const rect = el.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        const dist = Math.abs(clientY - midY);
+        if (dist < minDistance) {
+          minDistance = dist;
+          targetEl = el;
+          placement = clientY < midY ? 'before' : 'after';
+        }
+      }
+    }
+  }
+
+  if (!targetEl) return null;
+
+  const targetId = targetEl.getAttribute('data-id');
+  if (!targetId) return null;
+
+  const targetRect = targetEl.getBoundingClientRect();
+  const contentEl = (targetEl.querySelector('.bn-block-content') || targetEl) as HTMLElement;
+  const contentRect = contentEl.getBoundingClientRect();
+
+  // Nesting: requires clientX to be substantially indented (> 48px to the right of content start)
+  // and placed after the block.
+  const isIndented = clientX > contentRect.left + 48;
+  const canNest = isIndented && placement === 'after' && targetId !== draggedId;
+
+  return {
+    targetEl,
+    targetId,
+    targetRect,
+    contentRect,
+    placement,
+    nest: canNest,
+  };
+}
+
+function updateDropIndicator(
+  editor: any,
+  clientX: number,
+  clientY: number,
+  draggedId?: string
+) {
+  const dropTarget = getDropTarget(editor, clientX, clientY, draggedId);
+  if (!dropTarget || dropTarget.targetId === draggedId) {
+    removeDropIndicator();
+    return;
+  }
+
+  const { targetRect, contentRect, placement, nest } = dropTarget;
+  const indicator = getOrCreateDropIndicator();
+  const y = placement === 'before' ? targetRect.top : targetRect.bottom;
+  const x = nest ? contentRect.left + 24 : contentRect.left;
+  const width = Math.max(targetRect.right - x, 120);
+
+  indicator.style.display = 'block';
+  indicator.style.top = `${y - 1}px`;
+  indicator.style.left = `${x}px`;
+  indicator.style.width = `${width}px`;
+}
+
 export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const { setSaveStatus } = useUIStore();
   const queryClient = useQueryClient();
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const pendingSaveRef = useRef<boolean>(false);
+  const draggedBlockRef = useRef<any>(null);
 
   const { data: session } = useQuery({
     queryKey: ['session'],
@@ -671,14 +820,14 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       });
       pendingSaveRef.current = false;
       setSaveStatus('saved');
-      queryClient.invalidateQueries({ queryKey: ['page', pageIdRef.current] });
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
     } catch (err) {
       console.error('Autosave failed:', err);
       setSaveStatus('idle');
     }
   };
 
-  const handleContentChange = () => {
+  const handleContentChange = useCallback(() => {
     setSaveStatus('saving');
     pendingSaveRef.current = true;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -686,7 +835,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     saveTimeoutRef.current = setTimeout(() => {
       performSave();
     }, 500);
-  };
+  }, []);
 
   // Immediate save on unmount if pending changes exist
   useEffect(() => {
@@ -700,42 +849,144 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     };
   }, []);
 
-  // Position cursor at the end of line on mousedown to prevent ProseMirror from placing cursor at start
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const blockEl =
-      target.closest('[data-id]') ||
-      target.closest('.bn-block-outer') ||
-      target.closest('.bn-block-content');
-    if (!blockEl) return;
-
-    const blockId =
-      blockEl.getAttribute('data-id') ||
-      blockEl.closest('[data-id]')?.getAttribute('data-id');
-    if (!blockId || !editor) return;
-
-    const inlineEl =
-      blockEl.querySelector('.bn-inline-content') ||
-      blockEl.querySelector('[data-content-type]');
-    if (!inlineEl) return;
-
-    const rect = inlineEl.getBoundingClientRect();
-    if (e.clientX > rect.right + 4) {
-      e.preventDefault();
-      try {
-        const block = editor.getBlock(blockId);
-        if (block) {
-          editor.setTextCursorPosition(block, 'end');
-          editor.focus();
-        }
-      } catch {
-        // fallback
+  // Neutralize SideMenuPlugin.isDragOrigin so BlockNote NEVER dispatches deleteSelection()
+  useEffect(() => {
+    const patchSideMenuView = () => {
+      const sideMenuView = (editor as any)?.sideMenu?.view;
+      if (sideMenuView && !sideMenuView.__dragOriginPatched) {
+        sideMenuView.__dragOriginPatched = true;
+        Object.defineProperty(sideMenuView, 'isDragOrigin', {
+          get: () => false,
+          set: () => {},
+          configurable: true,
+        });
       }
-    }
-  };
+    };
+    patchSideMenuView();
+    const timer = setTimeout(patchSideMenuView, 100);
+    return () => clearTimeout(timer);
+  }, [editor]);
+
+  // Execute custom block drop
+  const executeDrop = useCallback(
+    (clientX: number, clientY: number) => {
+      let dragged = draggedBlockRef.current;
+      if (!dragged) {
+        dragged = editor.getSelection()?.blocks?.[0] || editor.getTextCursorPosition()?.block;
+      }
+      if (!dragged || !dragged.id) return;
+
+      const dropTarget = getDropTarget(editor, clientX, clientY, dragged.id);
+      if (!dropTarget) return;
+
+      const { targetId, placement, nest } = dropTarget;
+      if (targetId === dragged.id) return;
+
+      const draggedBlockObj = editor.getBlock(dragged.id);
+      if (!draggedBlockObj) return;
+
+      if (isDescendant(draggedBlockObj, targetId)) return;
+
+      try {
+        if (nest) {
+          const targetBlockObj = editor.getBlock(targetId);
+          if (!targetBlockObj) return;
+
+          editor.removeBlocks([dragged.id]);
+          const currentChildren = Array.isArray(targetBlockObj.children)
+            ? targetBlockObj.children
+            : [];
+          editor.updateBlock(targetBlockObj, {
+            children: [...currentChildren, draggedBlockObj],
+          });
+        } else {
+          editor.removeBlocks([dragged.id]);
+          editor.insertBlocks([draggedBlockObj], targetId, placement);
+        }
+
+        handleContentChange();
+      } catch (err) {
+        console.error('Failed to move block:', err);
+      }
+    },
+    [editor, handleContentChange]
+  );
+
+  // Global window drag & drop event listeners in capture phase to take full control
+  useEffect(() => {
+    const handleDragStart = (_e: DragEvent) => {
+      const sideMenuView = (editor as any)?.sideMenu?.view;
+      if (sideMenuView) {
+        sideMenuView.isDragOrigin = false;
+      }
+    };
+
+    const handleDragOver = (e: DragEvent) => {
+      const isOurDrag =
+        !!draggedBlockRef.current ||
+        (e.dataTransfer && e.dataTransfer.types.includes('blocknote/html'));
+      if (!isOurDrag) return;
+
+      e.preventDefault();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'move';
+      }
+      updateDropIndicator(editor, e.clientX, e.clientY, draggedBlockRef.current?.id);
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      const isOurDrag =
+        !!draggedBlockRef.current ||
+        (e.dataTransfer && e.dataTransfer.types.includes('blocknote/html'));
+      if (!isOurDrag) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+
+      removeDropIndicator();
+
+      const sideMenuView = (editor as any)?.sideMenu?.view;
+      if (sideMenuView) {
+        sideMenuView.isDragOrigin = false;
+      }
+
+      executeDrop(e.clientX, e.clientY);
+
+      if (editor.prosemirrorView) {
+        (editor.prosemirrorView as any).dragging = null;
+      }
+      try {
+        editor.sideMenu?.blockDragEnd?.();
+      } catch {}
+      draggedBlockRef.current = null;
+    };
+
+    const handleDragEnd = () => {
+      removeDropIndicator();
+      draggedBlockRef.current = null;
+      const sideMenuView = (editor as any)?.sideMenu?.view;
+      if (sideMenuView) {
+        sideMenuView.isDragOrigin = false;
+      }
+    };
+
+    window.addEventListener('dragstart', handleDragStart, true);
+    window.addEventListener('dragover', handleDragOver, true);
+    window.addEventListener('drop', handleDrop, true);
+    window.addEventListener('dragend', handleDragEnd, true);
+
+    return () => {
+      window.removeEventListener('dragstart', handleDragStart, true);
+      window.removeEventListener('dragover', handleDragOver, true);
+      window.removeEventListener('drop', handleDrop, true);
+      window.removeEventListener('dragend', handleDragEnd, true);
+      removeDropIndicator();
+    };
+  }, [editor, executeDrop]);
 
   return (
-    <div className="min-h-[420px]" onMouseDown={handleMouseDown}>
+    <div className="min-h-[420px]">
       <BlockNoteView
         editor={editor}
         theme="light"
@@ -744,38 +995,36 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       >
         <SideMenuController
           sideMenu={(props) => (
-            <SideMenu {...props}>
-              <AddBlockButton {...props} />
-              <div
-                className="relative group flex items-center"
-              >
-                <DragHandleButton
-                  {...props}
-                  dragHandleMenu={(menuProps) => (
-                    <DragHandleMenu {...menuProps}>
-                      <CustomActionMenu
-                        editor={props.editor}
-                        block={props.block}
-                        unfreezeMenu={props.unfreezeMenu}
-                        userName={userName}
-                        pageUpdatedAt={page.updatedAt}
-                      />
-                    </DragHandleMenu>
-                  )}
-                />
-                {/* Drag Handle Light Theme Tooltip */}
-                <div className="absolute top-full left-0 mt-1.5 z-50 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 ease-in-out">
-                  <div className="bg-white text-neutral-900 border border-neutral-200/90 shadow-lg rounded-lg px-2.5 py-1.5 text-[11px] whitespace-nowrap leading-tight font-sans">
-                    <div className="font-normal text-neutral-900">
-                      <strong className="font-semibold text-neutral-950">Drag</strong> to move
-                    </div>
-                    <div className="text-neutral-500 text-[10px] mt-0.5">
-                      <strong className="font-semibold text-neutral-800">Click</strong> or <kbd className="font-mono bg-neutral-100 px-1 py-0.2 rounded text-[10px] text-neutral-700 border border-neutral-200">⌘/</kbd> for options
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </SideMenu>
+            <SideMenu
+              {...props}
+              blockDragStart={(event, block) => {
+                draggedBlockRef.current = block;
+                const sideMenuView = (editor as any)?.sideMenu?.view;
+                if (sideMenuView) {
+                  sideMenuView.isDragOrigin = false;
+                }
+                props.blockDragStart(event, block);
+                if (sideMenuView) {
+                  sideMenuView.isDragOrigin = false;
+                }
+              }}
+              blockDragEnd={() => {
+                removeDropIndicator();
+                props.blockDragEnd();
+                draggedBlockRef.current = null;
+              }}
+              dragHandleMenu={(menuProps) => (
+                <DragHandleMenu {...menuProps}>
+                  <CustomActionMenu
+                    editor={props.editor}
+                    block={props.block}
+                    unfreezeMenu={props.unfreezeMenu}
+                    userName={userName}
+                    pageUpdatedAt={page.updatedAt}
+                  />
+                </DragHandleMenu>
+              )}
+            />
           )}
         />
       </BlockNoteView>

@@ -270,7 +270,7 @@ export const Editor: React.FC<EditorProps> = ({
           ) : (
             /* DOCUMENT VIEW: Notion-style BlockNote Editor */
             mounted ? (
-              <BlockEditorInner page={page} />
+              <BlockEditorInner key={page.id} page={page} />
             ) : (
               <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
                 Loading block editor...
