@@ -199,4 +199,35 @@
   transform: translateY(-1px);
 }
 
+/* User Mention Link Chips in Editor */
+.bn-container a[href^="mailto:"],
+.bn-editor a[href^="mailto:"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  padding: 2px 7px !important;
+  margin: 0 2px !important;
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border: 1px solid #a7f3d0 !important;
+  border-radius: 6px !important;
+  font-weight: 600 !important;
+  font-size: 0.88em !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 1px 2px rgba(16, 185, 129, 0.1) !important;
+  vertical-align: baseline !important;
+  user-select: none !important;
+}
+
+.bn-container a[href^="mailto:"]:hover,
+.bn-editor a[href^="mailto:"]:hover {
+  background-color: #a7f3d0 !important;
+  color: #047857 !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2) !important;
+  transform: translateY(-1px);
+}
+
+
 

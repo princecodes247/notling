@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users } from '~/db/schema';
 import { eq, and, desc, asc, isNull, lt, ne } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import { getSessionImpl } from './auth.db';
@@ -901,9 +901,44 @@ export async function fetchPageBacklinks(pageId: string): Promise<BacklinkItem[]
 
     return backlinks;
   } catch (err) {
-    console.error('Error fetching page backlinks:', err);
+    console.error('Error fetching backlinks:', err);
     return [];
   }
 }
+
+export interface WorkspaceUserItem {
+  id: string;
+  name: string | null;
+  email: string;
+  avatarUrl: string | null;
+  role: string | null;
+}
+
+export async function fetchWorkspaceUsers(): Promise<WorkspaceUserItem[]> {
+  try {
+    const list = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        avatarUrl: users.avatarUrl,
+        role: users.role,
+      })
+      .from(users)
+      .orderBy(asc(users.name), asc(users.email));
+
+    return list.map((u) => ({
+      id: u.id,
+      name: u.name || u.email.split('@')[0],
+      email: u.email,
+      avatarUrl: u.avatarUrl,
+      role: u.role || 'Member',
+    }));
+  } catch (err) {
+    console.error('Error fetching workspace users:', err);
+    return [];
+  }
+}
+
 
 

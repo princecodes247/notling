@@ -14,7 +14,7 @@ import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
 import { useNavigate } from '@tanstack/react-router';
-import { PageMentionTooltip } from '~/components/PageMentionTooltip';
+import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
 import {
   Search,
   ChevronRight,
@@ -1016,10 +1016,18 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   }, [initialContent]);
 
   const handleSelectMentionPage = useCallback(
-    (targetPage: { id: string; title: string; icon?: string | null }) => {
+    (item: MentionSuggestionItem) => {
       try {
-        const linkText = `@${targetPage.icon || '📄'} ${targetPage.title}`;
-        const href = `/dashboard/p/${targetPage.id}`;
+        let linkText = '';
+        let href = '';
+
+        if (item.type === 'user') {
+          linkText = `@${item.title}`;
+          href = `mailto:${item.email || item.id}`;
+        } else {
+          linkText = `@${item.icon || '📄'} ${item.title}`;
+          href = `/dashboard/p/${item.id}`;
+        }
 
         // Consume preceding typed '@query' text from DOM selection / text node
         const sel = window.getSelection();
@@ -1089,7 +1097,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         handleContentChange();
         queryClient.invalidateQueries({ queryKey: ['pageBacklinks'] });
       } catch (err) {
-        console.error('Error inserting page mention:', err);
+        console.error('Error inserting mention:', err);
       }
     },
     [editor, handleContentChange, queryClient]
@@ -1111,10 +1119,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     }
   };
 
-  // Ensure page mention links are marked contentEditable="false" so browsers treat them as atomic nodes
+  // Ensure mention links are marked contentEditable="false" so browsers treat them as atomic nodes
   useEffect(() => {
     const markMentionLinksAtomic = () => {
-      const links = document.querySelectorAll('.bn-editor a[href*="/dashboard/p/"], .bn-editor a[href*="/share/"]');
+      const links = document.querySelectorAll(
+        '.bn-editor a[href*="/dashboard/p/"], .bn-editor a[href*="/share/"], .bn-editor a[href^="mailto:"]'
+      );
       links.forEach((a) => {
         if (a.getAttribute('contenteditable') !== 'false') {
           a.setAttribute('contenteditable', 'false');
@@ -1160,20 +1170,45 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         if (e.key === 'Enter' || e.key === 'Tab') {
           e.preventDefault();
           e.stopPropagation();
-          // Find matching page by index
+          // Find matching member or page by index
           const sessionData = queryClient.getQueryData(['session']) as any;
           const wsId = sessionData?.workspaceId || '';
+          const workspaceUsers = (queryClient.getQueryData(['workspaceUsers']) || []) as any[];
           const tree = (queryClient.getQueryData(['pageTree', wsId]) || []) as any[];
-          const allP: any[] = [];
+
+          const userItems: MentionSuggestionItem[] = workspaceUsers.map((u: any) => ({
+            type: 'user',
+            id: u.id,
+            title: u.name || u.email.split('@')[0],
+            subtitle: u.email,
+            icon: u.avatarUrl,
+            email: u.email,
+          }));
+
+          const pageItems: MentionSuggestionItem[] = [];
           function rec(list: any[]) {
             for (const n of list) {
-              if (n.id !== page.id) allP.push({ id: n.id, title: n.title || 'Untitled Page', icon: n.icon });
+              if (n.id !== page.id) {
+                pageItems.push({
+                  type: 'page',
+                  id: n.id,
+                  title: n.title || 'Untitled Page',
+                  icon: n.icon,
+                });
+              }
               if (n.children) rec(n.children);
             }
           }
           rec(tree);
-          const filtered = allP.filter((p) => p.title.toLowerCase().includes(mentionSearchQuery.toLowerCase()));
-          const selected = filtered[mentionSelectedIndex] || filtered[0];
+
+          const cleanQuery = mentionSearchQuery.toLowerCase().trim();
+          const filteredUsers = userItems.filter(
+            (u) => u.title.toLowerCase().includes(cleanQuery) || (u.subtitle && u.subtitle.toLowerCase().includes(cleanQuery))
+          );
+          const filteredPages = pageItems.filter((p) => p.title.toLowerCase().includes(cleanQuery));
+
+          const allSuggestions = [...filteredUsers, ...filteredPages];
+          const selected = allSuggestions[mentionSelectedIndex] || allSuggestions[0];
           if (selected) {
             handleSelectMentionPage(selected);
           } else {
@@ -1197,14 +1232,18 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
               ? (sel.anchorNode as HTMLElement)
               : sel.anchorNode.parentElement;
 
-          let linkEl = targetEl?.closest('a[href*="/dashboard/p/"], a[href*="/share/"]');
+          let linkEl = targetEl?.closest('a[href*="/dashboard/p/"], a[href*="/share/"], a[href^="mailto:"]');
 
           if (!linkEl && sel.anchorNode.nodeType === Node.TEXT_NODE) {
             const parent = sel.anchorNode.parentElement;
             if (parent) {
-              if (sel.anchorOffset === 0 && parent.previousElementSibling?.matches('a[href*="/dashboard/p/"], a[href*="/share/"]')) {
+              const matchSelector = 'a[href*="/dashboard/p/"], a[href*="/share/"], a[href^="mailto:"]';
+              if (sel.anchorOffset === 0 && parent.previousElementSibling?.matches(matchSelector)) {
                 linkEl = parent.previousElementSibling as HTMLElement;
-              } else if (sel.anchorOffset === (sel.anchorNode.textContent?.length || 0) && parent.nextElementSibling?.matches('a[href*="/dashboard/p/"], a[href*="/share/"]')) {
+              } else if (
+                sel.anchorOffset === (sel.anchorNode.textContent?.length || 0) &&
+                parent.nextElementSibling?.matches(matchSelector)
+              ) {
                 linkEl = parent.nextElementSibling as HTMLElement;
               }
             }
@@ -1507,7 +1546,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       <PageMentionTooltip
         isOpen={isMentionModalOpen}
         onClose={() => setIsMentionModalOpen(false)}
-        onSelectPage={handleSelectMentionPage}
+        onSelectItem={handleSelectMentionPage}
         currentPageId={page.id}
         searchQuery={mentionSearchQuery}
         selectedIndex={mentionSelectedIndex}

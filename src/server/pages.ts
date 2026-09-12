@@ -170,4 +170,15 @@ export const getPageBacklinks = createServerFn({ method: 'GET' })
     return fetchPageBacklinks(data);
   });
 
+export const getWorkspaceUsers = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    const { fetchWorkspaceUsers } = await import('./pages.db');
+    return fetchWorkspaceUsers();
+  });
+
+export type { WorkspaceUserItem } from './pages.db';
+
+
+
+
 

@@ -1,13 +1,22 @@
 import React, { useEffect, useRef } from 'react';
-import { FileText, AtSign } from 'lucide-react';
+import { FileText, AtSign, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getPageTree, type PageTreeNode } from '~/server/pages';
+import { getPageTree, getWorkspaceUsers, type PageTreeNode } from '~/server/pages';
 import { getSession } from '~/server/auth';
+
+export interface MentionSuggestionItem {
+  type: 'page' | 'user';
+  id: string;
+  title: string;
+  subtitle?: string;
+  icon?: string | null;
+  email?: string;
+}
 
 interface PageMentionTooltipProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectPage: (page: { id: string; title: string; icon?: string | null }) => void;
+  onSelectItem: (item: MentionSuggestionItem) => void;
   currentPageId?: string;
   searchQuery?: string;
   selectedIndex?: number;
@@ -38,7 +47,7 @@ function flattenPageTree(nodes: PageTreeNode[]): Array<{ id: string; title: stri
 export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
   isOpen,
   onClose,
-  onSelectPage,
+  onSelectItem,
   currentPageId,
   searchQuery = '',
   selectedIndex = 0,
@@ -60,11 +69,40 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
     enabled: Boolean(workspaceId),
   });
 
-  const allPages = flattenPageTree(treeNodes).filter((p) => p.id !== currentPageId);
+  const { data: workspaceUsers = [] } = useQuery({
+    queryKey: ['workspaceUsers'],
+    queryFn: async () => await getWorkspaceUsers(),
+  });
 
-  const filteredPages = allPages.filter((p) =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase())
+  // Prepare user items
+  const userItems: MentionSuggestionItem[] = workspaceUsers.map((u) => ({
+    type: 'user',
+    id: u.id,
+    title: u.name || u.email.split('@')[0],
+    subtitle: u.email,
+    icon: u.avatarUrl,
+    email: u.email,
+  }));
+
+  // Prepare page items
+  const pageItems: MentionSuggestionItem[] = flattenPageTree(treeNodes)
+    .filter((p) => p.id !== currentPageId)
+    .map((p) => ({
+      type: 'page',
+      id: p.id,
+      title: p.title,
+      icon: p.icon,
+    }));
+
+  const cleanQuery = searchQuery.toLowerCase().trim();
+
+  const filteredUsers = userItems.filter(
+    (u) => u.title.toLowerCase().includes(cleanQuery) || (u.subtitle && u.subtitle.toLowerCase().includes(cleanQuery))
   );
+
+  const filteredPages = pageItems.filter((p) => p.title.toLowerCase().includes(cleanQuery));
+
+  const allFilteredSuggestions: MentionSuggestionItem[] = [...filteredUsers, ...filteredPages];
 
   // Click outside to close
   useEffect(() => {
@@ -82,16 +120,16 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
 
   const style: React.CSSProperties = position
     ? {
-        position: 'fixed',
-        top: `${Math.min(position.top, window.innerHeight - 300)}px`,
-        left: `${Math.min(position.left, window.innerWidth - 280)}px`,
-      }
+      position: 'fixed',
+      top: `${Math.min(position.top, window.innerHeight - 340)}px`,
+      left: `${Math.min(position.left, window.innerWidth - 290)}px`,
+    }
     : {
-        position: 'fixed',
-        top: '20%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-      };
+      position: 'fixed',
+      top: '20%',
+      left: '50%',
+      transform: 'translateX(-50%)',
+    };
 
   return (
     <div
@@ -105,51 +143,121 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
           <div className="w-4 h-4 rounded bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
             <AtSign className="w-3 h-3" />
           </div>
-          <span>Mention Page</span>
+          <span>Mention User or Page</span>
         </div>
         <span className="text-[10px] font-mono text-stone-400">
-          {searchQuery ? `Searching "${searchQuery}"` : 'Type page name'}
+          {searchQuery ? `Searching "${searchQuery}"` : 'Type name or title'}
         </span>
       </div>
 
       {/* Results List */}
-      <div className="max-h-56 overflow-y-auto p-1.5 flex flex-col gap-0.5">
-        {filteredPages.length === 0 ? (
-          <div className="py-5 text-center text-xs text-stone-400 flex flex-col items-center gap-1">
+      <div className="max-h-60 overflow-y-auto p-1.5 flex flex-col gap-1">
+        {allFilteredSuggestions.length === 0 ? (
+          <div className="py-6 text-center text-xs text-stone-400 flex flex-col items-center gap-1">
             <FileText className="w-4 h-4 text-stone-300 stroke-1" />
-            <span>No matching pages</span>
+            <span>No matching users or pages</span>
           </div>
         ) : (
-          filteredPages.map((page, index) => {
-            const isSelected = index === selectedIndex;
-            return (
-              <button
-                key={page.id}
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  onSelectPage(page);
-                  onClose();
-                }}
-                onMouseEnter={() => onHoverIndex?.(index)}
-                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
-                  isSelected ? 'bg-amber-50 text-amber-950 font-medium' : 'hover:bg-stone-100 text-stone-800'
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm shrink-0">{page.icon || (page.isFolder ? '📁' : '📄')}</span>
-                  <span className={`text-xs truncate ${isSelected ? 'font-semibold text-amber-900' : 'text-stone-800'}`}>
-                    {page.title}
-                  </span>
+          <>
+
+            {/* Pages section */}
+            {filteredPages.length > 0 && (
+              <div className="flex flex-col gap-0.5 mt-1">
+                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-stone-400" />
+                  <span>Pages ({filteredPages.length})</span>
                 </div>
-                {isSelected && (
-                  <span className="text-[10px] font-mono text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded shrink-0">
-                    ↵
-                  </span>
-                )}
-              </button>
-            );
-          })
+                {filteredPages.map((page) => {
+                  const index = allFilteredSuggestions.findIndex((s) => s.id === page.id);
+                  const isSelected = index === selectedIndex;
+                  return (
+                    <button
+                      key={page.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSelectItem(page);
+                        onClose();
+                      }}
+                      onMouseEnter={() => onHoverIndex?.(index)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-amber-50 text-amber-950 font-medium' : 'hover:bg-stone-100 text-stone-800'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm shrink-0">{page.icon || '📄'}</span>
+                        <span className={`text-xs truncate ${isSelected ? 'font-semibold text-amber-900' : 'text-stone-800'}`}>
+                          {page.title}
+                        </span>
+                      </div>
+                      {isSelected && (
+                        <span className="text-[10px] font-mono text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded shrink-0">
+                          ↵
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {/* Users section */}
+            {filteredUsers.length > 0 && (
+              <div className="flex flex-col gap-0.5">
+                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 flex items-center gap-1">
+                  <User className="w-3 h-3 text-stone-400" />
+                  <span>Members ({filteredUsers.length})</span>
+                </div>
+                {filteredUsers.map((user) => {
+                  const index = allFilteredSuggestions.findIndex((s) => s.id === user.id);
+                  const isSelected = index === selectedIndex;
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSelectItem(user);
+                        onClose();
+                      }}
+                      onMouseEnter={() => onHoverIndex?.(index)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-emerald-50 text-emerald-950 font-medium' : 'hover:bg-stone-100 text-stone-800'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {user.icon ? (
+                          <img
+                            src={user.icon}
+                            alt={user.title}
+                            className="w-5 h-5 rounded-full object-cover shrink-0 border border-stone-200"
+                          />
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
+                            {user.title.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex flex-col min-w-0">
+                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-emerald-900' : 'text-stone-800'}`}>
+                            {user.title}
+                          </span>
+                          {user.subtitle && (
+                            <span className="text-[10px] text-stone-400 truncate font-mono">
+                              {user.subtitle}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded shrink-0">
+                          ↵
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+
+          </>
         )}
       </div>
     </div>
