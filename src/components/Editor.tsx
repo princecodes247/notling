@@ -54,7 +54,11 @@ export const Editor: React.FC<EditorProps> = ({
     setTitle(page.title);
     setIcon(page.icon || '📄');
     setVisibility((page as any).visibility || 'workspace');
-  }, [page.title, page.icon, (page as any).visibility]);
+    if (page.id) {
+      useUIStore.getState().updateTabMeta(page.id, page.title || 'Untitled Document', page.icon || '📄');
+      document.title = `${page.title || 'Untitled Document'} — Notling`;
+    }
+  }, [page.id, page.title, page.icon, (page as any).visibility]);
 
   // Query active collaborators
   const { data: activeUsers = [] } = useQuery({
@@ -137,6 +141,8 @@ export const Editor: React.FC<EditorProps> = ({
     if (isReadOnly) return;
     if (title !== page.title) {
       setSaveStatus('saving');
+      useUIStore.getState().updateTabMeta(page.id, title || 'Untitled Document', icon || '📄');
+      document.title = `${title || 'Untitled Document'} — Notling`;
       await updatePageMeta({
         data: { pageId: page.id, title, icon },
       });
@@ -150,6 +156,8 @@ export const Editor: React.FC<EditorProps> = ({
     setIcon(selectedIcon);
     setShowEmojiPicker(false);
     setSaveStatus('saving');
+    useUIStore.getState().updateTabMeta(page.id, title || 'Untitled Document', selectedIcon || '📄');
+    document.title = `${title || 'Untitled Document'} — Notling`;
     await updatePageMeta({
       data: { pageId: page.id, title, icon: selectedIcon },
     });

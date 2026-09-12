@@ -89,7 +89,13 @@ export const useUIStore = create<UIState>((set, get) => ({
         }
 
         const newTabs = [...state.openTabs];
-        newTabs[existingIndex] = { ...existing, ...tab };
+        const mergedTitle =
+          tab.title && tab.title !== 'Untitled Document'
+            ? tab.title
+            : (existing.title && existing.title !== 'Untitled Document' ? existing.title : tab.title);
+        const mergedIcon = tab.icon || existing.icon;
+
+        newTabs[existingIndex] = { ...existing, ...tab, title: mergedTitle, icon: mergedIcon };
         return {
           openTabs: newTabs,
           activeTabId: tab.id,

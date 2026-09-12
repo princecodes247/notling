@@ -85,7 +85,7 @@ export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: stri
         sideMenuView.__dragOriginPatched = true;
         Object.defineProperty(sideMenuView, 'isDragOrigin', {
           get: () => false,
-          set: () => {},
+          set: () => { },
           configurable: true,
         });
       }
@@ -95,26 +95,26 @@ export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: stri
     return () => clearTimeout(timer);
   }, [editor]);
 
-function isBlocksArrayEmpty(blocks: any[]): boolean {
-  if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return true;
-  if (blocks.length === 1) {
-    const first = blocks[0];
-    const hasNoContent = !first.content || (Array.isArray(first.content) && first.content.length === 0);
-    let hasNoText = true;
-    if (typeof first.content === 'string') {
-      hasNoText = !first.content.trim();
-    } else if (Array.isArray(first.content)) {
-      hasNoText = !first.content.some((item: any) => item?.text && item.text.trim().length > 0);
-    } else if (first.text) {
-      hasNoText = !first.text.trim();
+  function isBlocksArrayEmpty(blocks: any[]): boolean {
+    if (!blocks || !Array.isArray(blocks) || blocks.length === 0) return true;
+    if (blocks.length === 1) {
+      const first = blocks[0];
+      const hasNoContent = !first.content || (Array.isArray(first.content) && first.content.length === 0);
+      let hasNoText = true;
+      if (typeof first.content === 'string') {
+        hasNoText = !first.content.trim();
+      } else if (Array.isArray(first.content)) {
+        hasNoText = !first.content.some((item: any) => item?.text && item.text.trim().length > 0);
+      } else if (first.text) {
+        hasNoText = !first.text.trim();
+      }
+      const hasNoChildren = !first.children || (Array.isArray(first.children) && first.children.length === 0);
+      if ((first.type === 'paragraph' || !first.type) && hasNoContent && hasNoText && hasNoChildren) {
+        return true;
+      }
     }
-    const hasNoChildren = !first.children || (Array.isArray(first.children) && first.children.length === 0);
-    if ((first.type === 'paragraph' || !first.type) && hasNoContent && hasNoText && hasNoChildren) {
-      return true;
-    }
+    return false;
   }
-  return false;
-}
 
   // Seed viewer blocks if editor is blank and parsedBlocks exists
   useEffect(() => {
@@ -242,6 +242,13 @@ function PublicDocumentPageRoute() {
     }
   }, [sharedData?.isLoggedIn, pageId, navigate]);
 
+  // Synchronize document.title for viewers on share page
+  useEffect(() => {
+    if (sharedData?.page?.title) {
+      document.title = `${sharedData.page.title || 'Untitled Document'} - Notling`;
+    }
+  }, [sharedData?.page?.title]);
+
   // Heartbeat presence ping & immediate cleanup on unmount/leave
   useEffect(() => {
     if (!pageId || !sharedData) return;
@@ -256,7 +263,7 @@ function PublicDocumentPageRoute() {
             guestName: userEmail ? undefined : `Guest ${cid.slice(-4)}`,
           },
         });
-      } catch {}
+      } catch { }
     };
     sendPing();
     const timer = setInterval(sendPing, 3000);
@@ -264,7 +271,7 @@ function PublicDocumentPageRoute() {
     const handleLeave = () => {
       try {
         removePagePresence({ data: { pageId, clientId: cid } });
-      } catch {}
+      } catch { }
     };
 
     window.addEventListener('beforeunload', handleLeave);

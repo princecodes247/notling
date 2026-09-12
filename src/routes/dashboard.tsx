@@ -135,15 +135,26 @@ function DashboardLayout() {
         const pageId = match[1];
         doSetActivePageId(pageId);
         const node = findNodeInTree(treeNodes, pageId);
+        const existingTab = useUIStore.getState().openTabs.find((t) => t.id === pageId);
+        const resolvedTitle =
+          node?.title ??
+          (existingTab?.title && existingTab.title !== 'Untitled Document' ? existingTab.title : 'Untitled Document');
+        const resolvedIcon = node?.icon ?? existingTab?.icon ?? '📄';
+
         doOpenTab({
           id: pageId,
-          title: node?.title || 'Untitled Document',
-          icon: node?.icon || '📄',
+          title: resolvedTitle,
+          icon: resolvedIcon,
           path: currentPath,
         });
+
+        if (resolvedTitle && resolvedTitle !== 'Untitled Document') {
+          document.title = `${resolvedTitle} — Notling`;
+        }
       }
     } else if (currentPath.includes('/dashboard/folders')) {
       doSetActivePageId(null);
+      document.title = 'Folders — Notling';
       doOpenTab({
         id: 'folders',
         title: 'Folders',
@@ -152,6 +163,7 @@ function DashboardLayout() {
       });
     } else if (currentPath.includes('/dashboard/settings')) {
       doSetActivePageId(null);
+      document.title = 'Settings — Notling';
       doOpenTab({
         id: 'settings',
         title: 'Settings',
@@ -160,6 +172,7 @@ function DashboardLayout() {
       });
     } else if (currentPath.includes('/dashboard/trash')) {
       doSetActivePageId(null);
+      document.title = 'Trash - Notling';
       doOpenTab({
         id: 'trash',
         title: 'Trash',
@@ -168,6 +181,7 @@ function DashboardLayout() {
       });
     } else if (currentPath === '/dashboard') {
       doSetActivePageId(null);
+      document.title = 'Home - Notling';
       doOpenTab({
         id: 'home',
         title: 'Home',
