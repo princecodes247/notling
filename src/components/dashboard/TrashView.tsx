@@ -70,9 +70,6 @@ export const TrashView: React.FC<TrashViewProps> = ({
         {/* Header Strip */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-200/70">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-stone-900 text-amber-200/95 flex items-center justify-center shrink-0 shadow-xs">
-              <Trash2 className="w-5 h-5" />
-            </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 tracking-tight">
