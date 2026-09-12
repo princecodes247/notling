@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers } from '~/db/schema';
 import { eq, and, desc, asc, isNull, lt, ne } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import { getSessionImpl } from './auth.db';
@@ -864,7 +864,35 @@ export async function fetchChildPages(parentId: string) {
 
 export async function fetchPageShares(pageId: string) {
   try {
-    return await db
+    const pageRecord = await db
+      .select({ workspaceId: pages.workspaceId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+      .limit(1);
+
+    let owner: { id: string; email: string; name: string | null } | null = null;
+
+    if (pageRecord.length > 0) {
+      const ws = await db
+        .select({ ownerId: workspaces.ownerId })
+        .from(workspaces)
+        .where(eq(workspaces.id, pageRecord[0].workspaceId))
+        .limit(1);
+
+      if (ws.length > 0) {
+        const ownerUsers = await db
+          .select({ id: users.id, email: users.email, name: users.name })
+          .from(users)
+          .where(eq(users.id, ws[0].ownerId))
+          .limit(1);
+
+        if (ownerUsers.length > 0) {
+          owner = ownerUsers[0];
+        }
+      }
+    }
+
+    const shares = await db
       .select({
         id: pageShares.id,
         pageId: pageShares.pageId,
@@ -875,9 +903,14 @@ export async function fetchPageShares(pageId: string) {
       .from(pageShares)
       .where(eq(pageShares.pageId, pageId))
       .orderBy(asc(pageShares.createdAt));
+
+    return {
+      owner,
+      shares,
+    };
   } catch (err) {
     console.error('Error fetching page shares:', err);
-    return [];
+    return { owner: null, shares: [] };
   }
 }
 
@@ -1050,21 +1083,25 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
 
     const ownerId = wsList.length > 0 ? wsList[0].ownerId : null;
 
-    // 2. Get emails of users invited to pages in this workspace via pageShares
-    const pageSharesList = await db
-      .select({ email: pageShares.email, role: pageShares.role })
-      .from(pageShares)
-      .innerJoin(pages, eq(pageShares.pageId, pages.id))
-      .where(eq(pages.workspaceId, workspaceId));
+    // 2. Get workspace members from workspaceMembers table (NOT pageShares)
+    const membersList = await db
+      .select({
+        id: workspaceMembers.id,
+        userId: workspaceMembers.userId,
+        email: workspaceMembers.email,
+        role: workspaceMembers.role,
+      })
+      .from(workspaceMembers)
+      .where(eq(workspaceMembers.workspaceId, workspaceId));
 
-    const invitedEmailsMap = new Map<string, string>();
-    pageSharesList.forEach((s) => {
-      if (s.email) {
-        invitedEmailsMap.set(s.email.toLowerCase().trim(), s.role || 'Viewer');
+    const memberEmailsMap = new Map<string, string>();
+    membersList.forEach((m) => {
+      if (m.email) {
+        memberEmailsMap.set(m.email.toLowerCase().trim(), m.role || 'member');
       }
     });
 
-    // 3. Fetch users matching workspace owner, session user, or invited collaborators
+    // 3. Fetch registered users matching workspace owner or workspace members
     const allUsers = await db
       .select({
         id: users.id,
@@ -1082,14 +1119,13 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
     allUsers.forEach((u) => {
       const emailLower = u.email.toLowerCase().trim();
       const isOwner = ownerId && u.id === ownerId;
-      const isSessionUser = sessionUser && (u.id === sessionUser.userId || emailLower === sessionUser.email?.toLowerCase());
-      const isInvited = invitedEmailsMap.has(emailLower);
+      const isMember = memberEmailsMap.has(emailLower);
 
-      if (isOwner || isSessionUser || isInvited) {
+      if (isOwner || isMember) {
         seenEmails.add(emailLower);
         let role = u.role || 'Member';
         if (isOwner) role = 'Workspace Owner';
-        else if (isInvited) role = invitedEmailsMap.get(emailLower) === 'editor' ? 'Editor' : 'Viewer';
+        else if (isMember) role = memberEmailsMap.get(emailLower) === 'admin' ? 'Admin' : 'Member';
 
         result.push({
           id: u.id,
@@ -1101,16 +1137,16 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
       }
     });
 
-    // 4. Include pending invited emails who don't have a user account yet
-    invitedEmailsMap.forEach((role, email) => {
+    // 4. Include pending invited member emails who don't have a user account yet
+    memberEmailsMap.forEach((role, email) => {
       if (!seenEmails.has(email)) {
         seenEmails.add(email);
         result.push({
-          id: `invited-${email}`,
+          id: `member-${email}`,
           name: email.split('@')[0],
           email,
           avatarUrl: null,
-          role: role === 'editor' ? 'Editor (Pending)' : 'Viewer (Pending)',
+          role: role === 'admin' ? 'Admin (Pending)' : 'Member (Pending)',
         });
       }
     });
@@ -1119,6 +1155,72 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
   } catch (err) {
     console.error('Error fetching workspace users:', err);
     return [];
+  }
+}
+
+export async function inviteWorkspaceMember(input: {
+  workspaceId?: string;
+  email: string;
+  role?: 'owner' | 'admin' | 'member';
+}) {
+  try {
+    const session = await getSessionImpl();
+    if (!session) return { success: false, error: 'Unauthorized.' };
+
+    const targetWsId = input.workspaceId || session.workspaceId;
+    const cleanEmail = input.email.trim().toLowerCase();
+    if (!cleanEmail) return { success: false, error: 'Email is required.' };
+
+    // Check if user is already owner
+    const wsList = await db
+      .select({ ownerId: workspaces.ownerId })
+      .from(workspaces)
+      .where(eq(workspaces.id, targetWsId))
+      .limit(1);
+
+    if (wsList.length > 0) {
+      const ownerUser = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, wsList[0].ownerId))
+        .limit(1);
+      if (ownerUser.length > 0 && ownerUser[0].email.toLowerCase().trim() === cleanEmail) {
+        return { success: true, message: 'User is already the workspace owner.' };
+      }
+    }
+
+    // Check existing workspaceMembers
+    const existing = await db
+      .select()
+      .from(workspaceMembers)
+      .where(and(eq(workspaceMembers.workspaceId, targetWsId), eq(workspaceMembers.email, cleanEmail)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      return { success: true, member: existing[0] };
+    }
+
+    // Match existing user ID if user is already registered
+    const userMatch = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, cleanEmail))
+      .limit(1);
+
+    const [newMember] = await db
+      .insert(workspaceMembers)
+      .values({
+        workspaceId: targetWsId,
+        userId: userMatch.length > 0 ? userMatch[0].id : null,
+        email: cleanEmail,
+        role: input.role || 'member',
+      })
+      .returning();
+
+    return { success: true, member: newMember };
+  } catch (err: any) {
+    console.error('Error inviting workspace member:', err);
+    return { success: false, error: err.message || 'Failed to invite workspace member.' };
   }
 }
 

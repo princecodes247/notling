@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Check, Building, Copy, CheckCircle2, AlertTriangle, Trash2, X, Loader2, User, Lock, Shield } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession, updateSettings, checkWorkspaceSlug, deleteAccount, deleteWorkspace, type UserSession } from '~/server/auth';
-import { getWorkspaceUsers } from '~/server/pages';
+import { getWorkspaceUsers, inviteWorkspaceMember } from '~/server/pages';
 
 interface SettingsViewProps {
   session?: UserSession | null;
@@ -75,6 +75,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
         window.location.href = '/dashboard';
       } else {
         setDeleteWsError(res?.error || 'Failed to delete workspace.');
+      }
+    },
+  });
+
+  const [isInviteWsMemberOpen, setIsInviteWsMemberOpen] = useState(false);
+  const [inviteWsEmail, setInviteWsEmail] = useState('');
+  const [inviteWsError, setInviteWsError] = useState<string | null>(null);
+  const [inviteWsSuccess, setInviteWsSuccess] = useState<string | null>(null);
+
+  const inviteWsMemberMutation = useMutation({
+    mutationFn: async (email: string) => {
+      return await inviteWorkspaceMember({ data: { workspaceId: session?.workspaceId, email } });
+    },
+    onSuccess: (res, email) => {
+      if (res?.success) {
+        queryClient.invalidateQueries({ queryKey: ['workspaceUsers', session?.workspaceId] });
+        setInviteWsSuccess(`Workspace member added: ${email}`);
+        setInviteWsEmail('');
+        setTimeout(() => {
+          setInviteWsSuccess(null);
+          setIsInviteWsMemberOpen(false);
+        }, 1500);
+      } else {
+        setInviteWsError(res?.error || 'Failed to invite workspace member.');
       }
     },
   });
@@ -473,13 +497,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                   <button
                     type="button"
                     onClick={() => {
-                      const inviteUrl = `${window.location.origin}/login`;
-                      navigator.clipboard.writeText(inviteUrl);
-                      alert(`Invite link copied to clipboard: ${inviteUrl}`);
+                      setInviteWsEmail('');
+                      setInviteWsError(null);
+                      setInviteWsSuccess(null);
+                      setIsInviteWsMemberOpen(true);
                     }}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-medium cursor-pointer transition-colors active:scale-95"
+                    className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 hover:bg-neutral-50 text-neutral-800 font-medium cursor-pointer transition-colors active:scale-95 flex items-center gap-1.5"
                   >
-                    + Invite Member
+                    + Invite Workspace Member
                   </button>
                 )}
               </div>
@@ -778,6 +803,94 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Workspace Member Modal */}
+      {isInviteWsMemberOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 flex flex-col gap-5 relative">
+            <button
+              type="button"
+              onClick={() => setIsInviteWsMemberOpen(false)}
+              className="absolute top-4 right-4 text-neutral-400 hover:text-neutral-700 p-1 rounded-lg hover:bg-neutral-100 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 text-neutral-700" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-900">Invite Workspace Member</h3>
+                <p className="text-xs text-neutral-500 mt-0.5">Full access to all workspace pages.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-neutral-600 leading-relaxed bg-neutral-50 p-3 rounded-xl border border-neutral-200/80">
+              Workspace members get full access to all workspace pages, document trees, and shared team tools in <strong>{session?.workspaceName || 'this workspace'}</strong>.
+            </p>
+
+            {inviteWsError && (
+              <div className="p-3 rounded-lg bg-rose-100 border border-rose-200 text-xs text-rose-700 font-medium">
+                {inviteWsError}
+              </div>
+            )}
+
+            {inviteWsSuccess && (
+              <div className="p-3 rounded-lg bg-emerald-100 border border-emerald-200 text-xs text-emerald-700 font-medium">
+                {inviteWsSuccess}
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (inviteWsEmail.trim()) {
+                  inviteWsMemberMutation.mutate(inviteWsEmail.trim());
+                }
+              }}
+              className="flex flex-col gap-3"
+            >
+              <label className="text-xs font-medium text-neutral-700">
+                Member Email Address
+              </label>
+              <input
+                type="email"
+                required
+                value={inviteWsEmail}
+                onChange={(e) => setInviteWsEmail(e.target.value)}
+                placeholder="colleague@company.com"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-neutral-300 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black font-sans"
+              />
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-neutral-100">
+                <button
+                  type="button"
+                  onClick={() => setIsInviteWsMemberOpen(false)}
+                  disabled={inviteWsMemberMutation.isPending}
+                  className="px-4 py-2 rounded-lg text-xs font-medium text-neutral-600 hover:bg-neutral-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!inviteWsEmail.trim() || inviteWsMemberMutation.isPending}
+                  className="px-4 py-2 rounded-lg text-xs font-medium bg-black hover:bg-neutral-800 disabled:opacity-50 text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  {inviteWsMemberMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Adding Member...
+                    </>
+                  ) : (
+                    'Add Workspace Member'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

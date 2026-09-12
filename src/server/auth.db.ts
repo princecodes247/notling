@@ -1,6 +1,6 @@
 import { db } from '~/db';
-import { users, workspaces, sessions, pages, pageShares, uploads } from '~/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
+import { users, workspaces, sessions, pages, uploads, workspaceMembers } from '~/db/schema';
+import { eq, and, gt, or } from 'drizzle-orm';
 import type { UserSession, AuthResponse, UserWorkspaceItem } from './auth';
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server';
 import crypto from 'node:crypto';
@@ -130,25 +130,28 @@ export async function getUserWorkspacesImpl(): Promise<UserWorkspaceItem[]> {
 
     const seenIds = new Set(result.map((w) => w.id));
 
-    // 2. Shared workspaces (via pageShares)
+    // 2. Member workspaces (via workspaceMembers table, NOT pageShares)
     if (session.email) {
       const cleanEmail = session.email.trim().toLowerCase();
-      const sharedList = await db
+      const memberList = await db
         .select({
           id: workspaces.id,
           name: workspaces.name,
           slug: workspaces.slug,
           icon: workspaces.icon,
         })
-        .from(pageShares)
-        .innerJoin(pages, eq(pageShares.pageId, pages.id))
-        .innerJoin(workspaces, eq(pages.workspaceId, workspaces.id))
-        .where(eq(pageShares.email, cleanEmail));
+        .from(workspaceMembers)
+        .innerJoin(workspaces, eq(workspaceMembers.workspaceId, workspaces.id))
+        .where(
+          session.userId
+            ? or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, cleanEmail))
+            : eq(workspaceMembers.email, cleanEmail)
+        );
 
-      for (const sw of sharedList) {
-        if (!seenIds.has(sw.id)) {
-          seenIds.add(sw.id);
-          result.push({ ...sw, role: 'member' });
+      for (const mw of memberList) {
+        if (!seenIds.has(mw.id)) {
+          seenIds.add(mw.id);
+          result.push({ ...mw, role: 'member' });
         }
       }
     }
@@ -275,14 +278,18 @@ export async function getSessionImpl(): Promise<UserSession | null> {
           workspace = targetWs[0];
         } else if (user.email) {
           const cleanEmail = user.email.trim().toLowerCase();
-          const hasShare = await db
-            .select({ id: pageShares.id })
-            .from(pageShares)
-            .innerJoin(pages, eq(pageShares.pageId, pages.id))
-            .where(and(eq(pages.workspaceId, targetWs[0].id), eq(pageShares.email, cleanEmail)))
+          const memberRecord = await db
+            .select({ id: workspaceMembers.id })
+            .from(workspaceMembers)
+            .where(
+              and(
+                eq(workspaceMembers.workspaceId, targetWs[0].id),
+                or(eq(workspaceMembers.userId, user.id), eq(workspaceMembers.email, cleanEmail))
+              )
+            )
             .limit(1);
 
-          if (hasShare.length > 0) {
+          if (memberRecord.length > 0) {
             workspace = targetWs[0];
           }
         }

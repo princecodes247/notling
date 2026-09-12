@@ -184,6 +184,13 @@ export const getWorkspaceUsers = createServerFn({ method: 'GET' })
     return fetchWorkspaceUsers(data);
   });
 
+export const inviteWorkspaceMember = createServerFn({ method: 'POST' })
+  .validator((input: { workspaceId?: string; email: string; role?: 'owner' | 'admin' | 'member' }) => input)
+  .handler(async ({ data }) => {
+    const { inviteWorkspaceMember: inviteMemberImpl } = await import('./pages.db');
+    return inviteMemberImpl(data);
+  });
+
 export type { WorkspaceUserItem } from './pages.db';
 
 

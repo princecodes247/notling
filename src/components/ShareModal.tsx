@@ -2,23 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Share01Icon,
   Link02Icon,
   CheckmarkCircle01Icon,
   UserAdd01Icon,
   LockIcon,
   Globe02Icon,
   Building01Icon,
-  ArrowDown01Icon,
 } from '@hugeicons/core-free-icons';
 import type { Page } from '~/db/schema';
 import { Modal } from './Modal';
+import { Select, type SelectOption } from '~/components/ui/Select';
 import {
   getPageShares,
   inviteUserToPage,
   removePageShare,
   updatePageShareRole,
 } from '~/server/pages';
+
+const ROLE_OPTIONS: SelectOption<'viewer' | 'editor'>[] = [
+  { value: 'viewer', label: 'Can view', description: 'Read-only access' },
+  { value: 'editor', label: 'Can edit', description: 'Edit & comment permissions' },
+];
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -45,6 +49,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 }) => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'editor' | 'viewer'>('viewer');
+  const [owner, setOwner] = useState<{ id: string; email: string; name?: string | null } | null>(null);
   const [people, setPeople] = useState<SharedPerson[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -56,10 +61,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     if (isOpen && page?.id) {
       setLoading(true);
       getPageShares({ data: page.id })
-        .then((shares) => {
-          if (shares && Array.isArray(shares)) {
+        .then((res: any) => {
+          if (res) {
+            if (res.owner) {
+              setOwner(res.owner);
+            } else {
+              setOwner(null);
+            }
+            const sharesList = res.shares || (Array.isArray(res) ? res : []);
             setPeople(
-              shares.map((s) => ({
+              sharesList.map((s: any) => ({
                 id: s.id,
                 email: s.email,
                 role: s.role as 'editor' | 'viewer',
@@ -76,6 +87,13 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     e.preventDefault();
     const cleanEmail = inviteEmail.trim().toLowerCase();
     if (!cleanEmail || !page?.id) return;
+
+    if (owner && cleanEmail === owner.email.toLowerCase()) {
+      setInvitedSuccess('User is already the page owner.');
+      setInviteEmail('');
+      setTimeout(() => setInvitedSuccess(null), 3000);
+      return;
+    }
 
     try {
       const newShare = await inviteUserToPage({
@@ -143,9 +161,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      icon={<HugeiconsIcon icon={Share01Icon} size={16} />}
       title={page.title ? `Share "${page.title}"` : 'Share Untitled Document'}
-      subtitle="Permissions & live collaboration"
+      // subtitle="Permissions & live collaboration"
       maxWidth="lg"
       footer={
         <button
@@ -160,9 +177,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       <div className="flex flex-col gap-5 select-none text-stone-900">
         {/* Section 1: Invite People */}
         <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold text-stone-800 tracking-tight">
-            Invite people
-          </label>
+
 
           <form onSubmit={handleInvite} className="flex items-center gap-2">
             <div className="flex-1 flex items-center bg-white border border-stone-300/80 rounded-lg px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(0,0,0,0.02)] focus-within:border-stone-800 focus-within:ring-2 focus-within:ring-stone-900/[0.06] transition-all gap-2 h-10">
@@ -174,27 +189,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 placeholder="Enter email address..."
                 className="flex-1 text-xs font-medium text-stone-900 placeholder:text-stone-400 bg-transparent focus:outline-none min-w-0"
               />
-              <div className="relative flex items-center shrink-0">
-                <select
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as 'editor' | 'viewer')}
-                  className="appearance-none pl-2.5 pr-6 py-1 text-[11px] font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200/70 border border-stone-200/80 rounded-md focus:outline-none cursor-pointer transition-colors"
-                >
-                  <option value="viewer">Can view</option>
-                  <option value="editor">Can edit</option>
-                </select>
-                <HugeiconsIcon icon={ArrowDown01Icon} size={10} className="absolute right-2 text-stone-500 pointer-events-none" />
-              </div>
             </div>
 
             <button
               type="submit"
               disabled={!inviteEmail.trim()}
-              className={`h-10 px-4 rounded-lg text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center justify-center cursor-pointer active:scale-95 ${
-                inviteEmail.trim()
-                  ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-xs active:bg-black'
-                  : 'bg-stone-100 text-stone-400 border border-stone-200/80 cursor-not-allowed shadow-none'
-              }`}
+              className={`h-10 px-4 rounded-lg text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center justify-center cursor-pointer active:scale-95 ${inviteEmail.trim()
+                ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-xs active:bg-black'
+                : 'bg-stone-100 text-stone-400 border border-stone-200/80 cursor-not-allowed shadow-none'
+                }`}
             >
               Invite
             </button>
@@ -210,39 +213,58 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           {/* People List */}
           {loading ? (
             <div className="py-4 text-center text-xs text-stone-400">Loading collaborators...</div>
-          ) : people.length > 0 ? (
-            <div className="mt-1 flex flex-col divide-y divide-stone-100 rounded-lg border border-stone-200/70 bg-white/60 overflow-hidden max-h-40 overflow-y-auto shadow-2xs">
-              {people.map((person) => (
-                <div key={person.id} className="px-3.5 py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
-                      {person.email[0]}
+          ) : owner || people.length > 0 ? (
+            <>
+              <label className="text-xs mt-3 font-semibold text-stone-800 tracking-tight flex items-center justify-between">
+                <span>People with access</span>
+              </label>
+
+              <div className="mt-0 flex flex-col divide-y divide-stone-100 overflow-hidden max-h-40 overflow-y-auto">
+                {owner && (
+                  <div key="owner" className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
+                        {owner.email[0]}
+                      </div>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="truncate text-stone-800 font-medium">{owner.email}</span>
+                      </div>
                     </div>
-                    <span className="truncate text-stone-800 font-medium">{person.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="relative flex items-center shrink-0">
-                      <select
-                        value={person.role}
-                        onChange={(e) => handleRoleChange(person.id, e.target.value as 'editor' | 'viewer')}
-                        className="appearance-none pl-2.5 pr-6 py-1 text-[11px] font-semibold text-stone-600 bg-stone-100 hover:bg-stone-200/60 rounded-md border border-stone-200/80 focus:outline-none cursor-pointer transition-colors"
-                      >
-                        <option value="viewer">Can view</option>
-                        <option value="editor">Can edit</option>
-                      </select>
-                      <HugeiconsIcon icon={ArrowDown01Icon} size={10} className="absolute right-1.5 text-stone-500 pointer-events-none" />
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] font-semibold text-stone-500 bg-stone-100 border border-stone-200/80 px-2.5 py-1 rounded-md select-none">
+                        Owner
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePerson(person.id)}
-                      className="text-[11px] text-stone-400 hover:text-rose-600 font-medium cursor-pointer px-1.5 py-1 rounded hover:bg-rose-50 transition-colors"
-                    >
-                      Remove
-                    </button>
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+                {people
+                  .filter((person) => !owner || person.email.toLowerCase() !== owner.email.toLowerCase())
+                  .map((person) => (
+                    <div key={person.id} className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
+                          {person.email[0]}
+                        </div>
+                        <span className="truncate text-stone-800 font-medium">{person.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Select
+                          value={person.role}
+                          options={ROLE_OPTIONS}
+                          onChange={(newRole) => handleRoleChange(person.id, newRole)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePerson(person.id)}
+                          className="text-[11px] text-stone-400 hover:text-rose-600 font-medium cursor-pointer px-1.5 py-1 rounded hover:bg-rose-50 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </>
           ) : null}
         </div>
 
@@ -258,11 +280,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <button
               type="button"
               onClick={() => onUpdateVisibility('private')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
-                visibility === 'private'
-                  ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
-                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-              }`}
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'private'
+                ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
+                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600'}`}>
@@ -277,11 +298,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <button
               type="button"
               onClick={() => onUpdateVisibility('workspace')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
-                visibility === 'workspace'
-                  ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs'
-                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-              }`}
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'workspace'
+                ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs'
+                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
@@ -296,11 +316,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <button
               type="button"
               onClick={() => onUpdateVisibility('public')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
-                visibility === 'public'
-                  ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300/40 shadow-xs'
-                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-              }`}
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public'
+                ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300/40 shadow-xs'
+                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 text-blue-800' : 'bg-stone-100 text-stone-600'}`}>
@@ -315,11 +334,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <button
               type="button"
               onClick={() => onUpdateVisibility('public_edit')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${
-                visibility === 'public_edit'
-                  ? 'bg-indigo-50/60 border-indigo-300 ring-1 ring-indigo-300/40 shadow-xs'
-                  : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
-              }`}
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public_edit'
+                ? 'bg-indigo-50/60 border-indigo-300 ring-1 ring-indigo-300/40 shadow-xs'
+                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                }`}
             >
               <div className="flex items-center gap-1.5">
                 <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 text-indigo-800' : 'bg-stone-100 text-stone-600'}`}>
@@ -349,11 +367,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           <button
             type="button"
             onClick={handleCopyLink}
-            className={`h-8 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center gap-1.5 ${
-              copied
-                ? 'bg-emerald-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                : 'bg-white hover:bg-stone-50 text-stone-800 border border-stone-200'
-            }`}
+            className={`h-8 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center gap-1.5 ${copied
+              ? 'bg-emerald-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+              : 'bg-white hover:bg-stone-50 text-stone-800 border border-stone-200'
+              }`}
           >
             {copied ? (
               <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} />
