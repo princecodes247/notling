@@ -3,16 +3,20 @@ import { useState, useEffect } from 'react';
 import { Route as rootRoute } from './__root';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  SparklesIcon,
   ArrowRight01Icon,
   CheckmarkCircle01Icon,
+  RefreshIcon,
+  Wrench01Icon,
+  Target01Icon,
+  BrainIcon,
+  SparklesIcon,
+  Tick01Icon,
 } from '@hugeicons/core-free-icons';
 import { completeOnboarding, checkWorkspaceSlug } from '~/server/auth';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { Select, type SelectOption } from '~/components/ui/Select';
 import { Avatar } from '@avatune/react';
 import pacovqzzTheme from '@avatune/pacovqzz-theme/react';
-import { RefreshCw } from 'lucide-react';
 import { WorkspaceAvatar } from '~/components/WorkspaceAvatar';
 
 export const Route = createRoute({
@@ -33,26 +37,26 @@ const TEMPLATES = [
   {
     id: 'engineering',
     title: 'Engineering & Architecture',
-    icon: '⚙️',
+    icon: Wrench01Icon,
     description: 'System overview, API guidelines, architecture diagrams, and dev best practices.',
   },
   {
     id: 'product',
     title: 'Product Roadmap & Specs',
-    icon: '🎯',
+    icon: Target01Icon,
     description: 'Q3 goals, product specifications, customer feedback, and launch checklists.',
   },
   {
     id: 'personal',
     title: 'Personal Knowledge Base',
-    icon: '🧠',
+    icon: BrainIcon,
     description: 'Daily journals, reading list, personal goals, and quick notes.',
   },
   {
     id: 'blank',
     title: 'Clean Slate',
-    icon: '✨',
-    description: 'Start with an empty workspace and build your own custom page hierarchy.',
+    icon: SparklesIcon,
+    description: 'Start fresh with a blank canvas and build your workspace as you go.',
   },
 ];
 
@@ -201,7 +205,7 @@ function OnboardingPage() {
                   className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-600 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
                   title="Reroll avatar"
                 >
-                  <RefreshCw className="w-2.5 h-2.5" />
+                  <HugeiconsIcon icon={RefreshIcon} size={11} />
                 </button>
               </div>
 
@@ -269,7 +273,7 @@ function OnboardingPage() {
                   className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-600 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
                   title="Reroll avatar pattern"
                 >
-                  <RefreshCw className="w-2.5 h-2.5" />
+                  <HugeiconsIcon icon={RefreshIcon} size={11} />
                 </button>
               </div>
 
@@ -364,29 +368,39 @@ function OnboardingPage() {
 
             {/* Template Grid */}
             <div className="grid grid-cols-1 gap-3">
-              {TEMPLATES.map((tmpl) => (
-                <div
-                  key={tmpl.id}
-                  onClick={() => setSelectedTemplate(tmpl.id)}
-                  className={`p-4 rounded-lg border transition-all cursor-pointer flex items-start gap-3.5 ${selectedTemplate === tmpl.id
-                    ? 'border-black bg-neutral-50/80 shadow-2xs'
-                    : 'border-neutral-200 hover:border-neutral-300 bg-white'
-                    }`}
-                >
-                  <span className="text-2xl p-1 bg-white rounded-lg border border-neutral-200 shrink-0 shadow-2xs">
-                    {tmpl.icon}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-semibold text-neutral-900">{tmpl.title}</h4>
-                      {selectedTemplate === tmpl.id && (
-                        <HugeiconsIcon icon={CheckmarkCircle01Icon} size={16} className="text-black shrink-0" />
-                      )}
+              {TEMPLATES.map((tmpl) => {
+                const isSelected = selectedTemplate === tmpl.id;
+                return (
+                  <div
+                    key={tmpl.id}
+                    onClick={() => setSelectedTemplate(tmpl.id)}
+                    className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3.5 ${isSelected
+                      ? 'border-neutral-900 bg-neutral-50/80 shadow-2xs'
+                      : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                      }`}
+                  >
+                    <div className={`p-2.5 rounded-xl border shrink-0 transition-colors ${isSelected
+                      ? 'bg-neutral-900 border-neutral-900 text-white'
+                      : 'bg-neutral-100/80 border-neutral-200/80 text-neutral-700'
+                      }`}>
+                      <HugeiconsIcon icon={tmpl.icon} size={18} />
                     </div>
-                    <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{tmpl.description}</p>
+
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-neutral-900">{tmpl.title}</h4>
+                      <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{tmpl.description}</p>
+                    </div>
+
+                    {/* Radio Select Affordance */}
+                    <div className={`w-4 h-4 rounded-full border shrink-0 flex items-center justify-center transition-all ${isSelected
+                      ? 'bg-black border-black text-white'
+                      : 'border-neutral-300 bg-white'
+                      }`}>
+                      {isSelected && <HugeiconsIcon icon={Tick01Icon} size={10} />}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex items-center gap-3 mt-2">
@@ -404,7 +418,6 @@ function OnboardingPage() {
                 className="flex-1 py-2.5 bg-black hover:bg-neutral-800 text-white font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs disabled:opacity-50"
               >
                 <span>{loading ? 'Setting up workspace...' : 'Launch Workspace'}</span>
-                <HugeiconsIcon icon={SparklesIcon} size={15} />
               </button>
             </div>
           </div>
