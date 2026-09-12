@@ -10,7 +10,8 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
-import { getClientId } from '~/lib/collaboration';
+import { getClientId, useCollaboration } from '~/lib/collaboration';
+import { ySyncPluginKey } from 'y-prosemirror';
 import type { Page } from '~/db/schema';
 import type { ActiveUserPresence } from '~/server/pages.db';
 
@@ -62,8 +63,9 @@ function ActiveCollaboratorsBar({ activeUsers, currentClientId }: { activeUsers:
   );
 }
 
-function PublicBlockViewer({ content }: { pageId?: string; content: any; userEmail?: string | null }) {
+function PublicBlockViewer({ pageId, content }: { pageId: string; content: any; userEmail?: string | null }) {
   const [mounted, setMounted] = useState(false);
+  const collab = useCollaboration(pageId);
 
   useEffect(() => {
     setMounted(true);
@@ -79,12 +81,76 @@ function PublicBlockViewer({ content }: { pageId?: string; content: any; userEma
     return undefined;
   }, [content]);
 
-  const editor = useCreateBlockNote(
-    {
+  const editorOptions = useMemo(() => {
+    return {
       initialContent: parsedBlocks && parsedBlocks.length > 0 ? parsedBlocks : undefined,
-    },
-    [parsedBlocks]
-  );
+      collaboration: collab
+        ? {
+            provider: {
+              ...collab.provider,
+              awareness: undefined,
+            },
+            fragment: collab.fragment,
+            user: { name: '', color: 'transparent' },
+          }
+        : undefined,
+    };
+  }, [collab, parsedBlocks]);
+
+  const editor = useCreateBlockNote(editorOptions, [pageId]);
+
+  // Prevent any local click/drag/keyboard events on the read-only viewer from modifying the shared document
+  useEffect(() => {
+    const pmView = editor?.prosemirrorView;
+    if (!pmView || (pmView as any).__readOnlyGuarded) return;
+    (pmView as any).__readOnlyGuarded = true;
+
+    const originalDispatch = pmView.dispatch.bind(pmView);
+    pmView.dispatch = (tr: any) => {
+      // If a local transaction on the viewer attempts to modify document nodes, block it
+      if (tr.docChanged && !tr.getMeta(ySyncPluginKey)) {
+        return;
+      }
+      originalDispatch(tr);
+    };
+  }, [editor]);
+
+  // Neutralize SideMenuPlugin.isDragOrigin on the viewer
+  useEffect(() => {
+    const patchSideMenuView = () => {
+      const sideMenuView = (editor as any)?.sideMenu?.view;
+      if (sideMenuView && !sideMenuView.__dragOriginPatched) {
+        sideMenuView.__dragOriginPatched = true;
+        Object.defineProperty(sideMenuView, 'isDragOrigin', {
+          get: () => false,
+          set: () => {},
+          configurable: true,
+        });
+      }
+    };
+    patchSideMenuView();
+    const timer = setTimeout(patchSideMenuView, 100);
+    return () => clearTimeout(timer);
+  }, [editor]);
+
+  // Seed viewer blocks if editor is blank and Yjs fragment has no blocks yet
+  useEffect(() => {
+    if (!editor || !parsedBlocks || parsedBlocks.length === 0) return;
+    const currentDoc = editor.document;
+    const isDocEmpty =
+      currentDoc.length === 0 ||
+      (currentDoc.length === 1 &&
+        currentDoc[0].type === 'paragraph' &&
+        (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
+
+    if (isDocEmpty && collab && collab.fragment.length === 0 && currentDoc.length > 0) {
+      try {
+        editor.replaceBlocks(currentDoc, parsedBlocks);
+      } catch (err) {
+        console.error('Failed to populate initial viewer blocks:', err);
+      }
+    }
+  }, [editor, collab, parsedBlocks]);
 
   if (!mounted) {
     return (
@@ -95,7 +161,15 @@ function PublicBlockViewer({ content }: { pageId?: string; content: any; userEma
   }
 
   return (
-    <div className="min-h-[300px] text-stone-900">
+    <div
+      className="min-h-[300px] text-stone-900 select-text"
+      onMouseDown={() => {
+        const sideMenuView = (editor as any)?.sideMenu?.view;
+        if (sideMenuView) {
+          sideMenuView.isDragOrigin = false;
+        }
+      }}
+    >
       <BlockNoteView
         editor={editor}
         theme="light"

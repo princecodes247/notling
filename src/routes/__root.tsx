@@ -3,7 +3,6 @@ import {
   createRootRoute,
   HeadContent,
   Scripts,
-  ScrollRestoration,
 } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import stylesCss from '~/styles.css?url';
@@ -51,7 +50,6 @@ function RootComponent() {
         <QueryClientProvider client={queryClient}>
           <Outlet />
         </QueryClientProvider>
-        <ScrollRestoration />
         <Scripts />
       </body>
     </html>

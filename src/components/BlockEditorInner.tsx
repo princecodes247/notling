@@ -796,7 +796,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   }, [page.id, page.content]);
 
   const editorOptions = useMemo(() => {
-    const opts: any = {};
+    const opts: any = {
+      initialContent: initialContent && initialContent.length > 0 ? initialContent : undefined,
+    };
     if (collab) {
       opts.collaboration = {
         provider: collab.provider,
@@ -804,40 +806,24 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         user: collab.user,
         showCursorLabels: collab.showCursorLabels,
       };
-    } else {
-      opts.initialContent = initialContent;
     }
     return opts;
   }, [initialContent, collab]);
 
-  const editor = useCreateBlockNote(editorOptions, [collab]);
+  const editor = useCreateBlockNote(editorOptions, [page.id]);
 
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
-  const isInitializedRef = useRef<boolean>(false);
 
   useEffect(() => {
     editorRef.current = editor;
     pageIdRef.current = page.id;
   }, [editor, page.id]);
 
-  // Seed editor content from database if editor document is blank
+  // If editor is blank and Yjs fragment has no blocks yet, seed from database content
   useEffect(() => {
-    if (!editor || !initialContent || initialContent.length === 0 || isInitializedRef.current) return;
-
-    if (collab) {
-      if (collab.fragment.length === 0) {
-        try {
-          editor.replaceBlocks(editor.document, initialContent);
-        } catch (err) {
-          console.error('Failed to populate initial collaboration content:', err);
-        }
-      }
-      isInitializedRef.current = true;
-      return;
-    }
-
+    if (!editor || !initialContent || initialContent.length === 0) return;
     const currentDoc = editor.document;
     const isDocEmpty =
       currentDoc.length === 0 ||
@@ -845,15 +831,14 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         currentDoc[0].type === 'paragraph' &&
         (!currentDoc[0].content || (Array.isArray(currentDoc[0].content) && currentDoc[0].content.length === 0)));
 
-    if (isDocEmpty) {
+    if (isDocEmpty && collab && collab.fragment.length === 0 && currentDoc.length > 0) {
       try {
-        editor.replaceBlocks(editor.document, initialContent);
+        editor.replaceBlocks(currentDoc, initialContent);
       } catch (err) {
-        console.error('Failed to populate editor with initial content:', err);
+        console.error('Error seeding initial collaborative content:', err);
       }
     }
-    isInitializedRef.current = true;
-  }, [editor, initialContent, collab]);
+  }, [editor, collab, initialContent]);
 
   const performSave = async () => {
     try {

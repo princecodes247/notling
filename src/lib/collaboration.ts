@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 
@@ -46,16 +46,18 @@ export interface CollaborationConfig {
   showCursorLabels: 'always' | 'activity';
 }
 
-export function useCollaboration(
-  pageId: string,
-  userDisplayName?: string | null,
-  userIdentifier?: string | null
-): CollaborationConfig | null {
-  const [collab, setCollab] = useState<CollaborationConfig | null>(null);
+interface CachedCollab {
+  doc: Y.Doc;
+  provider: WebrtcProvider;
+  fragment: Y.XmlFragment;
+  refCount: number;
+}
 
-  useEffect(() => {
-    if (typeof window === 'undefined' || !pageId) return;
+const collabCache = new Map<string, CachedCollab>();
 
+function getOrCreateCollab(pageId: string): CachedCollab {
+  let cached = collabCache.get(pageId);
+  if (!cached || (cached.doc as any).isDestroyed || (cached.provider as any).destroyed) {
     const doc = new Y.Doc();
     const roomName = `notling-room-${pageId}`;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -66,34 +68,65 @@ export function useCollaboration(
     });
 
     const fragment = doc.getXmlFragment('document-store');
+    cached = { doc, provider, fragment, refCount: 0 };
+    collabCache.set(pageId, cached);
+  }
+  cached.refCount++;
+  return cached;
+}
 
+function releaseCollab(pageId: string) {
+  const cached = collabCache.get(pageId);
+  if (!cached) return;
+  cached.refCount--;
+  if (cached.refCount <= 0) {
+    try {
+      cached.provider.destroy();
+      cached.doc.destroy();
+    } catch {}
+    collabCache.delete(pageId);
+  }
+}
+
+export function useCollaboration(
+  pageId: string,
+  userDisplayName?: string | null,
+  userIdentifier?: string | null
+): CollaborationConfig | null {
+  const collabData = useMemo(() => {
+    if (typeof window === 'undefined' || !pageId) return null;
+    return getOrCreateCollab(pageId);
+  }, [pageId]);
+
+  // Clean up on unmount or pageId change
+  useEffect(() => {
+    if (!pageId) return;
+    return () => {
+      releaseCollab(pageId);
+    };
+  }, [pageId]);
+
+  // Update user info in awareness without destroying provider or doc
+  useEffect(() => {
+    if (!collabData) return;
     const clientId = getClientId();
     const name = userDisplayName || userIdentifier || `User ${clientId.slice(-4)}`;
     const color = getCursorColor(userIdentifier || userDisplayName || clientId);
-
     const userInfo = { name, color };
+    collabData.provider.awareness.setLocalStateField('user', userInfo);
+  }, [collabData, userDisplayName, userIdentifier]);
 
-    // Update awareness user state
-    provider.awareness.setLocalStateField('user', userInfo);
+  if (!collabData) return null;
 
-    setCollab({
-      doc,
-      provider,
-      fragment,
-      user: userInfo,
-      showCursorLabels: 'always',
-    });
+  const clientId = getClientId();
+  const name = userDisplayName || userIdentifier || `User ${clientId.slice(-4)}`;
+  const color = getCursorColor(userIdentifier || userDisplayName || clientId);
 
-    return () => {
-      try {
-        provider.destroy();
-        doc.destroy();
-      } catch (err) {
-        console.error('Error destroying Yjs WebRTC provider:', err);
-      }
-      setCollab(null);
-    };
-  }, [pageId, userDisplayName, userIdentifier]);
-
-  return collab;
+  return {
+    doc: collabData.doc,
+    provider: collabData.provider,
+    fragment: collabData.fragment,
+    user: { name, color },
+    showCursorLabels: 'always',
+  };
 }
