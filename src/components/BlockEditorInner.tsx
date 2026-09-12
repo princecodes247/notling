@@ -1117,13 +1117,24 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
       const plainText = extractPlainTextFromBlocks(currentBlocks);
 
-      await updatePageContent({
+      const res = await updatePageContent({
         data: {
           pageId: pageIdRef.current,
           content: currentBlocks,
           contentText: plainText,
         },
       });
+
+      if (!res) {
+        console.warn('[Permission Revoked] Server rejected savePageContent. Invalidating queries to switch view.');
+        pendingSaveRef.current = false;
+        hasUserEditedRef.current = false;
+        setSaveStatus('idle');
+        queryClient.invalidateQueries({ queryKey: ['page', pageIdRef.current] });
+        queryClient.invalidateQueries({ queryKey: ['publicPage', pageIdRef.current] });
+        return;
+      }
+
       pendingSaveRef.current = false;
       hasUserEditedRef.current = false;
       setSaveStatus('saved');

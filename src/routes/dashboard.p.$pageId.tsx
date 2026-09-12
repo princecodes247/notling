@@ -26,7 +26,8 @@ function DocumentPageRoute() {
       return await getPage({ data: pageId });
     },
     enabled: !!pageId,
-    staleTime: 5000,
+    staleTime: 1000,
+    refetchInterval: 1500,
   });
 
   if (isLoading) {
@@ -40,7 +41,7 @@ function DocumentPageRoute() {
   if (!page) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-neutral-500 bg-white gap-3">
-        <span className="text-sm font-medium">Document not found or removed</span>
+        <span className="text-sm font-medium">Document not found or access revoked</span>
         <button
           type="button"
           onClick={() => navigate({ to: '/dashboard/folders' })}

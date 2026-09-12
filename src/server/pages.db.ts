@@ -1,7 +1,8 @@
 import { db } from '~/db';
 import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers } from '~/db/schema';
-import { eq, and, desc, asc, isNull, lt, ne } from 'drizzle-orm';
+import { eq, and, or, desc, asc, isNull, lt, ne } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
+import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
 
 
@@ -105,37 +106,106 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
   }
 }
 
+export async function getPageAccessLevel(
+  page: typeof pages.$inferSelect,
+  session: UserSession | null
+): Promise<'editor' | 'viewer' | null> {
+  const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
+
+  // 1. Workspace Owner / Admin check
+  if (session) {
+    const ws = await db
+      .select({ ownerId: workspaces.ownerId })
+      .from(workspaces)
+      .where(eq(workspaces.id, page.workspaceId))
+      .limit(1);
+
+    if (ws.length > 0 && ws[0].ownerId === session.userId) {
+      return 'editor';
+    }
+
+    if (userEmail) {
+      const member = await db
+        .select({ role: workspaceMembers.role })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, page.workspaceId),
+            or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, userEmail))
+          )
+        )
+        .limit(1);
+
+      if (member.length > 0 && member[0].role === 'admin') {
+        return 'editor';
+      }
+    }
+  }
+
+  // 2. Explicit Page-Level Share (pageShares table)
+  // Takes precedence for this specific user over general workspace membership
+  if (userEmail) {
+    const shares = await db
+      .select({ role: pageShares.role })
+      .from(pageShares)
+      .where(and(eq(pageShares.pageId, page.id), eq(pageShares.email, userEmail)))
+      .limit(1);
+
+    if (shares.length > 0) {
+      return shares[0].role;
+    }
+  }
+
+  // 3. Page Visibility & Workspace Membership
+  const isWorkspaceMember = !!(session && session.workspaceId === page.workspaceId);
+
+  if (page.visibility === 'private') {
+    // Private page is only accessible to Owner/Admin (step 1) or explicitly invited users (step 2)
+    return null;
+  }
+
+  if (page.visibility === 'workspace') {
+    if (isWorkspaceMember) {
+      return 'editor';
+    }
+    return null;
+  }
+
+  if (page.visibility === 'public_edit') {
+    if (isWorkspaceMember) return 'editor';
+    return session ? 'editor' : 'viewer';
+  }
+
+  if (page.visibility === 'public') {
+    if (isWorkspaceMember) return 'editor';
+    return 'viewer';
+  }
+
+  return null;
+}
+
 export async function fetchPage(pageId: string) {
   try {
     const pageList = await db.select().from(pages).where(and(eq(pages.id, pageId), eq(pages.isDeleted, false))).limit(1);
     if (pageList.length === 0) return null;
     const page = pageList[0];
 
-    const session = await getSessionImpl();
-    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
-    const canEdit = await checkCanUserEditPage(pageId);
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
 
-    if (session && session.workspaceId === page.workspaceId) {
-      return { ...page, canEdit };
+    const access = await getPageAccessLevel(page, session);
+
+    if (!access) {
+      return null;
     }
 
-    if (userEmail) {
-      const shares = await db
-        .select()
-        .from(pageShares)
-        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, userEmail)))
-        .limit(1);
-
-      if (shares.length > 0) {
-        return { ...page, canEdit };
-      }
-    }
-
-    if (page.visibility === 'public' || page.visibility === 'public_edit') {
-      return { ...page, canEdit };
-    }
-
-    return null;
+    return {
+      ...page,
+      accessLevel: access,
+      canEdit: access === 'editor',
+    };
   } catch (err) {
     console.error('Error fetching page:', err);
     return null;
@@ -292,50 +362,14 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
     try {
       session = await getSessionImpl();
     } catch {}
-    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
 
-    let userShare: { role: 'viewer' | 'editor' } | null = null;
-    if (userEmail) {
-      const shares = await db
-        .select({ role: pageShares.role })
-        .from(pageShares)
-        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, userEmail)))
-        .limit(1);
-
-      if (shares.length > 0) {
-        userShare = shares[0];
-      }
-    }
-
-    const isWorkspaceMember = !!(session && session.workspaceId === page.workspaceId);
-
-    let accessLevel: 'editor' | 'viewer' | null = null;
-
-    if (isWorkspaceMember) {
-      accessLevel = 'editor';
-    } else if (userShare) {
-      accessLevel = userShare.role;
-    } else if (page.visibility === 'public_edit') {
-      accessLevel = session ? 'editor' : 'viewer';
-    } else if (page.visibility === 'public') {
-      accessLevel = 'viewer';
-    }
-
+    const accessLevel = await getPageAccessLevel(page, session);
     if (!accessLevel) {
       return null;
     }
 
-    // Auto-record pageShare entry for logged-in user accessing shared link
-    if (userEmail && !userShare) {
-      try {
-        await db.insert(pageShares).values({
-          pageId,
-          email: userEmail,
-          role: accessLevel,
-        });
-      } catch {}
-    }
-
+    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
+    const isWorkspaceMember = !!(session && session.workspaceId === page.workspaceId);
     const activeUsers = await fetchActivePresence(pageId);
 
     return {
@@ -417,7 +451,7 @@ function isBlocksContentEmpty(content: any): boolean {
 export async function checkCanUserEditPage(pageId: string): Promise<boolean> {
   try {
     const pageList = await db
-      .select({ workspaceId: pages.workspaceId, visibility: pages.visibility, isDeleted: pages.isDeleted })
+      .select()
       .from(pages)
       .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
       .limit(1);
@@ -430,29 +464,8 @@ export async function checkCanUserEditPage(pageId: string): Promise<boolean> {
       session = await getSessionImpl();
     } catch {}
 
-    if (session && session.workspaceId === page.workspaceId) {
-      return true;
-    }
-
-    const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
-
-    if (userEmail) {
-      const shares = await db
-        .select({ role: pageShares.role })
-        .from(pageShares)
-        .where(and(eq(pageShares.pageId, pageId), eq(pageShares.email, userEmail)))
-        .limit(1);
-
-      if (shares.length > 0) {
-        return shares[0].role === 'editor';
-      }
-    }
-
-    if (page.visibility === 'public_edit') {
-      return !!session;
-    }
-
-    return false;
+    const access = await getPageAccessLevel(page, session);
+    return access === 'editor';
   } catch (err) {
     console.error('Error checking edit permissions:', err);
     return false;
