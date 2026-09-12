@@ -21,8 +21,6 @@ import {
   Link,
   Copy,
   Trash2,
-  MessageSquare,
-  Sparkles,
   Type,
   Heading1,
   Heading2,
@@ -798,9 +796,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   }, [page.id, page.content]);
 
   const editorOptions = useMemo(() => {
-    const opts: any = {
-      initialContent,
-    };
+    const opts: any = {};
     if (collab) {
       opts.collaboration = {
         provider: collab.provider,
@@ -808,6 +804,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         user: collab.user,
         showCursorLabels: collab.showCursorLabels,
       };
+    } else {
+      opts.initialContent = initialContent;
     }
     return opts;
   }, [initialContent, collab]);
@@ -827,6 +825,19 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   // Seed editor content from database if editor document is blank
   useEffect(() => {
     if (!editor || !initialContent || initialContent.length === 0 || isInitializedRef.current) return;
+
+    if (collab) {
+      if (collab.fragment.length === 0) {
+        try {
+          editor.replaceBlocks(editor.document, initialContent);
+        } catch (err) {
+          console.error('Failed to populate initial collaboration content:', err);
+        }
+      }
+      isInitializedRef.current = true;
+      return;
+    }
+
     const currentDoc = editor.document;
     const isDocEmpty =
       currentDoc.length === 0 ||
@@ -837,14 +848,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     if (isDocEmpty) {
       try {
         editor.replaceBlocks(editor.document, initialContent);
-        isInitializedRef.current = true;
       } catch (err) {
         console.error('Failed to populate editor with initial content:', err);
       }
-    } else {
-      isInitializedRef.current = true;
     }
-  }, [editor, initialContent]);
+    isInitializedRef.current = true;
+  }, [editor, initialContent, collab]);
 
   const performSave = async () => {
     try {
@@ -910,9 +919,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     };
   }, []);
 
-  // Sync remote block updates when another editor saves in real time (only when user is not focused/typing)
+  // Sync remote block updates from DB only if collaboration is NOT active
   useEffect(() => {
-    if (!editor || pendingSaveRef.current || hasUserEditedRef.current || editor.isFocused()) return;
+    if (collab || !editor || pendingSaveRef.current || hasUserEditedRef.current || editor.isFocused()) return;
     try {
       const incomingBlocks = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
       if (Array.isArray(incomingBlocks) && incomingBlocks.length > 0) {
@@ -925,7 +934,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     } catch (err) {
       console.error('Error syncing remote blocks:', err);
     }
-  }, [editor, page.content, page.updatedAt]);
+  }, [editor, page.content, page.updatedAt, collab]);
 
   // Neutralize SideMenuPlugin.isDragOrigin so BlockNote NEVER dispatches deleteSelection()
   useEffect(() => {
