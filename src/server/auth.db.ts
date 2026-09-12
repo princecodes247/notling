@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { users, workspaces, sessions, pages, pageShares } from '~/db/schema';
+import { users, workspaces, sessions, pages, pageShares, uploads } from '~/db/schema';
 import { eq, and, gt } from 'drizzle-orm';
 import type { UserSession, AuthResponse, UserWorkspaceItem } from './auth';
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server';
@@ -326,6 +326,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
+      isWorkspaceOwner: workspace.ownerId === user.id,
     };
   } catch (err) {
     console.error('Error fetching session:', err);
@@ -836,6 +837,81 @@ export async function signOutImpl(): Promise<{ success: boolean }> {
     console.error('Error signing out:', err);
     deleteCookie(COOKIE_NAME);
     return { success: true };
+  }
+}
+
+export async function deleteAccountAndDataImpl(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentSession = await getSessionImpl();
+    if (!currentSession) {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    const userId = currentSession.userId;
+
+    // Delete user uploads
+    await db.delete(uploads).where(eq(uploads.userId, userId));
+
+    // Delete workspaces owned by user (cascades to pages, shares, etc.)
+    await db.delete(workspaces).where(eq(workspaces.ownerId, userId));
+
+    // Delete all sessions for user
+    await db.delete(sessions).where(eq(sessions.userId, userId));
+
+    // Delete user record
+    await db.delete(users).where(eq(users.id, userId));
+
+    // Clear session cookies
+    deleteCookie(COOKIE_NAME);
+    deleteCookie(ACTIVE_WS_COOKIE);
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error deleting account and user data:', err);
+    return { success: false, error: err.message || 'Failed to delete account.' };
+  }
+}
+
+export async function deleteWorkspaceImpl(workspaceIdInput?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const currentSession = await getSessionImpl();
+    if (!currentSession) {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    const targetWorkspaceId = workspaceIdInput || currentSession.workspaceId;
+    if (!targetWorkspaceId) {
+      return { success: false, error: 'No workspace specified.' };
+    }
+
+    // Verify workspace existence and ownership
+    const targetWs = await db
+      .select()
+      .from(workspaces)
+      .where(eq(workspaces.id, targetWorkspaceId))
+      .limit(1);
+
+    if (targetWs.length === 0) {
+      return { success: false, error: 'Workspace not found.' };
+    }
+
+    if (targetWs[0].ownerId !== currentSession.userId) {
+      return { success: false, error: 'Only the workspace owner can delete this workspace.' };
+    }
+
+    // Delete workspace (cascades to pages, pageShares, pagePresence via DB foreign keys)
+    await db.delete(workspaces).where(eq(workspaces.id, targetWorkspaceId));
+
+    // Clear active workspace cookie if deleting current active workspace
+    const activeWsCookie = getCookie(ACTIVE_WS_COOKIE);
+    if (!activeWsCookie || activeWsCookie === targetWorkspaceId) {
+      deleteCookie(ACTIVE_WS_COOKIE);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error deleting workspace:', err);
+    return { success: false, error: err.message || 'Failed to delete workspace.' };
   }
 }
 

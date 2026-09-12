@@ -110,9 +110,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               onSwitchWorkspace?.(ws.id);
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 transition-colors cursor-pointer ${
-                            isActive ? 'bg-stone-50 font-semibold text-stone-900' : 'text-stone-700'
-                          }`}
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 transition-colors cursor-pointer ${isActive ? 'bg-stone-50 font-semibold text-stone-900' : 'text-stone-700'
+                            }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="text-sm shrink-0">{ws.icon || '🚀'}</span>
@@ -257,9 +256,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div
-          className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${
-            isRootDropTarget ? 'bg-stone-200/50 ring-1 ring-stone-300' : ''
-          }`}
+          className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${isRootDropTarget ? 'bg-stone-200/50 ring-1 ring-stone-300' : ''
+            }`}
           onDragOver={(e) => {
             e.preventDefault();
             if (draggedPageId) {
@@ -381,7 +379,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }`}
         >
           <HugeiconsIcon icon={Settings02Icon} size={15} className="text-stone-500" />
-          <span>Workspace Settings</span>
+          <span>Settings</span>
         </button>
       </div>
     </aside>

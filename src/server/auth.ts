@@ -11,6 +11,7 @@ export interface UserSession {
   workspaceName?: string;
   workspaceSlug?: string;
   workspaceIcon?: string;
+  isWorkspaceOwner?: boolean;
 }
 
 export interface UserWorkspaceItem {
@@ -132,4 +133,18 @@ export const signOut = createServerFn({ method: 'POST' }).handler(async (): Prom
   const { signOutImpl } = await import('./auth.db');
   return signOutImpl();
 });
+
+// Delete Account & All Data
+export const deleteAccount = createServerFn({ method: 'POST' }).handler(async (): Promise<{ success: boolean; error?: string }> => {
+  const { deleteAccountAndDataImpl } = await import('./auth.db');
+  return deleteAccountAndDataImpl();
+});
+
+// Delete Single Workspace
+export const deleteWorkspace = createServerFn({ method: 'POST' })
+  .validator((data?: { workspaceId?: string }) => data)
+  .handler(async ({ data }): Promise<{ success: boolean; error?: string }> => {
+    const { deleteWorkspaceImpl } = await import('./auth.db');
+    return deleteWorkspaceImpl(data?.workspaceId);
+  });
 
