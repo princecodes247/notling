@@ -3,6 +3,7 @@ import { Trash2, RotateCcw, X, AlertTriangle } from 'lucide-react';
 import { useUIStore } from '~/store/uiStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getTrashPages, restorePage, permanentDeletePage, emptyTrashPages } from '~/server/pages';
+import { restoreClientPage, permanentlyDeleteClientPage, emptyClientTrash } from '~/lib/pageMetaSync';
 
 interface TrashModalProps {
   workspaceId: string;
@@ -30,18 +31,23 @@ export const TrashModal: React.FC<TrashModalProps> = ({ workspaceId, onRefreshTr
   };
 
   const handleRestore = async (pageId: string) => {
+    restoreClientPage(queryClient, pageId);
     await restorePage({ data: pageId });
     invalidateAll();
   };
 
   const handlePermanentDelete = async (pageId: string) => {
     if (window.confirm('Are you sure you want to permanently delete this page? This action cannot be undone.')) {
+      permanentlyDeleteClientPage(queryClient, pageId);
       await permanentDeletePage({ data: pageId });
       invalidateAll();
     }
   };
 
   const handleRestoreAll = async () => {
+    for (const page of trashPages) {
+      restoreClientPage(queryClient, page.id);
+    }
     for (const page of trashPages) {
       await restorePage({ data: page.id });
     }
@@ -50,6 +56,7 @@ export const TrashModal: React.FC<TrashModalProps> = ({ workspaceId, onRefreshTr
 
   const handleEmptyTrash = async () => {
     if (window.confirm('Are you sure you want to permanently delete ALL items in Trash? This action cannot be undone.')) {
+      emptyClientTrash(queryClient);
       await emptyTrashPages({ data: workspaceId });
       invalidateAll();
     }

@@ -2,6 +2,7 @@ import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
 import { getTrashPages, restorePage, permanentDeletePage, emptyTrashPages } from '~/server/pages';
+import { restoreClientPage, permanentlyDeleteClientPage, emptyClientTrash } from '~/lib/pageMetaSync';
 import { TrashView } from '~/components/dashboard/TrashView';
 import { Route as dashboardRoute } from './dashboard';
 
@@ -39,16 +40,21 @@ function DashboardTrashPage() {
   };
 
   const handleRestore = async (pageId: string) => {
+    restoreClientPage(queryClient, pageId);
     await restorePage({ data: pageId });
     invalidateAll();
   };
 
   const handlePermanentDelete = async (pageId: string) => {
+    permanentlyDeleteClientPage(queryClient, pageId);
     await permanentDeletePage({ data: pageId });
     invalidateAll();
   };
 
   const handleRestoreAll = async () => {
+    for (const page of trashPages) {
+      restoreClientPage(queryClient, page.id);
+    }
     for (const page of trashPages) {
       await restorePage({ data: page.id });
     }
@@ -57,6 +63,7 @@ function DashboardTrashPage() {
 
   const handleEmptyTrash = async () => {
     if (workspaceId) {
+      emptyClientTrash(queryClient);
       await emptyTrashPages({ data: workspaceId });
       invalidateAll();
     }

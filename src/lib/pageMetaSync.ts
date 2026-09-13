@@ -226,3 +226,61 @@ export function deleteClientPage(
 
   return nextPath;
 }
+
+/**
+ * Optimistically restores a page from trash:
+ * 1. Immediately removes the page from `['trashPages']` query cache.
+ * 2. Triggers refetch/invalidation of `['pageTree']`.
+ */
+export function restoreClientPage(
+  queryClient: QueryClient | undefined,
+  pageId: string
+) {
+  if (queryClient) {
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['trashPages'] },
+      (old) => (old && Array.isArray(old) ? old.filter((p) => p.id !== pageId) : old)
+    );
+    queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+  }
+}
+
+/**
+ * Optimistically permanently deletes a page from trash:
+ * 1. Immediately removes from `['trashPages']` query cache.
+ * 2. Closes open tab and cleans up `pageMeta`.
+ */
+export function permanentlyDeleteClientPage(
+  queryClient: QueryClient | undefined,
+  pageId: string
+) {
+  useUIStore.getState().closeTab(pageId);
+  useUIStore.setState((state) => {
+    if (!state.pageMeta[pageId]) return state;
+    const nextMeta = { ...state.pageMeta };
+    delete nextMeta[pageId];
+    return { pageMeta: nextMeta };
+  });
+
+  if (queryClient) {
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['trashPages'] },
+      (old) => (old && Array.isArray(old) ? old.filter((p) => p.id !== pageId) : old)
+    );
+    queryClient.removeQueries({ queryKey: ['page', pageId] });
+  }
+}
+
+/**
+ * Optimistically empties all items from trash:
+ * 1. Instantly sets `['trashPages']` query cache to empty array.
+ */
+export function emptyClientTrash(queryClient: QueryClient | undefined) {
+  if (queryClient) {
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['trashPages'] },
+      () => []
+    );
+  }
+}
+
