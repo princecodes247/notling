@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { NotlingLogoIcon } from './Icons';
 import { FeatureCard, type FeatureCardData } from './FeatureCard';
+import { Footer } from './Footer';
 import {
   FileText,
   Search,
@@ -228,17 +229,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       </main>
 
       {/* 6. Footer */}
-      <footer className="mt-auto border-t border-neutral-200/80 py-8 px-6 text-center text-xs text-neutral-500 bg-white">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <NotlingLogoIcon className="w-4 h-4 text-neutral-800" />
-            <span className="font-semibold text-neutral-800">Notling</span>
-            <span>&bull;</span>
-            <span>Local-First Workspace System</span>
-          </div>
-          <div>&copy; 2026 Notling Technologies. All rights reserved.</div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
