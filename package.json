@@ -23,6 +23,7 @@
     "@blocknote/core": "^0.23.0",
     "@blocknote/mantine": "^0.23.0",
     "@blocknote/react": "^0.23.0",
+    "@hugeicons/core-free-icons": "^4.3.2",
     "@hugeicons/react": "^1.1.10",
     "@mantine/core": "^7.17.0",
     "@mantine/hooks": "^7.17.0",
