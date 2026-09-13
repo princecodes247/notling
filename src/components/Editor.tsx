@@ -241,7 +241,7 @@ export const Editor: React.FC<EditorProps> = ({
         <div className="flex items-center gap-2 min-w-0 mr-2">
           {/* Breadcrumb prefix: hidden on mobile, shown on desktop */}
           <span className="hidden sm:inline text-xs text-stone-400 font-medium shrink-0">
-            {isFolder ? 'Folder' : 'Document'}
+            {isFolder ? 'Folder' : 'Page'}
           </span>
           <span className="hidden sm:inline text-stone-300 text-xs shrink-0">/</span>
 
