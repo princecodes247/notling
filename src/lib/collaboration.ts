@@ -61,10 +61,15 @@ function getOrCreateCollab(pageId: string): CachedCollab {
     const doc = new Y.Doc();
     const roomName = `notling-room-${pageId}`;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const signalingUrl = `${protocol}//${window.location.host}/y-webrtc-signaling`;
+    const localSignaling = `${protocol}//${window.location.host}/y-webrtc-signaling`;
+    const envSignaling = import.meta.env.VITE_YJS_SIGNALING_URL;
+
+    const signalingUrls = envSignaling
+      ? [envSignaling, localSignaling]
+      : [localSignaling];
 
     const provider = new WebrtcProvider(roomName, doc, {
-      signaling: [signalingUrl],
+      signaling: signalingUrls,
     });
 
     const fragment = doc.getXmlFragment('document-store');
