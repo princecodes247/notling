@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Upload, AlertCircle, Loader2, X, FolderInput } from 'lucide-react';
+import { Upload, AlertCircle, Loader2, FolderInput } from 'lucide-react';
 import { useUIStore } from '~/store/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { parseNotionZipArchive, parseMarkdownToBlocks, parseHTMLToBlocks, extractTitleFromContent, cleanNotionTitle, type ImportedDoc } from '~/lib/importParser';
 import { createPage, updatePageContent } from '~/server/pages';
 import { useNavigate } from '@tanstack/react-router';
+import { Modal } from './Modal';
 
 interface ImportModalProps {
   workspaceId: string;
@@ -23,8 +24,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectP
   const [totalCount, setTotalCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  if (!isImportOpen) return null;
 
   const handleClose = () => {
     if (isImporting) return;
@@ -186,110 +185,89 @@ export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/40 dark:bg-black/70 backdrop-blur-xs animate-in fade-in duration-100 font-sans select-none">
-      <div className="fixed inset-0" onClick={handleClose} />
+    <Modal
+      isOpen={isImportOpen}
+      onClose={handleClose}
+      title="Import Notes & Documents"
+      subtitle="Notion (.zip), Apple Notes (.html), Markdown (.md), or Text (.txt)"
+      icon={<FolderInput className="w-4 h-4 text-stone-700 dark:text-zinc-300" />}
+      maxWidth="lg"
+    >
+      <div className="flex flex-col gap-4 select-none">
+        {errorMsg && (
+          <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 text-rose-800 dark:text-rose-400 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+            <span>{errorMsg}</span>
+          </div>
+        )}
 
-      <div className="relative z-10 w-full max-w-lg bg-[#fdfcf9] dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800 rounded-xl shadow-2xl dark:shadow-[0_24px_70px_-15px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-200/60 dark:border-zinc-800 bg-[#f8f7f4]/70 dark:bg-zinc-900/60">
-          <div className="flex items-center gap-2.5 text-stone-800 dark:text-zinc-200">
-            <div className="w-7 h-7 rounded-lg bg-stone-200/70 dark:bg-zinc-800 border border-stone-300/80 dark:border-zinc-700 flex items-center justify-center shrink-0">
-              <FolderInput className="w-4 h-4 text-stone-700 dark:text-zinc-300" />
+        {isImporting ? (
+          <div className="py-8 px-4 border border-stone-200/80 dark:border-zinc-800 rounded-xl bg-stone-50/70 dark:bg-zinc-900/40 flex flex-col items-center justify-center gap-3 text-center">
+            <Loader2 className="w-8 h-8 text-stone-800 dark:text-zinc-200 animate-spin" />
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-semibold text-stone-900 dark:text-zinc-100">
+                Importing your content...
+              </span>
+              <span className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm leading-relaxed font-mono">
+                {progressText}
+              </span>
             </div>
-            <div>
-              <h3 className="font-semibold text-sm text-stone-900 dark:text-zinc-100 tracking-tight">Import Notes & Documents</h3>
-              <p className="text-[11px] text-stone-500 dark:text-zinc-400 font-normal">
-                Notion (.zip), Apple Notes (.html), Markdown (.md), or Text (.txt)
-              </p>
+            {totalCount > 0 && (
+              <div className="w-full max-w-xs bg-stone-200/80 dark:bg-zinc-800 h-2 rounded-full overflow-hidden mt-1">
+                <div
+                  className="bg-stone-900 dark:bg-white h-full transition-all duration-300"
+                  style={{ width: `${Math.round((importedCount / totalCount) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOver(true);
+            }}
+            onDragLeave={() => setIsDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all ${
+              isDragOver
+                ? 'border-stone-800 dark:border-zinc-400 bg-stone-100/80 dark:bg-zinc-800/80 ring-2 ring-stone-400 dark:ring-zinc-500'
+                : 'border-stone-300 dark:border-zinc-700 hover:border-stone-400 dark:hover:border-zinc-600 bg-stone-50/50 dark:bg-zinc-900/40 hover:bg-stone-100/50 dark:hover:bg-zinc-800/40'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".zip,.md,.txt,.html,.htm"
+              onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+              className="hidden"
+            />
+            <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-stone-200/90 dark:border-zinc-700 flex items-center justify-center shadow-2xs text-stone-600 dark:text-zinc-300">
+              <Upload className="w-6 h-6 stroke-1.5" />
+            </div>
+            <div className="flex flex-col items-center gap-1 text-center">
+              <span className="text-xs font-semibold text-stone-900 dark:text-zinc-100">
+                Click to browse or drag & drop files here
+              </span>
+              <span className="text-[11px] text-stone-400 dark:text-zinc-500 max-w-xs leading-normal">
+                Supports Notion workspace exports (<code className="font-mono text-stone-600 dark:text-zinc-300">.zip</code>), Apple Notes (<code className="font-mono text-stone-600 dark:text-zinc-300">.html</code>), and Markdown (<code className="font-mono text-stone-600 dark:text-zinc-300">.md</code>)
+              </span>
             </div>
           </div>
-          <button
-            type="button"
-            disabled={isImporting}
-            onClick={handleClose}
-            className="text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 p-1 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-40"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        )}
 
-        {/* Modal Body */}
-        <div className="p-5 flex flex-col gap-4">
-          {errorMsg && (
-            <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 text-rose-800 dark:text-rose-400 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {isImporting ? (
-            <div className="py-8 px-4 border border-stone-200/80 dark:border-zinc-800 rounded-xl bg-stone-50/70 dark:bg-zinc-900/40 flex flex-col items-center justify-center gap-3 text-center">
-              <Loader2 className="w-8 h-8 text-stone-800 dark:text-zinc-200 animate-spin" />
-              <div className="flex flex-col gap-1">
-                <span className="text-sm font-semibold text-stone-900 dark:text-zinc-100">
-                  Importing your content...
-                </span>
-                <span className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm leading-relaxed font-mono">
-                  {progressText}
-                </span>
-              </div>
-              {totalCount > 0 && (
-                <div className="w-full max-w-xs bg-stone-200/80 dark:bg-zinc-800 h-2 rounded-full overflow-hidden mt-1">
-                  <div
-                    className="bg-stone-900 dark:bg-white h-full transition-all duration-300"
-                    style={{ width: `${Math.round((importedCount / totalCount) * 100)}%` }}
-                  />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragOver(true);
-              }}
-              onDragLeave={() => setIsDragOver(false)}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all ${
-                isDragOver
-                  ? 'border-stone-800 dark:border-zinc-400 bg-stone-100/80 dark:bg-zinc-800/80 ring-2 ring-stone-400 dark:ring-zinc-500'
-                  : 'border-stone-300 dark:border-zinc-700 hover:border-stone-400 dark:hover:border-zinc-600 bg-stone-50/50 dark:bg-zinc-900/40 hover:bg-stone-100/50 dark:hover:bg-zinc-800/40'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept=".zip,.md,.txt,.html,.htm"
-                onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
-                className="hidden"
-              />
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-stone-200/90 dark:border-zinc-700 flex items-center justify-center shadow-2xs text-stone-600 dark:text-zinc-300">
-                <Upload className="w-6 h-6 stroke-1.5" />
-              </div>
-              <div className="flex flex-col items-center gap-1 text-center">
-                <span className="text-xs font-semibold text-stone-900 dark:text-zinc-100">
-                  Click to browse or drag & drop files here
-                </span>
-                <span className="text-[11px] text-stone-400 dark:text-zinc-500 max-w-xs leading-normal">
-                  Supports Notion workspace exports (<code className="font-mono text-stone-600 dark:text-zinc-300">.zip</code>), Apple Notes (<code className="font-mono text-stone-600 dark:text-zinc-300">.html</code>), and Markdown (<code className="font-mono text-stone-600 dark:text-zinc-300">.md</code>)
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Supported Format Guide Badges */}
-          <div className="pt-2 border-t border-stone-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500 font-mono">
-            <span>Supported formats:</span>
-            <div className="flex items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 font-semibold border border-stone-200/60 dark:border-zinc-700">Notion .zip</span>
-              <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 font-semibold border border-stone-200/60 dark:border-zinc-700">Apple Notes .html</span>
-              <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 font-semibold border border-stone-200/60 dark:border-zinc-700">Markdown .md</span>
-            </div>
+        {/* Supported Format Guide Badges */}
+        <div className="pt-2 border-t border-stone-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500 font-mono">
+          <span>Supported formats:</span>
+          <div className="flex items-center gap-1.5">
+            <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 font-semibold border border-stone-200/60 dark:border-zinc-700">Notion .zip</span>
+            <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 font-semibold border border-stone-200/60 dark:border-zinc-700">Apple Notes .html</span>
+            <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 font-semibold border border-stone-200/60 dark:border-zinc-700">Markdown .md</span>
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };
