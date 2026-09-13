@@ -12,7 +12,6 @@ import '@blocknote/mantine/style.css';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
 import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
 import { getClientId, useCollaboration } from '~/lib/collaboration';
-import { ySyncPluginKey } from 'y-prosemirror';
 import type { Page } from '~/db/schema';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
@@ -67,23 +66,7 @@ export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: stri
     return opts;
   }, [parsedBlocks, collab]);
 
-  const editor = useCreateBlockNote(editorOptions, [pageId, content, collab?.doc, collab?.provider]);
-
-  // Prevent any local click/drag/keyboard events on the read-only viewer from modifying the shared document
-  useEffect(() => {
-    const pmView = editor?.prosemirrorView;
-    if (!pmView || (pmView as any).__readOnlyGuarded) return;
-    (pmView as any).__readOnlyGuarded = true;
-
-    const originalDispatch = pmView.dispatch.bind(pmView);
-    pmView.dispatch = (tr: any) => {
-      // If a local transaction on the viewer attempts to modify document nodes, block it
-      if (tr.docChanged && !tr.getMeta(ySyncPluginKey)) {
-        return;
-      }
-      originalDispatch(tr);
-    };
-  }, [editor]);
+  const editor = useCreateBlockNote(editorOptions, [pageId, collab?.doc, collab?.provider]);
 
   // Neutralize SideMenuPlugin.isDragOrigin on the viewer
   useEffect(() => {
@@ -124,11 +107,11 @@ export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: stri
     return false;
   }
 
-  // Seed viewer blocks if editor is blank and parsedBlocks exists
+  // Seed or sync viewer blocks
   useEffect(() => {
     if (!editor || !parsedBlocks || isBlocksArrayEmpty(parsedBlocks)) return;
 
-    const seedViewerIfNeeded = () => {
+    const syncViewerBlocks = () => {
       const currentDoc = editor.document;
       if (isBlocksArrayEmpty(currentDoc)) {
         try {
@@ -136,19 +119,37 @@ export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: stri
         } catch (err) {
           console.error('Failed to populate initial viewer blocks:', err);
         }
+        return;
+      }
+
+      // If there are no other active WebRTC peers broadcasting live Yjs updates,
+      // fallback to syncing with polled DB content if it differs
+      const awarenessStates = collab?.provider?.awareness?.getStates();
+      const hasOtherPeers = awarenessStates && awarenessStates.size > 1;
+
+      if (!hasOtherPeers) {
+        try {
+          const currentJson = JSON.stringify(currentDoc);
+          const incomingJson = JSON.stringify(parsedBlocks);
+          if (currentJson !== incomingJson) {
+            editor.replaceBlocks(currentDoc, parsedBlocks);
+          }
+        } catch (err) {
+          console.error('Failed to sync updated blocks from server:', err);
+        }
       }
     };
 
-    seedViewerIfNeeded();
+    syncViewerBlocks();
 
-    const timer1 = setTimeout(seedViewerIfNeeded, 50);
-    const timer2 = setTimeout(seedViewerIfNeeded, 200);
+    const timer1 = setTimeout(syncViewerBlocks, 50);
+    const timer2 = setTimeout(syncViewerBlocks, 200);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, [editor, parsedBlocks]);
+  }, [editor, parsedBlocks, collab]);
 
   if (!mounted) {
     return (
@@ -429,11 +430,7 @@ function PublicDocumentPageRoute() {
             <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-8">
               {page.title || 'Untitled Document'}
             </h1>
-            {page.content ? (
-              <PublicBlockViewer pageId={page.id} content={page.content} userEmail={userEmail} />
-            ) : (
-              <p className="text-neutral-400 italic">This public page is empty.</p>
-            )}
+            <PublicBlockViewer pageId={page.id} content={page.content} userEmail={userEmail} />
           </div>
         )}
       </main>
