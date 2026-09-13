@@ -10,6 +10,7 @@ import {
   PlusSignIcon,
   Logout01Icon,
   Delete02Icon,
+  Loading02Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
@@ -36,6 +37,7 @@ interface SidebarProps {
   session: UserSession | null;
   treeNodes: PageTreeNode[];
   userWorkspaces?: UserWorkspaceItem[];
+  isCreatingPage?: boolean;
   onSwitchWorkspace?: (workspaceId: string) => void;
   onOpenCreateWorkspaceModal?: () => void;
   trashCount?: number;
@@ -56,6 +58,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   session,
   treeNodes,
   userWorkspaces = [],
+  isCreatingPage = false,
   onSwitchWorkspace,
   onOpenCreateWorkspaceModal,
   trashCount,
@@ -296,19 +299,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => onCreateFolder ? onCreateFolder() : onCreatePage()}
-              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press"
+              disabled={isCreatingPage}
+              onClick={() => !isCreatingPage && (onCreateFolder ? onCreateFolder() : onCreatePage())}
+              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
               title="Create new folder"
             >
               <HugeiconsIcon icon={FolderAddIcon} size={15} />
             </button>
             <button
               type="button"
-              onClick={() => onCreatePage()}
-              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press"
+              disabled={isCreatingPage}
+              onClick={() => !isCreatingPage && onCreatePage()}
+              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
               title="Create new page"
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={15} />
+              {isCreatingPage ? (
+                <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600" />
+              ) : (
+                <HugeiconsIcon icon={PlusSignIcon} size={15} />
+              )}
             </button>
           </div>
         </div>
@@ -341,10 +350,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>No documents yet</span>
               <button
                 type="button"
-                onClick={() => onCreatePage()}
-                className="text-[11px] text-neutral-800 font-medium hover:underline"
+                disabled={isCreatingPage}
+                onClick={() => !isCreatingPage && onCreatePage()}
+                className="text-[11px] text-neutral-800 font-medium hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
               >
-                + Create first page
+                {isCreatingPage ? 'Creating page...' : '+ Create first page'}
               </button>
             </div>
           ) : (

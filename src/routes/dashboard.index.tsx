@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
@@ -34,9 +35,16 @@ function DashboardIndexPage() {
     enabled: !!workspaceId,
   });
 
+  const isCreatingPageRef = useRef(false);
   const createPageMutation = useMutation({
     mutationFn: async () => {
-      return await createPage({ data: { workspaceId: workspaceId!, title: 'Untitled Document' } });
+      if (!workspaceId || isCreatingPageRef.current) return null;
+      isCreatingPageRef.current = true;
+      try {
+        return await createPage({ data: { workspaceId: workspaceId!, title: 'Untitled Document' } });
+      } finally {
+        isCreatingPageRef.current = false;
+      }
     },
     onSuccess: (newPage) => {
       refetch();
@@ -44,15 +52,28 @@ function DashboardIndexPage() {
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
     },
+    onError: () => {
+      isCreatingPageRef.current = false;
+    },
   });
 
+  const isCreatingFolderRef = useRef(false);
   const createFolderMutation = useMutation({
     mutationFn: async () => {
-      return await createPage({ data: { workspaceId: workspaceId!, title: 'New Folder', icon: '📁' } });
+      if (!workspaceId || isCreatingFolderRef.current) return null;
+      isCreatingFolderRef.current = true;
+      try {
+        return await createPage({ data: { workspaceId: workspaceId!, title: 'New Folder', icon: '📁' } });
+      } finally {
+        isCreatingFolderRef.current = false;
+      }
     },
     onSuccess: () => {
       refetch();
       navigate({ to: '/dashboard/folders' });
+    },
+    onError: () => {
+      isCreatingFolderRef.current = false;
     },
   });
 

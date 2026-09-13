@@ -222,11 +222,18 @@ function DashboardLayout() {
     }
   }, [currentPath, treeNodes]);
 
+  const isCreatingPageRef = React.useRef(false);
+
   // Create Page Mutation
   const createPageMutation = useMutation({
     mutationFn: async (parentId?: string) => {
-      if (!workspaceId) return null;
-      return await createPage({ data: { workspaceId, parentId, title: 'Untitled Document' } });
+      if (!workspaceId || isCreatingPageRef.current) return null;
+      isCreatingPageRef.current = true;
+      try {
+        return await createPage({ data: { workspaceId, parentId, title: 'Untitled Document' } });
+      } finally {
+        isCreatingPageRef.current = false;
+      }
     },
     onSuccess: (newPage) => {
       refetchTree();
@@ -235,19 +242,32 @@ function DashboardLayout() {
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
     },
+    onError: () => {
+      isCreatingPageRef.current = false;
+    },
   });
+
+  const isCreatingFolderRef = React.useRef(false);
 
   // Create Folder Mutation (Root page with folder icon)
   const createFolderMutation = useMutation({
     mutationFn: async () => {
-      if (!workspaceId) return null;
-      return await createPage({ data: { workspaceId, title: 'New Folder', icon: '📁' } });
+      if (!workspaceId || isCreatingFolderRef.current) return null;
+      isCreatingFolderRef.current = true;
+      try {
+        return await createPage({ data: { workspaceId, title: 'New Folder', icon: '📁' } });
+      } finally {
+        isCreatingFolderRef.current = false;
+      }
     },
     onSuccess: (newFolder) => {
       refetchTree();
       if (newFolder) {
         navigate({ to: '/dashboard/folders' });
       }
+    },
+    onError: () => {
+      isCreatingFolderRef.current = false;
     },
   });
 
@@ -383,6 +403,7 @@ function DashboardLayout() {
                 session={session}
                 treeNodes={treeNodes}
                 userWorkspaces={userWorkspaces}
+                isCreatingPage={createPageMutation.isPending}
                 onSwitchWorkspace={(id) => {
                   switchWorkspaceMutation.mutate(id);
                   closeSidebarOnMobile();
@@ -401,10 +422,12 @@ function DashboardLayout() {
                   closeSidebarOnMobile();
                 }}
                 onCreateFolder={() => {
+                  if (createFolderMutation.isPending) return;
                   createFolderMutation.mutate();
                   closeSidebarOnMobile();
                 }}
                 onCreatePage={(parentId) => {
+                  if (createPageMutation.isPending) return;
                   createPageMutation.mutate(parentId);
                   closeSidebarOnMobile();
                 }}
@@ -455,8 +478,9 @@ function DashboardLayout() {
               </button>
               <button
                 type="button"
-                onClick={() => createPageMutation.mutate(undefined)}
-                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+                disabled={createPageMutation.isPending}
+                onClick={() => !createPageMutation.isPending && createPageMutation.mutate(undefined)}
+                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
                 title="New document"
               >
                 <HugeiconsIcon icon={PlusSignIcon} size={18} />
@@ -468,9 +492,10 @@ function DashboardLayout() {
           <TabBar
             tabs={openTabs}
             activeTabId={activeTabId}
+            isCreatingPage={createPageMutation.isPending}
             onSelectTab={handleSelectTab}
             onCloseTab={handleCloseTab}
-            onNewTab={() => createPageMutation.mutate(undefined)}
+            onNewTab={() => !createPageMutation.isPending && createPageMutation.mutate(undefined)}
           />
 
           {/* Main Content Outlet */}

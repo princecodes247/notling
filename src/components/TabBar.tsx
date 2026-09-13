@@ -11,12 +11,14 @@ import {
   Cancel01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
+  Loading02Icon,
 } from '@hugeicons/core-free-icons';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 
 interface TabBarProps {
   tabs: TabItem[];
   activeTabId: string | null;
+  isCreatingPage?: boolean;
   onSelectTab: (tab: TabItem) => void;
   onCloseTab: (tabId: string) => void;
   onNewTab: () => void;
@@ -25,6 +27,7 @@ interface TabBarProps {
 export const TabBar: React.FC<TabBarProps> = ({
   tabs,
   activeTabId,
+  isCreatingPage = false,
   onSelectTab,
   onCloseTab,
   onNewTab,
@@ -282,11 +285,16 @@ export const TabBar: React.FC<TabBarProps> = ({
       {/* Pinned New Tab (+) Button */}
       <button
         type="button"
+        disabled={isCreatingPage}
         onClick={onNewTab}
-        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10"
+        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10 disabled:opacity-50 disabled:cursor-not-allowed"
         title="New document tab"
       >
-        <HugeiconsIcon icon={PlusSignIcon} size={15} />
+        {isCreatingPage ? (
+          <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600" />
+        ) : (
+          <HugeiconsIcon icon={PlusSignIcon} size={15} />
+        )}
       </button>
     </div>
   );

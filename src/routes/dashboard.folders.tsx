@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
@@ -34,24 +35,44 @@ function DashboardFoldersPage() {
     enabled: !!workspaceId,
   });
 
+  const isCreatingFolderRef = useRef(false);
   const createFolderMutation = useMutation({
     mutationFn: async () => {
-      return await createPage({ data: { workspaceId: workspaceId!, title: 'New Collection', icon: '📁' } });
+      if (!workspaceId || isCreatingFolderRef.current) return null;
+      isCreatingFolderRef.current = true;
+      try {
+        return await createPage({ data: { workspaceId: workspaceId!, title: 'New Collection', icon: '📁' } });
+      } finally {
+        isCreatingFolderRef.current = false;
+      }
     },
     onSuccess: () => {
       refetch();
     },
+    onError: () => {
+      isCreatingFolderRef.current = false;
+    },
   });
 
+  const isCreatingDocRef = useRef(false);
   const createDocumentMutation = useMutation({
     mutationFn: async (parentId?: string) => {
-      return await createPage({ data: { workspaceId: workspaceId!, parentId, title: 'Untitled Document' } });
+      if (!workspaceId || isCreatingDocRef.current) return null;
+      isCreatingDocRef.current = true;
+      try {
+        return await createPage({ data: { workspaceId: workspaceId!, parentId, title: 'Untitled Document' } });
+      } finally {
+        isCreatingDocRef.current = false;
+      }
     },
     onSuccess: (newPage) => {
       refetch();
       if (newPage) {
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
+    },
+    onError: () => {
+      isCreatingDocRef.current = false;
     },
   });
 

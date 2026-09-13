@@ -120,16 +120,22 @@ export const Editor: React.FC<EditorProps> = ({
     },
   });
 
+  const isCreatingInFolderRef = React.useRef(false);
   const createDocumentInFolderMutation = useMutation({
     mutationFn: async () => {
-      if (isReadOnly) return null;
-      return await createPage({
-        data: {
-          workspaceId: page.workspaceId,
-          parentId: page.id,
-          title: 'Untitled Document',
-        },
-      });
+      if (isReadOnly || isCreatingInFolderRef.current) return null;
+      isCreatingInFolderRef.current = true;
+      try {
+        return await createPage({
+          data: {
+            workspaceId: page.workspaceId,
+            parentId: page.id,
+            title: 'Untitled Document',
+          },
+        });
+      } finally {
+        isCreatingInFolderRef.current = false;
+      }
     },
     onSuccess: (newPage) => {
       refetchChildren();
@@ -138,6 +144,9 @@ export const Editor: React.FC<EditorProps> = ({
         setActivePageId(newPage.id);
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
+    },
+    onError: () => {
+      isCreatingInFolderRef.current = false;
     },
   });
 
