@@ -18,6 +18,7 @@ import { PublicBlockViewer } from '~/routes/share.$pageId';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
+import { EMOJI_OPTIONS } from '#/lib/constants';
 
 interface EditorProps {
   page: Page & { canEdit?: boolean };
@@ -25,8 +26,6 @@ interface EditorProps {
   onBack?: () => void;
   readOnly?: boolean;
 }
-
-const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
 
 export const Editor: React.FC<EditorProps> = ({
   page,

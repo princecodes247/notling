@@ -12,6 +12,7 @@ import {
 import type { PageTreeNode } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
 import { clsx } from 'clsx';
+import { EMOJI_OPTIONS } from '#/lib/constants';
 
 interface PageTreeItemProps {
   node: PageTreeNode;
@@ -26,7 +27,6 @@ interface PageTreeItemProps {
   setDraggedPageId?: (id: string | null) => void;
 }
 
-const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
 
 export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   node,
@@ -164,10 +164,10 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           isDraggingCurrent
             ? 'opacity-40 border border-dashed border-stone-400 bg-stone-100'
             : isActive
-            ? 'bg-neutral-100 text-neutral-900 font-semibold'
-            : dropTargetMode === 'inside'
-            ? 'bg-stone-200/90 ring-1 ring-stone-400 text-stone-900 font-medium'
-            : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+              ? 'bg-neutral-100 text-neutral-900 font-semibold'
+              : dropTargetMode === 'inside'
+                ? 'bg-stone-200/90 ring-1 ring-stone-400 text-stone-900 font-medium'
+                : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
         )}
         style={{ paddingLeft: `${Math.max(6, depth * 14 + 6)}px` }}
         onClick={() => onSelectPage(node.id)}
