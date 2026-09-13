@@ -1,201 +1,130 @@
-Welcome to your new TanStack Start app!
+# Notling 🚀
 
-# Getting Started
+Notling is a modern, high-performance, Notion-like collaborative workspace application built with **TanStack Start**, **React 19**, **Drizzle ORM**, **PostgreSQL**, and real-time **Yjs CRDT collaboration**.
 
-To run this application:
+---
+
+## ✨ Features
+
+- 📝 **Block-Based Rich Text Editor**: Powered by BlockNote (ProseMirror/Tiptap) with support for headings, code blocks, media embeds, checklists, and table structures.
+- 👥 **Real-Time Collaboration & Presence**: Live multi-user cursor synchronization, presence tracking, and collaborator badges powered by Yjs & WebRTC/WebSocket signaling.
+- 🏢 **Multi-Workspace System**: Create, switch, and manage personal and team workspaces with unique slugs, icons, and customizable settings.
+- 🌳 **Nested Document Tree & Trash**: Organize pages hierarchically with nested pages, reordering, soft deletion, trash management, and permanent restoration.
+- 🔒 **Granular Sharing & Access Control**: Support for Private, Workspace-wide, Public View, and Public Edit permissions alongside email-based explicit invitations.
+- 🔍 **Fuzzy Workspace Search**: Fast search across document titles and content snippets with permission filtering.
+- 📂 **Media Storage Quotas & Uploads**: Upload images, audio, video, and documents to Cloudflare R2 (or local fallback) with per-user storage quota enforcement.
+- 🛡️ **Enterprise Security Hardened**: Built-in protections against Broken Access Control (IDOR), Stored XSS, Cross-Site WebSocket Hijacking, Open Redirects, and insecure cookies.
+- 🔐 **OAuth 2.0 Authentication**: Seamless authentication using Google and GitHub OAuth providers with HTTP-only session cookies.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [TanStack Start](https://tanstack.com/start) (React 19, Vite 6, Nitro Server)
+- **Routing**: [TanStack Router](https://tanstack.com/router) (File-based SSR routing)
+- **Database & ORM**: PostgreSQL, [Drizzle ORM](https://orm.drizzle.team/), `drizzle-kit`
+- **Editor & CRDT**: [BlockNote](https://www.blocknotejs.org/), [Yjs](https://yjs.dev/), `y-webrtc`, `y-websocket`
+- **State & Query**: [TanStack Query](https://tanstack.com/query), [Zustand](https://zustand-demo.pmnd.rs/)
+- **Storage**: Cloudflare R2 / AWS S3 SDK (`@aws-sdk/client-s3`)
+- **Styling & UI**: Tailwind CSS v4, Mantine Core, Hugeicons
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) (>= 1.1) or [Node.js](https://nodejs.org/) (>= 20)
+- PostgreSQL database
+
+### 1. Installation
 
 ```bash
-npm install
-npm run dev
+bun install
 ```
 
-# Building For Production
+### 2. Environment Setup
 
-To build this application for production:
+Create a `.env.local` file in the root directory:
+
+```env
+DATABASE_URL="postgres://user:password@localhost:5432/notling"
+
+# OAuth Credentials
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
+
+# Cloudflare R2 / S3 Storage (Optional - falls back to local storage)
+R2_ACCOUNT_ID="your-r2-account-id"
+R2_ACCESS_KEY_ID="your-r2-access-key"
+R2_SECRET_ACCESS_KEY="your-r2-secret-key"
+R2_BUCKET_NAME="notling"
+R2_PUBLIC_DOMAIN="https://pub-your-bucket.r2.dev"
+```
+
+### 3. Database Migration
 
 ```bash
-npm run build
+bun run db:push
 ```
 
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Remove `@tailwindcss/vite` and `tailwindcss` from `package.json`
-
-
-## Deploy with Nitro
-
-This project uses Nitro as a generic server adapter, so it can run on any Node-compatible host.
+### 4. Run Development Server
 
 ```bash
-npm run build
-node dist/server/index.mjs
+bun run dev
 ```
 
-The build output is a self-contained Node server. To deploy, push the `dist/` directory to your host (Render, Fly.io, your own VPS, etc.) and run the server command above.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-For host-specific presets (Vercel, Netlify, Cloudflare, AWS Lambda, etc.) and tuning, see https://v3.nitro.build/deploy.
+---
 
+## 📦 Scripts
 
+| Command | Description |
+| :--- | :--- |
+| `bun run dev` | Start development server with Vite hot reload |
+| `bun run build` | Build production server and client assets |
+| `bun run preview` | Preview production build locally |
+| `bun run db:generate` | Generate Drizzle migration files |
+| `bun run db:push` | Push schema changes directly to PostgreSQL |
+| `bun run db:studio` | Open Drizzle Studio database UI |
 
-## Routing
+---
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+## 🏗️ Project Architecture
 
-### Adding A Route
-
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
+```
+src/
+├── components/         # React UI components & editor modules
+│   ├── dashboard/      # Workspace views & modals
+│   ├── ui/             # Reusable primitive UI elements
+│   ├── BlockEditorInner.tsx
+│   ├── Editor.tsx
+│   └── Sidebar.tsx
+├── db/                 # Database connection & Drizzle schema definitions
+│   ├── index.ts
+│   └── schema.ts
+├── lib/                # Utility helpers & Yjs WebRTC collaboration logic
+│   └── collaboration.ts
+├── routes/             # TanStack Router file-based pages
+│   ├── auth.callback.$provider.tsx
+│   ├── dashboard.p.$pageId.tsx
+│   ├── onboarding.tsx
+│   └── share.$pageId.tsx
+└── server/             # Server functions (TanStack Start createServerFn)
+    ├── auth.db.ts      # Auth & session database handlers
+    ├── auth.ts         # Auth server function exports
+    ├── pages.db.ts     # Document tree, shares & presence DB queries
+    ├── pages.ts        # Page server function exports
+    ├── r2.ts           # Storage upload validation & S3/R2 client
+    └── signalingPlugin.ts # Vite WebSocket plugin for Yjs collaboration
 ```
 
-Then anywhere in your JSX you can use it like so:
+---
 
-```tsx
-<Link to="/about">About</Link>
-```
+## 📄 License
 
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+MIT
