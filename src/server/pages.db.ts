@@ -397,6 +397,17 @@ export async function recordPagePresence(input: {
   guestName?: string;
 }) {
   try {
+    // Verify target page exists in DB and is not deleted
+    const targetPage = await db
+      .select({ id: pages.id })
+      .from(pages)
+      .where(and(eq(pages.id, input.pageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (targetPage.length === 0) {
+      return [];
+    }
+
     let session = null;
     try {
       session = await getSessionImpl();

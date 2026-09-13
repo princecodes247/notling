@@ -11,6 +11,7 @@ export interface UserSession {
   workspaceName?: string;
   workspaceSlug?: string;
   workspaceIcon?: string;
+  welcomePageId?: string;
   isWorkspaceOwner?: boolean;
 }
 

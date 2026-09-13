@@ -26,6 +26,128 @@ function verifyPassword(password: string, storedHash: string): boolean {
   return hash === storedHash;
 }
 
+// Seed initial Welcome to Notling tour document
+export async function seedWelcomeDocument(workspaceId: string): Promise<string> {
+  const [welcomePage] = await db
+    .insert(pages)
+    .values({
+      workspaceId,
+      title: 'Welcome to Notling 🚀',
+      icon: '🚀',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              text: 'Welcome to your new Notling workspace! Notling is built for fast notes, specs, and real-time team collaboration.',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'heading',
+          props: { level: 2 },
+          content: [
+            {
+              type: 'text',
+              text: '⚡ Quick Start Checklist',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'checkListItem',
+          props: { checked: false },
+          content: [
+            {
+              type: 'text',
+              text: 'Type / anywhere in this document to open the slash command menu',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'checkListItem',
+          props: { checked: false },
+          content: [
+            {
+              type: 'text',
+              text: 'Highlight text to format bold, italic, code, or change block types',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'checkListItem',
+          props: { checked: false },
+          content: [
+            {
+              type: 'text',
+              text: 'Click + New Page in the sidebar or tab bar to create a fresh doc',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'checkListItem',
+          props: { checked: false },
+          content: [
+            {
+              type: 'text',
+              text: 'Share this page with your team or publish to web using the Share button',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'heading',
+          props: { level: 2 },
+          content: [
+            {
+              type: 'text',
+              text: '💡 Key Features at a Glance',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'bulletListItem',
+          content: [
+            {
+              type: 'text',
+              text: 'Instant Workspace Search: Press Cmd+K or Ctrl+K anytime',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'bulletListItem',
+          content: [
+            {
+              type: 'text',
+              text: 'Browser-Style Tabs: Keep multiple docs open concurrently',
+              styles: {},
+            },
+          ],
+        },
+        {
+          type: 'bulletListItem',
+          content: [
+            {
+              type: 'text',
+              text: 'Real-Time Sync & Presence: See cursor updates as collaborators edit',
+              styles: {},
+            },
+          ],
+        },
+      ],
+    })
+    .returning();
+
+  return welcomePage.id;
+}
+
 // Generate random session token
 function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
@@ -325,6 +447,20 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspace = newWs;
     }
 
+    let welcomePageId: string | undefined;
+    if (workspace) {
+      const firstPage = await db
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.workspaceId, workspace.id), eq(pages.isDeleted, false)))
+        .limit(1);
+      if (firstPage.length > 0) {
+        welcomePageId = firstPage[0].id;
+      } else {
+        welcomePageId = await seedWelcomeDocument(workspace.id);
+      }
+    }
+
     return {
       userId: user.id,
       email: user.email,
@@ -336,6 +472,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
+      welcomePageId,
       isWorkspaceOwner: workspace.ownerId === user.id,
     };
   } catch (err) {
@@ -372,7 +509,7 @@ export async function signUpWithEmailImpl(
       passwordHash: hash,
       provider: 'email',
       providerAccountId: cleanEmail,
-      isOnboarded: false,
+      isOnboarded: true,
     })
     .returning();
 
@@ -389,6 +526,8 @@ export async function signUpWithEmailImpl(
     })
     .returning();
 
+  const welcomePageId = await seedWelcomeDocument(workspace.id);
+
   await createSessionAndCookie(user.id);
 
   return {
@@ -399,11 +538,12 @@ export async function signUpWithEmailImpl(
       name: user.name,
       avatarUrl: user.avatarUrl,
       role: user.role,
-      isOnboarded: false,
+      isOnboarded: true,
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
+      welcomePageId,
     },
   };
 }
@@ -590,6 +730,8 @@ export async function processOAuthCallbackImpl(
     let existingUser = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1);
     let user = existingUser[0];
 
+    let welcomePageId: string | undefined;
+
     if (!user) {
       const [newUser] = await db
         .insert(users)
@@ -599,7 +741,7 @@ export async function processOAuthCallbackImpl(
           avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
           provider,
           providerAccountId,
-          isOnboarded: false,
+          isOnboarded: true,
         })
         .returning();
       user = newUser;
@@ -621,6 +763,16 @@ export async function processOAuthCallbackImpl(
         })
         .returning();
       workspace = newWs;
+      welcomePageId = await seedWelcomeDocument(workspace.id);
+    } else {
+      const firstPage = await db
+        .select({ id: pages.id })
+        .from(pages)
+        .where(and(eq(pages.workspaceId, workspace.id), eq(pages.isDeleted, false)))
+        .limit(1);
+      if (firstPage.length > 0) {
+        welcomePageId = firstPage[0].id;
+      }
     }
 
     await createSessionAndCookie(user.id);
@@ -633,11 +785,12 @@ export async function processOAuthCallbackImpl(
         name: user.name,
         avatarUrl: user.avatarUrl,
         role: user.role,
-        isOnboarded: user.isOnboarded,
+        isOnboarded: true,
         workspaceId: workspace.id,
         workspaceName: workspace.name,
         workspaceSlug: workspace.slug,
         workspaceIcon: workspace.icon || '🚀',
+        welcomePageId,
       },
     };
   } catch (err: any) {
