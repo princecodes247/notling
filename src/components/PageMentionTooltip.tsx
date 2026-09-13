@@ -3,6 +3,7 @@ import { FileText, AtSign, User } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { getPageTree, getWorkspaceUsers, type PageTreeNode } from '~/server/pages';
 import { getSession } from '~/server/auth';
+import { UserAvatar } from '~/components/UserAvatar';
 
 export interface MentionSuggestionItem {
   type: 'page' | 'user';
@@ -223,17 +224,13 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                         }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        {user.icon ? (
-                          <img
-                            src={user.icon}
-                            alt={user.title}
-                            className="w-5 h-5 rounded-full object-cover shrink-0 border border-stone-200"
-                          />
-                        ) : (
-                          <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
-                            {user.title.charAt(0).toUpperCase()}
-                          </div>
-                        )}
+                        <UserAvatar
+                          avatarUrl={user.icon}
+                          seed={user.id}
+                          name={user.title}
+                          size={20}
+                          className="w-5 h-5"
+                        />
                         <div className="flex flex-col min-w-0">
                           <span className={`text-xs truncate ${isSelected ? 'font-semibold text-emerald-900' : 'text-stone-800'}`}>
                             {user.title}

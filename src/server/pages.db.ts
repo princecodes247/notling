@@ -307,6 +307,7 @@ export interface ActiveUserPresence {
   id: string;
   email: string;
   name: string | null;
+  avatarUrl?: string | null;
   role: 'viewer' | 'editor';
   lastPing: Date;
   clientId?: string;
@@ -334,8 +335,10 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
         name: pagePresence.name,
         role: pagePresence.role,
         lastPing: pagePresence.lastPing,
+        avatarUrl: users.avatarUrl,
       })
       .from(pagePresence)
+      .leftJoin(users, eq(sql`split_part(${pagePresence.email}, '#', 1)`, users.email))
       .where(eq(pagePresence.pageId, pageId))
       .orderBy(asc(pagePresence.email), asc(pagePresence.id));
 

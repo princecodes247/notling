@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { ActiveUserPresence } from '~/server/pages.db';
+import { UserAvatar } from '~/components/UserAvatar';
 
 interface CollaboratorAvatarsProps {
   activeUsers: ActiveUserPresence[];
@@ -22,6 +23,10 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
     const seen = new Set<string>();
     const list: ActiveUserPresence[] = [];
     for (const u of activeUsers) {
+      // Exclude own user presence: only display OTHER collaborators
+      const isSelf = currentClientId && (u.clientId === currentClientId || u.id === currentClientId);
+      if (isSelf) continue;
+
       const key = (u.email || u.name || u.id || u.clientId || '').toLowerCase().trim();
       if (key && !seen.has(key)) {
         seen.add(key);
@@ -30,10 +35,6 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
     }
     // Stable deterministic sort so avatar order remains completely static
     list.sort((a, b) => {
-      const isACurrent = currentClientId && a.clientId === currentClientId;
-      const isBCurrent = currentClientId && b.clientId === currentClientId;
-      if (isACurrent && !isBCurrent) return -1;
-      if (!isACurrent && isBCurrent) return 1;
       const nameA = (a.name || a.email || '').toLowerCase();
       const nameB = (b.name || b.email || '').toLowerCase();
       return nameA.localeCompare(nameB);
@@ -70,7 +71,6 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
       <div className="flex items-center -space-x-2 py-1 relative">
         {displayUsers.map((user, index) => {
           const isEditor = user.role === 'editor';
-          const initial = (user.name || user.email || 'U').charAt(0).toUpperCase();
           const userId = user.id || user.clientId || user.email;
 
           return (
@@ -84,15 +84,19 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
                 whileHover={{ scale: 1.15, zIndex: 30 }}
                 whileTap={{ scale: 0.94 }}
                 transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-                className={`relative w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white shadow-xs cursor-pointer border-2 border-white transition-colors ${
-                  isEditor ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-amber-600 hover:bg-amber-500'
-                }`}
+                className="relative rounded-full shadow-xs cursor-pointer border-2 border-white overflow-hidden shrink-0"
               >
-                <span>{initial}</span>
+                <UserAvatar
+                  avatarUrl={user.avatarUrl}
+                  seed={user.email || user.name || user.id}
+                  name={user.name || user.email}
+                  size={24}
+                  className="w-6 h-6"
+                />
 
                 {/* Role Status Dot */}
                 <span
-                  className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${
+                  className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white z-10 ${
                     isEditor
                       ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
                       : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
@@ -122,7 +126,7 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               layout: { type: 'spring', stiffness: 450, damping: 30 },
               opacity: { duration: 0.15 },
             }}
-            className={`absolute top-full mt-2 bg-stone-900/95 backdrop-blur-md text-white text-[11px] font-sans px-3 py-2.5 rounded-xl shadow-2xl border border-stone-800 z-50 pointer-events-none w-[170px] ${
+            className={`absolute top-full mt-2 bg-stone-900/95 backdrop-blur-md text-white text-[11px] font-sans px-3 py-2.5 rounded-xl shadow-2xl border border-stone-800 z-50 pointer-events-none w-[175px] ${
               alignRight ? 'right-0' : ''
             }`}
             style={
@@ -145,12 +149,21 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
             >
               {/* User Title Row */}
               <div className="flex items-center justify-between gap-1.5 min-w-0">
-                <span
-                  className="font-semibold text-stone-100 tracking-tight truncate flex-1 min-w-0"
-                  title={hoveredUser.name || hoveredUser.email}
-                >
-                  {hoveredUser.name || (hoveredUser.email?.includes('@notling.app') ? 'Guest User' : hoveredUser.email.split('@')[0])}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <UserAvatar
+                    avatarUrl={hoveredUser.avatarUrl}
+                    seed={hoveredUser.email || hoveredUser.name || hoveredUser.id}
+                    name={hoveredUser.name || hoveredUser.email}
+                    size={16}
+                    className="w-4 h-4 shrink-0 border border-white/20"
+                  />
+                  <span
+                    className="font-semibold text-stone-100 tracking-tight truncate min-w-0"
+                    title={hoveredUser.name || hoveredUser.email}
+                  >
+                    {hoveredUser.name || (hoveredUser.email?.includes('@notling.app') ? 'Guest User' : hoveredUser.email.split('@')[0])}
+                  </span>
+                </div>
                 {hoveredUser.clientId === currentClientId ? (
                   <span className="text-[9px] px-1.5 py-0.2 rounded bg-stone-800 text-stone-300 font-mono font-medium shrink-0">
                     You
