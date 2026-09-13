@@ -253,18 +253,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={() => onCreateFolder ? onCreateFolder() : onCreatePage()}
-              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition-colors"
+              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press"
               title="Create new folder"
             >
-              <HugeiconsIcon icon={FolderAddIcon} size={14} />
+              <HugeiconsIcon icon={FolderAddIcon} size={15} />
             </button>
             <button
               type="button"
               onClick={() => onCreatePage()}
-              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition-colors"
+              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press"
               title="Create new page"
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={14} />
+              <HugeiconsIcon icon={PlusSignIcon} size={15} />
             </button>
           </div>
         </div>
@@ -374,7 +374,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onLogout}
-              className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-stone-200 text-stone-400 hover:text-stone-700 transition-all"
+              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded-md hover:bg-stone-200 text-stone-500 hover:text-stone-800 transition-all cursor-pointer active-press"
               title="Sign out"
             >
               <HugeiconsIcon icon={Logout01Icon} size={14} />

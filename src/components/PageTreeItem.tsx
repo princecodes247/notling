@@ -208,19 +208,26 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           )}
         </div>
 
-        {/* Right Side: Hover Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Right Side: Actions (Visible on mobile / touch, hover on desktop) */}
+        <div
+          className={clsx(
+            'flex items-center gap-0.5 shrink-0 transition-opacity',
+            showMenu
+              ? 'opacity-100'
+              : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
+          )}
+        >
           {/* Add Sub-Page */}
           <button
             type="button"
             title="Add sub-page"
-            className="p-1 rounded text-neutral-400 hover:text-neutral-800 hover:bg-neutral-200/60"
+            className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/70 transition-colors cursor-pointer active-press"
             onClick={(e) => {
               e.stopPropagation();
               onCreateChild(node.id);
             }}
           >
-            <HugeiconsIcon icon={PlusSignIcon} size={13} />
+            <HugeiconsIcon icon={PlusSignIcon} size={14} />
           </button>
 
           {/* Context Options */}
@@ -228,13 +235,13 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             <button
               type="button"
               title="More options"
-              className="p-1 rounded text-neutral-400 hover:text-neutral-800 hover:bg-neutral-200/60"
+              className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/70 transition-colors cursor-pointer active-press"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
             >
-              <HugeiconsIcon icon={MoreHorizontalIcon} size={13} />
+              <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
             </button>
 
             {showMenu && (

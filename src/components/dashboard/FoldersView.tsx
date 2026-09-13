@@ -40,7 +40,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-28 sm:pb-10 pt-safe">
+    <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-safe">
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100">
@@ -74,15 +74,23 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         {/* Folders Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {folders.length === 0 ? (
-            <div className="col-span-2 py-16 text-center text-xs text-neutral-400 border border-dashed border-neutral-200 rounded-xl flex flex-col items-center gap-3">
-              <HugeiconsIcon icon={Folder01Icon} size={32} className="text-neutral-300 stroke-1" />
-              <span>No folders created yet. Click "+ New Folder" to organize documents into folders.</span>
+            <div className="col-span-1 md:col-span-2 py-16 px-4 text-center border border-stone-200/80 rounded-2xl flex flex-col items-center justify-center gap-3 bg-stone-50/40 my-auto">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-stone-200/90 text-stone-600 flex items-center justify-center shadow-2xs">
+                <HugeiconsIcon icon={Folder01Icon} size={22} />
+              </div>
+              <h3 className="text-base font-semibold text-stone-900 tracking-tight mt-1">
+                No folders created yet
+              </h3>
+              <p className="text-xs text-stone-500 max-w-sm leading-relaxed">
+                Organize your workspace documents, project plans, and research notes into custom folders.
+              </p>
               <button
                 type="button"
                 onClick={onCreateFolder}
-                className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium cursor-pointer shadow-2xs transition-colors"
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-medium cursor-pointer shadow-2xs transition-all active-press"
               >
-                Create First Folder
+                <HugeiconsIcon icon={FolderAddIcon} size={15} />
+                <span>Create your first folder</span>
               </button>
             </div>
           ) : (

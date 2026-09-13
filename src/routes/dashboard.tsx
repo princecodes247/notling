@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
 import React from 'react';
+import { Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from '~/components/Sidebar';
 import { TabBar } from '~/components/TabBar';
@@ -13,10 +14,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  Home01Icon,
-  Folder01Icon,
   Search01Icon,
-  Settings02Icon,
   PlusSignIcon,
 } from '@hugeicons/core-free-icons';
 
@@ -390,7 +388,43 @@ function DashboardLayout() {
       </AnimatePresence>
 
       {/* Framed Workspace Main Area */}
-      <div className="flex-1 bg-[#f3f2ee] p-1 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
+      <div className="flex-1 bg-[#f3f2ee] p-0 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
+        {/* Mobile Top Header Bar */}
+        <header className="md:hidden py-2.5 flex items-center justify-between px-3.5 bg-[#f8f7f4] text-stone-900 border-b border-stone-200/90 shrink-0 z-30 shadow-2xs">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={() => useUIStore.getState().setSidebarOpen(true)}
+              className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+              title="Open menu"
+            >
+              <Menu className="w-5 h-5 text-stone-800" />
+            </button>
+            <span className="text-sm font-semibold text-stone-900 truncate max-w-[180px]">
+              {session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => useUIStore.getState().setSearchOpen(true)}
+              className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+              title="Search workspace"
+            >
+              <HugeiconsIcon icon={Search01Icon} size={18} />
+            </button>
+            <button
+              type="button"
+              onClick={() => createPageMutation.mutate(undefined)}
+              className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+              title="New document"
+            >
+              <HugeiconsIcon icon={PlusSignIcon} size={18} />
+            </button>
+          </div>
+        </header>
+
         {/* Desktop Tab Bar Header */}
         <TabBar
           tabs={openTabs}
@@ -401,66 +435,9 @@ function DashboardLayout() {
         />
 
         {/* Main Content Outlet */}
-        <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-xl max-sm:rounded-b-none mt-1 shadow-xs pb-16 md:pb-0">
+        <main className="flex-1 pt-4 sm:pt-8 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
           <Outlet />
         </main>
-      </div>
-
-      {/* Apple Floating Mobile Bottom Navigation Bar */}
-      <div className="md:hidden fixed bottom-3 left-4 right-4 z-40 h-14 bg-stone-900/92 backdrop-blur-xl text-white rounded-full shadow-[0_12px_36px_rgba(0,0,0,0.38)] border border-white/15 flex items-center justify-around px-2 mb-safe">
-        {/* Pages Drawer Toggle Button */}
-        <button
-          type="button"
-          onClick={() => useUIStore.getState().setSidebarOpen(!sidebarOpen)}
-          className={`flex flex-col items-center justify-center w-12 h-10 rounded-full transition-colors active-press ${sidebarOpen ? 'text-amber-300' : 'text-stone-300 hover:text-white'}`}
-          title="Pages & Sidebar"
-        >
-          <HugeiconsIcon icon={Folder01Icon} size={20} />
-          <span className="text-[9px] font-medium mt-0.5 tracking-tight">Pages</span>
-        </button>
-
-        {/* Global Search Button */}
-        <button
-          type="button"
-          onClick={() => useUIStore.getState().setSearchOpen(true)}
-          className="flex flex-col items-center justify-center w-12 h-10 rounded-full text-stone-300 hover:text-white transition-colors active-press"
-          title="Search Workspace"
-        >
-          <HugeiconsIcon icon={Search01Icon} size={20} />
-          <span className="text-[9px] font-medium mt-0.5 tracking-tight">Search</span>
-        </button>
-
-        {/* Floating Center (+) New Document Action */}
-        <button
-          type="button"
-          onClick={() => createPageMutation.mutate(undefined)}
-          className="flex items-center justify-center w-11 h-11 rounded-full bg-amber-400 text-stone-950 font-bold shadow-lg hover:bg-amber-300 active:scale-90 transition-all -translate-y-2.5 ring-4 ring-[#f3f2ee]"
-          title="New Document"
-        >
-          <HugeiconsIcon icon={PlusSignIcon} size={22} />
-        </button>
-
-        {/* Home View Button */}
-        <button
-          type="button"
-          onClick={() => navigate({ to: '/dashboard' })}
-          className={`flex flex-col items-center justify-center w-12 h-10 rounded-full transition-colors active-press ${activeNav === 'home' ? 'text-amber-300' : 'text-stone-300 hover:text-white'}`}
-          title="Home"
-        >
-          <HugeiconsIcon icon={Home01Icon} size={20} />
-          <span className="text-[9px] font-medium mt-0.5 tracking-tight">Home</span>
-        </button>
-
-        {/* Settings Button */}
-        <button
-          type="button"
-          onClick={() => navigate({ to: '/dashboard/settings' })}
-          className={`flex flex-col items-center justify-center w-12 h-10 rounded-full transition-colors active-press ${activeNav === 'settings' ? 'text-amber-300' : 'text-stone-300 hover:text-white'}`}
-          title="Settings"
-        >
-          <HugeiconsIcon icon={Settings02Icon} size={20} />
-          <span className="text-[9px] font-medium mt-0.5 tracking-tight">Settings</span>
-        </button>
       </div>
 
       {/* Modals & Overlays */}
