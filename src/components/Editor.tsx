@@ -8,12 +8,14 @@ import {
   ArrowRight01Icon,
   Loading02Icon,
   Share01Icon,
+  Download01Icon,
 } from '@hugeicons/core-free-icons';
 import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
+import { ExportModal } from './ExportModal';
 import { PublicBlockViewer } from '~/components/share/PublicBlockViewer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -40,6 +42,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const titleInputRef = React.useRef<HTMLInputElement>(null);
@@ -306,6 +309,17 @@ export const Editor: React.FC<EditorProps> = ({
           {/* Collaborator Avatars (renders only other active collaborators, never self) */}
           <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
 
+          {/* Export Button */}
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 border border-stone-200/60 shadow-2xs active:scale-95"
+            title="Export page to Markdown or PDF"
+          >
+            <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
+
           {/* Share Button: full contrast black pill with room to breathe */}
           {!isReadOnly && (
             <button
@@ -329,102 +343,103 @@ export const Editor: React.FC<EditorProps> = ({
               type="button"
               disabled={isReadOnly}
               onClick={() => !isReadOnly && setShowEmojiPicker(!showEmojiPicker)}
-              className={`text-4xl p-1.5 rounded-lg transition-colors border border-transparent flex items-center justify-center w-14 h-14 ${isReadOnly ? 'cursor-default' : 'hover:bg-neutral-100 hover:border-neutral-200 cursor-pointer'}`}
-              title={isReadOnly ? 'Icon' : 'Change icon'}
+              className={`text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform ${isReadOnly ? 'cursor-default' : 'hover:bg-stone-100 hover:scale-105 cursor-pointer'
+                }`}
             >
               {icon}
             </button>
 
             {showEmojiPicker && !isReadOnly && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setShowEmojiPicker(false)} />
-                <div className="absolute left-0 top-16 z-40 p-2.5 bg-white border border-neutral-200 rounded-lg shadow-xl flex flex-wrap gap-1.5 w-64">
-                  {EMOJI_OPTIONS.map((e) => (
-                    <button
-                      key={e}
-                      type="button"
-                      onClick={() => handleSelectIcon(e)}
-                      className="text-2xl p-1.5 rounded-md hover:bg-neutral-100 transition-colors cursor-pointer"
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div className="absolute top-full left-0 mt-1 z-30 bg-white border border-stone-200 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">
+                {EMOJI_OPTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleSelectIcon(emoji)}
+                    className="text-2xl p-1.5 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer text-center"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
           {/* Title Input */}
-          <input
-            ref={titleInputRef}
-            type="text"
-            readOnly={isReadOnly}
-            value={title}
-            onChange={(e) => handleTitleChange(e.target.value)}
-            onBlur={handleTitleBlur}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.currentTarget.blur();
-              }
-            }}
-            placeholder={isFolder ? 'Folder Name' : 'Untitled Document'}
-            className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder-stone-300 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 pb-1.5 transition-colors"
-          />
+          {isReadOnly ? (
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 mb-6">
+              {title || 'Untitled Document'}
+            </h1>
+          ) : (
+            <input
+              ref={titleInputRef}
+              type="text"
+              value={title}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              onBlur={handleTitleBlur}
+              placeholder="Untitled Document"
+              className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder:text-stone-300 bg-transparent focus:outline-none mb-6 border-none p-0"
+            />
+          )}
 
+          {/* Folder Child Document List or BlockNote Editor */}
           {isFolder ? (
-            /* FOLDER VIEW: Read-only list of documents inside */
-            <div className="flex flex-col gap-6 mt-2">
-              <div className="flex items-center justify-between pb-3 border-b border-stone-200/70">
+            <div className="mt-2 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
-                  Documents in this Folder ({childPages.length})
+                  Folder Contents
                 </span>
                 {!isReadOnly && (
                   <button
                     type="button"
                     onClick={() => createDocumentInFolderMutation.mutate()}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
+                    className="flex items-center gap-1 text-xs font-medium text-stone-700 hover:text-stone-900 px-2.5 py-1 rounded-md bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
                   >
-                    <HugeiconsIcon icon={PlusSignIcon} size={14} />
+                    <HugeiconsIcon icon={PlusSignIcon} size={13} />
                     <span>New Document</span>
                   </button>
                 )}
               </div>
 
               {childPages.length === 0 ? (
-                <div className="py-14 border border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-2.5 text-stone-400 bg-stone-50/40">
-                  <HugeiconsIcon icon={File01Icon} size={32} className="stroke-1 text-stone-300" />
-                  <span className="text-xs font-semibold text-stone-600">This folder is empty</span>
-                  {!isReadOnly && <span className="text-[11px] text-stone-400">Click "+ New Document" above to start writing inside this folder.</span>}
+                <div className="py-12 border-2 border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center gap-2 text-stone-400">
+                  <HugeiconsIcon icon={File01Icon} size={28} className="text-stone-300" />
+                  <p className="text-xs font-medium">This folder is empty</p>
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => createDocumentInFolderMutation.mutate()}
+                      className="mt-1 text-xs text-stone-700 hover:underline font-semibold cursor-pointer"
+                    >
+                      Create a document inside
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="flex flex-col gap-2">
-                  {childPages.map((child: { id: string; title: string; icon?: string | null; updatedAt?: Date }) => (
-                    <div
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {childPages.map((child: any) => (
+                    <button
                       key={child.id}
+                      type="button"
                       onClick={() => {
                         setActivePageId(child.id);
                         navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
                       }}
-                      className="p-3.5 rounded-lg border border-stone-200/80 hover:border-stone-300 bg-white hover:bg-stone-50/80 transition-all flex items-center justify-between cursor-pointer group shadow-2xs"
+                      className="p-3 rounded-xl border border-stone-200/80 hover:border-stone-400 hover:bg-stone-50/60 transition-all text-left flex items-center justify-between group cursor-pointer"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="text-lg shrink-0">{child.icon || '📄'}</span>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-semibold text-stone-900 group-hover:text-black truncate">
-                            {child.title || 'Untitled Document'}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-lg">{child.icon || '📄'}</span>
+                        <span className="text-xs font-medium text-stone-800 truncate group-hover:text-stone-900">
+                          {child.title || 'Untitled Document'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <HugeiconsIcon icon={ArrowRight01Icon} size={15} className="text-stone-400 group-hover:text-stone-700 transition-colors" />
-                      </div>
-                    </div>
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-stone-300 group-hover:text-stone-600 shrink-0 transition-colors" />
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            /* DOCUMENT VIEW: Notion-style BlockNote Editor or Read-Only Public Viewer */
             mounted ? (
               isReadOnly ? (
                 <PublicBlockViewer pageId={page.id} content={page.content} />
@@ -450,6 +465,13 @@ export const Editor: React.FC<EditorProps> = ({
           onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
         />
       )}
+
+      {/* Export Modal (Markdown / PDF) */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        page={page}
+      />
     </div>
   );
 };

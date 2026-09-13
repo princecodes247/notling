@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { LockIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { LockIcon, ArrowRight01Icon, Download01Icon } from '@hugeicons/core-free-icons';
 import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
+import { ExportModal } from '~/components/ExportModal';
 
 interface ShareHeaderProps {
   pageId: string;
@@ -11,6 +13,7 @@ interface ShareHeaderProps {
   userEmail?: string | null;
   activeUsers?: any[];
   currentClientId: string;
+  page?: any;
   onNavigateHome: () => void;
   onOpenDashboard: () => void;
   onSignIn: () => void;
@@ -23,10 +26,13 @@ export function ShareHeader({
   userEmail,
   activeUsers = [],
   currentClientId,
+  page,
   onNavigateHome,
   onOpenDashboard,
   onSignIn,
 }: ShareHeaderProps) {
+  const [isExportOpen, setIsExportOpen] = useState(false);
+
   return (
     <header className="h-14 border-b border-stone-200/70 px-6 sm:px-12 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
       <div className="flex items-center gap-2.5 cursor-pointer" onClick={onNavigateHome}>
@@ -51,6 +57,19 @@ export function ShareHeader({
             <HugeiconsIcon icon={LockIcon} size={11} />
             <span>View only</span>
           </span>
+        )}
+
+        {/* Export Button */}
+        {page && (
+          <button
+            type="button"
+            onClick={() => setIsExportOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer"
+            title="Export page to Markdown or PDF"
+          >
+            <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600" />
+            <span className="hidden sm:inline">Export</span>
+          </button>
         )}
 
         {/* Shortcut to Workspace Dashboard if workspace member */}
@@ -85,6 +104,14 @@ export function ShareHeader({
           </button>
         )}
       </div>
+
+      {page && (
+        <ExportModal
+          isOpen={isExportOpen}
+          onClose={() => setIsExportOpen(false)}
+          page={page}
+        />
+      )}
     </header>
   );
 }

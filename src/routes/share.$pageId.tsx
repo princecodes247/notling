@@ -166,6 +166,7 @@ function PublicDocumentPageRoute() {
         userEmail={userEmail}
         activeUsers={activeUsers}
         currentClientId={getClientId()}
+        page={page}
         onNavigateHome={() => navigate({ to: isLoggedIn ? '/dashboard' : '/' })}
         onOpenDashboard={() => navigate({ to: '/dashboard/p/$pageId', params: { pageId: page.id } })}
         onSignIn={handleSignInToEdit}

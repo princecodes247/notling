@@ -8,11 +8,13 @@ import {
   Delete02Icon,
   Edit02Icon,
   MoreHorizontalIcon,
+  Download01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
 import { clsx } from 'clsx';
 import { EMOJI_OPTIONS } from '#/lib/constants';
+import { exportPageToMarkdown } from '~/lib/pageExport';
 
 interface PageTreeItemProps {
   node: PageTreeNode;
@@ -371,6 +373,18 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   >
                     <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500" />
                     Rename
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      exportPageToMarkdown(node);
+                    }}
+                  >
+                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-neutral-500" />
+                    Export Page
                   </button>
                   <button
                     type="button"
