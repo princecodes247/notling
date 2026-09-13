@@ -11,8 +11,15 @@ import '~/styles.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,
+      staleTime: 1000 * 5,
+      gcTime: 1000 * 60 * 60, // Keep cached page data in memory for 1 hour
       refetchOnWindowFocus: false,
+      refetchOnReconnect: 'always',
+      retry: (failureCount) => {
+        // Don't spam retries if browser is offline
+        if (typeof window !== 'undefined' && !navigator.onLine) return false;
+        return failureCount < 2;
+      },
     },
   },
 });

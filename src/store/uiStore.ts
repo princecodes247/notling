@@ -41,8 +41,13 @@ interface UIState {
   toggleSidebar: () => void;
 
   // Save Indicator State
-  saveStatus: 'idle' | 'saving' | 'saved';
-  setSaveStatus: (status: 'idle' | 'saving' | 'saved') => void;
+  saveStatus: 'idle' | 'saving' | 'saved' | 'offline' | 'error';
+  setSaveStatus: (status: 'idle' | 'saving' | 'saved' | 'offline' | 'error') => void;
+
+  // Connection State
+  isOnline: boolean;
+  isServerReachable: boolean;
+  setConnectionStatus: (isOnline: boolean, isServerReachable: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -173,4 +178,9 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   saveStatus: 'saved',
   setSaveStatus: (status) => set({ saveStatus: status }),
+
+  isOnline: typeof window !== 'undefined' ? navigator.onLine : true,
+  isServerReachable: true,
+  setConnectionStatus: (isOnline, isServerReachable) =>
+    set({ isOnline, isServerReachable }),
 }));

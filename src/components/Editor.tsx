@@ -8,7 +8,6 @@ import {
   ArrowRight01Icon,
   Loading02Icon,
   Share01Icon,
-  LockIcon,
 } from '@hugeicons/core-free-icons';
 import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
 import { BlockEditorInner } from './BlockEditorInner';
@@ -72,6 +71,7 @@ export const Editor: React.FC<EditorProps> = ({
     const cid = getClientId();
     const role = isReadOnly ? 'viewer' : 'editor';
     const sendPing = async () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) return;
       try {
         await pingPagePresence({ data: { pageId: page.id, role, clientId: cid } });
       } catch { }
@@ -80,6 +80,7 @@ export const Editor: React.FC<EditorProps> = ({
     const timer = setInterval(sendPing, 3000);
 
     const handleLeave = () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) return;
       try {
         removePagePresence({ data: { pageId: page.id, clientId: cid } });
       } catch { }
@@ -223,6 +224,16 @@ export const Editor: React.FC<EditorProps> = ({
               <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
                 <span>Saved</span>
+              </span>
+            ) : saveStatus === 'offline' ? (
+              <span className="flex items-center gap-1.5 text-amber-600 font-medium text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)] shrink-0" />
+                <span>Saved Locally (Offline)</span>
+              </span>
+            ) : saveStatus === 'error' ? (
+              <span className="flex items-center gap-1.5 text-red-500 font-medium text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)] shrink-0" />
+                <span>Save Error</span>
               </span>
             ) : null}
           </div>

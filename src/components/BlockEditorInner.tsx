@@ -944,6 +944,15 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
   const initialContent = useMemo(() => {
     try {
+      if (typeof window !== 'undefined' && page.id) {
+        const draftStr = localStorage.getItem(`notling_offline_draft_${page.id}`);
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+          if (draft?.content && Array.isArray(draft.content) && draft.content.length > 0) {
+            return draft.content;
+          }
+        }
+      }
       if (typeof page.content === 'string') return JSON.parse(page.content);
       if (Array.isArray(page.content) && page.content.length > 0) return page.content;
     } catch (e) {
@@ -1097,9 +1106,35 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     };
   }, [editor, initialContent]);
 
+  const saveOfflineDraft = (blocks: any[], plainText: string) => {
+    try {
+      if (typeof window !== 'undefined' && pageIdRef.current) {
+        localStorage.setItem(
+          `notling_offline_draft_${pageIdRef.current}`,
+          JSON.stringify({
+            content: blocks,
+            contentText: plainText,
+            timestamp: Date.now(),
+          })
+        );
+      }
+    } catch (err) {
+      console.error('Failed to save offline draft:', err);
+    }
+  };
+
+  const clearOfflineDraft = (pid: string) => {
+    try {
+      if (typeof window !== 'undefined' && pid) {
+        localStorage.removeItem(`notling_offline_draft_${pid}`);
+      }
+    } catch {}
+  };
+
   const performSave = async () => {
     try {
-      const currentBlocks = editorRef.current.document;
+      const currentBlocks = editorRef.current?.document;
+      if (!currentBlocks) return;
 
       // Critical protection against wiping content on refresh/mount:
       // Never overwrite existing DB content if current document is empty while initial content was non-empty.
@@ -1110,7 +1145,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         return;
       }
 
-      if (!hasUserEditedRef.current) {
+      const hasOfflineDraft = typeof window !== 'undefined' && !!localStorage.getItem(`notling_offline_draft_${pageIdRef.current}`);
+
+      if (!hasUserEditedRef.current && !hasOfflineDraft) {
         pendingSaveRef.current = false;
         setSaveStatus('idle');
         return;
@@ -1118,33 +1155,59 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
       const plainText = extractPlainTextFromBlocks(currentBlocks);
 
+      // Always update local draft immediately
+      saveOfflineDraft(currentBlocks, plainText);
+
+      if (typeof window !== 'undefined' && !navigator.onLine) {
+        setSaveStatus('offline');
+        return;
+      }
+
       const res = await updatePageContent({
         data: {
           pageId: pageIdRef.current,
           content: currentBlocks,
           contentText: plainText,
         },
-      });
+      }).catch(() => null);
 
       if (!res) {
-        console.warn('[Permission Revoked] Server rejected savePageContent. Invalidating queries to switch view.');
-        pendingSaveRef.current = false;
-        hasUserEditedRef.current = false;
-        setSaveStatus('idle');
-        queryClient.invalidateQueries({ queryKey: ['page', pageIdRef.current] });
-        queryClient.invalidateQueries({ queryKey: ['publicPage', pageIdRef.current] });
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          setSaveStatus('offline');
+        } else {
+          console.warn('Server save failed or rejected, offline draft remains in local storage');
+          setSaveStatus('offline');
+        }
         return;
       }
 
+      // Saved successfully on server - clear local draft
+      clearOfflineDraft(pageIdRef.current);
       pendingSaveRef.current = false;
       hasUserEditedRef.current = false;
       setSaveStatus('saved');
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
     } catch (err) {
       console.error('Autosave failed:', err);
-      setSaveStatus('idle');
+      setSaveStatus('offline');
     }
   };
+
+  // Reconnection auto-sync effect
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleReconnect = () => {
+      const draftKey = `notling_offline_draft_${page.id}`;
+      if (localStorage.getItem(draftKey)) {
+        setSaveStatus('saving');
+        performSave();
+      }
+    };
+
+    window.addEventListener('online', handleReconnect);
+    return () => window.removeEventListener('online', handleReconnect);
+  }, [page.id]);
 
   const handleContentChange = useCallback(() => {
     // Only schedule autosave if user actually typed or interacted

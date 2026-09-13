@@ -13,6 +13,7 @@ import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
+import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Search01Icon,
@@ -331,148 +332,152 @@ function DashboardLayout() {
   }
 
   return (
-    <div className="h-screen w-screen bg-[#f3f2ee] p-0 flex select-none relative overflow-hidden">
-      {/* Mobile Drawer Dark Backdrop Overlay */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            key="mobile-backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => useUIStore.getState().setSidebarOpen(false)}
-            className="fixed inset-0 bg-stone-950/45 backdrop-blur-xs z-40 md:hidden"
-          />
-        )}
-      </AnimatePresence>
+    <>
+      <NetworkStatusBanner />
 
-      {/* Desktop & Mobile Responsive Sidebar Drawer */}
-      <AnimatePresence initial={false}>
-        {sidebarOpen && (
-          <motion.div
-            key="sidebar-wrapper"
-            initial={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
-            animate={isMobile ? { x: 0, opacity: 1 } : { width: 240, opacity: 1 }}
-            exit={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
-            className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
-          >
-            <Sidebar
-              workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
-              session={session}
-              treeNodes={treeNodes}
-              userWorkspaces={userWorkspaces}
-              onSwitchWorkspace={(id) => {
-                switchWorkspaceMutation.mutate(id);
-                closeSidebarOnMobile();
-              }}
-              onOpenCreateWorkspaceModal={() => {
-                setIsCreateWorkspaceOpen(true);
-                closeSidebarOnMobile();
-              }}
-              trashCount={trashPages.length}
-              activeNav={activeNav}
-              onNavClick={(nav) => {
-                if (nav === 'home') navigate({ to: '/dashboard' });
-                else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
-                else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
-                else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
-                closeSidebarOnMobile();
-              }}
-              onCreateFolder={() => {
-                createFolderMutation.mutate();
-                closeSidebarOnMobile();
-              }}
-              onCreatePage={(parentId) => {
-                createPageMutation.mutate(parentId);
-                closeSidebarOnMobile();
-              }}
-              onSelectPage={(id) => {
-                useUIStore.getState().setActivePageId(id);
-                navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
-                closeSidebarOnMobile();
-              }}
-              onSoftDelete={(id) => softDeleteMutation.mutate(id)}
-              onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
-              onReorderPage={(input) => reorderPageMutation.mutate(input)}
-              onLogout={handleLogout}
+      <div className="h-screen w-screen bg-[#f3f2ee] p-0 flex select-none relative overflow-hidden">
+        {/* Mobile Drawer Dark Backdrop Overlay */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              key="mobile-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => useUIStore.getState().setSidebarOpen(false)}
+              className="fixed inset-0 bg-stone-950/45 backdrop-blur-xs z-40 md:hidden"
             />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
 
-      {/* Framed Workspace Main Area */}
-      <div className="flex-1 bg-[#f3f2ee] p-0 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
-        {/* Mobile Top Header Bar */}
-        <header className="md:hidden py-2.5 flex items-center justify-between px-3.5 bg-[#f8f7f4] text-stone-900 border-b border-stone-200/90 shrink-0 z-30 shadow-2xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <button
-              type="button"
-              onClick={() => useUIStore.getState().setSidebarOpen(true)}
-              className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
-              title="Open menu"
+        {/* Desktop & Mobile Responsive Sidebar Drawer */}
+        <AnimatePresence initial={false}>
+          {sidebarOpen && (
+            <motion.div
+              key="sidebar-wrapper"
+              initial={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
+              animate={isMobile ? { x: 0, opacity: 1 } : { width: 240, opacity: 1 }}
+              exit={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
+              className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
             >
-              <Menu className="w-5 h-5 text-stone-800" />
-            </button>
-            <span className="text-sm font-semibold text-stone-900 truncate max-w-[180px]">
-              {session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
-            </span>
-          </div>
+              <Sidebar
+                workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
+                session={session}
+                treeNodes={treeNodes}
+                userWorkspaces={userWorkspaces}
+                onSwitchWorkspace={(id) => {
+                  switchWorkspaceMutation.mutate(id);
+                  closeSidebarOnMobile();
+                }}
+                onOpenCreateWorkspaceModal={() => {
+                  setIsCreateWorkspaceOpen(true);
+                  closeSidebarOnMobile();
+                }}
+                trashCount={trashPages.length}
+                activeNav={activeNav}
+                onNavClick={(nav) => {
+                  if (nav === 'home') navigate({ to: '/dashboard' });
+                  else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
+                  else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
+                  else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
+                  closeSidebarOnMobile();
+                }}
+                onCreateFolder={() => {
+                  createFolderMutation.mutate();
+                  closeSidebarOnMobile();
+                }}
+                onCreatePage={(parentId) => {
+                  createPageMutation.mutate(parentId);
+                  closeSidebarOnMobile();
+                }}
+                onSelectPage={(id) => {
+                  useUIStore.getState().setActivePageId(id);
+                  navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+                  closeSidebarOnMobile();
+                }}
+                onSoftDelete={(id) => softDeleteMutation.mutate(id)}
+                onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
+                onReorderPage={(input) => reorderPageMutation.mutate(input)}
+                onLogout={handleLogout}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => useUIStore.getState().setSearchOpen(true)}
-              className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
-              title="Search workspace"
-            >
-              <HugeiconsIcon icon={Search01Icon} size={18} />
-            </button>
-            <button
-              type="button"
-              onClick={() => createPageMutation.mutate(undefined)}
-              className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
-              title="New document"
-            >
-              <HugeiconsIcon icon={PlusSignIcon} size={18} />
-            </button>
-          </div>
-        </header>
+        {/* Framed Workspace Main Area */}
+        <div className="flex-1 bg-[#f3f2ee] p-0 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
+          {/* Mobile Top Header Bar */}
+          <header className="md:hidden py-2.5 flex items-center justify-between px-3.5 bg-[#f8f7f4] text-stone-900 border-b border-stone-200/90 shrink-0 z-30 shadow-2xs">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <button
+                type="button"
+                onClick={() => useUIStore.getState().setSidebarOpen(true)}
+                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+                title="Open menu"
+              >
+                <Menu className="w-5 h-5 text-stone-800" />
+              </button>
+              <span className="text-sm font-semibold text-stone-900 truncate max-w-[180px]">
+                {session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
+              </span>
+            </div>
 
-        {/* Desktop Tab Bar Header */}
-        <TabBar
-          tabs={openTabs}
-          activeTabId={activeTabId}
-          onSelectTab={handleSelectTab}
-          onCloseTab={handleCloseTab}
-          onNewTab={() => createPageMutation.mutate(undefined)}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => useUIStore.getState().setSearchOpen(true)}
+                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+                title="Search workspace"
+              >
+                <HugeiconsIcon icon={Search01Icon} size={18} />
+              </button>
+              <button
+                type="button"
+                onClick={() => createPageMutation.mutate(undefined)}
+                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+                title="New document"
+              >
+                <HugeiconsIcon icon={PlusSignIcon} size={18} />
+              </button>
+            </div>
+          </header>
+
+          {/* Desktop Tab Bar Header */}
+          <TabBar
+            tabs={openTabs}
+            activeTabId={activeTabId}
+            onSelectTab={handleSelectTab}
+            onCloseTab={handleCloseTab}
+            onNewTab={() => createPageMutation.mutate(undefined)}
+          />
+
+          {/* Main Content Outlet */}
+          <main className="flex-1 pt-4 sm:pt-8 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
+            <Outlet />
+          </main>
+        </div>
+
+        {/* Modals & Overlays */}
+        <CommandPalette
+          workspaceId={session.workspaceId}
+          onSelectPage={(id) => {
+            useUIStore.getState().setActivePageId(id);
+            navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+          }}
         />
-
-        {/* Main Content Outlet */}
-        <main className="flex-1 pt-4 sm:pt-8 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
-          <Outlet />
-        </main>
+        <TrashModal
+          workspaceId={session.workspaceId}
+          onRefreshTree={() => refetchTree()}
+        />
+        <CreateWorkspaceModal
+          isOpen={isCreateWorkspaceOpen}
+          onClose={() => setIsCreateWorkspaceOpen(false)}
+          onCreateWorkspace={async (data) => {
+            await createWorkspaceMutation.mutateAsync(data);
+          }}
+        />
       </div>
-
-      {/* Modals & Overlays */}
-      <CommandPalette
-        workspaceId={session.workspaceId}
-        onSelectPage={(id) => {
-          useUIStore.getState().setActivePageId(id);
-          navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
-        }}
-      />
-      <TrashModal
-        workspaceId={session.workspaceId}
-        onRefreshTree={() => refetchTree()}
-      />
-      <CreateWorkspaceModal
-        isOpen={isCreateWorkspaceOpen}
-        onClose={() => setIsCreateWorkspaceOpen(false)}
-        onCreateWorkspace={async (data) => {
-          await createWorkspaceMutation.mutateAsync(data);
-        }}
-      />
-    </div>
+    </>
   );
 }
