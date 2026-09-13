@@ -556,12 +556,17 @@ function isBlocksContentEmpty(content: any): boolean {
   return false;
 }
 
-export async function checkCanUserEditPage(pageId: string): Promise<boolean> {
+export async function checkCanUserEditPage(pageId: string, includeDeleted = false): Promise<boolean> {
   try {
     const pageList = await db
       .select()
       .from(pages)
-      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
+      .where(
+        and(
+          eq(pages.id, pageId),
+          includeDeleted ? undefined : eq(pages.isDeleted, false)
+        )
+      )
       .limit(1);
 
     if (pageList.length === 0) return false;
@@ -770,7 +775,7 @@ export async function performSoftDelete(pageId: string) {
 
 export async function performRestore(pageId: string) {
   try {
-    const canEdit = await checkCanUserEditPage(pageId);
+    const canEdit = await checkCanUserEditPage(pageId, true);
     if (!canEdit) {
       console.warn(`[Permission Denied] Blocked restore for page ${pageId}.`);
       return { success: false };
@@ -824,7 +829,7 @@ export async function fetchTrashPages(workspaceId: string) {
 
 export async function performPermanentDelete(pageId: string) {
   try {
-    const canEdit = await checkCanUserEditPage(pageId);
+    const canEdit = await checkCanUserEditPage(pageId, true);
     if (!canEdit) {
       console.warn(`[Permission Denied] Blocked permanent delete for page ${pageId}.`);
       return { success: false };
