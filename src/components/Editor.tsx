@@ -235,18 +235,18 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white text-stone-900 overflow-hidden relative -mt-4 sm:-mt-8">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-stone-100 overflow-hidden relative -mt-4 sm:-mt-8">
       {/* Top Header Strip */}
-      <header className="h-11 sm:h-12 border-b border-stone-200/70 px-3.5 sm:px-6 flex items-center justify-between bg-[#fdfcf9]/80 backdrop-blur-xs shrink-0 select-none">
+      <header className="h-11 sm:h-12 border-b border-stone-200/70 dark:border-stone-800 px-3.5 sm:px-6 flex items-center justify-between bg-[#fdfcf9]/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
         <div className="flex items-center gap-2 min-w-0 mr-2">
           {/* Breadcrumb prefix: hidden on mobile, shown on desktop */}
-          <span className="hidden sm:inline text-xs text-stone-400 font-medium shrink-0">
+          <span className="hidden sm:inline text-xs text-stone-400 dark:text-stone-500 font-medium shrink-0">
             {isFolder ? 'Folder' : 'Page'}
           </span>
-          <span className="hidden sm:inline text-stone-300 text-xs shrink-0">/</span>
+          <span className="hidden sm:inline text-stone-300 dark:text-stone-700 text-xs shrink-0">/</span>
 
           {/* Document Title */}
-          <span className="text-xs sm:text-sm font-semibold sm:font-medium text-stone-900 sm:text-stone-700 truncate max-w-[140px] sm:max-w-[260px]">
+          <span className="text-xs sm:text-sm font-semibold sm:font-medium text-stone-900 dark:text-stone-100 sm:text-stone-700 dark:sm:text-stone-300 truncate max-w-[140px] sm:max-w-[260px]">
             {title || 'Untitled'}
           </span>
 
@@ -335,7 +335,7 @@ export const Editor: React.FC<EditorProps> = ({
       </header>
 
       {/* Main Canvas */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 md:px-16 lg:px-24 pb-20 md:pb-12 bg-white">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 md:px-16 lg:px-24 pb-20 md:pb-12 bg-white dark:bg-[#18181b]">
         <div className="max-w-3xl mx-auto flex flex-col">
           {/* Page/Folder Icon Picker */}
           <div className="relative mb-3 group">
@@ -343,20 +343,20 @@ export const Editor: React.FC<EditorProps> = ({
               type="button"
               disabled={isReadOnly}
               onClick={() => !isReadOnly && setShowEmojiPicker(!showEmojiPicker)}
-              className={`text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform ${isReadOnly ? 'cursor-default' : 'hover:bg-stone-100 hover:scale-105 cursor-pointer'
+              className={`text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform ${isReadOnly ? 'cursor-default' : 'hover:bg-stone-100 dark:hover:bg-stone-800 hover:scale-105 cursor-pointer'
                 }`}
             >
               {icon}
             </button>
 
             {showEmojiPicker && !isReadOnly && (
-              <div className="absolute top-full left-0 mt-1 z-30 bg-white border border-stone-200 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">
+              <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-[#222226] border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">
                 {EMOJI_OPTIONS.map((emoji) => (
                   <button
                     key={emoji}
                     type="button"
                     onClick={() => handleSelectIcon(emoji)}
-                    className="text-2xl p-1.5 hover:bg-stone-100 rounded-lg transition-colors cursor-pointer text-center"
+                    className="text-2xl p-1.5 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors cursor-pointer text-center"
                   >
                     {emoji}
                   </button>
@@ -367,7 +367,7 @@ export const Editor: React.FC<EditorProps> = ({
 
           {/* Title Input */}
           {isReadOnly ? (
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 mb-6">
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 dark:text-stone-100 mb-6">
               {title || 'Untitled Document'}
             </h1>
           ) : (
@@ -378,7 +378,7 @@ export const Editor: React.FC<EditorProps> = ({
               onChange={(e) => handleTitleChange(e.target.value)}
               onBlur={handleTitleBlur}
               placeholder="Untitled Document"
-              className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder:text-stone-300 bg-transparent focus:outline-none mb-6 border-none p-0"
+              className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 dark:text-stone-100 placeholder:text-stone-300 dark:placeholder:text-stone-700 bg-transparent focus:outline-none mb-6 border-none p-0"
             />
           )}
 
@@ -447,8 +447,9 @@ export const Editor: React.FC<EditorProps> = ({
                 <BlockEditorInner key={page.id} page={page} />
               )
             ) : (
-              <div className="min-h-[420px] flex items-center justify-center text-xs text-neutral-400">
-                Loading block editor...
+              <div className="min-h-[420px] flex flex-col items-center justify-center gap-2.5 text-xs text-neutral-400 dark:text-zinc-500">
+                <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-stone-600 dark:text-zinc-400" />
+                <span>Loading block editor...</span>
               </div>
             )
           )}

@@ -146,10 +146,10 @@ export const TabBar: React.FC<TabBarProps> = ({
             transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.7 }}
             type="button"
             onClick={toggleSidebar}
-            className="h-7 rounded-lg transition-colors cursor-pointer border border-transparent text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200/60 shrink-0 z-10 overflow-hidden flex items-center justify-center p-0"
+            className="h-7 rounded-lg transition-colors cursor-pointer border border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 shrink-0 z-10 overflow-hidden flex items-center justify-center p-0"
             title="Open sidebar"
           >
-            <PanelLeftOpen className="w-4 h-4 text-neutral-500 hover:text-neutral-800 transition-colors shrink-0" />
+            <PanelLeftOpen className="w-4 h-4 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors shrink-0" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -164,8 +164,8 @@ export const TabBar: React.FC<TabBarProps> = ({
         }
         className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
           isHomeActive
-            ? 'bg-white border-stone-200/90 text-stone-900 shadow-xs ring-1 ring-black/[0.02]'
-            : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/50'
+            ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white shadow-xs ring-1 ring-black/[0.02]'
+            : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'
         }`}
         title="Home"
       >
@@ -180,11 +180,11 @@ export const TabBar: React.FC<TabBarProps> = ({
       >
         {/* Left Fade & Caret */}
         {canScrollLeft && (
-          <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-[#f4f3ef] via-[#f4f3ef]/90 to-transparent pointer-events-none">
+          <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-[#f4f3ef] dark:from-[#121214] via-[#f4f3ef]/90 dark:via-[#121214]/90 to-transparent pointer-events-none">
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
-              className="p-1 rounded-md bg-white shadow-xs border border-stone-200 text-stone-500 hover:text-stone-800 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md bg-white dark:bg-zinc-800 shadow-xs border border-stone-200 dark:border-zinc-700 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll left"
             >
               <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
@@ -218,29 +218,29 @@ export const TabBar: React.FC<TabBarProps> = ({
                 onClick={() => onSelectTab(tab)}
                 className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${
                   isDragging
-                    ? 'opacity-40 border-dashed border-stone-400 bg-stone-100'
+                    ? 'opacity-40 border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
                     : isActive
-                    ? 'bg-white border-stone-200/90 text-stone-900 font-semibold shadow-xs ring-1 ring-black/[0.02]'
-                    : 'bg-transparent border-transparent text-stone-500 hover:text-stone-800 hover:bg-stone-200/40'
+                    ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white font-semibold shadow-xs ring-1 ring-black/[0.02]'
+                    : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/40 dark:hover:bg-zinc-800/50'
                 }`}
               >
                 {/* Drop Indicator Lines */}
                 {isDropLeft && (
-                  <span className="absolute -left-1 top-1 bottom-1 w-0.5 bg-stone-900 rounded-full z-20 pointer-events-none" />
+                  <span className="absolute -left-1 top-1 bottom-1 w-0.5 bg-stone-900 dark:bg-white rounded-full z-20 pointer-events-none" />
                 )}
                 {isDropRight && (
-                  <span className="absolute -right-1 top-1 bottom-1 w-0.5 bg-stone-900 rounded-full z-20 pointer-events-none" />
+                  <span className="absolute -right-1 top-1 bottom-1 w-0.5 bg-stone-900 dark:bg-white rounded-full z-20 pointer-events-none" />
                 )}
 
                 {/* Tab Icon */}
                 {tab.icon ? (
                   <span className="text-xs shrink-0">{tab.icon}</span>
                 ) : tab.id === 'folders' ? (
-                  <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 shrink-0" />
+                  <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 ) : tab.id === 'settings' ? (
-                  <HugeiconsIcon icon={Settings02Icon} size={14} className="text-stone-400 shrink-0" />
+                  <HugeiconsIcon icon={Settings02Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 ) : (
-                  <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 shrink-0" />
+                  <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 )}
 
                 {/* Tab Title */}
@@ -255,7 +255,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className={`p-0.5 rounded hover:bg-stone-200/70 text-stone-400 hover:text-stone-700 transition-opacity ${
+                  className={`p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity ${
                     isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                   }`}
                   title="Close tab"
@@ -269,11 +269,11 @@ export const TabBar: React.FC<TabBarProps> = ({
 
         {/* Right Fade & Caret */}
         {canScrollRight && (
-          <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-4 bg-gradient-to-l from-[#f4f3ef] via-[#f4f3ef]/90 to-transparent pointer-events-none">
+          <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-4 bg-gradient-to-l from-[#f4f3ef] dark:from-[#121214] via-[#f4f3ef]/90 dark:via-[#121214]/90 to-transparent pointer-events-none">
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-              className="p-1 rounded-md bg-white shadow-xs border border-stone-200 text-stone-500 hover:text-stone-800 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md bg-white dark:bg-zinc-800 shadow-xs border border-stone-200 dark:border-zinc-700 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll right"
             >
               <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
@@ -287,11 +287,11 @@ export const TabBar: React.FC<TabBarProps> = ({
         type="button"
         disabled={isCreatingPage}
         onClick={onNewTab}
-        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="p-1.5 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 rounded-lg transition-colors cursor-pointer shrink-0 z-10 disabled:opacity-50 disabled:cursor-not-allowed"
         title="New document tab"
       >
         {isCreatingPage ? (
-          <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600" />
+          <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600 dark:text-zinc-400" />
         ) : (
           <HugeiconsIcon icon={PlusSignIcon} size={15} />
         )}

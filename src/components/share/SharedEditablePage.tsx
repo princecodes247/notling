@@ -80,8 +80,9 @@ export function SharedEditablePage({ page }: SharedEditablePageProps) {
       {mounted ? (
         <BlockEditorInner key={`${page.id}-editable`} page={{ ...page, title, icon }} />
       ) : (
-        <div className="min-h-[300px] flex items-center justify-center text-xs text-neutral-400">
-          Loading editor...
+        <div className="min-h-[300px] flex flex-col items-center justify-center gap-2 text-xs text-neutral-400 dark:text-zinc-500">
+          <div className="w-4 h-4 rounded-full border-2 border-stone-600 dark:border-zinc-400 border-t-transparent animate-spin" />
+          <span>Loading editor...</span>
         </div>
       )}
     </div>

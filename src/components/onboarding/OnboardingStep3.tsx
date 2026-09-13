@@ -53,8 +53,8 @@ export function OnboardingStep3({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-2xl font-semibold text-neutral-950 tracking-tight">Pick a starter template</h2>
-        <p className="text-xs text-neutral-500 mt-1">
+        <h2 className="text-2xl font-semibold text-neutral-950 dark:text-white tracking-tight">Pick a starter template</h2>
+        <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-1">
           Choose a pre-built structure or start with a clean slate.
         </p>
       </div>
@@ -68,27 +68,27 @@ export function OnboardingStep3({
               key={tmpl.id}
               onClick={() => setSelectedTemplate(tmpl.id)}
               className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center gap-3.5 ${isSelected
-                  ? 'border-neutral-900 bg-neutral-50/80 shadow-2xs'
-                  : 'border-neutral-200 hover:border-neutral-300 bg-white'
+                  ? 'border-neutral-900 dark:border-zinc-300 bg-neutral-50/80 dark:bg-zinc-800/80 shadow-2xs'
+                  : 'border-neutral-200 dark:border-zinc-800/80 hover:border-neutral-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900/60'
                 }`}
             >
               <div
                 className={`p-2.5 rounded-xl border shrink-0 transition-colors ${isSelected
-                    ? 'bg-neutral-900 border-neutral-900 text-white'
-                    : 'bg-neutral-100/80 border-neutral-200/80 text-neutral-700'
+                    ? 'bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white text-white dark:text-neutral-950'
+                    : 'bg-neutral-100/80 dark:bg-zinc-800/80 border-neutral-200/80 dark:border-zinc-700/80 text-neutral-700 dark:text-zinc-300'
                   }`}
               >
                 <HugeiconsIcon icon={tmpl.icon} size={18} />
               </div>
 
               <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-neutral-900">{tmpl.title}</h4>
-                <p className="text-xs text-neutral-500 mt-0.5 leading-relaxed">{tmpl.description}</p>
+                <h4 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">{tmpl.title}</h4>
+                <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-0.5 leading-relaxed">{tmpl.description}</p>
               </div>
 
               {/* Radio Select Affordance */}
               <div
-                className={`w-4 h-4 rounded-full border shrink-0 flex items-center justify-center transition-all ${isSelected ? 'bg-black border-black text-white' : 'border-neutral-300 bg-white'
+                className={`w-4 h-4 rounded-full border shrink-0 flex items-center justify-center transition-all ${isSelected ? 'bg-black dark:bg-white border-black dark:border-white text-white dark:text-neutral-950' : 'border-neutral-300 dark:border-zinc-700 bg-white dark:bg-zinc-900'
                   }`}
               >
                 {isSelected && <HugeiconsIcon icon={Tick01Icon} size={10} />}

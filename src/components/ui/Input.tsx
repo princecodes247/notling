@@ -14,7 +14,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label htmlFor={inputId} className="text-xs font-semibold text-neutral-700">
+          <label htmlFor={inputId} className="text-xs font-semibold text-neutral-700 dark:text-zinc-300">
             {label}
           </label>
         )}
@@ -22,14 +22,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'w-full px-3.5 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50',
-            error ? 'border-rose-400 focus:ring-rose-500' : 'border-neutral-200',
+            'w-full px-3.5 py-2.5 rounded-lg border text-sm transition-all focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400 bg-neutral-50/50 dark:bg-zinc-900/80 text-neutral-900 dark:text-zinc-100 dark:placeholder-zinc-500',
+            error ? 'border-rose-400 focus:ring-rose-500' : 'border-neutral-200 dark:border-zinc-700/80',
             className
           )}
           {...props}
         />
-        {error && <span className="text-[11px] text-rose-600 font-medium">{error}</span>}
-        {!error && helperText && <span className="text-[11px] text-neutral-400">{helperText}</span>}
+        {error && <span className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">{error}</span>}
+        {!error && helperText && <span className="text-[11px] text-neutral-400 dark:text-zinc-500">{helperText}</span>}
       </div>
     );
   }

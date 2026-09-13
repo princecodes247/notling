@@ -3,6 +3,8 @@
 @source "../app";
 @source "./**/*.{ts,tsx}";
 
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Newsreader', Georgia, serif;
@@ -26,6 +28,24 @@
     --accent-indigo: #4f46e5;
   }
 
+  .dark,
+  [data-theme="dark"] {
+    --bg-canvas: #121214;
+    --bg-card: #18181b;
+    --bg-sidebar: #161618;
+    --bg-subtle: #1c1c1f;
+    --bg-hover: #26262a;
+    --border-color: #2a2a2e;
+    --border-subtle: #222226;
+    --text-primary: #f2f2f7;
+    --text-secondary: #a1a1a6;
+    --text-muted: #636366;
+    --accent-amber: #ffb340;
+    --accent-emerald: #34c759;
+    --accent-indigo: #0a84ff;
+    color-scheme: dark;
+  }
+
   body {
     background-color: var(--bg-canvas);
     color: var(--text-primary);
@@ -34,19 +54,20 @@
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
 .shadow-modal {
-  box-shadow: 0 24px 60px -15px rgba(28, 25, 23, 0.22), 0 0 0 1px rgba(28, 25, 23, 0.08);
+  box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .shadow-subtle {
-  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.04), 0 4px 12px rgba(28, 25, 23, 0.02);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .shadow-card-elevated {
-  box-shadow: 0 4px 20px -2px rgba(28, 25, 23, 0.05), 0 1px 3px rgba(28, 25, 23, 0.03), 0 0 0 1px rgba(28, 25, 23, 0.06);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 
@@ -72,6 +93,28 @@
   font-family: inherit !important;
 }
 
+/* BlockNote Dark Mode Overrides */
+.dark .bn-container,
+[data-theme="dark"] .bn-container {
+  --bn-colors-editor-text: #f2f2f7 !important;
+  --bn-colors-editor-background: transparent !important;
+  --bn-colors-menu-text: #f2f2f7 !important;
+  --bn-colors-menu-background: #222226 !important;
+  --bn-colors-tooltip-text: #121214 !important;
+  --bn-colors-tooltip-background: #f2f2f7 !important;
+  --bn-colors-hovered-text: #ffffff !important;
+  --bn-colors-hovered-background: #2a2a30 !important;
+  --bn-colors-selected-text: #ffffff !important;
+  --bn-colors-selected-background: #34343a !important;
+  --bn-colors-disabled-text: #636366 !important;
+  --bn-colors-disabled-background: transparent !important;
+  --bn-colors-shadow: rgba(0, 0, 0, 0.4) !important;
+  --bn-colors-border: #2c2c32 !important;
+  --bn-colors-side-menu: #636366 !important;
+  --bn-colors-highlights-gray-background: #2a2a30 !important;
+  --bn-colors-highlights-gray-text: #a1a1a6 !important;
+}
+
 .bn-editor {
   min-height: 420px;
   color: #0f172a !important;
@@ -79,10 +122,20 @@
   margin-inline: -54px;
 }
 
+.dark .bn-editor,
+[data-theme="dark"] .bn-editor {
+  color: #f2f2f7 !important;
+}
+
 .bn-block-content {
   font-size: 1.05rem;
   line-height: 1.7;
   color: #0f172a !important;
+}
+
+.dark .bn-block-content,
+[data-theme="dark"] .bn-block-content {
+  color: #f2f2f7 !important;
 }
 
 /* Block highlight when context menu is open (applied via inline styles on .bn-block-outer) */
@@ -105,6 +158,20 @@
   background-color: #dbeafe !important;
   border-radius: 6px !important;
   transition: background-color 0.1s ease !important;
+}
+
+.dark .bn-block-selected-highlight,
+.dark .bn-block-selected-highlight .bn-block,
+.dark .bn-block-selected-highlight .bn-block-content,
+.dark .bn-block-selected-highlight .bn-inline-content,
+.dark .bn-block-selected-highlight p,
+.dark .bn-block-selected-highlight h1,
+.dark .bn-block-selected-highlight h2,
+.dark .bn-block-selected-highlight h3,
+.dark .bn-block-selected-highlight li,
+.dark .bn-block-selected-highlight span,
+.dark .bn-block-selected-highlight div {
+  background-color: #2a2a32 !important;
 }
 
 /* Highlight block when its handle context menu is open */

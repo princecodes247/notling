@@ -29,21 +29,21 @@ export function OnboardingStep1({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-neutral-950 tracking-tight">Set up your profile</h2>
-        <p className="text-xs text-neutral-500 mt-1">How you'll show up to your team</p>
+        <h2 className="text-2xl font-semibold text-neutral-950 dark:text-white tracking-tight">Set up your profile</h2>
+        <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-1">How you'll show up to your team</p>
       </div>
 
       {/* Avatar + Full Name Row */}
       <div className="flex items-end gap-3">
         {/* Compact Avatar with Reroll Badge */}
         <div className="relative shrink-0 group">
-          <div className="w-11 h-11 rounded-full overflow-hidden border border-neutral-300 bg-neutral-100 flex items-center justify-center shadow-2xs">
+          <div className="w-11 h-11 rounded-full overflow-hidden border border-neutral-300 dark:border-zinc-700 bg-neutral-100 dark:bg-zinc-800 flex items-center justify-center shadow-2xs">
             <Avatar theme={pacovqzzTheme} seed={avatarSeed} size={44} />
           </div>
           <button
             type="button"
             onClick={onRerollAvatar}
-            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-600 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
+            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-zinc-800 hover:bg-neutral-100 dark:hover:bg-zinc-700 border border-neutral-300 dark:border-zinc-700 text-neutral-600 dark:text-zinc-300 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
             title="Reroll avatar"
           >
             <HugeiconsIcon icon={RefreshIcon} size={11} />
@@ -64,7 +64,7 @@ export function OnboardingStep1({
 
       {/* Role */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-neutral-700">Your Primary Role</label>
+        <label className="text-xs font-semibold text-neutral-700 dark:text-zinc-300">Your Primary Role</label>
         <Select
           value={role}
           options={ONBOARDING_ROLE_OPTIONS}
@@ -73,7 +73,7 @@ export function OnboardingStep1({
           variant="outline"
           align="left"
           matchTriggerWidth
-          className="w-full bg-neutral-50/50 hover:bg-neutral-100/60"
+          className="w-full bg-neutral-50/50 dark:bg-zinc-900/80 hover:bg-neutral-100/60 dark:hover:bg-zinc-800"
         />
       </div>
 

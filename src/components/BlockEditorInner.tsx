@@ -856,6 +856,22 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
 
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined'
+      ? document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark'
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      const dark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+      setIsDark(dark);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaPickerInitialTab, setMediaPickerInitialTab] = useState<'upload' | 'link' | 'unsplash' | 'giphy'>('upload');
   const [mediaPickerPosition, setMediaPickerPosition] = useState<{ top: number; left: number } | null>(null);
@@ -1724,7 +1740,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     >
       <BlockNoteView
         editor={editor}
-        theme="light"
+        theme={isDark ? 'dark' : 'light'}
         sideMenu={false}
         slashMenu={false}
         onChange={handleContentChange}

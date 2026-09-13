@@ -78,27 +78,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <button
             type="button"
             onClick={handleExportMarkdown}
-            className="group p-4 rounded-xl border border-stone-200/90 hover:border-stone-800 hover:shadow-md bg-white hover:bg-stone-50/50 text-left flex flex-col gap-2.5 transition-all cursor-pointer active:scale-98"
+            className="group p-4 rounded-xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-800 dark:hover:border-stone-600 hover:shadow-md bg-white dark:bg-[#222226] hover:bg-stone-50/50 dark:hover:bg-stone-800/50 text-left flex flex-col gap-2.5 transition-all cursor-pointer active:scale-98"
           >
             <div className="flex items-center justify-between w-full">
-              <div className="w-8 h-8 rounded-lg bg-stone-100 group-hover:bg-stone-900 text-stone-700 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 group-hover:bg-stone-900 dark:group-hover:bg-stone-700 text-stone-700 dark:text-stone-300 group-hover:text-white flex items-center justify-center transition-colors">
                 <HugeiconsIcon icon={File01Icon} size={16} />
               </div>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-600 group-hover:bg-stone-200 transition-colors">
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 group-hover:bg-stone-200 transition-colors">
                 .md
               </span>
             </div>
 
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-stone-900 group-hover:text-black">
+              <span className="text-xs font-semibold text-stone-900 dark:text-stone-100 group-hover:text-black dark:group-hover:text-white">
                 Markdown
               </span>
-              <p className="text-[11px] text-stone-500 leading-snug">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-snug">
                 Download as GitHub-Flavored Markdown for Notion, GitHub, or static site generators.
               </p>
             </div>
 
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-800 group-hover:text-stone-950">
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200 group-hover:text-stone-950 dark:group-hover:text-white">
               <HugeiconsIcon icon={Download01Icon} size={13} />
               <span>Download .md</span>
             </div>
@@ -108,27 +108,27 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <button
             type="button"
             onClick={handleExportPDF}
-            className="group p-4 rounded-xl border border-stone-200/90 hover:border-stone-800 hover:shadow-md bg-white hover:bg-stone-50/50 text-left flex flex-col gap-2.5 transition-all cursor-pointer active:scale-98"
+            className="group p-4 rounded-xl border border-stone-200/90 dark:border-stone-800 hover:border-stone-800 dark:hover:border-stone-600 hover:shadow-md bg-white dark:bg-[#222226] hover:bg-stone-50/50 dark:hover:bg-stone-800/50 text-left flex flex-col gap-2.5 transition-all cursor-pointer active:scale-98"
           >
             <div className="flex items-center justify-between w-full">
-              <div className="w-8 h-8 rounded-lg bg-stone-100 group-hover:bg-stone-900 text-stone-700 group-hover:text-white flex items-center justify-center transition-colors">
+              <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 group-hover:bg-stone-900 dark:group-hover:bg-stone-700 text-stone-700 dark:text-stone-300 group-hover:text-white flex items-center justify-center transition-colors">
                 <HugeiconsIcon icon={PrinterIcon} size={16} />
               </div>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-600 group-hover:bg-stone-200 transition-colors">
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 group-hover:bg-stone-200 transition-colors">
                 .pdf
               </span>
             </div>
 
             <div className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold text-stone-900 group-hover:text-black">
+              <span className="text-xs font-semibold text-stone-900 dark:text-stone-100 group-hover:text-black dark:group-hover:text-white">
                 PDF Document
               </span>
-              <p className="text-[11px] text-stone-500 leading-snug">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-snug">
                 Formatted document layout ready for printing or saving as PDF.
               </p>
             </div>
 
-            <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-800 group-hover:text-stone-950">
+            <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200 group-hover:text-stone-950 dark:group-hover:text-white">
               <HugeiconsIcon icon={PrinterIcon} size={13} />
               <span>Export as PDF</span>
             </div>

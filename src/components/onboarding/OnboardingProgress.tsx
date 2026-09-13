@@ -16,19 +16,19 @@ export function OnboardingProgress({ currentStep, totalSteps = 3 }: OnboardingPr
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
               currentStep === s
-                ? 'bg-black text-white shadow-2xs'
+                ? 'bg-black dark:bg-white text-white dark:text-neutral-950 shadow-2xs'
                 : currentStep > s
-                  ? 'bg-neutral-200 text-neutral-800'
-                  : 'bg-neutral-100 text-neutral-400'
+                  ? 'bg-neutral-200 dark:bg-zinc-800 text-neutral-800 dark:text-zinc-200'
+                  : 'bg-neutral-100 dark:bg-zinc-900 text-neutral-400 dark:text-zinc-600'
             }`}
           >
             {currentStep > s ? (
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-emerald-600" />
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={14} className="text-emerald-600 dark:text-emerald-400" />
             ) : (
               s
             )}
           </div>
-          {s < totalSteps && <div className="w-8 h-0.5 bg-neutral-200 rounded-full" />}
+          {s < totalSteps && <div className="w-8 h-0.5 bg-neutral-200 dark:bg-zinc-800 rounded-full" />}
         </div>
       ))}
     </div>

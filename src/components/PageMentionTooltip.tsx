@@ -136,17 +136,17 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
     <div
       ref={containerRef}
       style={style}
-      className="z-[9999] w-72 bg-white rounded-xl shadow-2xl border border-stone-200/90 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100 select-none text-stone-900 pointer-events-auto"
+      className="z-[9999] w-72 bg-white dark:bg-[#18181b] rounded-xl shadow-2xl border border-stone-200/90 dark:border-zinc-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100 select-none text-stone-900 dark:text-zinc-100 pointer-events-auto"
     >
       {/* Header bar */}
-      <div className="px-3 py-2 bg-stone-50 border-b border-stone-200/70 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-700">
-          <div className="w-4 h-4 rounded bg-amber-100 text-amber-800 flex items-center justify-center shrink-0">
+      <div className="px-3 py-2 bg-stone-50 dark:bg-zinc-900/60 border-b border-stone-200/70 dark:border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 dark:text-zinc-300">
+          <div className="w-4 h-4 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 flex items-center justify-center shrink-0">
             <AtSign className="w-3 h-3" />
           </div>
           <span>Mention User or Page</span>
         </div>
-        <span className="text-[10px] font-mono text-stone-400">
+        <span className="text-[10px] font-mono text-stone-400 dark:text-zinc-500">
           {searchQuery ? `Searching "${searchQuery}"` : 'Type name or title'}
         </span>
       </div>
@@ -154,8 +154,8 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
       {/* Results List */}
       <div className="max-h-60 overflow-y-auto p-1.5 flex flex-col gap-1">
         {allFilteredSuggestions.length === 0 ? (
-          <div className="py-6 text-center text-xs text-stone-400 flex flex-col items-center gap-1">
-            <FileText className="w-4 h-4 text-stone-300 stroke-1" />
+          <div className="py-6 text-center text-xs text-stone-400 dark:text-zinc-500 flex flex-col items-center gap-1">
+            <FileText className="w-4 h-4 text-stone-300 dark:text-zinc-600 stroke-1" />
             <span>No matching users or pages</span>
           </div>
         ) : (
@@ -164,8 +164,8 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
             {/* Pages section */}
             {filteredPages.length > 0 && (
               <div className="flex flex-col gap-0.5 mt-1">
-                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 flex items-center gap-1">
-                  <FileText className="w-3 h-3 text-stone-400" />
+                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-zinc-500 flex items-center gap-1">
+                  <FileText className="w-3 h-3 text-stone-400 dark:text-zinc-500" />
                   <span>Pages ({filteredPages.length})</span>
                 </div>
                 {filteredPages.map((page) => {
@@ -181,17 +181,17 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                         onClose();
                       }}
                       onMouseEnter={() => onHoverIndex?.(index)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-amber-50 text-amber-950 font-medium' : 'hover:bg-stone-100 text-stone-800'
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 font-medium' : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
                         }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-sm shrink-0">{page.icon || '📄'}</span>
-                        <span className={`text-xs truncate ${isSelected ? 'font-semibold text-amber-900' : 'text-stone-800'}`}>
+                        <span className={`text-xs truncate ${isSelected ? 'font-semibold text-amber-900 dark:text-amber-300' : 'text-stone-800 dark:text-zinc-200'}`}>
                           {page.title}
                         </span>
                       </div>
                       {isSelected && (
-                        <span className="text-[10px] font-mono text-amber-700 bg-amber-100/80 px-1.5 py-0.2 rounded shrink-0">
+                        <span className="text-[10px] font-mono text-amber-700 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-950/60 px-1.5 py-0.2 rounded shrink-0">
                           ↵
                         </span>
                       )}
@@ -203,8 +203,8 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
             {/* Users section */}
             {filteredUsers.length > 0 && (
               <div className="flex flex-col gap-0.5">
-                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 flex items-center gap-1">
-                  <User className="w-3 h-3 text-stone-400" />
+                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-zinc-500 flex items-center gap-1">
+                  <User className="w-3 h-3 text-stone-400 dark:text-zinc-500" />
                   <span>Members ({filteredUsers.length})</span>
                 </div>
                 {filteredUsers.map((user) => {
@@ -220,7 +220,7 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                         onClose();
                       }}
                       onMouseEnter={() => onHoverIndex?.(index)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-emerald-50 text-emerald-950 font-medium' : 'hover:bg-stone-100 text-stone-800'
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-200 font-medium' : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
                         }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -232,18 +232,18 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                           className="w-5 h-5"
                         />
                         <div className="flex flex-col min-w-0">
-                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-emerald-900' : 'text-stone-800'}`}>
+                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-emerald-900 dark:text-emerald-300' : 'text-stone-800 dark:text-zinc-200'}`}>
                             {user.title}
                           </span>
                           {user.subtitle && (
-                            <span className="text-[10px] text-stone-400 truncate font-mono">
+                            <span className="text-[10px] text-stone-400 dark:text-zinc-500 truncate font-mono">
                               {user.subtitle}
                             </span>
                           )}
                         </div>
                       </div>
                       {isSelected && (
-                        <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100/80 px-1.5 py-0.2 rounded shrink-0">
+                        <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded shrink-0">
                           ↵
                         </span>
                       )}

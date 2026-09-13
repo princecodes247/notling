@@ -14,9 +14,9 @@ export const selectTriggerVariants = cva(
         lg: 'px-3.5 py-2 text-sm font-medium rounded-lg',
       },
       variant: {
-        default: 'bg-stone-100 text-stone-700 hover:bg-stone-200/70 border border-stone-200/80',
-        subtle: 'bg-transparent text-stone-700 hover:bg-stone-100 border border-transparent',
-        outline: 'bg-white text-stone-900 hover:bg-stone-50 border border-stone-200',
+        default: 'bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-700 border border-stone-200/80 dark:border-zinc-700/60',
+        subtle: 'bg-transparent text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 border border-transparent',
+        outline: 'bg-white dark:bg-zinc-800/90 text-stone-900 dark:text-zinc-100 hover:bg-stone-50 dark:hover:bg-zinc-700 border border-stone-200 dark:border-zinc-700/80',
       },
     },
     defaultVariants: {
@@ -177,7 +177,7 @@ export function Select<T extends string = string>({
               width: `${coords.width}px`,
               zIndex: 99999,
             }}
-            className="rounded-xl bg-white border border-stone-200 shadow-2xl p-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+            className="rounded-xl bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 shadow-2xl p-1 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
           >
             {options.map((option) => {
               const isSelected = option.value === value;
@@ -190,17 +190,19 @@ export function Select<T extends string = string>({
                     setIsOpen(false);
                   }}
                   className={`${selectOptionVariants({ size })} ${
-                    isSelected ? 'bg-stone-100 text-stone-900 font-semibold' : 'text-stone-700 hover:bg-stone-50'
+                    isSelected
+                      ? 'bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-white font-semibold'
+                      : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800/70 dark:hover:text-white'
                   }`}
                 >
                   <div className="flex flex-col min-w-0">
                     <span className="truncate">{option.label}</span>
                     {option.description && (
-                      <span className="text-[10px] text-stone-400 font-normal truncate">{option.description}</span>
+                      <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-normal truncate">{option.description}</span>
                     )}
                   </div>
                   {isSelected && (
-                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={iconSize + 2} className="text-stone-900 shrink-0 ml-1" />
+                    <HugeiconsIcon icon={CheckmarkCircle01Icon} size={iconSize + 2} className="text-stone-900 dark:text-white shrink-0 ml-1" />
                   )}
                 </button>
               );

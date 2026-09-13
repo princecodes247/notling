@@ -58,16 +58,16 @@ export const SidebarSkeleton: React.FC = () => {
   const BaseSkeleton: React.FC<{ className?: string }> = ({ className = "" }) => (
     <div className={className + "flex flex-col gap-1"}>
       <div className="flex items-center gap-2.5 px-2 py-1.5">
-        <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
-        <div className="h-3.5 w-32 rounded bg-stone-300/70" />
+        <div className="w-4 h-4 rounded bg-stone-300/70 dark:bg-zinc-800/80 shrink-0" />
+        <div className="h-3.5 w-32 rounded bg-stone-300/70 dark:bg-zinc-800/80" />
       </div>
       <div className="flex items-center gap-2 pl-7 pr-2 py-1">
-        <div className="w-3.5 h-3.5 rounded bg-stone-200/80 shrink-0" />
-        <div className="h-3 w-24 rounded bg-stone-200/80" />
+        <div className="w-3.5 h-3.5 rounded bg-stone-200/80 dark:bg-zinc-800/50 shrink-0" />
+        <div className="h-3 w-24 rounded bg-stone-200/80 dark:bg-zinc-800/50" />
       </div>
       <div className="flex items-center gap-2 pl-7 pr-2 py-1">
-        <div className="w-3.5 h-3.5 rounded bg-stone-200/80 shrink-0" />
-        <div className="h-3 w-28 rounded bg-stone-200/80" />
+        <div className="w-3.5 h-3.5 rounded bg-stone-200/80 dark:bg-zinc-800/50 shrink-0" />
+        <div className="h-3 w-28 rounded bg-stone-200/80 dark:bg-zinc-800/50" />
       </div>
     </div>
   )
@@ -77,22 +77,22 @@ export const SidebarSkeleton: React.FC = () => {
 
       <div className="flex flex-col gap-1 pt-1">
         <div className="flex items-center gap-2.5 px-2 py-1.5">
-          <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
-          <div className="h-3.5 w-28 rounded bg-stone-300/70" />
+          <div className="w-4 h-4 rounded bg-stone-300/70 dark:bg-zinc-800/80 shrink-0" />
+          <div className="h-3.5 w-28 rounded bg-stone-300/70 dark:bg-zinc-800/80" />
         </div>
         <div className="flex items-center gap-2 pl-7 pr-2 py-1">
-          <div className="w-3.5 h-3.5 rounded bg-stone-200/80 shrink-0" />
-          <div className="h-3 w-20 rounded bg-stone-200/80" />
+          <div className="w-3.5 h-3.5 rounded bg-stone-200/80 dark:bg-zinc-800/50 shrink-0" />
+          <div className="h-3 w-20 rounded bg-stone-200/80 dark:bg-zinc-800/50" />
         </div>
       </div>
 
       <div className="flex items-center gap-2.5 px-2 py-1.5 pt-1">
-        <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
-        <div className="h-3.5 w-36 rounded bg-stone-300/70" />
+        <div className="w-4 h-4 rounded bg-stone-300/70 dark:bg-zinc-800/80 shrink-0" />
+        <div className="h-3.5 w-36 rounded bg-stone-300/70 dark:bg-zinc-800/80" />
       </div>
       <div className="flex items-center gap-2.5 px-2 py-1.5">
-        <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
-        <div className="h-3.5 w-24 rounded bg-stone-300/70" />
+        <div className="w-4 h-4 rounded bg-stone-300/70 dark:bg-zinc-800/80 shrink-0" />
+        <div className="h-3.5 w-24 rounded bg-stone-300/70 dark:bg-zinc-800/80" />
       </div>
     </div>
   );
@@ -129,14 +129,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pinnedNodes = getAllPinnedNodes(treeNodes);
 
   return (
-    <aside className="w-full md:w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative pt-safe pb-safe">
+    <aside className="w-full md:w-60 h-full bg-[#f9f8f5] dark:bg-[#121214] flex flex-col shrink-0 select-none text-stone-800 dark:text-zinc-200 text-sm border-r border-stone-200/60 dark:border-zinc-800/80 relative pt-safe pb-safe">
       {/* 1. Header: Workspace Switcher Dropdown + Collapse Icon */}
-      <div className="h-14 px-3 flex items-center justify-between border-b border-stone-200/40 relative">
+      <div className="h-14 px-3 flex items-center justify-between border-b border-stone-200/40 dark:border-zinc-800/80 relative">
         <div className="relative flex-1 min-w-0">
           <button
             type="button"
             onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
-            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-stone-200/60 transition-colors cursor-pointer w-full text-left min-w-0 group"
+            className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer w-full text-left min-w-0 group"
           >
             <WorkspaceAvatar
               seed={session?.workspaceIcon || session?.workspaceSlug || session?.workspaceId || workspaceName}
@@ -145,9 +145,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
               size={28}
             />
             <div className="flex flex-col min-w-0 flex-1">
-              <span className="font-semibold text-xs text-stone-900 truncate tracking-tight flex items-center gap-1">
+              <span className="font-semibold text-xs text-stone-900 dark:text-zinc-100 truncate tracking-tight flex items-center gap-1">
                 <span className="truncate">{workspaceName || 'Notling Workspace'}</span>
-                <ChevronsUpDown className="w-3.5 h-3.5 text-stone-400 group-hover:text-stone-700 shrink-0 transition-colors" />
+                <ChevronsUpDown className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 group-hover:text-stone-700 dark:group-hover:text-zinc-300 shrink-0 transition-colors" />
               </span>
             </div>
           </button>
@@ -159,8 +159,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 className="fixed inset-0 z-40"
                 onClick={() => setShowWorkspaceMenu(false)}
               />
-              <div className="absolute left-0 top-11 w-56 bg-white border border-stone-200 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
-                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              <div className="absolute left-0 top-11 w-56 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
+                <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
                   Workspaces
                 </div>
 
@@ -178,7 +178,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               onSwitchWorkspace?.(ws.id);
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 transition-colors cursor-pointer ${isActive ? 'bg-stone-50 font-semibold text-stone-900' : 'text-stone-700'
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer ${isActive ? 'bg-stone-50 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-white' : 'text-stone-700 dark:text-zinc-300'
                             }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -190,12 +190,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             />
                             <span className="truncate text-xs">{ws.name}</span>
                           </div>
-                          {isActive && <Check className="w-3.5 h-3.5 text-stone-900 shrink-0" />}
+                          {isActive && <Check className="w-3.5 h-3.5 text-stone-900 dark:text-white shrink-0" />}
                         </button>
                       );
                     })
                   ) : (
-                    <div className="px-3 py-2 text-stone-700 font-semibold text-xs flex items-center justify-between bg-stone-50">
+                    <div className="px-3 py-2 text-stone-700 dark:text-zinc-300 font-semibold text-xs flex items-center justify-between bg-stone-50 dark:bg-zinc-800">
                       <div className="flex items-center gap-2 min-w-0">
                         <WorkspaceAvatar
                           seed={session?.workspaceIcon || session?.workspaceSlug || session?.workspaceId || workspaceName}
@@ -205,21 +205,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         />
                         <span className="truncate text-xs">{workspaceName || 'Notling Workspace'}</span>
                       </div>
-                      <Check className="w-3.5 h-3.5 text-stone-900 shrink-0" />
+                      <Check className="w-3.5 h-3.5 text-stone-900 dark:text-white shrink-0" />
                     </div>
                   )}
                 </div>
 
-                <div className="pt-1.5 mt-1 border-t border-stone-100 px-1 flex flex-col gap-0.5">
+                <div className="pt-1.5 mt-1 border-t border-stone-100 dark:border-zinc-800 px-1 flex flex-col gap-0.5">
                   <button
                     type="button"
                     onClick={() => {
                       setShowWorkspaceMenu(false);
                       onOpenCreateWorkspaceModal?.();
                     }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-stone-100 flex items-center gap-2 text-stone-700 font-medium cursor-pointer transition-colors"
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800/60 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5 text-stone-500" />
+                    <Plus className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
                     Create new workspace
                   </button>
                   <button
@@ -228,9 +228,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setShowWorkspaceMenu(false);
                       setImportOpen(true);
                     }}
-                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-stone-100 flex items-center gap-2 text-stone-700 font-medium cursor-pointer transition-colors"
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800/60 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors"
                   >
-                    <Upload className="w-3.5 h-3.5 text-stone-500" />
+                    <Upload className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
                     Import Notion / Notes
                   </button>
                 </div>
@@ -242,10 +242,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={toggleSidebar}
-          className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer shrink-0 ml-1"
+          className="p-1.5 rounded-lg text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer shrink-0 ml-1"
           title="Collapse sidebar"
         >
-          <PanelLeftClose className="w-4 h-4 text-stone-500 hover:text-stone-800 transition-colors" />
+          <PanelLeftClose className="w-4 h-4 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors" />
         </button>
       </div>
 
@@ -254,13 +254,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={toggleSearch}
-          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-stone-200/40 hover:bg-stone-200/70 border border-stone-200/70 text-stone-500 text-xs transition-colors group cursor-pointer shadow-2xs"
+          className="w-full flex items-center justify-between px-3 py-1.5 rounded-lg bg-stone-200/40 dark:bg-zinc-800/50 hover:bg-stone-200/70 dark:hover:bg-zinc-800/80 border border-stone-200/70 dark:border-zinc-700/60 text-stone-500 dark:text-zinc-400 text-xs transition-colors group cursor-pointer shadow-2xs"
         >
           <div className="flex items-center gap-2">
-            <HugeiconsIcon icon={Search01Icon} size={14} className="text-stone-400 group-hover:text-stone-600" />
-            <span className="font-normal text-stone-500">Search workspace</span>
+            <HugeiconsIcon icon={Search01Icon} size={14} className="text-stone-400 dark:text-zinc-500 group-hover:text-stone-600 dark:group-hover:text-zinc-300" />
+            <span className="font-normal text-stone-500 dark:text-zinc-400">Search workspace</span>
           </div>
-          <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-stone-400 bg-white/90 rounded border border-stone-200 shadow-2xs">
+          <kbd className="px-1.5 py-0.5 text-[10px] font-mono text-stone-400 dark:text-zinc-500 bg-white/90 dark:bg-zinc-900 rounded border border-stone-200 dark:border-zinc-700 shadow-2xs">
             /
           </kbd>
         </button>
@@ -273,11 +273,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           type="button"
           onClick={() => onNavClick?.('home')}
           className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'home'
-            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
-            : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
+            ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
+            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
             }`}
         >
-          <HugeiconsIcon icon={Home01Icon} size={15} className={activeNav === 'home' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
+          <HugeiconsIcon icon={Home01Icon} size={15} className={activeNav === 'home' ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'} />
           <span>Home</span>
         </button>
 
@@ -286,15 +286,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           type="button"
           onClick={() => onNavClick?.('folders')}
           className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'folders'
-            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
-            : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
+            ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
+            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
             }`}
         >
           <div className="flex items-center gap-2.5">
-            <HugeiconsIcon icon={Folder01Icon} size={15} className={activeNav === 'folders' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
+            <HugeiconsIcon icon={Folder01Icon} size={15} className={activeNav === 'folders' ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'} />
             <span>Folders</span>
           </div>
-          <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 text-stone-500">
+          <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400">
             {workspaceNodes.filter((n) => n.children && n.children.length > 0).length || workspaceNodes.length}
           </span>
         </button>
@@ -304,16 +304,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
           type="button"
           onClick={() => onNavClick?.('trash')}
           className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'trash'
-            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
-            : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
+            ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
+            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
             }`}
         >
           <div className="flex items-center gap-2.5">
-            <HugeiconsIcon icon={Delete02Icon} size={15} className={activeNav === 'trash' ? 'text-stone-900 shrink-0' : 'text-stone-500 shrink-0'} />
+            <HugeiconsIcon icon={Delete02Icon} size={15} className={activeNav === 'trash' ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'} />
             <span>Trash</span>
           </div>
           {trashCount !== undefined && trashCount > 0 && (
-            <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800' : 'text-rose-700'}`}>
+            <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800 dark:text-rose-300' : 'text-rose-700 dark:text-rose-400'}`}>
               {trashCount}
             </span>
           )}
@@ -323,9 +323,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <button
           type="button"
           onClick={() => setImportOpen(true)}
-          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-100/80 hover:text-stone-900 transition-all cursor-pointer"
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white transition-all cursor-pointer"
         >
-          <Upload className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+          <Upload className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400 shrink-0" />
           <span>Import</span>
         </button>
       </div>
@@ -365,14 +365,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+            <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
               <span>Workspace Pages</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   disabled={isCreatingPage}
                   onClick={() => !isCreatingPage && (onCreateFolder ? onCreateFolder() : onCreatePage())}
-                  className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1 rounded-md hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Create new folder"
                 >
                   <HugeiconsIcon icon={FolderAddIcon} size={15} />
@@ -381,11 +381,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   type="button"
                   disabled={isCreatingPage}
                   onClick={() => !isCreatingPage && onCreatePage()}
-                  className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-1 rounded-md hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Create new page"
                 >
                   {isCreatingPage ? (
-                    <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600" />
+                    <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600 dark:text-zinc-400" />
                   ) : (
                     <HugeiconsIcon icon={PlusSignIcon} size={15} />
                   )}
@@ -394,7 +394,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div
-              className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${isRootDropTarget ? 'bg-stone-200/50 ring-1 ring-stone-300' : ''
+              className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${isRootDropTarget ? 'bg-stone-200/50 dark:bg-zinc-800/50 ring-1 ring-stone-300 dark:ring-zinc-700' : ''
                 }`}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -417,13 +417,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               }}
             >
               {workspaceNodes.length === 0 ? (
-                <div className="px-3 py-4 text-center text-xs text-neutral-400 flex flex-col items-center gap-1.5">
+                <div className="px-3 py-4 text-center text-xs text-neutral-400 dark:text-zinc-500 flex flex-col items-center gap-1.5">
                   <span>No documents yet</span>
                   <button
                     type="button"
                     disabled={isCreatingPage}
                     onClick={() => !isCreatingPage && onCreatePage()}
-                    className="text-[11px] text-neutral-800 font-medium hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                    className="text-[11px] text-neutral-800 dark:text-zinc-200 font-medium hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
                   >
                     {isCreatingPage ? 'Creating page...' : '+ Create first page'}
                   </button>
@@ -450,7 +450,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* 5. Shared With Me Section */}
             {sharedNodes.length > 0 && (
               <div className="mt-4 flex flex-col gap-0.5">
-                <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
                   <div className="flex items-center gap-1.5">
                     <span>Shared with me</span>
                   </div>
@@ -479,21 +479,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* 5. Footer: User Avatar + Name, Settings, Version */}
-      <div className="p-3 border-t border-stone-200/50 flex flex-col gap-1">
+      <div className="p-3 border-t border-stone-200/50 dark:border-zinc-800/80 flex flex-col gap-1">
         {/* User profile row */}
-        <div className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-stone-200/50 transition-colors cursor-pointer group">
+        <div className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-stone-200/50 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer group">
           <div className="flex items-center gap-2.5 min-w-0">
             <UserAvatar
               avatarUrl={session?.avatarUrl}
               name={session?.name}
               size={24}
-              className="border border-stone-300/80 shrink-0"
+              className="border border-stone-300/80 dark:border-zinc-700/80 shrink-0"
             />
             <div className="flex flex-col min-w-0">
-              <span className="text-xs font-semibold text-stone-800 truncate">
+              <span className="text-xs font-semibold text-stone-800 dark:text-zinc-200 truncate">
                 {session?.name ? session.name.split(' ')[0] : 'Workspace Member'}
               </span>
-              <span className="text-[10px] text-stone-400 font-mono truncate">
+              <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono truncate">
                 {session?.email || 'authenticated'}
               </span>
             </div>
@@ -503,7 +503,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               type="button"
               onClick={onLogout}
-              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded-md hover:bg-stone-200 text-stone-500 hover:text-stone-800 transition-all cursor-pointer active-press"
+              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-1.5 rounded-md hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-all cursor-pointer active-press"
               title="Sign out"
             >
               <HugeiconsIcon icon={Logout01Icon} size={14} />
@@ -512,17 +512,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Settings row */}
-        <button
-          type="button"
-          onClick={() => onNavClick?.('settings')}
-          className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${activeNav === 'settings'
-            ? 'bg-stone-200/70 text-stone-900 font-semibold shadow-2xs'
-            : 'text-stone-700 hover:bg-stone-200/40'
-            }`}
-        >
-          <HugeiconsIcon icon={Settings02Icon} size={15} className="text-stone-500" />
-          <span>Settings</span>
-        </button>
+        <div className="pt-1 border-t border-stone-200/40 dark:border-zinc-800/60">
+          <button
+            type="button"
+            onClick={() => onNavClick?.('settings')}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${activeNav === 'settings'
+              ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
+              : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-200/40 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
+              }`}
+          >
+            <HugeiconsIcon icon={Settings02Icon} size={15} className="text-stone-500 dark:text-zinc-400" />
+            <span>Settings</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

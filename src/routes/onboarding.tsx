@@ -153,10 +153,10 @@ function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-neutral-900 flex flex-col items-center justify-center p-6 select-none font-sans relative">
+    <div className="min-h-screen bg-[#fafaf9] dark:bg-[#0e0e10] text-neutral-900 dark:text-neutral-100 flex flex-col items-center justify-center p-6 select-none font-sans relative">
       {/* Header Brand */}
       <div className="flex items-center gap-2 mb-8">
-        <NotlingLogoIcon className="w-6 h-6 text-neutral-900" />
+        <NotlingLogoIcon className="w-6 h-6 text-neutral-900 dark:text-white" />
         <span className="font-bold text-lg tracking-tight">Notling Workspace</span>
       </div>
 
@@ -164,7 +164,7 @@ function OnboardingPage() {
       <OnboardingProgress currentStep={step} />
 
       {/* Onboarding Card Container */}
-      <div className="w-full max-w-xl bg-white border border-neutral-200/90 rounded-xl p-8 shadow-xs flex flex-col">
+      <div className="w-full max-w-xl bg-white dark:bg-[#18181b] border border-neutral-200/90 dark:border-zinc-800/80 rounded-xl p-8 shadow-xs dark:shadow-2xl flex flex-col">
         {step === 1 && (
           <OnboardingStep1
             name={name}

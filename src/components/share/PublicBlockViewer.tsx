@@ -12,9 +12,21 @@ interface PublicBlockViewerProps {
 
 export function PublicBlockViewer({ pageId, content, userEmail }: PublicBlockViewerProps) {
   const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined'
+      ? document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark'
+      : false
+  );
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      const dark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
+      setIsDark(dark);
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    return () => observer.disconnect();
   }, []);
 
   const parsedBlocks = useMemo(() => {
@@ -133,8 +145,9 @@ export function PublicBlockViewer({ pageId, content, userEmail }: PublicBlockVie
 
   if (!mounted) {
     return (
-      <div className="min-h-[300px] flex items-center justify-center text-xs text-neutral-400">
-        Loading document...
+      <div className="min-h-[300px] flex flex-col items-center justify-center gap-2 text-xs text-neutral-400 dark:text-zinc-500">
+        <div className="w-4 h-4 rounded-full border-2 border-stone-600 dark:border-zinc-400 border-t-transparent animate-spin" />
+        <span>Loading document...</span>
       </div>
     );
   }
@@ -151,7 +164,7 @@ export function PublicBlockViewer({ pageId, content, userEmail }: PublicBlockVie
     >
       <BlockNoteView
         editor={editor}
-        theme="light"
+        theme={isDark ? 'dark' : 'light'}
         editable={false}
         sideMenu={false}
       />

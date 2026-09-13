@@ -332,14 +332,14 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                   key={opt.id}
                   type="button"
                   onClick={() => handleInsertBlock(opt)}
-                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/70 transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/80 active:bg-stone-200/70 dark:active:bg-zinc-800 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-white border border-stone-200/80 text-stone-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 border border-stone-200/80 dark:border-zinc-700/60 text-stone-700 dark:text-zinc-300 flex items-center justify-center shrink-0 shadow-2xs">
                     <Icon className="w-4 h-4" />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-semibold text-stone-900">{opt.label}</span>
-                    <span className="text-[10.5px] text-stone-500 truncate">{opt.description}</span>
+                    <span className="text-xs font-semibold text-stone-900 dark:text-zinc-100">{opt.label}</span>
+                    <span className="text-[10.5px] text-stone-500 dark:text-zinc-400 truncate">{opt.description}</span>
                   </div>
                 </button>
               );
@@ -352,14 +352,14 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                 setActiveSheet(null);
                 onOpenMediaPicker?.();
               }}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/70 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/80 active:bg-stone-200/70 dark:active:bg-zinc-800 transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-white border border-stone-200/80 text-stone-700 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 border border-stone-200/80 dark:border-zinc-700/60 text-stone-700 dark:text-zinc-300 flex items-center justify-center shrink-0 shadow-2xs">
                 <ImageIcon className="w-4 h-4" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-stone-900">Upload Image</span>
-                <span className="text-[10.5px] text-stone-500">Insert photo from device or library</span>
+                <span className="text-xs font-semibold text-stone-900 dark:text-zinc-100">Upload Image</span>
+                <span className="text-[10.5px] text-stone-500 dark:text-zinc-400">Insert photo from device or library</span>
               </div>
             </button>
 
@@ -369,14 +369,14 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                 setActiveSheet(null);
                 onOpenMentionModal?.();
               }}
-              className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/70 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/80 active:bg-stone-200/70 dark:active:bg-zinc-800 transition-colors"
             >
-              <div className="w-8 h-8 rounded-lg bg-white border border-stone-200/80 text-stone-700 flex items-center justify-center shrink-0 shadow-2xs">
+              <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-800 border border-stone-200/80 dark:border-zinc-700/60 text-stone-700 dark:text-zinc-300 flex items-center justify-center shrink-0 shadow-2xs">
                 <AtSign className="w-4 h-4" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-stone-900">Link Page</span>
-                <span className="text-[10.5px] text-stone-500">Mention another workspace page</span>
+                <span className="text-xs font-semibold text-stone-900 dark:text-zinc-100">Link Page</span>
+                <span className="text-[10.5px] text-stone-500 dark:text-zinc-400">Mention another workspace page</span>
               </div>
             </button>
           </div>
@@ -397,16 +397,16 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                   type="button"
                   onClick={() => handleTurnInto(opt)}
                   className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors ${
-                    isCurrent ? 'bg-stone-200/70 font-semibold text-stone-900' : 'hover:bg-stone-100 text-stone-700'
+                    isCurrent ? 'bg-stone-200/70 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-zinc-100' : 'hover:bg-stone-100 dark:hover:bg-zinc-800/60 text-stone-700 dark:text-zinc-300'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-stone-700 shrink-0">
+                    <div className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 flex items-center justify-center text-stone-700 dark:text-zinc-300 shrink-0">
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span className="text-xs font-medium text-stone-900">{opt.label}</span>
+                    <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">{opt.label}</span>
                   </div>
-                  {isCurrent && <Check className="w-4 h-4 text-stone-900 shrink-0" />}
+                  {isCurrent && <Check className="w-4 h-4 text-stone-900 dark:text-zinc-100 shrink-0" />}
                 </button>
               );
             })}
@@ -419,59 +419,59 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             <button
               type="button"
               onClick={() => setActiveSheet('turnInto')}
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/60 transition-colors"
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Type className="w-4 h-4 text-stone-500" />
-                <span className="text-xs font-medium text-stone-900">Turn into...</span>
+                <Type className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">Turn into...</span>
               </div>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSheet('color')}
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/60 transition-colors"
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Palette className="w-4 h-4 text-stone-500" />
-                <span className="text-xs font-medium text-stone-900">Color &amp; Highlight</span>
+                <Palette className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">Color &amp; Highlight</span>
               </div>
             </button>
 
             <button
               type="button"
               onClick={handleDuplicate}
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/60 transition-colors"
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Copy className="w-4 h-4 text-stone-500" />
-                <span className="text-xs font-medium text-stone-900">Duplicate block</span>
+                <Copy className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">Duplicate block</span>
               </div>
             </button>
 
             <button
               type="button"
               onClick={handleCopyLink}
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/60 transition-colors"
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Link className="w-4 h-4 text-stone-500" />
-                <span className="text-xs font-medium text-stone-900">
+                <Link className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">
                   {copiedLink ? 'Copied link to clipboard!' : 'Copy block link'}
                 </span>
               </div>
             </button>
 
-            <div className="h-px bg-stone-200/70 my-1" />
+            <div className="h-px bg-stone-200/70 dark:bg-zinc-800 my-1" />
 
             <button
               type="button"
               onClick={handleDelete}
-              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-rose-50 text-rose-600 active:bg-rose-100 transition-colors"
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 active:bg-rose-100 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <Trash2 className="w-4 h-4 text-rose-600" />
-                <span className="text-xs font-medium text-rose-600">Delete block</span>
+                <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                <span className="text-xs font-medium text-rose-600 dark:text-rose-400">Delete block</span>
               </div>
             </button>
           </div>
@@ -481,12 +481,12 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
         {activeSheet === 'color' && (
           <div className="flex flex-col gap-3 p-1">
             {/* Mode Toggle */}
-            <div className="flex p-0.5 rounded-lg bg-stone-200/60 text-xs font-medium">
+            <div className="flex p-0.5 rounded-lg bg-stone-200/60 dark:bg-zinc-800/80 text-xs font-medium">
               <button
                 type="button"
                 onClick={() => setColorMode('text')}
                 className={`flex-1 py-1.5 rounded-md text-center transition-all ${
-                  colorMode === 'text' ? 'bg-white text-stone-900 font-semibold shadow-2xs' : 'text-stone-600'
+                  colorMode === 'text' ? 'bg-white dark:bg-zinc-700 text-stone-900 dark:text-zinc-100 font-semibold shadow-2xs' : 'text-stone-600 dark:text-zinc-400'
                 }`}
               >
                 Text Color
@@ -495,7 +495,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                 type="button"
                 onClick={() => setColorMode('bg')}
                 className={`flex-1 py-1.5 rounded-md text-center transition-all ${
-                  colorMode === 'bg' ? 'bg-white text-stone-900 font-semibold shadow-2xs' : 'text-stone-600'
+                  colorMode === 'bg' ? 'bg-white dark:bg-zinc-700 text-stone-900 dark:text-zinc-100 font-semibold shadow-2xs' : 'text-stone-600 dark:text-zinc-400'
                 }`}
               >
                 Background Highlight
@@ -509,13 +509,13 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                   key={c.value}
                   type="button"
                   onClick={() => handleSetColor(c.value, colorMode === 'bg')}
-                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-left hover:bg-stone-100 active:bg-stone-200/60 border border-stone-200/70 text-xs"
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800 active:bg-stone-200/60 border border-stone-200/70 dark:border-zinc-800 text-xs"
                 >
                   <div
-                    className="w-4 h-4 rounded-full border border-stone-300 shrink-0"
+                    className="w-4 h-4 rounded-full border border-stone-300 dark:border-zinc-700 shrink-0"
                     style={{ backgroundColor: colorMode === 'bg' ? c.bgColor : c.textColor }}
                   />
-                  <span className="font-medium text-stone-800">{c.label}</span>
+                  <span className="font-medium text-stone-800 dark:text-zinc-200">{c.label}</span>
                 </button>
               ))}
             </div>
@@ -525,7 +525,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
 
       {/* Floating Apple-Style Docked Mobile Accessory Bar */}
       <div
-        className="md:hidden pb-2 fixed left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-stone-200/90 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-2 flex items-center justify-between select-none"
+        className="md:hidden pb-2 fixed left-0 right-0 z-40 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border-t border-stone-200/90 dark:border-zinc-800/90 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-2 flex items-center justify-between select-none"
         style={{ bottom: `${keyboardOffset}px` }}
       >
         {/* Scrollable Toolbar Strip */}
@@ -534,7 +534,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={() => setActiveSheet('insert')}
-            className="flex items-center justify-center w-8 h-8 rounded-lg bg-stone-900 text-white shadow-2xs hover:bg-stone-800 active:scale-95 transition-all shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-stone-900 dark:bg-white text-white dark:text-zinc-950 shadow-2xs hover:bg-stone-800 dark:hover:bg-zinc-200 active:scale-95 transition-all shrink-0"
             title="Insert block"
           >
             <Plus className="w-4 h-4" />
@@ -544,10 +544,10 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={() => setActiveSheet('turnInto')}
-            className="flex items-center gap-1 px-2.5 h-8 rounded-lg bg-stone-100 hover:bg-stone-200/70 text-stone-800 text-xs font-medium active:scale-95 transition-all shrink-0 border border-stone-200/80"
+            className="flex items-center gap-1 px-2.5 h-8 rounded-lg bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200/70 dark:hover:bg-zinc-700/70 text-stone-800 dark:text-zinc-200 text-xs font-medium active:scale-95 transition-all shrink-0 border border-stone-200/80 dark:border-zinc-700/60"
             title="Turn block into..."
           >
-            <Type className="w-3.5 h-3.5 text-stone-600" />
+            <Type className="w-3.5 h-3.5 text-stone-600 dark:text-zinc-400" />
             <span className="max-w-[70px] truncate text-[11px]">
               {currentBlock?.type === 'heading'
                 ? `H${currentBlock?.props?.level || 1}`
@@ -565,13 +565,13 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             </span>
           </button>
 
-          <div className="w-px h-5 bg-stone-200 shrink-0 mx-0.5" />
+          <div className="w-px h-5 bg-stone-200 dark:bg-zinc-800 shrink-0 mx-0.5" />
 
           {/* 3. Move Up (Reordering) */}
           <button
             type="button"
             onClick={handleMoveUp}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:scale-95 transition-all shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
             title="Move block up"
           >
             <ArrowUp className="w-4 h-4" />
@@ -581,7 +581,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={handleMoveDown}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:scale-95 transition-all shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
             title="Move block down"
           >
             <ArrowDown className="w-4 h-4" />
@@ -591,7 +591,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={handleIndent}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:scale-95 transition-all shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
             title="Indent"
           >
             <Indent className="w-4 h-4" />
@@ -600,19 +600,19 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={handleOutdent}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 active:scale-95 transition-all shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
             title="Outdent"
           >
             <Outdent className="w-4 h-4" />
           </button>
 
-          <div className="w-px h-5 bg-stone-200 shrink-0 mx-0.5" />
+          <div className="w-px h-5 bg-stone-200 dark:bg-zinc-800 shrink-0 mx-0.5" />
 
           {/* 6. Formatting: Bold, Italic, Strike, Code */}
           <button
             type="button"
             onClick={() => handleFormat('bold')}
-            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold transition-all shrink-0 ${activeStyles.bold ? 'bg-stone-900 text-white' : 'text-stone-700 hover:bg-stone-100'
+            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold transition-all shrink-0 ${activeStyles.bold ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
             title="Bold"
           >
@@ -622,7 +622,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={() => handleFormat('italic')}
-            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.italic ? 'bg-stone-900 text-white' : 'text-stone-700 hover:bg-stone-100'
+            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.italic ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
             title="Italic"
           >
@@ -632,7 +632,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={() => handleFormat('strike')}
-            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.strike ? 'bg-stone-900 text-white' : 'text-stone-700 hover:bg-stone-100'
+            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.strike ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
             title="Strikethrough"
           >
@@ -642,7 +642,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={() => handleFormat('code')}
-            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.code ? 'bg-stone-900 text-white' : 'text-stone-700 hover:bg-stone-100'
+            className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.code ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
             title="Inline code"
           >
@@ -653,7 +653,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           <button
             type="button"
             onClick={() => setActiveSheet('actions')}
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-700 hover:bg-stone-100 active:scale-95 transition-all shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
             title="More block actions"
           >
             <MoreHorizontal className="w-4 h-4" />
@@ -664,7 +664,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
         <button
           type="button"
           onClick={handleDismissKeyboard}
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-400 hover:text-stone-800 hover:bg-stone-100 active:scale-95 transition-all shrink-0 ml-1"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0 ml-1"
           title="Dismiss keyboard"
         >
           <ChevronDown className="w-4 h-4" />

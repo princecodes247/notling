@@ -90,12 +90,12 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-2xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10`}
+            className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] dark:bg-[#18181b] border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-[0_24px_70px_-15px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col relative z-10`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             {(title || icon || subtitle) && (
-              <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90 shrink-0">
+              <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/60 dark:border-stone-800 flex items-center justify-between bg-[#f8f7f4]/90 dark:bg-[#1c1c1f]/90 shrink-0">
                 <div className="flex items-center gap-3 min-w-0">
                   {icon && (
                     <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
@@ -104,12 +104,12 @@ export const Modal: React.FC<ModalProps> = ({
                   )}
                   <div className="flex flex-col min-w-0">
                     {title && (
-                      <h3 className="text-sm font-semibold text-stone-900 truncate tracking-tight">
+                      <h3 className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate tracking-tight">
                         {title}
                       </h3>
                     )}
                     {subtitle && (
-                      <span className="text-[11px] text-stone-500">{subtitle}</span>
+                      <span className="text-[11px] text-stone-500 dark:text-stone-400">{subtitle}</span>
                     )}
                   </div>
                 </div>
@@ -119,7 +119,7 @@ export const Modal: React.FC<ModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="p-2 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+                    className="p-2 rounded-lg text-stone-400 dark:text-stone-500 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/60 dark:hover:bg-stone-800 transition-colors cursor-pointer active-press"
                     title="Close"
                   >
                     <HugeiconsIcon icon={Cancel01Icon} size={18} />
@@ -129,13 +129,13 @@ export const Modal: React.FC<ModalProps> = ({
             )}
 
             {/* Content Body */}
-            <div className="p-5 sm:px-6 sm:py-6 flex-1 overflow-y-auto max-h-[80vh]">
+            <div className="p-5 sm:px-6 sm:py-6 flex-1 overflow-y-auto max-h-[80vh] text-stone-900 dark:text-stone-100">
               {children}
             </div>
 
             {/* Optional Footer */}
             {footer && (
-              <div className="px-5 sm:px-6 py-3.5 border-t border-stone-200/60 bg-[#f8f7f4]/80 flex items-center justify-between shrink-0">
+              <div className="px-5 sm:px-6 py-3.5 border-t border-stone-200/60 dark:border-stone-800 bg-[#f8f7f4]/80 dark:bg-[#1c1c1f]/80 flex items-center justify-between shrink-0">
                 {footer}
               </div>
             )}

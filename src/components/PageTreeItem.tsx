@@ -164,22 +164,22 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
         className={clsx(
           'group relative flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150 cursor-pointer my-0.5',
           isDraggingCurrent
-            ? 'opacity-40 border border-dashed border-stone-400 bg-stone-100'
+            ? 'opacity-40 border border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
             : isActive
-              ? 'bg-neutral-100 text-neutral-900 font-semibold'
+              ? 'bg-neutral-100 dark:bg-zinc-800 text-neutral-900 dark:text-white font-semibold shadow-2xs'
               : dropTargetMode === 'inside'
-                ? 'bg-stone-200/90 ring-1 ring-stone-400 text-stone-900 font-medium'
-                : 'text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+                ? 'bg-stone-200/90 dark:bg-zinc-700/80 ring-1 ring-stone-400 dark:ring-zinc-500 text-stone-900 dark:text-white font-medium'
+                : 'text-neutral-600 dark:text-zinc-400 hover:bg-neutral-50 dark:hover:bg-zinc-800/60 hover:text-neutral-900 dark:hover:text-zinc-100'
         )}
         style={{ paddingLeft: `${Math.max(6, depth * 14 + 6)}px` }}
         onClick={() => onSelectPage(node.id)}
       >
         {/* Drop Line Indicators */}
         {dropTargetMode === 'above' && (
-          <div className="absolute top-0 left-1 right-1 h-0.5 bg-stone-900 z-30 rounded-full pointer-events-none" />
+          <div className="absolute top-0 left-1 right-1 h-0.5 bg-stone-900 dark:bg-white z-30 rounded-full pointer-events-none" />
         )}
         {dropTargetMode === 'below' && (
-          <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-stone-900 z-30 rounded-full pointer-events-none" />
+          <div className="absolute bottom-0 left-1 right-1 h-0.5 bg-stone-900 dark:bg-white z-30 rounded-full pointer-events-none" />
         )}
 
         {/* Left Side: Toggle Chevron + Icon + Title */}
@@ -187,7 +187,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           <button
             type="button"
             className={clsx(
-              'p-0.5 rounded text-neutral-400 hover:text-neutral-800 transition-transform',
+              'p-0.5 rounded text-neutral-400 dark:text-zinc-500 hover:text-neutral-800 dark:hover:text-zinc-200 transition-transform',
               !hasChildren && 'opacity-0 pointer-events-none'
             )}
             onClick={(e) => {
@@ -206,7 +206,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
-              className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-neutral-200/60 transition-colors cursor-pointer"
+              className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-neutral-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
               title="Change icon"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
@@ -220,7 +220,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   onClick={() => setShowEmojiPicker(false)}
                 />
                 <div
-                  className="absolute left-0 top-6 z-50 p-2 bg-white border border-neutral-200 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"
+                  className="absolute left-0 top-6 z-50 p-2 bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-zinc-800 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {EMOJI_OPTIONS.map((em) => (
@@ -228,7 +228,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       key={em}
                       type="button"
                       onClick={() => handleSelectIcon(em)}
-                      className="text-lg p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer"
+                      className="text-lg p-1 rounded hover:bg-neutral-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       {em}
                     </button>
@@ -252,7 +252,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   }
                 }}
                 autoFocus
-                className="w-full bg-white text-neutral-900 text-xs px-1.5 py-0.5 rounded border border-neutral-300 focus:outline-none focus:ring-1 focus:ring-black"
+                className="w-full bg-white dark:bg-zinc-900 text-neutral-900 dark:text-zinc-100 text-xs px-1.5 py-0.5 rounded border border-neutral-300 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400"
               />
             </form>
           ) : (
@@ -288,7 +288,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 "p-1 rounded transition-colors cursor-pointer active-press",
                 node.isPinned
                   ? "text-amber-500 hover:text-amber-600"
-                  : "text-stone-400 hover:text-stone-800 hover:bg-stone-200/70"
+                  : "text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70"
               )}
               onClick={(e) => {
                 e.stopPropagation();
@@ -303,7 +303,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           <button
             type="button"
             title="Add sub-page"
-            className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/70 transition-colors cursor-pointer active-press"
+            className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
             onClick={(e) => {
               e.stopPropagation();
               onCreateChild(node.id);
@@ -317,7 +317,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             <button
               type="button"
               title="More options"
-              className="p-1 rounded text-stone-400 hover:text-stone-800 hover:bg-stone-200/70 transition-colors cursor-pointer active-press"
+              className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
@@ -335,24 +335,24 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     setShowMenu(false);
                   }}
                 />
-                <div className="absolute right-0 top-6 w-38 bg-white border border-neutral-200 rounded-lg shadow-xl py-1 z-50 text-xs">
+                <div className="absolute right-0 top-6 w-38 bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 text-xs">
                   {onTogglePin && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
                         onTogglePin(node.id);
                       }}
                     >
-                      <Star className={clsx("w-3.5 h-3.5", node.isPinned ? "fill-amber-400 text-amber-500" : "text-neutral-500")} />
+                      <Star className={clsx("w-3.5 h-3.5", node.isPinned ? "fill-amber-400 text-amber-500" : "text-neutral-500 dark:text-zinc-400")} />
                       {node.isPinned ? 'Unpin Page' : 'Pin to Favorites'}
                     </button>
                   )}
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
@@ -364,38 +364,38 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   </button>
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
                       setIsEditing(true);
                     }}
                   >
-                    <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500" />
+                    <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
                     Rename
                   </button>
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
                       exportPageToMarkdown(node);
                     }}
                   >
-                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-neutral-500" />
+                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
                     Export Page
                   </button>
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 flex items-center gap-2 text-rose-600 font-medium"
+                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
                       onSoftDelete(node.id);
                     }}
                   >
-                    <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500" />
+                    <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500 dark:text-rose-400" />
                     Delete
                   </button>
                 </div>

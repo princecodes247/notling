@@ -34,10 +34,10 @@ export function OnboardingStep2({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-semibold text-neutral-950 tracking-tight">
+        <h2 className="text-2xl font-semibold text-neutral-950 dark:text-white tracking-tight">
           Customize your workspace
         </h2>
-        <p className="text-xs text-neutral-500 mt-1">
+        <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-1">
           Name and icon for your personal knowledge repository.
         </p>
       </div>
@@ -50,7 +50,7 @@ export function OnboardingStep2({
           <button
             type="button"
             onClick={onRerollPattern}
-            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white hover:bg-neutral-100 border border-neutral-300 text-neutral-600 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
+            className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white dark:bg-zinc-800 hover:bg-neutral-100 dark:hover:bg-zinc-700 border border-neutral-300 dark:border-zinc-700 text-neutral-600 dark:text-zinc-300 flex items-center justify-center shadow-2xs cursor-pointer transition-all active:scale-90"
             title="Reroll avatar pattern"
           >
             <HugeiconsIcon icon={RefreshIcon} size={11} />
@@ -71,9 +71,9 @@ export function OnboardingStep2({
 
       {/* Workspace Slug */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-neutral-700">Workspace Slug / URL</label>
-        <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50/50 overflow-hidden focus-within:ring-1 focus-within:ring-black">
-          <span className="px-3 py-2.5 text-xs text-neutral-400 bg-neutral-100 border-r border-neutral-200 select-none font-mono">
+        <label className="text-xs font-semibold text-neutral-700 dark:text-zinc-300">Workspace Slug / URL</label>
+        <div className="flex items-center rounded-lg border border-neutral-200 dark:border-zinc-700/80 bg-neutral-50/50 dark:bg-zinc-900/80 overflow-hidden focus-within:ring-1 focus-within:ring-black dark:focus-within:ring-zinc-400">
+          <span className="px-3 py-2.5 text-xs text-neutral-400 dark:text-zinc-500 bg-neutral-100 dark:bg-zinc-800 border-r border-neutral-200 dark:border-zinc-700/80 select-none font-mono">
             notling.app/w/
           </span>
           <input
@@ -81,23 +81,23 @@ export function OnboardingStep2({
             value={workspaceSlug}
             onChange={(e) => onWorkspaceSlugChange(e.target.value)}
             placeholder="acme-engineering"
-            className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none font-mono"
+            className="flex-1 px-3 py-2.5 text-sm bg-transparent text-neutral-900 dark:text-zinc-100 focus:outline-none font-mono"
           />
         </div>
         <div className="flex items-center justify-between text-[11px] mt-0.5">
-          <span className="text-neutral-400">Unique identifier for your workspace web URL.</span>
+          <span className="text-neutral-400 dark:text-zinc-500">Unique identifier for your workspace web URL.</span>
           {slugInfo &&
             (slugInfo.isAvailable ? (
-              <span className="text-emerald-600 font-medium flex items-center gap-1">
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                 ✓ Available
               </span>
             ) : (
               <span
-                className="text-amber-600 font-medium flex items-center gap-1"
+                className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1"
                 title={`Slug already taken. Will be saved as ${slugInfo.candidateSlug}`}
               >
                 ⚠️ Taken (auto-adjusts to{' '}
-                <code className="font-mono bg-amber-50 px-1 rounded border border-amber-200">
+                <code className="font-mono bg-amber-50 dark:bg-amber-950/50 px-1 rounded border border-amber-200 dark:border-amber-800">
                   {slugInfo.candidateSlug}
                 </code>
                 )
@@ -108,13 +108,13 @@ export function OnboardingStep2({
 
       {/* Description */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-neutral-700">Short Description (Optional)</label>
+        <label className="text-xs font-semibold text-neutral-700 dark:text-zinc-300">Short Description (Optional)</label>
         <textarea
           value={workspaceDescription}
           onChange={(e) => setWorkspaceDescription(e.target.value)}
           rows={2}
           placeholder="e.g. Central hub for product specifications and technical documentation."
-          className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 text-sm focus:outline-none focus:ring-1 focus:ring-black bg-neutral-50/50 resize-none"
+          className="w-full px-3.5 py-2.5 rounded-lg border border-neutral-200 dark:border-zinc-700/80 text-sm text-neutral-900 dark:text-zinc-100 dark:placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400 bg-neutral-50/50 dark:bg-zinc-900/80 resize-none"
         />
       </div>
 

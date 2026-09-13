@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from '~/components/Sidebar';
 import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
-import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
@@ -466,7 +465,7 @@ function DashboardLayout() {
         </AnimatePresence>
 
         {/* Framed Workspace Main Area */}
-        <div className="flex-1 bg-[#f3f2ee] p-0 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
+        <div className="flex-1 bg-[#f3f2ee] dark:bg-[#121214] p-0 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
           {/* Mobile Top Header Bar */}
           <MobileHeader
             workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
@@ -487,7 +486,7 @@ function DashboardLayout() {
           />
 
           {/* Main Content Outlet */}
-          <main className="flex-1 pt-4 sm:pt-8 overflow-hidden relative flex flex-col min-h-0 bg-white border border-stone-200/90 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
+          <main className="flex-1 pt-4 sm:pt-8 overflow-hidden relative flex flex-col min-h-0 bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-stone-800/80 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
             <Outlet />
           </main>
         </div>
@@ -499,10 +498,6 @@ function DashboardLayout() {
             useUIStore.getState().setActivePageId(id);
             navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
           }}
-        />
-        <TrashModal
-          workspaceId={session.workspaceId}
-          onRefreshTree={() => refetchTree()}
         />
         <CreateWorkspaceModal
           isOpen={isCreateWorkspaceOpen}

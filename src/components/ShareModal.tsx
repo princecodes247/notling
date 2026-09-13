@@ -197,14 +197,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
 
           <form onSubmit={handleInvite} className="flex items-center gap-2">
-            <div className="flex-1 flex items-center bg-white border border-stone-300/80 rounded-lg px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(0,0,0,0.02)] focus-within:border-stone-800 focus-within:ring-2 focus-within:ring-stone-900/[0.06] transition-all gap-2 h-10">
-              <HugeiconsIcon icon={UserAdd01Icon} size={15} className="text-stone-400 shrink-0" />
+            <div className="flex-1 flex items-center bg-white dark:bg-[#222226] border border-stone-300/80 dark:border-stone-700/80 rounded-lg px-3 shadow-[0_1px_2px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(0,0,0,0.02)] focus-within:border-stone-800 dark:focus-within:border-stone-400 transition-all gap-2 h-10">
+              <HugeiconsIcon icon={UserAdd01Icon} size={15} className="text-stone-400 dark:text-stone-500 shrink-0" />
               <input
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="Enter email address..."
-                className="flex-1 text-xs font-medium text-stone-900 placeholder:text-stone-400 bg-transparent focus:outline-none min-w-0"
+                className="flex-1 text-xs font-medium text-stone-900 dark:text-stone-100 placeholder:text-stone-400 dark:placeholder:text-stone-500 bg-transparent focus:outline-none min-w-0"
               />
             </div>
 
@@ -212,8 +212,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="submit"
               disabled={!inviteEmail.trim()}
               className={`h-10 px-4 rounded-lg text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center justify-center cursor-pointer active:scale-95 ${inviteEmail.trim()
-                ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-xs active:bg-black'
-                : 'bg-stone-100 text-stone-400 border border-stone-200/80 cursor-not-allowed shadow-none'
+                ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white shadow-xs active:bg-black'
+                : 'bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-600 border border-stone-200/80 dark:border-stone-700 cursor-not-allowed shadow-none'
                 }`}
             >
               Invite
@@ -221,24 +221,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           </form>
 
           {invitedSuccess && (
-            <div className="px-3 py-1.5 rounded-md bg-emerald-50/80 border border-emerald-200/80 text-[11px] text-emerald-700 font-medium flex items-center gap-1.5 animate-in fade-in">
-              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-emerald-600 shrink-0" />
+            <div className="px-3 py-1.5 rounded-md bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1.5 animate-in fade-in">
+              <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{invitedSuccess}</span>
             </div>
           )}
 
           {/* People List */}
           {loading ? (
-            <div className="py-4 text-center text-xs text-stone-400">Loading collaborators...</div>
+            <div className="py-4 text-center text-xs text-stone-400 dark:text-zinc-500 flex items-center justify-center gap-2">
+              <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-500 dark:border-zinc-400 border-t-transparent animate-spin" />
+              <span>Loading collaborators...</span>
+            </div>
           ) : owner || people.length > 0 ? (
             <>
-              <label className="text-xs mt-3 font-semibold text-stone-800 tracking-tight flex items-center justify-between">
+              <label className="text-xs mt-3 font-semibold text-stone-800 dark:text-stone-200 tracking-tight flex items-center justify-between">
                 <span>People with access</span>
               </label>
 
-              <div className="mt-0 flex flex-col divide-y divide-stone-100 overflow-hidden max-h-40 overflow-y-auto">
+              <div className="mt-0 flex flex-col divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden max-h-40 overflow-y-auto">
                 {owner && (
-                  <div key="owner" className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
+                  <div key="owner" className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 dark:hover:bg-stone-800/50 transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <UserAvatar
                         avatarUrl={owner.avatarUrl}
@@ -248,14 +251,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                         className="w-6 h-6 shrink-0"
                       />
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="truncate text-stone-800 font-medium">{owner.email}</span>
+                        <span className="truncate text-stone-800 dark:text-stone-200 font-medium">{owner.email}</span>
                         {owner.name && (
-                          <span className="text-[11px] text-stone-400 truncate">({owner.name})</span>
+                          <span className="text-[11px] text-stone-400 dark:text-stone-500 truncate">({owner.name})</span>
                         )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] font-semibold text-stone-500 bg-stone-100 border border-stone-200/80 px-2.5 py-1 rounded-md select-none">
+                      <span className="text-[11px] font-semibold text-stone-500 dark:text-stone-400 bg-stone-100 dark:bg-stone-800 border border-stone-200/80 dark:border-stone-700 px-2.5 py-1 rounded-md select-none">
                         Owner
                       </span>
                     </div>
@@ -264,7 +267,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 {people
                   .filter((person) => !owner || person.email.toLowerCase() !== owner.email.toLowerCase())
                   .map((person) => (
-                    <div key={person.id} className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
+                    <div key={person.id} className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 dark:hover:bg-stone-800/50 transition-colors">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {person.userId ? (
                           <UserAvatar
@@ -275,14 +278,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                             className="w-6 h-6 shrink-0"
                           />
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
+                          <div className="w-6 h-6 rounded-full bg-stone-800 dark:bg-stone-700 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
                             {person.email[0]}
                           </div>
                         )}
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="truncate text-stone-800 font-medium">{person.email}</span>
+                          <span className="truncate text-stone-800 dark:text-stone-200 font-medium">{person.email}</span>
                           {person.name && (
-                            <span className="text-[11px] text-stone-400 truncate">({person.name})</span>
+                            <span className="text-[11px] text-stone-400 dark:text-stone-500 truncate">({person.name})</span>
                           )}
                         </div>
                       </div>
@@ -295,7 +298,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemovePerson(person.id)}
-                          className="text-[11px] text-stone-400 hover:text-rose-600 font-medium cursor-pointer px-1.5 py-1 rounded hover:bg-rose-50 transition-colors"
+                          className="text-[11px] text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 font-medium cursor-pointer px-1.5 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                         >
                           Remove
                         </button>
@@ -308,10 +311,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         </div>
 
         {/* Section 2: General Access Tier */}
-        <div className="flex flex-col gap-2.5 pt-4 border-t border-stone-200/60">
-          <label className="text-xs font-semibold text-stone-800 tracking-tight flex items-center justify-between">
+        <div className="flex flex-col gap-2.5 pt-4 border-t border-stone-200/60 dark:border-stone-800">
+          <label className="text-xs font-semibold text-stone-800 dark:text-stone-200 tracking-tight flex items-center justify-between">
             <span>General access</span>
-            <span className="text-[11px] font-normal text-stone-400">Controls who can open this link</span>
+            <span className="text-[11px] font-normal text-stone-400 dark:text-stone-500">Controls who can open this link</span>
           </label>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -320,17 +323,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               onClick={() => onUpdateVisibility('private')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'private'
-                ? 'bg-amber-50/60 border-amber-300 ring-1 ring-amber-300/40 shadow-xs'
-                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 ring-1 ring-amber-300/40 shadow-xs'
+                : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 text-amber-800' : 'bg-stone-100 text-stone-600'}`}>
+                <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                   <HugeiconsIcon icon={LockIcon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Private Access</span>
+                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Private Access</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Only invited people can access this page.</p>
+              <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Only invited people can access this page.</p>
             </button>
 
             {/* Workspace Option */}
@@ -338,17 +341,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               onClick={() => onUpdateVisibility('workspace')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'workspace'
-                ? 'bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-300/40 shadow-xs'
-                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-300/40 shadow-xs'
+                : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
+                <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                   <HugeiconsIcon icon={Building01Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Workspace Members</span>
+                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Workspace Members</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Everyone in {workspaceName} can view and edit.</p>
+              <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Everyone in {workspaceName} can view and edit.</p>
             </button>
 
             {/* Public (View) Option */}

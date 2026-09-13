@@ -111,8 +111,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   const renderResultsList = (isMobileView: boolean) => (
     <div className={`${isMobileView ? 'max-h-[60vh]' : 'max-h-96'} overflow-y-auto p-2`}>
       {query.trim().length < 3 ? (
-        <div className="py-12 text-center text-neutral-400 text-xs flex flex-col items-center gap-2">
-          <FileText className="w-7 h-7 text-neutral-300 stroke-1" />
+        <div className="py-12 text-center text-neutral-400 dark:text-zinc-500 text-xs flex flex-col items-center gap-2">
+          <FileText className="w-7 h-7 text-neutral-300 dark:text-zinc-600 stroke-1" />
           <span>
             {query.trim().length === 0
               ? 'Type at least 3 characters to search document titles and content'
@@ -120,12 +120,12 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
           </span>
         </div>
       ) : isLoading ? (
-        <div className="py-8 text-center text-neutral-400 text-xs flex items-center justify-center gap-2">
+        <div className="py-8 text-center text-neutral-400 dark:text-zinc-500 text-xs flex items-center justify-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
           <span>Fuzzy searching workspace...</span>
         </div>
       ) : results.length === 0 ? (
-        <div className="py-10 text-center text-neutral-400 text-xs">
+        <div className="py-10 text-center text-neutral-400 dark:text-zinc-500 text-xs">
           No matching pages found for "{query}"
         </div>
       ) : (
@@ -142,8 +142,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 onMouseEnter={() => !isMobileView && setSelectedIndex(idx)}
                 className={`group flex items-start gap-3 p-3 rounded-lg transition-all cursor-pointer border ${
                   isSelected
-                    ? 'bg-stone-100 border-stone-300/80 shadow-2xs'
-                    : 'hover:bg-neutral-50 border-transparent'
+                    ? 'bg-stone-100 dark:bg-zinc-800 border-stone-300/80 dark:border-zinc-700 shadow-2xs'
+                    : 'hover:bg-neutral-50 dark:hover:bg-zinc-800/40 border-transparent'
                 }`}
               >
                 <span className="text-xl leading-none mt-0.5 shrink-0">
@@ -151,32 +151,32 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-semibold text-sm text-neutral-900 group-hover:text-black transition-colors truncate">
+                    <span className="font-semibold text-sm text-neutral-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white transition-colors truncate">
                       <HighlightText text={res.title || 'Untitled'} query={query} />
                     </span>
                     <div className="flex items-center gap-1.5 shrink-0">
                       {res.matchType === 'title' ? (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200/80 font-medium">
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-400 border border-blue-200/80 dark:border-blue-800/60 font-medium">
                           Title
                         </span>
                       ) : res.matchType === 'both' ? (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-medium">
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 border border-emerald-200/80 dark:border-emerald-800/60 font-medium">
                           Title &amp; Body
                         </span>
                       ) : (
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-stone-100 text-stone-600 border border-stone-200 font-medium">
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700 font-medium">
                           Content
                         </span>
                       )}
                       <ArrowRight
-                        className={`w-4 h-4 text-neutral-400 transition-opacity ${
-                          isSelected ? 'opacity-100 text-stone-800' : 'opacity-0'
+                        className={`w-4 h-4 text-neutral-400 dark:text-zinc-500 transition-opacity ${
+                          isSelected ? 'opacity-100 text-stone-800 dark:text-zinc-200' : 'opacity-0'
                         }`}
                       />
                     </div>
                   </div>
                   {res.snippet && (
-                    <p className="text-xs text-neutral-500 line-clamp-2 mt-0.5 font-normal leading-relaxed">
+                    <p className="text-xs text-neutral-500 dark:text-zinc-400 line-clamp-2 mt-0.5 font-normal leading-relaxed">
                       <HighlightText text={res.snippet} query={query} />
                     </p>
                   )}
@@ -200,21 +200,21 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       >
         <div className="flex flex-col">
           {/* Search Bar Input */}
-          <div className="flex items-center px-4 py-3 border-b border-stone-200/60 bg-[#f8f7f4]/70 gap-3 shrink-0">
-            <Search className="w-4 h-4 text-stone-400 shrink-0" />
+          <div className="flex items-center px-4 py-3 border-b border-stone-200/60 dark:border-zinc-800 bg-[#f8f7f4]/70 dark:bg-zinc-900/60 gap-3 shrink-0">
+            <Search className="w-4 h-4 text-stone-400 dark:text-zinc-500 shrink-0" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search documents..."
-              className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-base font-medium focus:outline-none"
+              className="w-full bg-transparent text-stone-900 dark:text-zinc-100 placeholder-stone-400 dark:placeholder-zinc-500 text-base font-medium focus:outline-none"
               autoFocus
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery('')}
-                className="text-xs text-stone-500 hover:text-stone-800 px-2 py-1 rounded-md bg-stone-200/60 font-medium cursor-pointer transition-colors active-press"
+                className="text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 px-2 py-1 rounded-md bg-stone-200/60 dark:bg-zinc-800 font-medium cursor-pointer transition-colors active-press"
               >
                 Clear
               </button>
@@ -222,7 +222,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             <button
               type="button"
               onClick={() => setSearchOpen(false)}
-              className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 cursor-pointer transition-colors active-press"
+              className="text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 p-2 rounded-lg hover:bg-stone-200/60 dark:hover:bg-zinc-800 cursor-pointer transition-colors active-press"
             >
               <X className="w-4 h-4" />
             </button>
@@ -247,7 +247,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="fixed inset-0 bg-stone-950/45 backdrop-blur-xs"
+            className="fixed inset-0 bg-stone-950/45 dark:bg-black/70 backdrop-blur-xs"
             onClick={() => setSearchOpen(false)}
           />
 
@@ -258,25 +258,25 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="relative z-10 w-full max-w-xl bg-[#fdfcf9] border border-stone-200/90 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col"
+            className="relative z-10 w-full max-w-xl bg-[#fdfcf9] dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] dark:shadow-[0_24px_70px_-15px_rgba(0,0,0,0.7)] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Search Bar Input */}
-            <div className="flex items-center px-4 py-3 sm:py-3.5 border-b border-stone-200/60 bg-[#f8f7f4]/70 gap-3 shrink-0">
-              <Search className="w-4 h-4 text-stone-400 shrink-0" />
+            <div className="flex items-center px-4 py-3 sm:py-3.5 border-b border-stone-200/60 dark:border-zinc-800 bg-[#f8f7f4]/70 dark:bg-zinc-900/60 gap-3 shrink-0">
+              <Search className="w-4 h-4 text-stone-400 dark:text-zinc-500 shrink-0" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search documents, titles & content..."
-                className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-base sm:text-sm font-medium focus:outline-none"
+                className="w-full bg-transparent text-stone-900 dark:text-zinc-100 placeholder-stone-400 dark:placeholder-zinc-500 text-base sm:text-sm font-medium focus:outline-none"
                 autoFocus
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery('')}
-                  className="text-xs text-stone-500 hover:text-stone-800 px-2 py-1 rounded-md bg-stone-200/60 font-medium cursor-pointer transition-colors active-press"
+                  className="text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 px-2 py-1 rounded-md bg-stone-200/60 dark:bg-zinc-800 font-medium cursor-pointer transition-colors active-press"
                 >
                   Clear
                 </button>
@@ -284,7 +284,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
               <button
                 type="button"
                 onClick={() => setSearchOpen(false)}
-                className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 cursor-pointer transition-colors active-press"
+                className="text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 p-2 rounded-lg hover:bg-stone-200/60 dark:hover:bg-zinc-800 cursor-pointer transition-colors active-press"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -294,23 +294,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
             {renderResultsList(false)}
 
             {/* Footer info */}
-            <div className="px-4 py-2 border-t border-stone-200/50 bg-stone-50/60 text-[11px] text-stone-500 flex items-center justify-between font-mono">
+            <div className="px-4 py-2 border-t border-stone-200/50 dark:border-zinc-800 bg-stone-50/60 dark:bg-zinc-900/40 text-[11px] text-stone-500 dark:text-zinc-400 flex items-center justify-between font-mono">
               <div className="flex items-center gap-1.5" />
               <div className="flex items-center gap-3">
                 <span>
-                  <kbd className="font-mono bg-white border border-stone-200 px-1 py-0.5 rounded text-[10px]">
+                  <kbd className="font-mono bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 px-1 py-0.5 rounded text-[10px] text-stone-600 dark:text-zinc-300">
                     ↑↓
                   </kbd>{' '}
                   Navigate
                 </span>
                 <span>
-                  <kbd className="font-mono bg-white border border-stone-200 px-1 py-0.5 rounded text-[10px]">
+                  <kbd className="font-mono bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 px-1 py-0.5 rounded text-[10px] text-stone-600 dark:text-zinc-300">
                     ↵
                   </kbd>{' '}
                   Select
                 </span>
                 <span>
-                  <kbd className="font-mono bg-white border border-stone-200 px-1 py-0.5 rounded text-[10px]">
+                  <kbd className="font-mono bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 px-1 py-0.5 rounded text-[10px] text-stone-600 dark:text-zinc-300">
                     Esc
                   </kbd>{' '}
                   Close
