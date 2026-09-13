@@ -182,13 +182,16 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       // subtitle="Permissions & live collaboration"
       maxWidth="lg"
       footer={
-        <button
-          type="button"
-          onClick={onClose}
-          className="h-9 px-5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
-        >
-          Done
-        </button>
+        <>
+          <span></span>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-9 px-5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+          >
+            Done
+          </button>
+        </>
       }
     >
       <div className="flex flex-col gap-5 select-none text-stone-900">
@@ -359,17 +362,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               onClick={() => onUpdateVisibility('public')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public'
-                ? 'bg-blue-50/60 border-blue-300 ring-1 ring-blue-300/40 shadow-xs'
-                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700 ring-1 ring-blue-300/40 shadow-xs'
+                : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 text-blue-800' : 'bg-stone-100 text-stone-600'}`}>
+                <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                   <HugeiconsIcon icon={Globe02Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Anyone with link</span>
+                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone on the web with the link can view.</p>
+              <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Anyone on the web with the link can view.</p>
             </button>
 
             {/* Public (Edit) Option */}
@@ -377,25 +380,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               onClick={() => onUpdateVisibility('public_edit')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public_edit'
-                ? 'bg-indigo-50/60 border-indigo-300 ring-1 ring-indigo-300/40 shadow-xs'
-                : 'bg-white border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-300/40 shadow-xs'
+                : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 text-indigo-800' : 'bg-stone-100 text-stone-600'}`}>
+                <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                   <HugeiconsIcon icon={Globe02Icon} size={12} />
                 </div>
-                <span className="text-xs font-semibold text-stone-900">Anyone with link can edit</span>
+                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link can edit</span>
               </div>
-              <p className="text-[10.5px] text-stone-500 leading-snug">Anyone on the web with the link can view & edit.</p>
+              <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Anyone on the web with the link can view & edit.</p>
             </button>
           </div>
         </div>
 
         {/* Section 3: Link Preview & Copy Bar */}
-        <div className="p-2.5 rounded-lg border border-stone-200/90 bg-stone-50/80 flex items-center justify-between gap-3">
+        <div className="p-2.5 rounded-lg border border-stone-200/90 dark:border-stone-800 bg-stone-50/80 dark:bg-stone-900/60 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-1 rounded-md bg-white border border-stone-200 text-stone-600 shrink-0">
+            <div className="p-1 rounded-md bg-white border border-stone-200 text-stone-600 dark:bg-stone-800 dark:border-stone-800 dark:text-stone-400 shrink-0">
               <HugeiconsIcon icon={Link02Icon} size={13} />
             </div>
             <div className="flex flex-col min-w-0">
