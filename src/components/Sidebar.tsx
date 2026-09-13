@@ -18,6 +18,7 @@ import { useUIStore } from '~/store/uiStore';
 import type { UserSession, UserWorkspaceItem } from '~/server/auth';
 import { UserAvatar } from './UserAvatar';
 import { WorkspaceAvatar } from './WorkspaceAvatar';
+import { cn } from '#/lib/utils';
 
 function getAllPinnedNodes(nodes: PageTreeNode[]): PageTreeNode[] {
   let pinned: PageTreeNode[] = [];
@@ -53,6 +54,48 @@ interface SidebarProps {
   onTogglePin?: (pageId: string) => void;
   onLogout?: () => void;
 }
+
+interface SidebarNavItemProps {
+  icon: any;
+  isLucide?: boolean;
+  label: string;
+  isActive?: boolean;
+  onClick: () => void;
+  badge?: React.ReactNode;
+}
+
+const SidebarNavItem: React.FC<SidebarNavItemProps> = ({
+  icon: IconComponent,
+  isLucide = false,
+  label,
+  isActive = false,
+  onClick,
+  badge,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn("w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs border border-transparent font-medium transition-all cursor-pointer",
+      isActive
+        ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border-zinc-700/50 font-semibold shadow-2xs'
+        : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
+    )}
+  >
+    <div className="flex items-center gap-2.5 min-w-0">
+      {isLucide ? (
+        <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-stone-900 dark:text-white' : 'text-stone-500 dark:text-zinc-400'}`} />
+      ) : (
+        <HugeiconsIcon
+          icon={IconComponent}
+          size={15}
+          className={isActive ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'}
+        />
+      )}
+      <span className="truncate">{label}</span>
+    </div>
+    {badge && <div className="shrink-0 ml-2">{badge}</div>}
+  </button>
+);
 
 export const SidebarSkeleton: React.FC = () => {
   const BaseSkeleton: React.FC<{ className?: string }> = ({ className = "" }) => (
@@ -266,68 +309,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* 3. Main Navigation Links (Home, Folders, Trash) */}
+      {/* 3. Main Navigation Links (Home, Folders, Trash, Import) */}
       <div className="px-2 py-1 flex flex-col gap-0.5">
-        {/* Home */}
-        <button
-          type="button"
+        <SidebarNavItem
+          icon={Home01Icon}
+          label="Home"
+          isActive={activeNav === 'home'}
           onClick={() => onNavClick?.('home')}
-          className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'home'
-            ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
-            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
-            }`}
-        >
-          <HugeiconsIcon icon={Home01Icon} size={15} className={activeNav === 'home' ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'} />
-          <span>Home</span>
-        </button>
+        />
 
-        {/* Folders */}
-        <button
-          type="button"
+        <SidebarNavItem
+          icon={Folder01Icon}
+          label="Folders"
+          isActive={activeNav === 'folders'}
           onClick={() => onNavClick?.('folders')}
-          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'folders'
-            ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
-            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
-            }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <HugeiconsIcon icon={Folder01Icon} size={15} className={activeNav === 'folders' ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'} />
-            <span>Folders</span>
-          </div>
-          <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400">
-            {workspaceNodes.filter((n) => n.children && n.children.length > 0).length || workspaceNodes.length}
-          </span>
-        </button>
-
-        {/* Trash */}
-        <button
-          type="button"
-          onClick={() => onNavClick?.('trash')}
-          className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${activeNav === 'trash'
-            ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
-            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
-            }`}
-        >
-          <div className="flex items-center gap-2.5">
-            <HugeiconsIcon icon={Delete02Icon} size={15} className={activeNav === 'trash' ? 'text-stone-900 dark:text-white shrink-0' : 'text-stone-500 dark:text-zinc-400 shrink-0'} />
-            <span>Trash</span>
-          </div>
-          {trashCount !== undefined && trashCount > 0 && (
-            <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800 dark:text-rose-300' : 'text-rose-700 dark:text-rose-400'}`}>
-              {trashCount}
+          badge={
+            <span className="text-[10px] font-mono font-medium px-1.5 py-0.2 rounded bg-stone-200/60 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400">
+              {workspaceNodes.filter((n) => n.children && n.children.length > 0).length || workspaceNodes.length}
             </span>
-          )}
-        </button>
+          }
+        />
 
-        {/* Import */}
-        <button
-          type="button"
+        <SidebarNavItem
+          icon={Delete02Icon}
+          label="Trash"
+          isActive={activeNav === 'trash'}
+          onClick={() => onNavClick?.('trash')}
+          badge={
+            trashCount !== undefined && trashCount > 0 ? (
+              <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800 dark:text-rose-300' : 'text-rose-700 dark:text-rose-400'}`}>
+                {trashCount}
+              </span>
+            ) : undefined
+          }
+        />
+
+        <SidebarNavItem
+          icon={Upload}
+          isLucide
+          label="Import"
+          isActive={false}
           onClick={() => setImportOpen(true)}
-          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100/80 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white transition-all cursor-pointer"
-        >
-          <Upload className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400 shrink-0" />
-          <span>Import</span>
-        </button>
+        />
       </div>
 
       {/* 4. Folders & Document Tree Section */}
@@ -513,17 +536,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* Settings row */}
         <div className="pt-1 border-t border-stone-200/40 dark:border-zinc-800/60">
-          <button
-            type="button"
+          <SidebarNavItem
+            icon={Settings02Icon}
+            label="Settings"
+            isActive={activeNav === 'settings'}
             onClick={() => onNavClick?.('settings')}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-all cursor-pointer ${activeNav === 'settings'
-              ? 'bg-stone-200/70 dark:bg-zinc-800 text-stone-900 dark:text-white dark:border dark:border-zinc-700/50 font-semibold shadow-2xs'
-              : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-200/40 dark:hover:bg-zinc-800/60 hover:text-stone-900 dark:hover:text-white'
-              }`}
-          >
-            <HugeiconsIcon icon={Settings02Icon} size={15} className="text-stone-500 dark:text-zinc-400" />
-            <span>Settings</span>
-          </button>
+          />
         </div>
       </div>
     </aside>

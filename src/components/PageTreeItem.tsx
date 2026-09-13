@@ -166,7 +166,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           isDraggingCurrent
             ? 'opacity-40 border border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
             : isActive
-              ? 'bg-neutral-100 dark:bg-zinc-800 text-neutral-900 dark:text-white font-semibold shadow-2xs'
+              ? 'bg-neutral-100 dark:bg-zinc-800 text-neutral-900 dark:text-white font-semibold'
               : dropTargetMode === 'inside'
                 ? 'bg-stone-200/90 dark:bg-zinc-700/80 ring-1 ring-stone-400 dark:ring-zinc-500 text-stone-900 dark:text-white font-medium'
                 : 'text-neutral-600 dark:text-zinc-400 hover:bg-neutral-50 dark:hover:bg-zinc-800/60 hover:text-neutral-900 dark:hover:text-zinc-100'
@@ -188,7 +188,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             type="button"
             className={clsx(
               'p-0.5 rounded text-neutral-400 dark:text-zinc-500 hover:text-neutral-800 dark:hover:text-zinc-200 transition-transform',
-              !hasChildren && 'opacity-0 pointer-events-none'
+              !hasChildren && 'opacity-0 max-w-0 pointer-events-none'
             )}
             onClick={(e) => {
               e.stopPropagation();
