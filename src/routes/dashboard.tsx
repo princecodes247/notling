@@ -8,7 +8,6 @@ import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
-import { OnboardingBanner } from '~/components/dashboard/OnboardingBanner';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
 import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
@@ -208,9 +207,9 @@ function DashboardLayout() {
         path: '/dashboard/trash',
       });
     } else if (currentPath === '/dashboard') {
-      const targetPageId = session?.welcomePageId || (treeNodes.length > 0 ? treeNodes[0].id : null);
-      if (targetPageId) {
-        navigate({ to: '/dashboard/p/$pageId', params: { pageId: targetPageId }, replace: true });
+
+      if (session?.welcomePageId) {
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: session?.welcomePageId }, replace: true });
       } else {
         doSetActivePageId(null);
         document.title = 'Home - Notling';

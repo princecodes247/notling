@@ -456,8 +456,6 @@ export async function getSessionImpl(): Promise<UserSession | null> {
         .limit(1);
       if (firstPage.length > 0) {
         welcomePageId = firstPage[0].id;
-      } else {
-        welcomePageId = await seedWelcomeDocument(workspace.id);
       }
     }
 
@@ -509,7 +507,7 @@ export async function signUpWithEmailImpl(
       passwordHash: hash,
       provider: 'email',
       providerAccountId: cleanEmail,
-      isOnboarded: true,
+      isOnboarded: false,
     })
     .returning();
 
@@ -538,7 +536,7 @@ export async function signUpWithEmailImpl(
       name: user.name,
       avatarUrl: user.avatarUrl,
       role: user.role,
-      isOnboarded: true,
+      isOnboarded: user.isOnboarded,
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
@@ -741,7 +739,7 @@ export async function processOAuthCallbackImpl(
           avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
           provider,
           providerAccountId,
-          isOnboarded: true,
+          isOnboarded: false,
         })
         .returning();
       user = newUser;
@@ -785,7 +783,7 @@ export async function processOAuthCallbackImpl(
         name: user.name,
         avatarUrl: user.avatarUrl,
         role: user.role,
-        isOnboarded: true,
+        isOnboarded: user.isOnboarded,
         workspaceId: workspace.id,
         workspaceName: workspace.name,
         workspaceSlug: workspace.slug,
@@ -920,6 +918,14 @@ export async function completeOnboardingImpl(data: {
     }
   }
 
+  const firstPage = await db
+    .select({ id: pages.id })
+    .from(pages)
+    .where(and(eq(pages.workspaceId, updatedWs.id), eq(pages.isDeleted, false)))
+    .limit(1);
+
+  const welcomePageId = firstPage[0]?.id;
+
   return {
     success: true,
     session: {
@@ -933,6 +939,7 @@ export async function completeOnboardingImpl(data: {
       workspaceName: updatedWs.name,
       workspaceSlug: updatedWs.slug,
       workspaceIcon: updatedWs.icon || '🚀',
+      welcomePageId,
     },
   };
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { SparklesIcon, Cancel01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
+import { Cancel01Icon, Settings02Icon } from '@hugeicons/core-free-icons';
 
 interface OnboardingBannerProps {
   workspaceName?: string;

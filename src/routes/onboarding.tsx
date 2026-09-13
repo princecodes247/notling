@@ -1,7 +1,8 @@
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Route as rootRoute } from './__root';
-import { completeOnboarding, checkWorkspaceSlug } from '~/server/auth';
+import { completeOnboarding, checkWorkspaceSlug, getSession } from '~/server/auth';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { OnboardingProgress } from '~/components/onboarding/OnboardingProgress';
@@ -26,8 +27,15 @@ const ONBOARDING_LOADING_WORDS = [
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [loading, setLoading] = useState(false);
+
+  // Fetch session
+  const { data: session, isLoading: sessionLoading } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => await getSession(),
+  });
 
   // Form State
   const [name, setName] = useState('');
@@ -39,7 +47,19 @@ function OnboardingPage() {
   const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
   const [workspaceRingsSeedSuffix, setWorkspaceRingsSeedSuffix] = useState<string | null>(null);
   const [workspaceDescription, setWorkspaceDescription] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState('engineering');
+  const [selectedTemplate, setSelectedTemplate] = useState('blank');
+
+  useEffect(() => {
+    if (!sessionLoading) {
+      if (!session) {
+        navigate({ to: '/login' });
+      } else {
+        if (session.name) setName(session.name);
+        if (session.workspaceName) setWorkspaceName(session.workspaceName);
+        if (session.workspaceSlug) setWorkspaceSlug(session.workspaceSlug);
+      }
+    }
+  }, [session, sessionLoading, navigate]);
 
   const effectiveRingsSeed = workspaceRingsSeedSuffix
     ? `${workspaceName.trim() || 'My Workspace'}-${workspaceRingsSeedSuffix}`
@@ -88,7 +108,7 @@ function OnboardingPage() {
     try {
       const res = await completeOnboarding({
         data: {
-          name: name.trim() || 'Workspace Member',
+          name: name.trim() || session?.name || 'Workspace Member',
           avatarUrl: `avatune:${avatarSeed}`,
           role,
           workspaceName: workspaceName.trim() || 'My Workspace',
@@ -100,6 +120,8 @@ function OnboardingPage() {
       });
 
       if (res.success) {
+        queryClient.invalidateQueries({ queryKey: ['session'] });
+        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
         const returnUrl = sessionStorage.getItem('notling_auth_redirect');
         sessionStorage.removeItem('notling_auth_redirect');
         if (returnUrl) {
@@ -117,7 +139,7 @@ function OnboardingPage() {
     }
   };
 
-  if (loading) {
+  if (sessionLoading || loading) {
     return (
       <FullScreenWordListLoader
         words={ONBOARDING_LOADING_WORDS}

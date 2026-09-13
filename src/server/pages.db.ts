@@ -438,18 +438,22 @@ export async function recordPagePresence(input: {
         .set({ role: input.role, name: cleanName, lastPing: new Date() })
         .where(eq(pagePresence.id, existing[0].id));
     } else {
-      await db.insert(pagePresence).values({
-        pageId: input.pageId,
-        email: cleanEmail,
-        name: cleanName,
-        role: input.role,
-        lastPing: new Date(),
-      });
+      try {
+        await db.insert(pagePresence).values({
+          pageId: input.pageId,
+          email: cleanEmail,
+          name: cleanName,
+          role: input.role,
+          lastPing: new Date(),
+        });
+      } catch (insertErr) {
+        // Silently handle race condition where page was deleted during ping
+        return [];
+      }
     }
 
     return await fetchActivePresence(input.pageId);
   } catch (err) {
-    console.error('Error recording presence:', err);
     return [];
   }
 }
