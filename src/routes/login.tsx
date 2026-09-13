@@ -22,7 +22,7 @@ function LoginPage() {
       if (redirect) {
         sessionStorage.setItem('notling_auth_redirect', redirect);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   const handleRealOAuth = async (provider: 'google' | 'github') => {
@@ -46,12 +46,12 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#fbfbfb] text-neutral-900 flex flex-col items-center justify-center p-6 select-none font-sans antialiased relative overflow-hidden">
+    <div className="min-h-screen w-full bg-[var(--bg-canvas)] text-[var(--text-primary)] flex flex-col items-center justify-center p-6 select-none font-sans antialiased relative overflow-hidden transition-colors duration-200">
       {/* Delicate dot grid backdrop */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-60"
+      <div
+        className="absolute inset-0 pointer-events-none opacity-60 dark:opacity-40"
         style={{
-          backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(var(--border-color, #e5e7eb) 1px, transparent 1px)',
           backgroundSize: '24px 24px',
         }}
       />

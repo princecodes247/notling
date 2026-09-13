@@ -8,7 +8,7 @@ interface LoginCardProps {
 
 export function LoginCard({ error, children }: LoginCardProps) {
   return (
-    <div className="w-full max-w-[380px] bg-white dark:bg-[#18181b] border border-neutral-200/80 dark:border-zinc-800/80 rounded-xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-2xl flex flex-col items-center relative z-10">
+    <div className="w-full max-w-[380px] bg-white dark:bg-[#18181b] border border-neutral-200/80 dark:border-zinc-800/80 rounded-xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none flex flex-col items-center relative z-10">
       {/* Brand Icon */}
       <a
         href="/"
