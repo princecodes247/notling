@@ -919,6 +919,8 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
     const workspacePages = await db
       .select({
         id: pages.id,
+        workspaceId: pages.workspaceId,
+        visibility: pages.visibility,
         title: pages.title,
         icon: pages.icon,
         contentText: pages.contentText,
@@ -932,6 +934,8 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
       sharedPagesList = await db
         .select({
           id: pages.id,
+          workspaceId: pages.workspaceId,
+          visibility: pages.visibility,
           title: pages.title,
           icon: pages.icon,
           contentText: pages.contentText,
@@ -951,6 +955,11 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
     const results: SearchResult[] = [];
 
     for (const page of allCandidatePagesMap.values()) {
+      // Filter out private pages if user is not workspace owner and lacks explicit access
+      if (page.visibility === 'private' && !session?.isWorkspaceOwner) {
+        const access = await getPageAccessLevel(page as any, session);
+        if (!access) continue;
+      }
       const titleScore = fuzzyMatchScore(page.title || '', cleanQuery, tokens);
       const contentScore = fuzzyMatchScore(page.contentText || '', cleanQuery, tokens);
 
