@@ -61,7 +61,7 @@ export const FullScreenWordListLoader: React.FC<FullScreenWordListLoaderProps> =
                 animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
                 exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
                 transition={{ duration: 0.35, ease: 'easeOut' }}
-                className="text-base font-semibold text-neutral-950 tracking-tight mb-1 flex items-center justify-center gap-2"
+                className="text-base font-medium text-neutral-950 tracking-tight mb-1 flex items-center justify-center gap-2"
               >
                 <span>{words[index]}</span>
               </motion.div>
