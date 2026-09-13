@@ -90,7 +90,7 @@ export const Modal: React.FC<ModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] dark:bg-[#18181b] border border-stone-200/90 dark:border-stone-800 rounded-2xl shadow-[0_24px_70px_-15px_rgba(0,0,0,0.4)] overflow-hidden flex flex-col relative z-10`}
+            className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] dark:bg-[#18181b] border border-stone-200/90 dark:border-stone-800 rounded-2xl overflow-hidden flex flex-col relative z-10`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
