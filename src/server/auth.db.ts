@@ -46,6 +46,7 @@ async function createSessionAndCookie(userId: string): Promise<string> {
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
     maxAge: SESSION_MAX_AGE,
   });
 
@@ -181,6 +182,7 @@ export async function switchWorkspaceImpl(targetWorkspaceId: string): Promise<Au
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: SESSION_MAX_AGE,
     });
 
@@ -224,6 +226,7 @@ export async function createWorkspaceImpl(input: {
       path: '/',
       httpOnly: true,
       sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: SESSION_MAX_AGE,
     });
 
