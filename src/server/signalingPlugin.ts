@@ -101,6 +101,25 @@ export function yjsSignalingPlugin(): Plugin {
         });
         const url = req.url || '';
         if (url.startsWith('/y-webrtc-signaling')) {
+          const origin = req.headers.origin;
+          const host = req.headers.host;
+
+          if (origin && host) {
+            try {
+              const originHost = new URL(origin).host;
+              if (originHost !== host) {
+                console.warn(`[Security Warning] Rejected Cross-Site WebSocket upgrade from origin '${origin}' targeting host '${host}'`);
+                socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+                socket.destroy();
+                return;
+              }
+            } catch {
+              socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+              socket.destroy();
+              return;
+            }
+          }
+
           wss.handleUpgrade(req, socket as any, head, (ws: any) => {
             wss.emit('connection', ws, req);
           });
