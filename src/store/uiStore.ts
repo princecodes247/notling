@@ -167,7 +167,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setTrashOpen: (open) => set({ isTrashOpen: open }),
   toggleTrash: () => set((state) => ({ isTrashOpen: !state.isTrashOpen })),
 
-  sidebarOpen: true,
+  sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
 

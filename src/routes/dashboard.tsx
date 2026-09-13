@@ -10,6 +10,7 @@ import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
+import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -53,6 +54,19 @@ function DashboardLayout() {
   } = useUIStore();
 
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = React.useState(false);
+  const isMobile = useIsMobile();
+
+  React.useEffect(() => {
+    if (isMobile) {
+      useUIStore.getState().setSidebarOpen(false);
+    }
+  }, [isMobile]);
+
+  const closeSidebarOnMobile = React.useCallback(() => {
+    if (isMobile) {
+      useUIStore.getState().setSidebarOpen(false);
+    }
+  }, [isMobile]);
 
   // 1. Fetch Session
   const { data: session, isLoading: sessionLoading } = useQuery({
@@ -337,11 +351,11 @@ function DashboardLayout() {
         {sidebarOpen && (
           <motion.div
             key="sidebar-wrapper"
-            initial={{ x: -280, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -280, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.8 }}
-            className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-60 shadow-2xl md:shadow-none"
+            initial={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
+            animate={isMobile ? { x: 0, opacity: 1 } : { width: 240, opacity: 1 }}
+            exit={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
+            className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
           >
             <Sidebar
               workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
@@ -350,11 +364,11 @@ function DashboardLayout() {
               userWorkspaces={userWorkspaces}
               onSwitchWorkspace={(id) => {
                 switchWorkspaceMutation.mutate(id);
-                useUIStore.getState().setSidebarOpen(false);
+                closeSidebarOnMobile();
               }}
               onOpenCreateWorkspaceModal={() => {
                 setIsCreateWorkspaceOpen(true);
-                useUIStore.getState().setSidebarOpen(false);
+                closeSidebarOnMobile();
               }}
               trashCount={trashPages.length}
               activeNav={activeNav}
@@ -363,20 +377,20 @@ function DashboardLayout() {
                 else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
                 else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
                 else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
-                useUIStore.getState().setSidebarOpen(false);
+                closeSidebarOnMobile();
               }}
               onCreateFolder={() => {
                 createFolderMutation.mutate();
-                useUIStore.getState().setSidebarOpen(false);
+                closeSidebarOnMobile();
               }}
               onCreatePage={(parentId) => {
                 createPageMutation.mutate(parentId);
-                useUIStore.getState().setSidebarOpen(false);
+                closeSidebarOnMobile();
               }}
               onSelectPage={(id) => {
                 useUIStore.getState().setActivePageId(id);
                 navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
-                useUIStore.getState().setSidebarOpen(false);
+                closeSidebarOnMobile();
               }}
               onSoftDelete={(id) => softDeleteMutation.mutate(id)}
               onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
