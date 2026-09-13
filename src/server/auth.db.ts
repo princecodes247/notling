@@ -381,7 +381,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       .limit(1);
 
     if (!activeSession || activeSession.length === 0) {
-      deleteCookie(COOKIE_NAME);
+      deleteCookie(COOKIE_NAME, { path: '/' });
       return null;
     }
 
@@ -1004,24 +1004,36 @@ export async function signOutImpl(): Promise<{ success: boolean }> {
     const token = getCookie(COOKIE_NAME);
     if (token) {
       await db.delete(sessions).where(eq(sessions.token, token));
-      deleteCookie(COOKIE_NAME);
     }
-    return { success: true };
   } catch (err) {
     console.error('Error signing out:', err);
-    deleteCookie(COOKIE_NAME);
-    return { success: true };
+  } finally {
+    deleteCookie(COOKIE_NAME, { path: '/' });
+    deleteCookie(ACTIVE_WS_COOKIE, { path: '/' });
   }
+  return { success: true };
 }
 
 export async function deleteAccountAndDataImpl(): Promise<{ success: boolean; error?: string }> {
   try {
     const currentSession = await getSessionImpl();
     if (!currentSession) {
+      deleteCookie(COOKIE_NAME, { path: '/' });
+      deleteCookie(ACTIVE_WS_COOKIE, { path: '/' });
       return { success: false, error: 'Unauthorized.' };
     }
 
     const userId = currentSession.userId;
+    const cleanEmail = currentSession.email ? currentSession.email.trim().toLowerCase() : null;
+
+    // Delete user workspace member entries
+    if (cleanEmail) {
+      await db
+        .delete(workspaceMembers)
+        .where(or(eq(workspaceMembers.userId, userId), eq(workspaceMembers.email, cleanEmail)));
+    } else {
+      await db.delete(workspaceMembers).where(eq(workspaceMembers.userId, userId));
+    }
 
     // Delete user uploads
     await db.delete(uploads).where(eq(uploads.userId, userId));
@@ -1036,12 +1048,14 @@ export async function deleteAccountAndDataImpl(): Promise<{ success: boolean; er
     await db.delete(users).where(eq(users.id, userId));
 
     // Clear session cookies
-    deleteCookie(COOKIE_NAME);
-    deleteCookie(ACTIVE_WS_COOKIE);
+    deleteCookie(COOKIE_NAME, { path: '/' });
+    deleteCookie(ACTIVE_WS_COOKIE, { path: '/' });
 
     return { success: true };
   } catch (err: any) {
     console.error('Error deleting account and user data:', err);
+    deleteCookie(COOKIE_NAME, { path: '/' });
+    deleteCookie(ACTIVE_WS_COOKIE, { path: '/' });
     return { success: false, error: err.message || 'Failed to delete account.' };
   }
 }
@@ -1079,7 +1093,7 @@ export async function deleteWorkspaceImpl(workspaceIdInput?: string): Promise<{ 
     // Clear active workspace cookie if deleting current active workspace
     const activeWsCookie = getCookie(ACTIVE_WS_COOKIE);
     if (!activeWsCookie || activeWsCookie === targetWorkspaceId) {
-      deleteCookie(ACTIVE_WS_COOKIE);
+      deleteCookie(ACTIVE_WS_COOKIE, { path: '/' });
     }
 
     return { success: true };
