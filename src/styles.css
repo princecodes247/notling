@@ -121,6 +121,66 @@
   display: none !important;
 }
 
+/* Custom Styled Checklist Checkboxes for BlockNote Editor */
+.bn-container input[type="checkbox"],
+.bn-editor input[type="checkbox"] {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  width: 1.15rem !important;
+  height: 1.15rem !important;
+  border: 1.5px solid #d6d3d1 !important;
+  border-radius: 5px !important;
+  background-color: #ffffff !important;
+  cursor: pointer !important;
+  position: relative !important;
+  outline: none !important;
+  margin-right: 0.5rem !important;
+  vertical-align: middle !important;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.05) !important;
+  flex-shrink: 0 !important;
+}
+
+.bn-container input[type="checkbox"]:hover,
+.bn-editor input[type="checkbox"]:hover {
+  border-color: #78716c !important;
+  background-color: #fcfbf9 !important;
+  transform: scale(1.05);
+}
+
+.bn-container input[type="checkbox"]:focus-visible,
+.bn-editor input[type="checkbox"]:focus-visible {
+  border-color: #1c1917 !important;
+  box-shadow: 0 0 0 3px rgba(28, 25, 23, 0.12) !important;
+}
+
+/* Checked state with custom SVG checkmark icon */
+.bn-container input[type="checkbox"]:checked,
+.bn-editor input[type="checkbox"]:checked {
+  background-color: #1c1917 !important;
+  border-color: #1c1917 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3.5 8.5 6.5 11.5 12.5 4.5'/%3E%3C/svg%3E") !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 80% 80% !important;
+  box-shadow: 0 2px 5px rgba(28, 25, 23, 0.18) !important;
+}
+
+.bn-container input[type="checkbox"]:checked:hover,
+.bn-editor input[type="checkbox"]:checked:hover {
+  background-color: #292524 !important;
+  border-color: #292524 !important;
+}
+
+/* Strikethrough text style for checked items */
+.bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content,
+.bn-block-content[data-content-type="checkListItem"]:has(input[type="checkbox"]:checked) .bn-inline-content {
+  color: #a8a29e !important;
+  text-decoration: line-through !important;
+  text-decoration-color: #d6d3d1 !important;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease !important;
+}
+
 
 /* Clean scrollbars */
 ::-webkit-scrollbar {
