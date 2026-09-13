@@ -160,3 +160,69 @@ export function updateClientPageMeta(
     );
   }
 }
+
+/**
+ * Optimistically deletes a page client-side everywhere BEFORE performing any API calls:
+ * 1. Closes open tab in Zustand uiStore and determines next route path if active.
+ * 2. Removes from Zustand `pageMeta` map.
+ * 3. Removes from `['pageTree']` query cache recursively.
+ * 4. Removes from `['childPages']`, `['pages', 'search']`, `['trashPages']` query caches.
+ */
+export function deleteClientPage(
+  queryClient: QueryClient | undefined,
+  pageId: string
+): string | null {
+  // 1. Immediately close open tab in Zustand uiStore (returns nextPath if active)
+  const nextPath = useUIStore.getState().closeTab(pageId);
+
+  // 2. Clean up Zustand pageMeta map
+  useUIStore.setState((state) => {
+    if (!state.pageMeta[pageId]) return state;
+    const nextMeta = { ...state.pageMeta };
+    delete nextMeta[pageId];
+    return { pageMeta: nextMeta };
+  });
+
+  // 3. Optimistically remove node from TanStack Query caches
+  if (queryClient) {
+    const filterTreeNodes = (nodes: PageTreeNode[]): PageTreeNode[] => {
+      let hasChanges = false;
+      const filtered: PageTreeNode[] = [];
+      for (const node of nodes) {
+        if (node.id === pageId) {
+          hasChanges = true;
+          continue;
+        }
+        if (node.children && node.children.length > 0) {
+          const updatedChildren = filterTreeNodes(node.children);
+          if (updatedChildren !== node.children) {
+            hasChanges = true;
+            filtered.push({ ...node, children: updatedChildren });
+            continue;
+          }
+        }
+        filtered.push(node);
+      }
+      return hasChanges ? filtered : nodes;
+    };
+
+    queryClient.setQueriesData<PageTreeNode[]>(
+      { queryKey: ['pageTree'] },
+      (old) => (old && Array.isArray(old) ? filterTreeNodes(old) : old)
+    );
+
+    queryClient.setQueriesData<Page[]>(
+      { queryKey: ['childPages'] },
+      (old) => (old && Array.isArray(old) ? old.filter((item) => item.id !== pageId) : old)
+    );
+
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['pages', 'search'] },
+      (old) => (old && Array.isArray(old) ? old.filter((item) => item.id !== pageId) : old)
+    );
+
+    queryClient.removeQueries({ queryKey: ['page', pageId] });
+  }
+
+  return nextPath;
+}

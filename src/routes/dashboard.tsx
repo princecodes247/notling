@@ -9,7 +9,7 @@ import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
-import { updateClientPageMeta } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -131,7 +131,7 @@ function DashboardLayout() {
   });
 
   // 2. Fetch Workspace Page Tree
-  const { data: treeNodes = [], refetch: refetchTree } = useQuery({
+  const { data: treeNodes = [], refetch: refetchTree, isLoading: treeLoading } = useQuery({
     queryKey: ['pageTree', workspaceId],
     queryFn: async () => {
       if (!workspaceId) return [];
@@ -287,14 +287,20 @@ function DashboardLayout() {
     mutationFn: async (pageId: string) => {
       return await softDeletePage({ data: pageId });
     },
-    onSuccess: (_, deletedId) => {
+    onMutate: async (pageId: string) => {
+      const nextPath = deleteClientPage(queryClient, pageId);
+      if (nextPath) {
+        navigate({ to: nextPath as any });
+      } else {
+        const currentActiveTab = useUIStore.getState().activeTabId;
+        if (!currentActiveTab || currentActiveTab === pageId) {
+          navigate({ to: '/dashboard/folders' });
+        }
+      }
+    },
+    onSuccess: () => {
       refetchTree();
       queryClient.invalidateQueries({ queryKey: ['trashPages'] });
-      if (deletedId) {
-        const nextPath = closeTab(deletedId as string);
-        if (nextPath) navigate({ to: nextPath as any });
-        else navigate({ to: '/dashboard/folders' });
-      }
     },
   });
 
@@ -404,6 +410,7 @@ function DashboardLayout() {
                 treeNodes={treeNodes}
                 userWorkspaces={userWorkspaces}
                 isCreatingPage={createPageMutation.isPending}
+                isLoading={treeLoading}
                 onSwitchWorkspace={(id) => {
                   switchWorkspaceMutation.mutate(id);
                   closeSidebarOnMobile();

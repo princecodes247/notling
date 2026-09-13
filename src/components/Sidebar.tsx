@@ -38,6 +38,7 @@ interface SidebarProps {
   treeNodes: PageTreeNode[];
   userWorkspaces?: UserWorkspaceItem[];
   isCreatingPage?: boolean;
+  isLoading?: boolean;
   onSwitchWorkspace?: (workspaceId: string) => void;
   onOpenCreateWorkspaceModal?: () => void;
   trashCount?: number;
@@ -53,12 +54,57 @@ interface SidebarProps {
   onLogout?: () => void;
 }
 
+export const SidebarSkeleton: React.FC = () => {
+  const BaseSkeleton: React.FC<{ className?: string }> = ({ className = "" }) => (
+    <div className={className + "flex flex-col gap-1"}>
+      <div className="flex items-center gap-2.5 px-2 py-1.5">
+        <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
+        <div className="h-3.5 w-32 rounded bg-stone-300/70" />
+      </div>
+      <div className="flex items-center gap-2 pl-7 pr-2 py-1">
+        <div className="w-3.5 h-3.5 rounded bg-stone-200/80 shrink-0" />
+        <div className="h-3 w-24 rounded bg-stone-200/80" />
+      </div>
+      <div className="flex items-center gap-2 pl-7 pr-2 py-1">
+        <div className="w-3.5 h-3.5 rounded bg-stone-200/80 shrink-0" />
+        <div className="h-3 w-28 rounded bg-stone-200/80" />
+      </div>
+    </div>
+  )
+  return (
+    <div className="flex flex-col gap-2.5 px-1 py-1 animate-pulse select-none">
+      <BaseSkeleton />
+
+      <div className="flex flex-col gap-1 pt-1">
+        <div className="flex items-center gap-2.5 px-2 py-1.5">
+          <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
+          <div className="h-3.5 w-28 rounded bg-stone-300/70" />
+        </div>
+        <div className="flex items-center gap-2 pl-7 pr-2 py-1">
+          <div className="w-3.5 h-3.5 rounded bg-stone-200/80 shrink-0" />
+          <div className="h-3 w-20 rounded bg-stone-200/80" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2.5 px-2 py-1.5 pt-1">
+        <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
+        <div className="h-3.5 w-36 rounded bg-stone-300/70" />
+      </div>
+      <div className="flex items-center gap-2.5 px-2 py-1.5">
+        <div className="w-4 h-4 rounded bg-stone-300/70 shrink-0" />
+        <div className="h-3.5 w-24 rounded bg-stone-300/70" />
+      </div>
+    </div>
+  );
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
   workspaceName = 'Notling Workspace',
   session,
   treeNodes,
   userWorkspaces = [],
   isCreatingPage = false,
+  isLoading = false,
   onSwitchWorkspace,
   onOpenCreateWorkspaceModal,
   trashCount,
@@ -265,143 +311,149 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 4. Folders & Document Tree Section */}
       <div className="flex-1 overflow-y-auto px-2 pt-3 pb-2 flex flex-col min-h-0">
-        {/* Favorites / Pinned Section */}
-        {pinnedNodes.length > 0 && (
-          <div className="mb-3 flex flex-col gap-0.5">
-            <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-600/90">
-              <div className="flex items-center gap-1.5">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
-                <span>Favorites</span>
+        {isLoading ? (
+          <SidebarSkeleton />
+        ) : (
+          <>
+            {/* Favorites / Pinned Section */}
+            {pinnedNodes.length > 0 && (
+              <div className="mb-3 flex flex-col gap-0.5">
+                <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-600/90">
+                  <div className="flex items-center gap-1.5">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                    <span>Favorites</span>
+                  </div>
+                </div>
+                <div className="mt-0.5 flex flex-col gap-0.5">
+                  {pinnedNodes.map((node) => (
+                    <PageTreeItem
+                      key={`pinned-${node.id}`}
+                      node={node}
+                      depth={0}
+                      onCreateChild={onCreatePage}
+                      onSelectPage={onSelectPage}
+                      onSoftDelete={onSoftDelete}
+                      onUpdateMeta={onUpdateMeta}
+                      onReorderPage={onReorderPage}
+                      onTogglePin={onTogglePin}
+                      draggedPageId={draggedPageId}
+                      setDraggedPageId={setDraggedPageId}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="mt-0.5 flex flex-col gap-0.5">
-              {pinnedNodes.map((node) => (
-                <PageTreeItem
-                  key={`pinned-${node.id}`}
-                  node={node}
-                  depth={0}
-                  onCreateChild={onCreatePage}
-                  onSelectPage={onSelectPage}
-                  onSoftDelete={onSoftDelete}
-                  onUpdateMeta={onUpdateMeta}
-                  onReorderPage={onReorderPage}
-                  onTogglePin={onTogglePin}
-                  draggedPageId={draggedPageId}
-                  setDraggedPageId={setDraggedPageId}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+            )}
 
-        <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-          <span>Workspace Pages</span>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={isCreatingPage}
-              onClick={() => !isCreatingPage && (onCreateFolder ? onCreateFolder() : onCreatePage())}
-              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Create new folder"
-            >
-              <HugeiconsIcon icon={FolderAddIcon} size={15} />
-            </button>
-            <button
-              type="button"
-              disabled={isCreatingPage}
-              onClick={() => !isCreatingPage && onCreatePage()}
-              className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Create new page"
-            >
-              {isCreatingPage ? (
-                <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600" />
-              ) : (
-                <HugeiconsIcon icon={PlusSignIcon} size={15} />
-              )}
-            </button>
-          </div>
-        </div>
-
-        <div
-          className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${isRootDropTarget ? 'bg-stone-200/50 ring-1 ring-stone-300' : ''
-            }`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (draggedPageId) {
-              setIsRootDropTarget(true);
-            }
-          }}
-          onDragLeave={() => setIsRootDropTarget(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setIsRootDropTarget(false);
-            if (draggedPageId) {
-              onReorderPage?.({
-                pageId: draggedPageId,
-                targetParentId: null,
-                targetOrder: workspaceNodes.length,
-              });
-              setDraggedPageId(null);
-            }
-          }}
-        >
-          {workspaceNodes.length === 0 ? (
-            <div className="px-3 py-4 text-center text-xs text-neutral-400 flex flex-col items-center gap-1.5">
-              <span>No documents yet</span>
-              <button
-                type="button"
-                disabled={isCreatingPage}
-                onClick={() => !isCreatingPage && onCreatePage()}
-                className="text-[11px] text-neutral-800 font-medium hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
-              >
-                {isCreatingPage ? 'Creating page...' : '+ Create first page'}
-              </button>
-            </div>
-          ) : (
-            workspaceNodes.map((node) => (
-              <PageTreeItem
-                key={node.id}
-                node={node}
-                depth={0}
-                onCreateChild={onCreatePage}
-                onSelectPage={onSelectPage}
-                onSoftDelete={onSoftDelete}
-                onUpdateMeta={onUpdateMeta}
-                onReorderPage={onReorderPage}
-                onTogglePin={onTogglePin}
-                draggedPageId={draggedPageId}
-                setDraggedPageId={setDraggedPageId}
-              />
-            ))
-          )}
-        </div>
-
-        {/* 5. Shared With Me Section */}
-        {sharedNodes.length > 0 && (
-          <div className="mt-4 flex flex-col gap-0.5">
             <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-              <div className="flex items-center gap-1.5">
-                <span>Shared with me</span>
+              <span>Workspace Pages</span>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={isCreatingPage}
+                  onClick={() => !isCreatingPage && (onCreateFolder ? onCreateFolder() : onCreatePage())}
+                  className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Create new folder"
+                >
+                  <HugeiconsIcon icon={FolderAddIcon} size={15} />
+                </button>
+                <button
+                  type="button"
+                  disabled={isCreatingPage}
+                  onClick={() => !isCreatingPage && onCreatePage()}
+                  className="p-1 rounded-md hover:bg-stone-200/70 text-stone-500 hover:text-stone-800 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Create new page"
+                >
+                  {isCreatingPage ? (
+                    <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600" />
+                  ) : (
+                    <HugeiconsIcon icon={PlusSignIcon} size={15} />
+                  )}
+                </button>
               </div>
             </div>
-            <div className="mt-0.5 flex flex-col gap-0.5">
-              {sharedNodes.map((node) => (
-                <PageTreeItem
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  onCreateChild={onCreatePage}
-                  onSelectPage={onSelectPage}
-                  onSoftDelete={onSoftDelete}
-                  onUpdateMeta={onUpdateMeta}
-                  onReorderPage={onReorderPage}
-                  onTogglePin={onTogglePin}
-                  draggedPageId={draggedPageId}
-                  setDraggedPageId={setDraggedPageId}
-                />
-              ))}
+
+            <div
+              className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${isRootDropTarget ? 'bg-stone-200/50 ring-1 ring-stone-300' : ''
+                }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (draggedPageId) {
+                  setIsRootDropTarget(true);
+                }
+              }}
+              onDragLeave={() => setIsRootDropTarget(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsRootDropTarget(false);
+                if (draggedPageId) {
+                  onReorderPage?.({
+                    pageId: draggedPageId,
+                    targetParentId: null,
+                    targetOrder: workspaceNodes.length,
+                  });
+                  setDraggedPageId(null);
+                }
+              }}
+            >
+              {workspaceNodes.length === 0 ? (
+                <div className="px-3 py-4 text-center text-xs text-neutral-400 flex flex-col items-center gap-1.5">
+                  <span>No documents yet</span>
+                  <button
+                    type="button"
+                    disabled={isCreatingPage}
+                    onClick={() => !isCreatingPage && onCreatePage()}
+                    className="text-[11px] text-neutral-800 font-medium hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                  >
+                    {isCreatingPage ? 'Creating page...' : '+ Create first page'}
+                  </button>
+                </div>
+              ) : (
+                workspaceNodes.map((node) => (
+                  <PageTreeItem
+                    key={node.id}
+                    node={node}
+                    depth={0}
+                    onCreateChild={onCreatePage}
+                    onSelectPage={onSelectPage}
+                    onSoftDelete={onSoftDelete}
+                    onUpdateMeta={onUpdateMeta}
+                    onReorderPage={onReorderPage}
+                    onTogglePin={onTogglePin}
+                    draggedPageId={draggedPageId}
+                    setDraggedPageId={setDraggedPageId}
+                  />
+                ))
+              )}
             </div>
-          </div>
+
+            {/* 5. Shared With Me Section */}
+            {sharedNodes.length > 0 && (
+              <div className="mt-4 flex flex-col gap-0.5">
+                <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  <div className="flex items-center gap-1.5">
+                    <span>Shared with me</span>
+                  </div>
+                </div>
+                <div className="mt-0.5 flex flex-col gap-0.5">
+                  {sharedNodes.map((node) => (
+                    <PageTreeItem
+                      key={node.id}
+                      node={node}
+                      depth={0}
+                      onCreateChild={onCreatePage}
+                      onSelectPage={onSelectPage}
+                      onSoftDelete={onSoftDelete}
+                      onUpdateMeta={onUpdateMeta}
+                      onReorderPage={onReorderPage}
+                      onTogglePin={onTogglePin}
+                      draggedPageId={draggedPageId}
+                      setDraggedPageId={setDraggedPageId}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
