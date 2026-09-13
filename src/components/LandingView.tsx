@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { NotlingLogoIcon } from './Icons';
+import { FeatureCard, type FeatureCardData } from './FeatureCard';
 import {
-  ArrowRight,
   FileText,
   Search,
   Users,
@@ -9,12 +9,47 @@ import {
   Zap,
   ChevronRight,
   ChevronLeft,
+  Github,
+  Star,
 } from 'lucide-react';
 
 interface LandingViewProps {
   onEnterApp: () => void;
   renderWorkspacePreview: () => React.ReactNode;
 }
+
+const FEATURE_CARDS: FeatureCardData[] = [
+  {
+    id: 'editor',
+    title: 'Effortless Writing',
+    description: 'A distraction-free canvas that flows as fast as your thoughts. Type, format, and structure with fluid elegance.',
+    icon: FileText,
+  },
+  {
+    id: 'search',
+    title: 'Instant Search',
+    description: 'Find anything in a heartbeat. Every document, note, and detail is right at your fingertips the moment you need it.',
+    icon: Search,
+  },
+  {
+    id: 'collaboration',
+    title: 'Seamless Collaboration',
+    description: "Work together in real time like you're in the same room. Share ideas instantly with beautiful simplicity.",
+    icon: Users,
+  },
+  {
+    id: 'hierarchy',
+    title: 'Thoughtful Organization',
+    description: 'Keep your mind clutter-free. Nested collections and fluid browser tabs make navigating your work second nature.',
+    icon: Layers,
+  },
+  {
+    id: 'speed',
+    title: 'Blazing Speed',
+    description: 'Instant response. Zero waiting. Engineered from the ground up to feel impossibly fast, everywhere you go.',
+    icon: Zap,
+  },
+];
 
 export const LandingView: React.FC<LandingViewProps> = ({
   onEnterApp,
@@ -36,9 +71,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
   return (
     <div className="min-h-screen bg-gray-100 text-neutral-900 font-sans antialiased flex flex-col selection:bg-neutral-900 selection:text-white">
       {/* 1. Top Navbar */}
-      <header className="sticky top-0 z-50  px-0 h-16  border-neutral-200/50 flex">
-        <div className='border-b-2 border-r-2 border-gray-300/30 p-5' />
-        <div className='bg-[#eef2f6]/90 backdrop-blur-sm px-4 flex items-center justify-between border-b-2 border-gray-300/30 w-full'>
+      <header className="sticky top-0 z-50 px-0 h-16 border-neutral-200/50 flex">
+        <div className="border-b-2 border-r-2 border-gray-300/30 p-5" />
+        <div className="bg-[#eef2f6]/90 backdrop-blur-sm px-14 flex items-center justify-between border-b-2 border-gray-300/30 w-full">
           {/* Brand */}
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={onEnterApp}>
             <NotlingLogoIcon className="w-5 h-5 text-brand-text" />
@@ -47,22 +82,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </span>
           </div>
 
-          {/* Center / Right Links */}
+          {/* Right Links */}
           <div className="flex items-center gap-6 sm:gap-8">
-            <nav className="hidden md:flex items-center gap-7 text-xs font-medium text-neutral-600">
-              <a href="#use-cases" className="hover:text-neutral-950 transition-colors">
-                Use Cases
-              </a>
-              <a href="#features" className="hover:text-neutral-950 transition-colors">
-                Features
-              </a>
-              <a href="#why-notling" className="hover:text-neutral-950 transition-colors">
-                Why Notling
-              </a>
-              <a href="#faq" className="hover:text-neutral-950 transition-colors">
-                FAQ
-              </a>
-            </nav>
+
 
             {/* Brand Pill Button */}
             <button
@@ -70,28 +92,28 @@ export const LandingView: React.FC<LandingViewProps> = ({
               onClick={onEnterApp}
               className="bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium px-4 py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer"
             >
-              Get early access
+              Get Started
             </button>
           </div>
         </div>
-        <div className='border-b-2 border-l-2 border-gray-300/30 p-5' />
-
+        <div className="border-b-2 border-l-2 border-gray-300/30 p-5" />
       </header>
-      <main className='mx-10 border-x-2 border-gray-300/30'>
-        <section>
-          <div className='bg-[#eef2f6]'>
 
+      <main className="mx-10 border-x-2 border-gray-300/30">
+        <section>
+          <div className="bg-[#eef2f6]">
             {/* 2. Hero Section */}
             <div className="px-6 pt-16 md:pt-24 pb-12 text-center max-w-4xl mx-auto flex flex-col items-center gap-5">
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-neutral-950 max-w-3xl leading-[1.15]">
-                The easiest way<br />to share your ideas.
+                {/* Everything you write. <br />Nowhere it doesn't belong. */}
+                The home for your<br />greatest ideas.
               </h1>
 
               <p className="text-sm sm:text-base text-neutral-600 max-w-md font-normal leading-relaxed text-center">
-                Collaborate with your teammates, agents easily.
+                Write, think, and collaborate in one impossibly fast, beautifully distraction-free workspace.
               </p>
 
-              <div className="mt-2">
+              <div className="mt-2 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={onEnterApp}
@@ -99,10 +121,22 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 >
                   <span>Get Started</span>
                 </button>
+                <a
+                  href="https://github.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto px-5 py-3 rounded-full bg-white hover:bg-stone-50 text-neutral-900 border border-neutral-300/80 text-xs font-medium transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 cursor-pointer active-press"
+                >
+                  <Github className="w-4 h-4 text-neutral-800" />
+                  <span>Star on GitHub</span>
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-amber-600 ml-0.5">
+                    <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                  </span>
+                </a>
               </div>
             </div>
 
-            {/* 3. Live Workspace Frame Preview (Framed Outer Border & Gradient) */}
+            {/* 3. Live Workspace Frame Preview */}
             <div className="px-4 sm:px-10 pb-20 max-w-6xl mx-auto w-full">
               <div className="rounded-2xl border border-neutral-300/80 bg-white/40 p-2 sm:p-3 shadow-xl backdrop-blur-xs">
                 <div className="w-full h-[520px] md:h-[620px] rounded-xl overflow-hidden border border-neutral-200/90 bg-white relative">
@@ -113,15 +147,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
           </div>
         </section>
 
-        {/* 4. Consolidate Knowledge Section (Horizontal Scrollable Cards) */}
+        {/* 4. Consolidate Knowledge Section (Data-Driven Feature Cards) */}
         <section id="features" className="py-20 px-6 sm:px-12 bg-white">
           <div className="max-w-6xl mx-auto flex flex-col gap-10">
             <div className="max-w-2xl flex flex-col gap-3">
               <h2 className="text-2xl sm:text-3xl font-medium text-neutral-950 tracking-tight leading-snug">
-                Consolidate all your knowledge into one shared workspace
+                All your thoughts.<br className="hidden sm:inline" /> One beautiful place.
               </h2>
               <p className="text-xs sm:text-sm text-neutral-500 leading-relaxed">
-                Everything consolidates into one clean, fast workspace accessible from your desktop or mobile. Collaborate on documents, specs, and notes with your team in real time, no matter where you start, and never lose an idea again.
+                Everything you create comes together in harmony. A single, elegant workspace designed to help you focus, collaborate, and bring your best work to life.
               </p>
             </div>
 
@@ -132,90 +166,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 className="flex items-stretch gap-4 overflow-x-auto pb-4 scroll-smooth no-scrollbar snap-x snap-mandatory"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
-                {/* Card 1: BlockNote Editor */}
-                <div className="min-w-[280px] sm:min-w-[320px] flex-1 bg-[#f8fafc] hover:bg-[#f1f5f9] p-6 rounded-2xl border border-neutral-200/80 flex flex-col justify-between transition-all duration-200 snap-start">
-                  <div>
-                    <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200/80 shadow-2xs flex items-center justify-center text-neutral-800 mb-5">
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-neutral-900 mb-2">BlockNote Editor</h3>
-                    <p className="text-xs text-neutral-500 leading-relaxed mb-6">
-                      Notion-style block editing with slash commands, drag-and-drop hierarchy, markdown import/export, and live multi-cursor editing.
-                    </p>
-                  </div>
-                  <button type="button" onClick={onEnterApp} className="text-xs font-semibold text-neutral-900 inline-flex items-center gap-1 hover:gap-2 transition-all cursor-pointer self-start">
-                    <span>Learn more</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Card 2: Instant GIN Search */}
-                <div className="min-w-[280px] sm:min-w-[320px] flex-1 bg-[#f8fafc] hover:bg-[#f1f5f9] p-6 rounded-2xl border border-neutral-200/80 flex flex-col justify-between transition-all duration-200 snap-start">
-                  <div>
-                    <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200/80 shadow-2xs flex items-center justify-center text-neutral-800 mb-5">
-                      <Search className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-neutral-900 mb-2">Instant GIN Search</h3>
-                    <p className="text-xs text-neutral-500 leading-relaxed mb-6">
-                      Sub-millisecond full-text search across all titles, body blocks, and folder trees powered by PostgreSQL indexing via Cmd+K.
-                    </p>
-                  </div>
-                  <button type="button" onClick={onEnterApp} className="text-xs font-semibold text-neutral-900 inline-flex items-center gap-1 hover:gap-2 transition-all cursor-pointer self-start">
-                    <span>Learn more</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Card 3: Real-time Sync */}
-                <div className="min-w-[280px] sm:min-w-[320px] flex-1 bg-[#f8fafc] hover:bg-[#f1f5f9] p-6 rounded-2xl border border-neutral-200/80 flex flex-col justify-between transition-all duration-200 snap-start">
-                  <div>
-                    <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200/80 shadow-2xs flex items-center justify-center text-neutral-800 mb-5">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-neutral-900 mb-2">Real-time Collaboration</h3>
-                    <p className="text-xs text-neutral-500 leading-relaxed mb-6">
-                      Collaborate live with teammates, see real-time active cursors, presence indicators, and share granular permission links.
-                    </p>
-                  </div>
-                  <button type="button" onClick={onEnterApp} className="text-xs font-semibold text-neutral-900 inline-flex items-center gap-1 hover:gap-2 transition-all cursor-pointer self-start">
-                    <span>Learn more</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Card 4: Nested Hierarchy */}
-                <div className="min-w-[280px] sm:min-w-[320px] flex-1 bg-[#f8fafc] hover:bg-[#f1f5f9] p-6 rounded-2xl border border-neutral-200/80 flex flex-col justify-between transition-all duration-200 snap-start">
-                  <div>
-                    <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200/80 shadow-2xs flex items-center justify-center text-neutral-800 mb-5">
-                      <Layers className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-neutral-900 mb-2">Nested Folders & Tabs</h3>
-                    <p className="text-xs text-neutral-500 leading-relaxed mb-6">
-                      Organize pages into multi-level folders, switch between documents with browser-style tabs, and pin your daily favorites.
-                    </p>
-                  </div>
-                  <button type="button" onClick={onEnterApp} className="text-xs font-semibold text-neutral-900 inline-flex items-center gap-1 hover:gap-2 transition-all cursor-pointer self-start">
-                    <span>Learn more</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
-
-                {/* Card 5: Local-First Speed */}
-                <div className="min-w-[280px] sm:min-w-[320px] flex-1 bg-[#f8fafc] hover:bg-[#f1f5f9] p-6 rounded-2xl border border-neutral-200/80 flex flex-col justify-between transition-all duration-200 snap-start">
-                  <div>
-                    <div className="w-9 h-9 rounded-xl bg-white border border-neutral-200/80 shadow-2xs flex items-center justify-center text-neutral-800 mb-5">
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm text-neutral-900 mb-2">Local-First Speed</h3>
-                    <p className="text-xs text-neutral-500 leading-relaxed mb-6">
-                      Lightning-fast page renders with optimistic updates, local state persistence, and anti-wipe data integrity protection.
-                    </p>
-                  </div>
-                  <button type="button" onClick={onEnterApp} className="text-xs font-semibold text-neutral-900 inline-flex items-center gap-1 hover:gap-2 transition-all cursor-pointer self-start">
-                    <span>Learn more</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
-                </div>
+                {FEATURE_CARDS.map((card) => (
+                  <FeatureCard
+                    key={card.id}
+                    card={card}
+                    onAction={onEnterApp}
+                  />
+                ))}
               </div>
 
               {/* Scroll Control Arrows */}
@@ -244,37 +201,32 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="max-w-2xl mx-auto flex flex-col gap-6 text-left">
             <h2 className="text-3xl sm:text-4xl font-normal text-neutral-950 tracking-tight leading-tight">
               You wanted a simple workspace.<br />
-              We've built it.
+              I built it.
             </h2>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
-              Scattered docs. Bloated apps. Complex tools with endless nested menus, sluggish load times, and paywalls around basic team sharing.
+              Noisy software. Endless menus. Slow apps that are more work than work.
             </p>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
-              Other workspace tools got slow and complicated. They added forced AI features, cluttered sidebar panels, and subscription tiers that locked your data behind proprietary formats.
-            </p>
-
-            <p className="text-sm text-neutral-600 leading-relaxed font-medium text-neutral-900">
-              Now you're managing the tool more than organizing your actual thoughts and work.
+              Modern tools got complicated and only got in the way of true focus.
             </p>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
-              Notling brings it back to simple: A fast workspace, Notion-style block editing, real-time collaboration, and instant full-text search, all in one place. Built on TanStack Start, Nitro, and PostgreSQL so your data is fast, reliable, and transparent.
+              Now you're managing the tool more than capturing your actual thoughts.
             </p>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
-              No setup maze. No annoying sales calls. No feature overload. Just something that works.
+              I created <span className="text-neutral-900 font-medium px-px">Notling</span> to bring back clarity: Instant speed, pure typography, and easy collaboration in a design that feels like second nature.
             </p>
 
-            <div className="mt-4 pt-2 flex flex-col text-xs text-neutral-500 font-medium">
-              <span className="text-neutral-900 font-semibold">The Notling Team</span>
-              <span>Founders</span>
-            </div>
+            <p className="text-sm text-neutral-600 leading-relaxed">
+              No complicated onboarding. Just you and your thoughts.
+            </p>
           </div>
         </section>
-
       </main>
+
       {/* 6. Footer */}
       <footer className="mt-auto border-t border-neutral-200/80 py-8 px-6 text-center text-xs text-neutral-500 bg-white">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
