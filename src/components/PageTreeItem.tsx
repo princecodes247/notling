@@ -26,6 +26,8 @@ interface PageTreeItemProps {
   setDraggedPageId?: (id: string | null) => void;
 }
 
+const EMOJI_OPTIONS = ['📁', '📂', '📄', '🚀', '📌', '📝', '💡', '🔥', '✨', '🎯', '📚', '⚙️', '🧪', '🎨', '🌟', '📦', '💻', '🧠', '⚡'];
+
 export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   node,
   depth = 0,
@@ -39,23 +41,40 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   setDraggedPageId,
 }) => {
   const { expandedNodeIds, toggleNodeExpand, setNodeExpand, activePageId } = useUIStore();
+  const liveMeta = useUIStore((s) => s.pageMeta[node.id]);
+  const displayTitle = liveMeta?.title ?? node.title;
+  const displayIcon = liveMeta?.icon ?? node.icon ?? '📄';
+
   const isExpanded = !!expandedNodeIds[node.id];
   const isActive = activePageId === node.id;
   const hasChildren = node.children && node.children.length > 0;
 
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(node.title);
+  const [editTitle, setEditTitle] = useState(displayTitle);
   const [showMenu, setShowMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [dropTargetMode, setDropTargetMode] = useState<'above' | 'below' | 'inside' | null>(null);
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      setEditTitle(displayTitle);
+    }
+  }, [displayTitle, isEditing]);
 
   const isDraggingCurrent = draggedPageId === node.id;
 
   const handleTitleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (editTitle.trim() && editTitle !== node.title) {
-      onUpdateMeta(node.id, editTitle.trim(), node.icon || undefined);
+    const trimmed = editTitle.trim();
+    if (trimmed && trimmed !== displayTitle) {
+      onUpdateMeta(node.id, trimmed, displayIcon);
     }
     setIsEditing(false);
+  };
+
+  const handleSelectIcon = (selectedIcon: string) => {
+    setShowEmojiPicker(false);
+    onUpdateMeta(node.id, displayTitle, selectedIcon);
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -181,9 +200,41 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             )}
           </button>
 
-          <span className="text-sm leading-none shrink-0">
-            {node.icon || '📄'}
-          </span>
+          {/* Page Icon with interactive emoji picker */}
+          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-neutral-200/60 transition-colors cursor-pointer"
+              title="Change icon"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            >
+              {displayIcon}
+            </button>
+
+            {showEmojiPicker && (
+              <>
+                <div
+                  className="fixed inset-0 z-50"
+                  onClick={() => setShowEmojiPicker(false)}
+                />
+                <div
+                  className="absolute left-0 top-6 z-50 p-2 bg-white border border-neutral-200 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {EMOJI_OPTIONS.map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => handleSelectIcon(em)}
+                      className="text-lg p-1 rounded hover:bg-neutral-100 transition-colors cursor-pointer"
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {isEditing ? (
             <form onSubmit={handleTitleSubmit} className="flex-1" onClick={(e) => e.stopPropagation()}>
@@ -192,6 +243,12 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 onBlur={() => handleTitleSubmit()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setEditTitle(displayTitle);
+                    setIsEditing(false);
+                  }
+                }}
                 autoFocus
                 className="w-full bg-white text-neutral-900 text-xs px-1.5 py-0.5 rounded border border-neutral-300 focus:outline-none focus:ring-1 focus:ring-black"
               />
@@ -199,7 +256,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           ) : (
             <div className="truncate flex-1 flex items-center gap-1.5 min-w-0">
               <span className="truncate font-medium">
-                {node.title || 'Untitled'}
+                {displayTitle || 'Untitled'}
               </span>
               {node.visibility === 'private' && (
                 <span className="text-[10px] text-amber-600 shrink-0" title="Private to you">🔒</span>
@@ -291,6 +348,18 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       {node.isPinned ? 'Unpin Page' : 'Pin to Favorites'}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowMenu(false);
+                      setShowEmojiPicker(true);
+                    }}
+                  >
+                    <span className="text-xs">✨</span>
+                    Change Icon
+                  </button>
                   <button
                     type="button"
                     className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"

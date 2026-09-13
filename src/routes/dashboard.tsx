@@ -9,6 +9,7 @@ import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
+import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -164,10 +165,12 @@ function DashboardLayout() {
         doSetActivePageId(pageId);
         const node = findNodeInTree(treeNodes, pageId);
         const existingTab = useUIStore.getState().openTabs.find((t) => t.id === pageId);
+        const liveMeta = useUIStore.getState().pageMeta[pageId];
         const resolvedTitle =
+          liveMeta?.title ??
           node?.title ??
           (existingTab?.title && existingTab.title !== 'Untitled Document' ? existingTab.title : 'Untitled Document');
-        const resolvedIcon = node?.icon ?? existingTab?.icon ?? '📄';
+        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? '📄';
 
         doOpenTab({
           id: pageId,
@@ -279,6 +282,9 @@ function DashboardLayout() {
   const updateMetaMutation = useMutation({
     mutationFn: async ({ pageId, title, icon }: { pageId: string; title: string; icon?: string }) => {
       return await updatePageMeta({ data: { pageId, title, icon } });
+    },
+    onMutate: async ({ pageId, title, icon }) => {
+      updateClientPageMeta(queryClient, { pageId, title, icon });
     },
     onSuccess: () => {
       refetchTree();
@@ -408,7 +414,10 @@ function DashboardLayout() {
                   closeSidebarOnMobile();
                 }}
                 onSoftDelete={(id) => softDeleteMutation.mutate(id)}
-                onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
+                onUpdateMeta={(id, title, icon) => {
+                  updateClientPageMeta(queryClient, { pageId: id, title, icon });
+                  updateMetaMutation.mutate({ pageId: id, title, icon });
+                }}
                 onReorderPage={(input) => reorderPageMutation.mutate(input)}
                 onTogglePin={(id) => togglePinMutation.mutate(id)}
                 onLogout={handleLogout}

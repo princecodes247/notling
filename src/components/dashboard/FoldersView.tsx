@@ -8,6 +8,7 @@ import {
   ArrowDown01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
+import { useUIStore } from '~/store/uiStore';
 
 interface FoldersViewProps {
   treeNodes: PageTreeNode[];
@@ -22,8 +23,25 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   onCreateFolder,
   onCreateDocument,
 }) => {
+  const pageMeta = useUIStore((s) => s.pageMeta);
+
+  const mergedNodes = React.useMemo(() => {
+    function applyMeta(nodes: PageTreeNode[]): PageTreeNode[] {
+      return nodes.map((node) => {
+        const live = pageMeta[node.id];
+        return {
+          ...node,
+          title: live?.title ?? node.title,
+          icon: live?.icon ?? node.icon,
+          children: node.children ? applyMeta(node.children) : [],
+        };
+      });
+    }
+    return applyMeta(treeNodes);
+  }, [treeNodes, pageMeta]);
+
   // Filter treeNodes so only actual folders are shown in FoldersView
-  const folders = treeNodes.filter(
+  const folders = mergedNodes.filter(
     (node) => node.icon === '📁' || node.icon === '📂' || (node.children && node.children.length > 0)
   );
 

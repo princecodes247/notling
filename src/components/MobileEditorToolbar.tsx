@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Plus,
   ArrowUp,
@@ -26,10 +26,8 @@ import {
   Trash2,
   Link,
   ChevronDown,
-  X,
   Check,
 } from 'lucide-react';
-import { motion } from 'motion/react';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { BottomSheet } from './BottomSheet';
 

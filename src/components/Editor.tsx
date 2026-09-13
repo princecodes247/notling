@@ -10,6 +10,7 @@ import {
   Share01Icon,
 } from '@hugeicons/core-free-icons';
 import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
+import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
@@ -42,6 +43,11 @@ export const Editor: React.FC<EditorProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
+  const pendingSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestMetaRef = React.useRef({ title, icon });
+  latestMetaRef.current = { title, icon };
+
   const isReadOnly = readOnlyProp ?? (page.canEdit === false);
   const isFolder = icon === '📁' || icon === '📂';
 
@@ -50,13 +56,11 @@ export const Editor: React.FC<EditorProps> = ({
   }, []);
 
   useEffect(() => {
-    setTitle(page.title);
+    if (document.activeElement !== titleInputRef.current) {
+      setTitle(page.title);
+    }
     setIcon(page.icon || '📄');
     setVisibility((page as any).visibility || 'workspace');
-    if (page.id) {
-      useUIStore.getState().updateTabMeta(page.id, page.title || 'Untitled Document', page.icon || '📄');
-      document.title = `${page.title || 'Untitled Document'} — Notling`;
-    }
   }, [page.id, page.title, page.icon, (page as any).visibility]);
 
   // Query active collaborators
@@ -138,32 +142,85 @@ export const Editor: React.FC<EditorProps> = ({
     },
   });
 
-  const handleTitleBlur = async () => {
+  const flushSaveMeta = React.useCallback(
+    async (overrideTitle?: string, overrideIcon?: string) => {
+      if (isReadOnly) return;
+      if (pendingSaveTimeoutRef.current) {
+        clearTimeout(pendingSaveTimeoutRef.current);
+        pendingSaveTimeoutRef.current = null;
+      }
+      const t = overrideTitle !== undefined ? overrideTitle : latestMetaRef.current.title;
+      const i = overrideIcon !== undefined ? overrideIcon : latestMetaRef.current.icon;
+
+      if (t !== page.title || i !== (page.icon || '📄')) {
+        setSaveStatus('saving');
+        try {
+          await updatePageMeta({
+            data: { pageId: page.id, title: t, icon: i },
+          });
+          setSaveStatus('saved');
+        } catch (err) {
+          setSaveStatus('error');
+        }
+      }
+    },
+    [isReadOnly, page.id, page.title, page.icon, setSaveStatus]
+  );
+
+  // Flush pending save on unmount or page switch
+  useEffect(() => {
+    return () => {
+      if (pendingSaveTimeoutRef.current) {
+        clearTimeout(pendingSaveTimeoutRef.current);
+        flushSaveMeta();
+      }
+    };
+  }, [flushSaveMeta]);
+
+  const handleTitleChange = (newTitle: string) => {
     if (isReadOnly) return;
-    if (title !== page.title) {
-      setSaveStatus('saving');
-      useUIStore.getState().updateTabMeta(page.id, title || 'Untitled Document', icon || '📄');
-      document.title = `${title || 'Untitled Document'} — Notling`;
-      await updatePageMeta({
-        data: { pageId: page.id, title, icon },
-      });
-      onTitleOrIconChange?.(title, icon);
-      setSaveStatus('saved');
+    setTitle(newTitle);
+    latestMetaRef.current.title = newTitle;
+
+    // 1. Immediately reflect client-side everywhere BEFORE performing any API calls!
+    updateClientPageMeta(queryClient, {
+      pageId: page.id,
+      title: newTitle,
+      icon: latestMetaRef.current.icon,
+    });
+    onTitleOrIconChange?.(newTitle, latestMetaRef.current.icon);
+
+    // 2. Schedule debounced server save
+    setSaveStatus('saving');
+    if (pendingSaveTimeoutRef.current) {
+      clearTimeout(pendingSaveTimeoutRef.current);
     }
+    pendingSaveTimeoutRef.current = setTimeout(() => {
+      flushSaveMeta(newTitle, latestMetaRef.current.icon);
+    }, 500);
+  };
+
+  const handleTitleBlur = () => {
+    if (isReadOnly) return;
+    flushSaveMeta();
   };
 
   const handleSelectIcon = async (selectedIcon: string) => {
     if (isReadOnly) return;
     setIcon(selectedIcon);
+    latestMetaRef.current.icon = selectedIcon;
     setShowEmojiPicker(false);
-    setSaveStatus('saving');
-    useUIStore.getState().updateTabMeta(page.id, title || 'Untitled Document', selectedIcon || '📄');
-    document.title = `${title || 'Untitled Document'} — Notling`;
-    await updatePageMeta({
-      data: { pageId: page.id, title, icon: selectedIcon },
+
+    // 1. Immediately reflect client-side everywhere BEFORE performing any API calls!
+    updateClientPageMeta(queryClient, {
+      pageId: page.id,
+      title: latestMetaRef.current.title,
+      icon: selectedIcon,
     });
-    onTitleOrIconChange?.(title, selectedIcon);
-    setSaveStatus('saved');
+    onTitleOrIconChange?.(latestMetaRef.current.title, selectedIcon);
+
+    // 2. Flush save to server
+    flushSaveMeta(latestMetaRef.current.title, selectedIcon);
   };
 
   return (
@@ -291,11 +348,17 @@ export const Editor: React.FC<EditorProps> = ({
 
           {/* Title Input */}
           <input
+            ref={titleInputRef}
             type="text"
             readOnly={isReadOnly}
             value={title}
-            onChange={(e) => !isReadOnly && setTitle(e.target.value)}
+            onChange={(e) => handleTitleChange(e.target.value)}
             onBlur={handleTitleBlur}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur();
+              }
+            }}
             placeholder={isFolder ? 'Folder Name' : 'Untitled Document'}
             className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder-stone-300 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 pb-1.5 transition-colors"
           />

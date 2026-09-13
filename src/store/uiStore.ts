@@ -7,7 +7,16 @@ export interface TabItem {
   path: string;
 }
 
+export interface LivePageMeta {
+  title: string;
+  icon: string;
+}
+
 interface UIState {
+  // Live client-side page meta overrides (pageId -> { title, icon })
+  pageMeta: Record<string, LivePageMeta>;
+  setPageMeta: (pageId: string, meta: { title?: string; icon?: string | null }) => void;
+
   // Tree expanded nodes state
   expandedNodeIds: Record<string, boolean>;
   toggleNodeExpand: (nodeId: string) => void;
@@ -51,6 +60,51 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
+  pageMeta: {},
+  setPageMeta: (pageId, meta) =>
+    set((state) => {
+      const prevMeta = state.pageMeta[pageId];
+      const nextTitle =
+        meta.title !== undefined
+          ? meta.title || 'Untitled Document'
+          : prevMeta?.title || 'Untitled Document';
+      const nextIcon =
+        meta.icon !== undefined
+          ? (meta.icon || '📄')
+          : prevMeta?.icon || '📄';
+
+      const updatedPageMeta = {
+        ...state.pageMeta,
+        [pageId]: {
+          title: nextTitle,
+          icon: nextIcon,
+        },
+      };
+
+      const updatedTabs = state.openTabs.map((t) =>
+        t.id === pageId
+          ? {
+              ...t,
+              title: nextTitle,
+              icon: nextIcon,
+            }
+          : t
+      );
+
+      // Instantly update browser document title if this page is active
+      if (
+        (state.activeTabId === pageId || state.activePageId === pageId) &&
+        typeof document !== 'undefined'
+      ) {
+        document.title = `${nextTitle} — Notling`;
+      }
+
+      return {
+        pageMeta: updatedPageMeta,
+        openTabs: updatedTabs,
+      };
+    }),
+
   expandedNodeIds: {},
   toggleNodeExpand: (nodeId) =>
     set((state) => ({
@@ -80,12 +134,16 @@ export const useUIStore = create<UIState>((set, get) => ({
         return { activeTabId: 'home' };
       }
 
+      const live = state.pageMeta[tab.id];
+      const resolvedTabTitle = live?.title ?? tab.title;
+      const resolvedTabIcon = live?.icon ?? tab.icon;
+
       const existingIndex = state.openTabs.findIndex((t) => t.id === tab.id);
       if (existingIndex !== -1) {
         const existing = state.openTabs[existingIndex];
         const isSame =
-          existing.title === tab.title &&
-          existing.icon === tab.icon &&
+          existing.title === resolvedTabTitle &&
+          existing.icon === resolvedTabIcon &&
           existing.path === tab.path &&
           state.activeTabId === tab.id;
 
@@ -95,10 +153,10 @@ export const useUIStore = create<UIState>((set, get) => ({
 
         const newTabs = [...state.openTabs];
         const mergedTitle =
-          tab.title && tab.title !== 'Untitled Document'
-            ? tab.title
-            : (existing.title && existing.title !== 'Untitled Document' ? existing.title : tab.title);
-        const mergedIcon = tab.icon || existing.icon;
+          resolvedTabTitle && resolvedTabTitle !== 'Untitled Document'
+            ? resolvedTabTitle
+            : (existing.title && existing.title !== 'Untitled Document' ? existing.title : resolvedTabTitle);
+        const mergedIcon = resolvedTabIcon || existing.icon;
 
         newTabs[existingIndex] = { ...existing, ...tab, title: mergedTitle, icon: mergedIcon };
         return {
@@ -107,7 +165,7 @@ export const useUIStore = create<UIState>((set, get) => ({
         };
       }
       return {
-        openTabs: [...state.openTabs, tab],
+        openTabs: [...state.openTabs, { ...tab, title: resolvedTabTitle, icon: resolvedTabIcon }],
         activeTabId: tab.id,
       };
     }),
@@ -140,11 +198,32 @@ export const useUIStore = create<UIState>((set, get) => ({
     return nextPath;
   },
   updateTabMeta: (id, title, icon) =>
-    set((state) => ({
-      openTabs: state.openTabs.map((t) =>
-        t.id === id ? { ...t, title, icon: icon !== undefined ? icon : t.icon } : t
-      ),
-    })),
+    set((state) => {
+      const resolvedTitle = title || 'Untitled Document';
+      const resolvedIcon = icon !== undefined ? icon : (state.pageMeta[id]?.icon || '📄');
+
+      const updatedPageMeta = {
+        ...state.pageMeta,
+        [id]: {
+          title: resolvedTitle,
+          icon: resolvedIcon,
+        },
+      };
+
+      if (
+        (state.activeTabId === id || state.activePageId === id) &&
+        typeof document !== 'undefined'
+      ) {
+        document.title = `${resolvedTitle} — Notling`;
+      }
+
+      return {
+        pageMeta: updatedPageMeta,
+        openTabs: state.openTabs.map((t) =>
+          t.id === id ? { ...t, title: resolvedTitle, icon: resolvedIcon } : t
+        ),
+      };
+    }),
   setActiveTabId: (id) => set({ activeTabId: id }),
   reorderTabs: (fromIndex, toIndex) =>
     set((state) => {

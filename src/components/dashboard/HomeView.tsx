@@ -4,9 +4,9 @@ import {
   FolderAddIcon,
   PlusSignIcon,
   ArrowRight01Icon,
-  Clock01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
+import { useUIStore } from '~/store/uiStore';
 
 interface HomeViewProps {
   userName?: string;
@@ -36,15 +36,32 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onCreatePage,
   onNavigate,
 }) => {
+  const pageMeta = useUIStore((s) => s.pageMeta);
+
+  const mergedNodes = useMemo(() => {
+    function applyMeta(nodes: PageTreeNode[]): PageTreeNode[] {
+      return nodes.map((node) => {
+        const live = pageMeta[node.id];
+        return {
+          ...node,
+          title: live?.title ?? node.title,
+          icon: live?.icon ?? node.icon,
+          children: node.children ? applyMeta(node.children) : [],
+        };
+      });
+    }
+    return applyMeta(treeNodes);
+  }, [treeNodes, pageMeta]);
+
   // Only actual folders
   const folders = useMemo(
-    () => treeNodes.filter((n) => n.icon === '📁' || n.icon === '📂' || (n.children && n.children.length > 0)),
-    [treeNodes]
+    () => mergedNodes.filter((n) => n.icon === '📁' || n.icon === '📂' || (n.children && n.children.length > 0)),
+    [mergedNodes]
   );
 
   // Recents sorted by last updated / opened first
   const recentDocs = useMemo(() => {
-    const all = flattenTreeNodes(treeNodes).filter(
+    const all = flattenTreeNodes(mergedNodes).filter(
       (n) => n.icon !== '📁' && n.icon !== '📂'
     );
     return all.sort((a, b) => {
@@ -52,10 +69,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
       const timeB = b.updatedAt ? new Date(b.updatedAt).getTime() : b.createdAt ? new Date(b.createdAt).getTime() : 0;
       return timeB - timeA;
     });
-  }, [treeNodes]);
+  }, [mergedNodes]);
 
   let totalDocs = 0;
-  treeNodes.forEach((n) => {
+  mergedNodes.forEach((n) => {
     if (n.icon !== '📁' && n.icon !== '📂') totalDocs += 1;
     if (n.children) {
       n.children.forEach((c) => {
@@ -64,7 +81,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     }
   });
 
-  const hasAnyContent = treeNodes.length > 0;
+  const hasAnyContent = mergedNodes.length > 0;
 
   return (
     <div className="flex-1 w-full h-full bg-white overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans pt-safe flex flex-col">

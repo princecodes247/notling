@@ -35,10 +35,11 @@ function DocumentPageRoute() {
   // Synchronize Tab title, icon, and document title as soon as page data is loaded
   useEffect(() => {
     if (page?.id) {
-      const { openTabs, updateTabMeta, openTab } = useUIStore.getState();
+      const { openTabs, updateTabMeta, openTab, pageMeta } = useUIStore.getState();
+      const live = pageMeta[page.id];
       const existing = openTabs.find((t) => t.id === page.id);
-      const title = page.title || 'Untitled Document';
-      const icon = page.icon || '📄';
+      const title = live?.title ?? page.title ?? 'Untitled Document';
+      const icon = live?.icon ?? page.icon ?? '📄';
 
       if (existing) {
         updateTabMeta(page.id, title, icon);
@@ -52,9 +53,8 @@ function DocumentPageRoute() {
       }
 
       document.title = `${title} — Notling`;
-      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
     }
-  }, [page?.id, page?.title, page?.icon, queryClient]);
+  }, [page?.id, page?.title, page?.icon]);
 
   if (isLoading) {
     return (

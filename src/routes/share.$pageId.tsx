@@ -1,7 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPublicPage, updatePageMeta, pingPagePresence, removePagePresence } from '~/server/pages';
+import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { Route as rootRoute } from './__root';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -205,9 +206,11 @@ export function PublicBlockViewer({ pageId, content, userEmail }: { pageId: stri
 }
 
 function SharedEditablePage({ page }: { page: Page }) {
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState(page.title);
   const [icon] = useState(page.icon || '📄');
   const [mounted, setMounted] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -217,12 +220,36 @@ function SharedEditablePage({ page }: { page: Page }) {
     setTitle(page.title);
   }, [page.title]);
 
-  const handleTitleBlur = async () => {
-    if (title !== page.title) {
+  const flushSave = async (t: string) => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    if (t !== page.title) {
       await updatePageMeta({
-        data: { pageId: page.id, title, icon },
+        data: { pageId: page.id, title: t, icon },
       });
     }
+  };
+
+  const handleTitleChange = (newTitle: string) => {
+    setTitle(newTitle);
+    document.title = `${newTitle || 'Untitled Document'} - Notling`;
+    updateClientPageMeta(queryClient, {
+      pageId: page.id,
+      title: newTitle,
+      icon,
+    });
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+    saveTimeoutRef.current = setTimeout(() => {
+      flushSave(newTitle);
+    }, 500);
+  };
+
+  const handleTitleBlur = () => {
+    flushSave(title);
   };
 
   return (
@@ -234,8 +261,13 @@ function SharedEditablePage({ page }: { page: Page }) {
       <input
         type="text"
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => handleTitleChange(e.target.value)}
         onBlur={handleTitleBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.currentTarget.blur();
+          }
+        }}
         placeholder="Untitled Document"
         className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder-stone-300 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 pb-1.5 transition-colors"
       />
