@@ -83,7 +83,12 @@ function OnboardingPage() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await checkWorkspaceSlug({ data: { slug: clean } });
+        const res = await checkWorkspaceSlug({
+          data: {
+            slug: clean,
+            excludeWorkspaceId: session?.workspaceId,
+          },
+        });
         if (active) {
           setSlugInfo(res);
         }
@@ -96,7 +101,7 @@ function OnboardingPage() {
       active = false;
       clearTimeout(timer);
     };
-  }, [workspaceSlug]);
+  }, [workspaceSlug, session?.workspaceId]);
 
   const handleWorkspaceNameChange = (val: string) => {
     setWorkspaceName(val);
