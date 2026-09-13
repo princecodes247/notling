@@ -1,39 +1,10 @@
 import { useEffect, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Sun02Icon, Moon02Icon, ComputerIcon } from '@hugeicons/core-free-icons';
+import { useTheme, type ThemeMode } from '~/context/ThemeContext';
 
-export type ThemeMode = 'light' | 'dark' | 'system';
-
-export function getInitialThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'system';
-  const stored = window.localStorage.getItem('theme');
-  if (stored === 'light' || stored === 'dark' || stored === 'system') {
-    return stored;
-  }
-  if (stored === 'auto') return 'system';
-  return 'system';
-}
-
-export function applyThemeMode(mode: ThemeMode) {
-  if (typeof window === 'undefined') return;
-
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = mode === 'dark' || (mode === 'system' && prefersDark);
-
-  const root = document.documentElement;
-
-  if (isDark) {
-    root.classList.remove('light');
-    root.classList.add('dark');
-    root.setAttribute('data-theme', 'dark');
-    root.style.colorScheme = 'dark';
-  } else {
-    root.classList.remove('dark');
-    root.classList.add('light');
-    root.setAttribute('data-theme', 'light');
-    root.style.colorScheme = 'light';
-  }
-}
+export type { ThemeMode } from '~/context/ThemeContext';
+export { getInitialThemeMode, applyThemeMode } from '~/context/ThemeContext';
 
 interface ThemeToggleProps {
   variant?: 'pill' | 'segmented' | 'icon' | 'cards';
@@ -41,28 +12,15 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ variant = 'segmented', className = '' }: ThemeToggleProps) {
-  const [mode, setMode] = useState<ThemeMode>('system');
+  const { mode, setMode } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const initialMode = getInitialThemeMode();
-    setMode(initialMode);
-    applyThemeMode(initialMode);
   }, []);
-
-  useEffect(() => {
-    if (mode !== 'system') return;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = () => applyThemeMode('system');
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, [mode]);
 
   const handleSelectMode = (newMode: ThemeMode) => {
     setMode(newMode);
-    applyThemeMode(newMode);
-    window.localStorage.setItem('theme', newMode);
   };
 
   if (!mounted) return null;

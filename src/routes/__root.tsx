@@ -5,6 +5,7 @@ import {
   Scripts,
 } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '~/context/ThemeContext';
 import stylesCss from '~/styles.css?url';
 import '~/styles.css';
 
@@ -24,12 +25,40 @@ const queryClient = new QueryClient({
   },
 });
 
+const THEME_INIT_SCRIPT = `
+  (function() {
+    try {
+      var stored = localStorage.getItem('theme');
+      var mode = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'light';
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = mode === 'dark' || (mode === 'system' && prefersDark);
+      var root = document.documentElement;
+      if (isDark) {
+        root.classList.remove('light');
+        root.classList.add('dark');
+        root.setAttribute('data-theme', 'dark');
+        root.style.colorScheme = 'dark';
+      } else {
+        root.classList.remove('dark');
+        root.classList.add('light');
+        root.setAttribute('data-theme', 'light');
+        root.style.colorScheme = 'light';
+      }
+    } catch (e) {}
+  })();
+`;
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
       { title: 'Notling - The smartest way to organize your workspace' },
+    ],
+    scripts: [
+      {
+        children: THEME_INIT_SCRIPT,
+      },
     ],
     links: [
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -49,38 +78,21 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var stored = localStorage.getItem('theme');
-                  var mode = (stored === 'light' || stored === 'dark' || stored === 'system') ? stored : 'system';
-                  var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  var isDark = mode === 'dark' || (mode === 'system' && prefersDark);
-                  if (isDark) {
-                    document.documentElement.classList.add('dark');
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                    document.documentElement.style.colorScheme = 'dark';
-                  } else {
-                    document.documentElement.classList.remove('dark');
-                    document.documentElement.classList.add('light');
-                    document.documentElement.setAttribute('data-theme', 'light');
-                    document.documentElement.style.colorScheme = 'light';
-                  }
-                } catch (e) {}
-              })();
-            `,
+            __html: THEME_INIT_SCRIPT,
           }}
         />
         <HeadContent />
       </head>
-      <body className="bg-[#eef2f6] text-neutral-900 font-sans antialiased selection:bg-neutral-900 selection:text-white min-h-screen">
-        <QueryClientProvider client={queryClient}>
-          <Outlet />
-        </QueryClientProvider>
+      <body className="text-neutral-900 font-sans antialiased selection:bg-neutral-900 selection:text-white min-h-screen" suppressHydrationWarning>
+        <ThemeProvider>
+          <QueryClientProvider client={queryClient}>
+            <Outlet />
+          </QueryClientProvider>
+        </ThemeProvider>
         <Scripts />
       </body>
     </html>

@@ -3,6 +3,7 @@ import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import { getClientId, useCollaboration } from '~/lib/collaboration';
+import { useTheme } from '~/context/ThemeContext';
 
 interface PublicBlockViewerProps {
   pageId: string;
@@ -12,21 +13,10 @@ interface PublicBlockViewerProps {
 
 export function PublicBlockViewer({ pageId, content, userEmail }: PublicBlockViewerProps) {
   const [mounted, setMounted] = useState(false);
-  const [isDark, setIsDark] = useState(() =>
-    typeof document !== 'undefined'
-      ? document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark'
-      : false
-  );
+  const { isDark } = useTheme();
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window === 'undefined') return;
-    const observer = new MutationObserver(() => {
-      const dark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
-      setIsDark(dark);
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    return () => observer.disconnect();
   }, []);
 
   const parsedBlocks = useMemo(() => {

@@ -366,14 +366,6 @@ function DashboardLayout() {
     navigate({ to: '/login' });
   };
 
-  if (sessionLoading) {
-    return (
-      <FullScreenWordListLoader
-        words={DASHBOARD_LOADING_WORDS}
-      />
-    );
-  }
-
   if (!session) {
     return null;
   }

@@ -18,6 +18,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
 import { getOfflineDraft, saveOfflineDraft, clearOfflineDraft, hasOfflineDraft } from '~/lib/offlineStorage';
 import { useNavigate } from '@tanstack/react-router';
+import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
 import {
@@ -856,21 +857,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
   const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
 
-  const [isDark, setIsDark] = useState(() =>
-    typeof document !== 'undefined'
-      ? document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark'
-      : false
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const observer = new MutationObserver(() => {
-      const dark = document.documentElement.classList.contains('dark') || document.documentElement.getAttribute('data-theme') === 'dark';
-      setIsDark(dark);
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    return () => observer.disconnect();
-  }, []);
+  const { isDark } = useTheme();
 
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [mediaPickerInitialTab, setMediaPickerInitialTab] = useState<'upload' | 'link' | 'unsplash' | 'giphy'>('upload');
