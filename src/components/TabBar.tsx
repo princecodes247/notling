@@ -12,6 +12,7 @@ import {
   ArrowLeft01Icon,
   ArrowRight01Icon,
   Loading02Icon,
+  Delete02Icon,
 } from '@hugeicons/core-free-icons';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 
@@ -162,11 +163,10 @@ export const TabBar: React.FC<TabBarProps> = ({
         onClick={() =>
           onSelectTab({ id: 'home', title: 'Home', icon: '🏠', path: '/dashboard' })
         }
-        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${
-          isHomeActive
-            ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white shadow-xs ring-1 ring-black/[0.02]'
-            : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'
-        }`}
+        className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${isHomeActive
+          ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white shadow-xs ring-1 ring-black/[0.02]'
+          : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'
+          }`}
         title="Home"
       >
         <HugeiconsIcon icon={Home01Icon} size={15} />
@@ -216,13 +216,12 @@ export const TabBar: React.FC<TabBarProps> = ({
                 onDrop={(e) => handleDrop(e, tab.id)}
                 onDragEnd={handleDragEnd}
                 onClick={() => onSelectTab(tab)}
-                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${
-                  isDragging
-                    ? 'opacity-40 border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
-                    : isActive
+                className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${isDragging
+                  ? 'opacity-40 border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
+                  : isActive
                     ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white font-semibold shadow-xs ring-1 ring-black/[0.02]'
                     : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/40 dark:hover:bg-zinc-800/50'
-                }`}
+                  }`}
               >
                 {/* Drop Indicator Lines */}
                 {isDropLeft && (
@@ -239,6 +238,8 @@ export const TabBar: React.FC<TabBarProps> = ({
                   <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 ) : tab.id === 'settings' ? (
                   <HugeiconsIcon icon={Settings02Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+                ) : tab.id === 'trash' ? (
+                  <HugeiconsIcon icon={Delete02Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 ) : (
                   <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 )}
@@ -255,9 +256,8 @@ export const TabBar: React.FC<TabBarProps> = ({
                     e.stopPropagation();
                     onCloseTab(tab.id);
                   }}
-                  className={`p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity ${
-                    isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}
+                  className={`p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}
                   title="Close tab"
                 >
                   <HugeiconsIcon icon={Cancel01Icon} size={11} />

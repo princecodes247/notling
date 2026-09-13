@@ -9,6 +9,27 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Newsreader', Georgia, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Theme semantic utilities mapped to CSS custom properties */
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-fg: var(--brand-fg);
+  --color-brand-light: var(--brand-light);
+  --color-brand-border: var(--brand-border);
+  --color-brand-text: var(--brand-text);
+
+  /* Brand Scale (#1F4D3D Deep Forest Emerald) */
+  --color-brand-50: #f2f7f4;
+  --color-brand-100: #e1eee7;
+  --color-brand-200: #c2dccf;
+  --color-brand-300: #98c3b2;
+  --color-brand-400: #6aa490;
+  --color-brand-500: #42846f;
+  --color-brand-600: #1f4d3d;
+  --color-brand-700: #183e31;
+  --color-brand-800: #123026;
+  --color-brand-900: #0d221b;
+  --color-brand-950: #06130f;
 }
 
 @layer base {
@@ -23,9 +44,18 @@
     --text-primary: #1c1917;
     --text-secondary: #57534e;
     --text-muted: #a8a29e;
+
+    /* Semantic Brand Accent CSS Variables (#1F4D3D) */
+    --brand-bg: #1f4d3d;
+    --brand-hover: #183e31;
+    --brand-fg: #ffffff;
+    --brand-light: #f2f7f4;
+    --brand-border: #c2dccf;
+    --brand-text: #1f4d3d;
+
     --accent-amber: #d97706;
-    --accent-emerald: #059669;
-    --accent-indigo: #4f46e5;
+    --accent-emerald: #1f4d3d;
+    --accent-indigo: #1f4d3d;
   }
 
   .dark,
@@ -40,9 +70,18 @@
     --text-primary: #f2f2f7;
     --text-secondary: #a1a1a6;
     --text-muted: #636366;
+
+    /* Dark Mode Semantic Brand Accent CSS Variables */
+    --brand-bg: #34d399;
+    --brand-hover: #4ade80;
+    --brand-fg: #06130f;
+    --brand-light: #122820;
+    --brand-border: #245242;
+    --brand-text: #34d399;
+
     --accent-amber: #ffb340;
-    --accent-emerald: #34c759;
-    --accent-indigo: #0a84ff;
+    --accent-emerald: #34d399;
+    --accent-indigo: #34d399;
     color-scheme: dark;
   }
 

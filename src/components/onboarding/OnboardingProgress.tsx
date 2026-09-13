@@ -16,7 +16,7 @@ export function OnboardingProgress({ currentStep, totalSteps = 3 }: OnboardingPr
           <div
             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
               currentStep === s
-                ? 'bg-black dark:bg-white text-white dark:text-neutral-950 shadow-2xs'
+                ? 'bg-brand-bg text-brand-fg shadow-2xs'
                 : currentStep > s
                   ? 'bg-neutral-200 dark:bg-zinc-800 text-neutral-800 dark:text-zinc-200'
                   : 'bg-neutral-100 dark:bg-zinc-900 text-neutral-400 dark:text-zinc-600'

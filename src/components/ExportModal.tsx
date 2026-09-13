@@ -57,7 +57,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="h-9 px-5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+          className="h-9 px-5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
         >
           Done
         </button>

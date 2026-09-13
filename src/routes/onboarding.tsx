@@ -156,7 +156,7 @@ function OnboardingPage() {
     <div className="min-h-screen bg-[#fafaf9] dark:bg-[#0e0e10] text-neutral-900 dark:text-neutral-100 flex flex-col items-center justify-center p-6 select-none font-sans relative">
       {/* Header Brand */}
       <div className="flex items-center gap-2 mb-8">
-        <NotlingLogoIcon className="w-6 h-6 text-neutral-900 dark:text-white" />
+        <NotlingLogoIcon className="w-6 h-6 text-brand-text" />
         <span className="font-bold text-lg tracking-tight">Notling Workspace</span>
       </div>
 

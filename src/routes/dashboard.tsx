@@ -176,7 +176,6 @@ function DashboardLayout() {
       doOpenTab({
         id: 'folders',
         title: 'Folders',
-        icon: '📁',
         path: '/dashboard/folders',
       });
     } else if (currentPath.includes('/dashboard/settings')) {
@@ -185,7 +184,6 @@ function DashboardLayout() {
       doOpenTab({
         id: 'settings',
         title: 'Settings',
-        icon: '⚙️',
         path: '/dashboard/settings',
       });
     } else if (currentPath.includes('/dashboard/trash')) {
@@ -194,7 +192,6 @@ function DashboardLayout() {
       doOpenTab({
         id: 'trash',
         title: 'Trash',
-        icon: '🗑️',
         path: '/dashboard/trash',
       });
     } else if (currentPath === '/dashboard') {

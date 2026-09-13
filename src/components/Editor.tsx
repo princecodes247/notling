@@ -320,14 +320,14 @@ export const Editor: React.FC<EditorProps> = ({
             <span className="hidden sm:inline">Export</span>
           </button>
 
-          {/* Share Button: full contrast black pill with room to breathe */}
+          {/* Share Button: full contrast brand pill */}
           {!isReadOnly && (
             <button
               type="button"
               onClick={() => setIsShareModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 active:scale-95 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg active:scale-95 text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer shrink-0"
             >
-              <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
+              <HugeiconsIcon icon={Share01Icon} size={13} className="opacity-90" />
               <span>Share</span>
             </button>
           )}

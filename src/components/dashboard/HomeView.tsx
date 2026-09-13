@@ -110,7 +110,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <button
                 type="button"
                 onClick={onCreatePage}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
               >
                 <HugeiconsIcon icon={PlusSignIcon} size={15} />
                 <span>New Document</span>
@@ -122,7 +122,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {!hasAnyContent ? (
           /* Single Centered Empty State (HIG Deference) */
           <div className="flex-1 flex flex-col items-center justify-center text-center py-16 px-4 my-auto">
-            <div className="w-14 h-14 rounded-2xl bg-stone-100 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 text-stone-600 dark:text-zinc-300 flex items-center justify-center mb-4 shadow-2xs">
+            <div className="w-14 h-14 rounded-2xl bg-brand-light border border-brand-border text-brand-text flex items-center justify-center mb-4 shadow-2xs">
               <HugeiconsIcon icon={PlusSignIcon} size={24} />
             </div>
             <h3 className="text-base font-semibold text-stone-950 dark:text-white tracking-tight">
@@ -134,10 +134,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <button
               type="button"
               onClick={onCreatePage}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 text-xs font-medium shadow-2xs transition-all cursor-pointer active-press"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium shadow-2xs transition-all cursor-pointer active-press"
             >
               <HugeiconsIcon icon={PlusSignIcon} size={15} />
-              <span>Create your first document</span>
             </button>
           </div>
         ) : (

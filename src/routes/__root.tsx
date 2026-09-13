@@ -87,7 +87,7 @@ function RootComponent() {
         />
         <HeadContent />
       </head>
-      <body className="text-neutral-900 font-sans antialiased selection:bg-neutral-900 selection:text-white min-h-screen" suppressHydrationWarning>
+      <body className="text-neutral-900 font-sans antialiased selection:bg-brand-bg selection:text-brand-fg min-h-screen" suppressHydrationWarning>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
             <Outlet />

@@ -18,7 +18,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       <header className="sticky top-0 z-50 bg-[#eef2f6]/90 backdrop-blur-md px-6 sm:px-12 h-16 flex items-center justify-between border-b border-neutral-200/50">
         {/* Brand */}
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={onEnterApp}>
-          <NotlingLogoIcon className="w-5 h-5 text-neutral-900" />
+          <NotlingLogoIcon className="w-5 h-5 text-brand-text" />
           <span className="font-bold text-base tracking-tight text-neutral-900">
             Notling
           </span>
@@ -41,11 +41,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </a>
           </nav>
 
-          {/* Black Pill Button */}
+          {/* Brand Pill Button */}
           <button
             type="button"
             onClick={onEnterApp}
-            className="bg-black hover:bg-neutral-800 text-white text-xs font-medium px-4 py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer"
+            className="bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium px-4 py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer"
           >
             Get early access
           </button>

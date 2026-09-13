@@ -185,7 +185,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="h-9 px-5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
+          className="h-9 px-5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight shadow-xs hover:shadow-sm active:scale-95 transition-all flex items-center justify-center cursor-pointer"
         >
           Done
         </button>
@@ -212,7 +212,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="submit"
               disabled={!inviteEmail.trim()}
               className={`h-10 px-4 rounded-lg text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center justify-center cursor-pointer active:scale-95 ${inviteEmail.trim()
-                ? 'bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-white shadow-xs active:bg-black'
+                ? 'bg-brand-bg hover:bg-brand-hover text-brand-fg shadow-xs'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-600 border border-stone-200/80 dark:border-stone-700 cursor-not-allowed shadow-none'
                 }`}
             >

@@ -36,7 +36,7 @@ export function ShareHeader({
   return (
     <header className="h-14 border-b border-stone-200/70 px-6 sm:px-12 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
       <div className="flex items-center gap-2.5 cursor-pointer" onClick={onNavigateHome}>
-        <div className="w-7 h-7 rounded-lg bg-stone-900 text-amber-200/95 flex items-center justify-center shadow-xs">
+        <div className="w-7 h-7 rounded-lg bg-brand-bg text-brand-fg flex items-center justify-center shadow-xs">
           <NotlingLogoIcon className="w-3.5 h-3.5" />
         </div>
         <span className="font-semibold text-sm tracking-tight text-stone-900">Notling</span>
@@ -87,7 +87,7 @@ export function ShareHeader({
         {/* User Status / Profile */}
         {isLoggedIn ? (
           <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
-            <div className="w-7 h-7 rounded-full bg-stone-900 text-white flex items-center justify-center text-xs font-semibold shadow-2xs">
+            <div className="w-7 h-7 rounded-full bg-brand-bg text-brand-fg flex items-center justify-center text-xs font-semibold shadow-2xs">
               {(userEmail || 'U').charAt(0).toUpperCase()}
             </div>
             <span className="text-xs font-medium text-stone-700 hidden md:inline truncate max-w-[140px]">
@@ -98,7 +98,7 @@ export function ShareHeader({
           <button
             type="button"
             onClick={onSignIn}
-            className="px-4 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
+            className="px-4 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
           >
             Sign in
           </button>

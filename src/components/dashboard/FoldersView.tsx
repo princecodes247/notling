@@ -105,7 +105,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               <button
                 type="button"
                 onClick={onCreateFolder}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 text-xs font-medium cursor-pointer shadow-2xs transition-all active-press"
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium cursor-pointer shadow-2xs transition-all active-press"
               >
                 <HugeiconsIcon icon={FolderAddIcon} size={15} />
                 <span>Create your first folder</span>
