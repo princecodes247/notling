@@ -32,7 +32,7 @@ export async function seedWelcomeDocument(workspaceId: string): Promise<string> 
     .insert(pages)
     .values({
       workspaceId,
-      title: 'Welcome to Notling 🚀',
+      title: 'Welcome to Notling',
       icon: '🚀',
       content: [
         {
