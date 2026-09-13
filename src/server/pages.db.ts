@@ -72,6 +72,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
               visibility: pages.visibility,
               order: pages.order,
               isPinned: pages.isPinned,
+              role: pageShares.role,
               createdAt: pages.createdAt,
               updatedAt: pages.updatedAt,
               contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
@@ -110,13 +111,14 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     // Combine workspace pages
     for (const p of workspacePages) {
-      pageMap.set(p.id, { ...p, children: [] });
+      pageMap.set(p.id, { ...p, children: [], canEdit: true });
     }
 
     // Combine explicit shares
     for (const sp of sharedPages) {
       if (!pageMap.has(sp.id)) {
-        const node: PageTreeNode = { ...sp, children: [], isShared: true };
+        const canEdit = (sp as any).role === 'editor';
+        const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit };
         pageMap.set(sp.id, node);
         rootNodes.push(node);
       }

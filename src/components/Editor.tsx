@@ -337,17 +337,22 @@ export const Editor: React.FC<EditorProps> = ({
       {/* Main Canvas */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 md:px-16 lg:px-24 pb-20 md:pb-12 bg-white dark:bg-[#18181b]">
         <div className="max-w-3xl mx-auto flex flex-col">
-          {/* Page/Folder Icon Picker */}
+          {/* Page/Folder Icon */}
           <div className="relative mb-3 group">
-            <button
-              type="button"
-              disabled={isReadOnly}
-              onClick={() => !isReadOnly && setShowEmojiPicker(!showEmojiPicker)}
-              className={`text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform ${isReadOnly ? 'cursor-default' : 'hover:bg-stone-100 dark:hover:bg-stone-800 hover:scale-105 cursor-pointer'
-                }`}
-            >
-              {icon}
-            </button>
+            {isReadOnly ? (
+              <span className="text-4xl sm:text-5xl rounded-xl p-1 -ml-1 inline-block select-none">
+                {icon}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                className="text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform hover:bg-stone-100 dark:hover:bg-stone-800 hover:scale-105 cursor-pointer"
+                title="Change icon"
+              >
+                {icon}
+              </button>
+            )}
 
             {showEmojiPicker && !isReadOnly && (
               <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-[#222226] border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">

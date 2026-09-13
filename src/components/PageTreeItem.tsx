@@ -50,6 +50,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const isExpanded = !!expandedNodeIds[node.id];
   const isActive = activePageId === node.id;
   const hasChildren = node.children && node.children.length > 0;
+  const canEdit = node.canEdit !== false;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(displayTitle);
@@ -155,12 +156,12 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   return (
     <div className="select-none text-xs">
       <div
-        draggable={true}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onDragEnd={handleDragEnd}
+        draggable={canEdit}
+        onDragStart={canEdit ? handleDragStart : undefined}
+        onDragOver={canEdit ? handleDragOver : undefined}
+        onDragLeave={canEdit ? handleDragLeave : undefined}
+        onDrop={canEdit ? handleDrop : undefined}
+        onDragEnd={canEdit ? handleDragEnd : undefined}
         className={clsx(
           'group relative flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150 cursor-pointer my-0.5',
           isDraggingCurrent
@@ -204,16 +205,22 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
 
           {/* Page Icon with interactive emoji picker */}
           <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-neutral-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
-              title="Change icon"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            >
-              {displayIcon}
-            </button>
+            {canEdit ? (
+              <button
+                type="button"
+                className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-neutral-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
+                title="Change icon"
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              >
+                {displayIcon}
+              </button>
+            ) : (
+              <span className="text-sm leading-none shrink-0 p-0.5 select-none">
+                {displayIcon}
+              </span>
+            )}
 
-            {showEmojiPicker && (
+            {canEdit && showEmojiPicker && (
               <>
                 <div
                   className="fixed inset-0 z-50"
@@ -238,7 +245,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             )}
           </div>
 
-          {isEditing ? (
+          {isEditing && canEdit ? (
             <form onSubmit={handleTitleSubmit} className="flex-1" onClick={(e) => e.stopPropagation()}>
               <input
                 type="text"
@@ -299,18 +306,20 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             </button>
           )}
 
-          {/* Add Sub-Page */}
-          <button
-            type="button"
-            title="Add sub-page"
-            className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
-            onClick={(e) => {
-              e.stopPropagation();
-              onCreateChild(node.id);
-            }}
-          >
-            <HugeiconsIcon icon={PlusSignIcon} size={14} />
-          </button>
+          {/* Add Sub-Page (Only for editors) */}
+          {canEdit && (
+            <button
+              type="button"
+              title="Add sub-page"
+              className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateChild(node.id);
+              }}
+            >
+              <HugeiconsIcon icon={PlusSignIcon} size={14} />
+            </button>
+          )}
 
           {/* Context Options */}
           <div className="relative">
@@ -350,30 +359,34 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       {node.isPinned ? 'Unpin Page' : 'Pin to Favorites'}
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      setShowEmojiPicker(true);
-                    }}
-                  >
-                    <span className="text-xs">✨</span>
-                    Change Icon
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      setIsEditing(true);
-                    }}
-                  >
-                    <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
-                    Rename
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        setShowEmojiPicker(true);
+                      }}
+                    >
+                      <span className="text-xs">✨</span>
+                      Change Icon
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        setIsEditing(true);
+                      }}
+                    >
+                      <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
+                      Rename
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
@@ -386,18 +399,20 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     <HugeiconsIcon icon={Download01Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
                     Export Page
                   </button>
-                  <button
-                    type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowMenu(false);
-                      onSoftDelete(node.id);
-                    }}
-                  >
-                    <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500 dark:text-rose-400" />
-                    Delete
-                  </button>
+                  {canEdit && (
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onSoftDelete(node.id);
+                      }}
+                    >
+                      <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500 dark:text-rose-400" />
+                      Delete
+                    </button>
+                  )}
                 </div>
               </>
             )}
