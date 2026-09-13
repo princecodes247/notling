@@ -209,7 +209,11 @@ function DashboardLayout() {
     } else if (currentPath === '/dashboard') {
 
       if (session?.welcomePageId) {
-        navigate({ to: '/dashboard/p/$pageId', params: { pageId: session?.welcomePageId }, replace: true });
+        const targetWelcomeId = session.welcomePageId;
+        queryClient.setQueryData(['session'], (oldData: any) =>
+          oldData ? { ...oldData, welcomePageId: undefined } : oldData
+        );
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: targetWelcomeId }, replace: true });
       } else {
         doSetActivePageId(null);
         document.title = 'Home - Notling';

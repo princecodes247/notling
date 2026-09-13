@@ -481,18 +481,6 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspace = newWs;
     }
 
-    let welcomePageId: string | undefined;
-    if (workspace) {
-      const firstPage = await db
-        .select({ id: pages.id })
-        .from(pages)
-        .where(and(eq(pages.workspaceId, workspace.id), eq(pages.isDeleted, false)))
-        .limit(1);
-      if (firstPage.length > 0) {
-        welcomePageId = firstPage[0].id;
-      }
-    }
-
     return {
       userId: user.id,
       email: user.email,
@@ -504,7 +492,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
       workspaceIcon: workspace.icon || '🚀',
-      welcomePageId,
+      welcomePageId: undefined,
       isWorkspaceOwner: workspace.ownerId === user.id,
     };
   } catch (err) {
@@ -796,15 +784,6 @@ export async function processOAuthCallbackImpl(
         .returning();
       workspace = newWs;
       welcomePageId = await seedWelcomeDocument(workspace.id);
-    } else {
-      const firstPage = await db
-        .select({ id: pages.id })
-        .from(pages)
-        .where(and(eq(pages.workspaceId, workspace.id), eq(pages.isDeleted, false)))
-        .limit(1);
-      if (firstPage.length > 0) {
-        welcomePageId = firstPage[0].id;
-      }
     }
 
     await createSessionAndCookie(user.id);

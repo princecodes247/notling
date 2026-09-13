@@ -120,12 +120,17 @@ function OnboardingPage() {
       });
 
       if (res.success) {
-        queryClient.invalidateQueries({ queryKey: ['session'] });
-        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+        if (res.session) {
+          queryClient.setQueryData(['session'], res.session);
+        }
+        await queryClient.invalidateQueries({ queryKey: ['session'] });
+        await queryClient.invalidateQueries({ queryKey: ['pageTree'] });
         const returnUrl = sessionStorage.getItem('notling_auth_redirect');
         sessionStorage.removeItem('notling_auth_redirect');
         if (returnUrl) {
           window.location.href = returnUrl;
+        } else if (res.session?.welcomePageId) {
+          navigate({ to: '/dashboard/p/$pageId', params: { pageId: res.session.welcomePageId } });
         } else {
           navigate({ to: '/dashboard' });
         }
