@@ -1092,7 +1092,7 @@ export async function fetchPageShares(pageId: string) {
     const access = await getPageAccessLevel(pageRecord[0], session);
     if (!access) return { owner: null, shares: [] };
 
-    let owner: { id: string; email: string; name: string | null } | null = null;
+    let owner: { id: string; email: string; name: string | null; avatarUrl: string | null } | null = null;
 
     if (pageRecord.length > 0) {
       const ws = await db
@@ -1103,7 +1103,7 @@ export async function fetchPageShares(pageId: string) {
 
       if (ws.length > 0) {
         const ownerUsers = await db
-          .select({ id: users.id, email: users.email, name: users.name })
+          .select({ id: users.id, email: users.email, name: users.name, avatarUrl: users.avatarUrl })
           .from(users)
           .where(eq(users.id, ws[0].ownerId))
           .limit(1);
@@ -1121,8 +1121,12 @@ export async function fetchPageShares(pageId: string) {
         email: pageShares.email,
         role: pageShares.role,
         createdAt: pageShares.createdAt,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        userId: users.id,
       })
       .from(pageShares)
+      .leftJoin(users, eq(users.email, pageShares.email))
       .where(eq(pageShares.pageId, pageId))
       .orderBy(asc(pageShares.createdAt));
 
@@ -1151,6 +1155,14 @@ export async function inviteUserToPage(input: {
     const cleanEmail = input.email.trim().toLowerCase();
     if (!cleanEmail) return null;
 
+    const userMatch = await db
+      .select({ id: users.id, name: users.name, avatarUrl: users.avatarUrl })
+      .from(users)
+      .where(eq(users.email, cleanEmail))
+      .limit(1);
+
+    const userInfo = userMatch.length > 0 ? userMatch[0] : { id: null, name: null, avatarUrl: null };
+
     const existing = await db
       .select()
       .from(pageShares)
@@ -1163,7 +1175,12 @@ export async function inviteUserToPage(input: {
         .set({ role: input.role })
         .where(eq(pageShares.id, existing[0].id))
         .returning();
-      return updated;
+      return {
+        ...updated,
+        name: userInfo.name,
+        avatarUrl: userInfo.avatarUrl,
+        userId: userInfo.id,
+      };
     }
 
     const [newShare] = await db
@@ -1175,7 +1192,12 @@ export async function inviteUserToPage(input: {
       })
       .returning();
 
-    return newShare;
+    return {
+      ...newShare,
+      name: userInfo.name,
+      avatarUrl: userInfo.avatarUrl,
+      userId: userInfo.id,
+    };
   } catch (err) {
     console.error('Error inviting user to page:', err);
     return null;

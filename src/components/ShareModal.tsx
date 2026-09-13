@@ -12,6 +12,7 @@ import {
 import type { Page } from '~/db/schema';
 import { Modal } from './Modal';
 import { Select, type SelectOption } from '~/components/ui/Select';
+import { UserAvatar } from '~/components/UserAvatar';
 import {
   getPageShares,
   inviteUserToPage,
@@ -37,6 +38,9 @@ interface SharedPerson {
   id: string;
   email: string;
   role: 'editor' | 'viewer';
+  name?: string | null;
+  avatarUrl?: string | null;
+  userId?: string | null;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({
@@ -49,7 +53,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 }) => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole] = useState<'editor' | 'viewer'>('viewer');
-  const [owner, setOwner] = useState<{ id: string; email: string; name?: string | null } | null>(null);
+  const [owner, setOwner] = useState<{ id: string; email: string; name?: string | null; avatarUrl?: string | null; userId?: string | null } | null>(null);
   const [people, setPeople] = useState<SharedPerson[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -64,7 +68,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         .then((res: any) => {
           if (res) {
             if (res.owner) {
-              setOwner(res.owner);
+              setOwner({ ...res.owner, userId: res.owner.id });
             } else {
               setOwner(null);
             }
@@ -74,6 +78,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 id: s.id,
                 email: s.email,
                 role: s.role as 'editor' | 'viewer',
+                name: s.name,
+                avatarUrl: s.avatarUrl,
+                userId: s.userId,
               }))
             );
           }
@@ -96,7 +103,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
 
     try {
-      const newShare = await inviteUserToPage({
+      const newShare: any = await inviteUserToPage({
         data: {
           pageId: page.id,
           email: cleanEmail,
@@ -107,7 +114,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       if (newShare) {
         setPeople((prev) => {
           const filtered = prev.filter((p) => p.email !== cleanEmail);
-          return [...filtered, { id: newShare.id, email: newShare.email, role: newShare.role as 'editor' | 'viewer' }];
+          return [
+            ...filtered,
+            {
+              id: newShare.id,
+              email: newShare.email,
+              role: newShare.role as 'editor' | 'viewer',
+              name: newShare.name,
+              avatarUrl: newShare.avatarUrl,
+              userId: newShare.userId,
+            },
+          ];
         });
         setInvitedSuccess(`Invitation sent to ${cleanEmail}`);
         queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
@@ -223,11 +240,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 {owner && (
                   <div key="owner" className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
-                        {owner.email[0]}
-                      </div>
+                      <UserAvatar
+                        avatarUrl={owner.avatarUrl}
+                        seed={owner.email || owner.name || owner.id}
+                        name={owner.name || owner.email}
+                        size={24}
+                        className="w-6 h-6 shrink-0"
+                      />
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="truncate text-stone-800 font-medium">{owner.email}</span>
+                        {owner.name && (
+                          <span className="text-[11px] text-stone-400 truncate">({owner.name})</span>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -242,10 +266,25 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   .map((person) => (
                     <div key={person.id} className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 transition-colors">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
-                          {person.email[0]}
+                        {person.userId ? (
+                          <UserAvatar
+                            avatarUrl={person.avatarUrl}
+                            seed={person.email || person.name || person.id}
+                            name={person.name || person.email}
+                            size={24}
+                            className="w-6 h-6 shrink-0"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-stone-800 text-amber-200 font-mono font-semibold text-[10px] flex items-center justify-center shrink-0 uppercase shadow-2xs">
+                            {person.email[0]}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate text-stone-800 font-medium">{person.email}</span>
+                          {person.name && (
+                            <span className="text-[11px] text-stone-400 truncate">({person.name})</span>
+                          )}
                         </div>
-                        <span className="truncate text-stone-800 font-medium">{person.email}</span>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Select
