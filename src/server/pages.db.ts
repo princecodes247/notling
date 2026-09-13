@@ -494,6 +494,12 @@ export async function createNewPage(input: {
     const targetWorkspaceId = await resolveWorkspaceId(input.workspaceId);
     if (!targetWorkspaceId) return null;
 
+    const session = await getSessionImpl();
+    if (!session || session.workspaceId !== targetWorkspaceId) {
+      console.warn(`[Permission Denied] Blocked page creation in workspace ${targetWorkspaceId}. User is not a member.`);
+      return null;
+    }
+
     const existingInParent = await db
       .select({ order: pages.order })
       .from(pages)
@@ -1341,12 +1347,38 @@ export async function inviteWorkspaceMember(input: {
     const cleanEmail = input.email.trim().toLowerCase();
     if (!cleanEmail) return { success: false, error: 'Email is required.' };
 
-    // Check if user is already owner
     const wsList = await db
       .select({ ownerId: workspaces.ownerId })
       .from(workspaces)
       .where(eq(workspaces.id, targetWsId))
       .limit(1);
+
+    if (wsList.length === 0) {
+      return { success: false, error: 'Workspace not found.' };
+    }
+
+    const isOwner = wsList[0].ownerId === session.userId;
+    let isAdmin = false;
+
+    if (!isOwner && session.email) {
+      const adminCheck = await db
+        .select({ role: workspaceMembers.role })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, targetWsId),
+            or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, session.email.trim().toLowerCase()))
+          )
+        )
+        .limit(1);
+      if (adminCheck.length > 0 && adminCheck[0].role === 'admin') {
+        isAdmin = true;
+      }
+    }
+
+    if (!isOwner && !isAdmin) {
+      return { success: false, error: 'Only workspace owners or admins can invite new members.' };
+    }
 
     if (wsList.length > 0) {
       const ownerUser = await db
