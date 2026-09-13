@@ -331,20 +331,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         />
 
         <SidebarNavItem
-          icon={Delete02Icon}
-          label="Trash"
-          isActive={activeNav === 'trash'}
-          onClick={() => onNavClick?.('trash')}
-          badge={
-            trashCount !== undefined && trashCount > 0 ? (
-              <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800 dark:text-rose-300' : 'text-rose-700 dark:text-rose-400'}`}>
-                {trashCount}
-              </span>
-            ) : undefined
-          }
-        />
-
-        <SidebarNavItem
           icon={Upload}
           isLucide
           label="Import"
@@ -357,6 +343,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label="Settings"
           isActive={activeNav === 'settings'}
           onClick={() => onNavClick?.('settings')}
+        />
+
+        <SidebarNavItem
+          icon={Delete02Icon}
+          label="Trash"
+          isActive={activeNav === 'trash'}
+          onClick={() => onNavClick?.('trash')}
+          badge={
+            trashCount !== undefined && trashCount > 0 ? (
+              <span className={`text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded ${activeNav === 'trash' ? 'text-rose-800 dark:text-rose-300' : 'text-rose-700 dark:text-rose-400'}`}>
+                {trashCount}
+              </span>
+            ) : undefined
+          }
         />
       </div>
 
