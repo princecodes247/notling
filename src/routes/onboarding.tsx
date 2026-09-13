@@ -40,7 +40,7 @@ function OnboardingPage() {
   // Form State
   const [name, setName] = useState('');
   const [role, setRole] = useState('Software Engineer');
-  const [avatarSeed, setAvatarSeed] = useState(() => 'avatar-' + Math.random().toString(36).substring(2, 9));
+  const [avatarSeed, setAvatarSeed] = useState("");
   const [workspaceName, setWorkspaceName] = useState('My Workspace');
   const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -55,6 +55,7 @@ function OnboardingPage() {
         navigate({ to: '/login' });
       } else {
         if (session.name) setName(session.name);
+        if (session.email) setAvatarSeed(session.email);
         if (session.workspaceName) setWorkspaceName(session.workspaceName);
         if (session.workspaceSlug) setWorkspaceSlug(session.workspaceSlug);
       }
