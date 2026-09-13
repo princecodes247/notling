@@ -351,6 +351,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           isActive={false}
           onClick={() => setImportOpen(true)}
         />
+
+        <SidebarNavItem
+          icon={Settings02Icon}
+          label="Settings"
+          isActive={activeNav === 'settings'}
+          onClick={() => onNavClick?.('settings')}
+        />
       </div>
 
       {/* 4. Folders & Document Tree Section */}
@@ -532,16 +539,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <HugeiconsIcon icon={Logout01Icon} size={14} />
             </button>
           )}
-        </div>
-
-        {/* Settings row */}
-        <div className="pt-1 border-t border-stone-200/40 dark:border-zinc-800/60">
-          <SidebarNavItem
-            icon={Settings02Icon}
-            label="Settings"
-            isActive={activeNav === 'settings'}
-            onClick={() => onNavClick?.('settings')}
-          />
         </div>
       </div>
     </aside>

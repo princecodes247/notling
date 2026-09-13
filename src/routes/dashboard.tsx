@@ -370,7 +370,7 @@ function DashboardLayout() {
         onOpenSettings={() => navigate({ to: '/dashboard/settings' })}
       /> */}
 
-      <div className="h-screen w-screen bg-[#f3f2ee] p-0 flex select-none relative overflow-hidden">
+      <div className="h-screen w-screen bg-[#f3f2ee] dark:bg-[#121214] p-0 flex select-none relative overflow-hidden">
         {/* Mobile Drawer Dark Backdrop Overlay */}
         <AnimatePresence>
           {sidebarOpen && (
@@ -394,7 +394,7 @@ function DashboardLayout() {
               animate={isMobile ? { x: 0, opacity: 1 } : { width: 240, opacity: 1 }}
               exit={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
               transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
-              className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
+              className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] dark:bg-[#121214] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
             >
               <Sidebar
                 workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
