@@ -1026,6 +1026,12 @@ export async function inviteUserToPage(input: {
   role: 'viewer' | 'editor';
 }) {
   try {
+    const canEdit = await checkCanUserEditPage(input.pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked inviteUserToPage for page ${input.pageId}. User lacks edit permissions.`);
+      return null;
+    }
+
     const cleanEmail = input.email.trim().toLowerCase();
     if (!cleanEmail) return null;
 
@@ -1062,6 +1068,20 @@ export async function inviteUserToPage(input: {
 
 export async function removePageShare(shareId: string) {
   try {
+    const existingShare = await db
+      .select({ pageId: pageShares.pageId })
+      .from(pageShares)
+      .where(eq(pageShares.id, shareId))
+      .limit(1);
+
+    if (existingShare.length === 0) return { success: false };
+
+    const canEdit = await checkCanUserEditPage(existingShare[0].pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked removePageShare for share ${shareId}. User lacks edit permissions.`);
+      return { success: false };
+    }
+
     await db.delete(pageShares).where(eq(pageShares.id, shareId));
     return { success: true };
   } catch (err) {
@@ -1072,6 +1092,20 @@ export async function removePageShare(shareId: string) {
 
 export async function updatePageShareRole(input: { shareId: string; role: 'viewer' | 'editor' }) {
   try {
+    const existingShare = await db
+      .select({ pageId: pageShares.pageId })
+      .from(pageShares)
+      .where(eq(pageShares.id, input.shareId))
+      .limit(1);
+
+    if (existingShare.length === 0) return null;
+
+    const canEdit = await checkCanUserEditPage(existingShare[0].pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked updatePageShareRole for share ${input.shareId}. User lacks edit permissions.`);
+      return null;
+    }
+
     const [updated] = await db
       .update(pageShares)
       .set({ role: input.role })
