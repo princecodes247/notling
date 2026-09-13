@@ -300,7 +300,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
 
                 <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-zinc-800">
                   <span className="text-xs text-neutral-400 dark:text-zinc-500">
-                    Updates your personal details across all workspaces
+
                   </span>
                   <button
                     type="submit"
@@ -333,13 +333,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
             </div>
 
             {/* Danger Zone - Delete Account */}
-            <div className="p-6 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 flex flex-col gap-4">
+            <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                <h2 className="text-sm font-semibold text-rose-950 dark:text-rose-200">Danger Zone</h2>
+                <h2 className="text-sm font-semibold text-rose-600 dark:text-rose-400">Danger Zone</h2>
               </div>
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-white dark:bg-zinc-900/80 border border-rose-200/80 dark:border-rose-900/60">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-neutral-50/60 dark:bg-zinc-800/30 border border-neutral-200/60 dark:border-zinc-800/60">
                 <div>
                   <h3 className="text-xs font-semibold text-neutral-900 dark:text-zinc-100">Delete Account & Workspace Data</h3>
                   <p className="text-[11px] text-neutral-500 dark:text-zinc-400 mt-0.5 max-w-md">
@@ -550,13 +550,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
 
             {/* Workspace Danger Zone - Delete Workspace */}
             {isWorkspaceOwner && (
-              <div className="p-6 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/30 dark:bg-rose-950/20 flex flex-col gap-4">
+              <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-4">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  <h2 className="text-sm font-semibold text-rose-950 dark:text-rose-200">Workspace Danger Zone</h2>
+                  <h2 className="text-sm font-semibold text-rose-600 dark:text-rose-400">Workspace Danger Zone</h2>
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-white dark:bg-zinc-900/80 border border-rose-200/80 dark:border-rose-900/60">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-neutral-50/60 dark:bg-zinc-800/30 border border-neutral-200/60 dark:border-zinc-800/60">
                   <div>
                     <h3 className="text-xs font-semibold text-neutral-900 dark:text-zinc-100">Delete Workspace "{session?.workspaceName || 'Workspace'}"</h3>
                     <p className="text-[11px] text-neutral-500 dark:text-zinc-400 mt-0.5 max-w-md">
