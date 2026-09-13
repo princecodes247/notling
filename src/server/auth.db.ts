@@ -810,6 +810,10 @@ export async function updateSettingsImpl(data: {
     }
 
     if (data.workspaceName !== undefined || data.workspaceIcon !== undefined || data.workspaceSlug !== undefined) {
+      if (!currentSession.isWorkspaceOwner) {
+        return { success: false, error: 'Only the workspace owner can modify workspace settings.' };
+      }
+
       let finalSlug = undefined;
       if (data.workspaceSlug) {
         finalSlug = await generateUniqueWorkspaceSlug(data.workspaceSlug);
