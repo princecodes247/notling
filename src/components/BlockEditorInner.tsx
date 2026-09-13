@@ -16,6 +16,7 @@ import { updatePageContent } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
+import { getOfflineDraft, saveOfflineDraft, clearOfflineDraft, hasOfflineDraft } from '~/lib/offlineStorage';
 import { useNavigate } from '@tanstack/react-router';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
@@ -944,15 +945,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
   const initialContent = useMemo(() => {
     try {
-      if (typeof window !== 'undefined' && page.id) {
-        const draftStr = localStorage.getItem(`notling_offline_draft_${page.id}`);
-        if (draftStr) {
-          const draft = JSON.parse(draftStr);
-          if (draft?.content && Array.isArray(draft.content) && draft.content.length > 0) {
-            return draft.content;
-          }
-        }
-      }
+      const draft = getOfflineDraft(page.id);
+      if (draft?.content) return draft.content;
+
       if (typeof page.content === 'string') return JSON.parse(page.content);
       if (Array.isArray(page.content) && page.content.length > 0) return page.content;
     } catch (e) {
@@ -1106,31 +1101,6 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     };
   }, [editor, initialContent]);
 
-  const saveOfflineDraft = (blocks: any[], plainText: string) => {
-    try {
-      if (typeof window !== 'undefined' && pageIdRef.current) {
-        localStorage.setItem(
-          `notling_offline_draft_${pageIdRef.current}`,
-          JSON.stringify({
-            content: blocks,
-            contentText: plainText,
-            timestamp: Date.now(),
-          })
-        );
-      }
-    } catch (err) {
-      console.error('Failed to save offline draft:', err);
-    }
-  };
-
-  const clearOfflineDraft = (pid: string) => {
-    try {
-      if (typeof window !== 'undefined' && pid) {
-        localStorage.removeItem(`notling_offline_draft_${pid}`);
-      }
-    } catch {}
-  };
-
   const performSave = async () => {
     try {
       const currentBlocks = editorRef.current?.document;
@@ -1145,9 +1115,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         return;
       }
 
-      const hasOfflineDraft = typeof window !== 'undefined' && !!localStorage.getItem(`notling_offline_draft_${pageIdRef.current}`);
+      const hasDraft = hasOfflineDraft(pageIdRef.current);
 
-      if (!hasUserEditedRef.current && !hasOfflineDraft) {
+      if (!hasUserEditedRef.current && !hasDraft) {
         pendingSaveRef.current = false;
         setSaveStatus('idle');
         return;
@@ -1156,7 +1126,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       const plainText = extractPlainTextFromBlocks(currentBlocks);
 
       // Always update local draft immediately
-      saveOfflineDraft(currentBlocks, plainText);
+      saveOfflineDraft(pageIdRef.current, currentBlocks, plainText);
 
       if (typeof window !== 'undefined' && !navigator.onLine) {
         setSaveStatus('offline');
@@ -1198,8 +1168,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     if (typeof window === 'undefined') return;
 
     const handleReconnect = () => {
-      const draftKey = `notling_offline_draft_${page.id}`;
-      if (localStorage.getItem(draftKey)) {
+      if (hasOfflineDraft(page.id)) {
         setSaveStatus('saving');
         performSave();
       }
