@@ -1,6 +1,5 @@
 import { createFileRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
 import React from 'react';
-import { Menu } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from '~/components/Sidebar';
 import { TabBar } from '~/components/TabBar';
@@ -8,6 +7,7 @@ import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { ImportModal } from '~/components/ImportModal';
+import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
 import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
@@ -16,11 +16,6 @@ import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
-import { HugeiconsIcon } from '@hugeicons/react';
-import {
-  Search01Icon,
-  PlusSignIcon,
-} from '@hugeicons/core-free-icons';
 
 const DASHBOARD_LOADING_WORDS = [
   'Verifying session credentials...',
@@ -460,41 +455,13 @@ function DashboardLayout() {
         {/* Framed Workspace Main Area */}
         <div className="flex-1 bg-[#f3f2ee] p-0 sm:p-2 overflow-hidden flex flex-col relative min-w-0 h-full">
           {/* Mobile Top Header Bar */}
-          <header className="md:hidden py-2.5 flex items-center justify-between px-3.5 bg-[#f8f7f4] text-stone-900 border-b border-stone-200/90 shrink-0 z-30 shadow-2xs">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <button
-                type="button"
-                onClick={() => useUIStore.getState().setSidebarOpen(true)}
-                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
-                title="Open menu"
-              >
-                <Menu className="w-5 h-5 text-stone-800" />
-              </button>
-              <span className="text-sm font-semibold text-stone-900 truncate max-w-[180px]">
-                {session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => useUIStore.getState().setSearchOpen(true)}
-                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
-                title="Search workspace"
-              >
-                <HugeiconsIcon icon={Search01Icon} size={18} />
-              </button>
-              <button
-                type="button"
-                disabled={createPageMutation.isPending}
-                onClick={() => !createPageMutation.isPending && createPageMutation.mutate(undefined)}
-                className="p-1.5 rounded-lg text-stone-700 hover:text-stone-950 hover:bg-stone-200/60 transition-colors cursor-pointer active-press disabled:opacity-50 disabled:cursor-not-allowed"
-                title="New document"
-              >
-                <HugeiconsIcon icon={PlusSignIcon} size={18} />
-              </button>
-            </div>
-          </header>
+          <MobileHeader
+            workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
+            isCreatingPage={createPageMutation.isPending}
+            onOpenMenu={() => useUIStore.getState().setSidebarOpen(true)}
+            onOpenSearch={() => useUIStore.getState().setSearchOpen(true)}
+            onCreatePage={() => !createPageMutation.isPending && createPageMutation.mutate(undefined)}
+          />
 
           {/* Desktop Tab Bar Header */}
           <TabBar

@@ -14,7 +14,7 @@ import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
-import { PublicBlockViewer } from '~/routes/share.$pageId';
+import { PublicBlockViewer } from '~/components/share/PublicBlockViewer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
