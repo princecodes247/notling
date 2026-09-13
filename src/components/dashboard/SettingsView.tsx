@@ -404,6 +404,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                         placeholder="my-workspace"
                         className="flex-1 px-2.5 py-2 text-xs font-mono text-neutral-900 bg-transparent focus:outline-none disabled:cursor-not-allowed"
                       />
+                      {workspaceSlug && (
+                        <a
+                          href={`/w/${workspaceSlug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 mr-1.5 text-[10px] font-medium text-stone-600 hover:text-black hover:bg-neutral-200/60 rounded transition-colors"
+                        >
+                          Visit ↗
+                        </a>
+                      )}
                     </div>
                     {isWorkspaceOwner && slugInfo && workspaceSlug !== session?.workspaceSlug && (
                       <div className="text-[10px] mt-1 font-medium">

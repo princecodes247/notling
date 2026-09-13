@@ -319,6 +319,40 @@ export async function switchWorkspaceImpl(targetWorkspaceId: string): Promise<Au
   }
 }
 
+export async function switchWorkspaceBySlugImpl(slug: string): Promise<AuthResponse> {
+  try {
+    const session = await getSessionImpl();
+    if (!session) {
+      return { success: false, error: 'Unauthorized.' };
+    }
+
+    const availableWorkspaces = await getUserWorkspacesImpl();
+    const cleanSlug = slug.trim().toLowerCase();
+    const targetWs = availableWorkspaces.find((w) => w.slug.toLowerCase() === cleanSlug);
+
+    if (!targetWs) {
+      return { success: false, error: 'Workspace not found or access denied.' };
+    }
+
+    setCookie(ACTIVE_WS_COOKIE, targetWs.id, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: SESSION_MAX_AGE,
+    });
+
+    const updatedSession = await getSessionImpl();
+    return {
+      success: true,
+      session: updatedSession,
+    };
+  } catch (err: any) {
+    console.error('Error switching workspace by slug:', err);
+    return { success: false, error: err.message || 'Failed to switch workspace.' };
+  }
+}
+
 export async function createWorkspaceImpl(input: {
   name: string;
   icon?: string;

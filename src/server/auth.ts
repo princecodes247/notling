@@ -121,6 +121,14 @@ export const switchWorkspace = createServerFn({ method: 'POST' })
     return switchWorkspaceImpl(data.workspaceId);
   });
 
+// Switch active workspace by slug
+export const switchWorkspaceBySlug = createServerFn({ method: 'POST' })
+  .validator((data: { slug: string }) => data)
+  .handler(async ({ data }): Promise<AuthResponse> => {
+    const { switchWorkspaceBySlugImpl } = await import('./auth.db');
+    return switchWorkspaceBySlugImpl(data.slug);
+  });
+
 // Create new workspace
 export const createWorkspace = createServerFn({ method: 'POST' })
   .validator((data: { name: string; icon?: string; description?: string }) => data)

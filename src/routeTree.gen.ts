@@ -18,8 +18,10 @@ import { Route as DashboardFoldersRouteImport } from './routes/dashboard.folders
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardTrashRouteImport } from './routes/dashboard.trash'
 import { Route as SharePageIdRouteImport } from './routes/share.$pageId'
+import { Route as WSlugRouteImport } from './routes/w.$slug'
 import { Route as AuthCallbackProviderRouteImport } from './routes/auth.callback.$provider'
 import { Route as DashboardPPageIdRouteImport } from './routes/dashboard.p.$pageId'
+import { Route as WSlugPPageIdRouteImport } from './routes/w.$slug.p.$pageId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -66,6 +68,11 @@ const SharePageIdRoute = SharePageIdRouteImport.update({
   path: '/share/$pageId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WSlugRoute = WSlugRouteImport.update({
+  id: '/w/$slug',
+  path: '/w/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackProviderRoute = AuthCallbackProviderRouteImport.update({
   id: '/auth/callback/$provider',
   path: '/auth/callback/$provider',
@@ -75,6 +82,11 @@ const DashboardPPageIdRoute = DashboardPPageIdRouteImport.update({
   id: '/p/$pageId',
   path: '/p/$pageId',
   getParentRoute: () => DashboardRoute,
+} as any)
+const WSlugPPageIdRoute = WSlugPPageIdRouteImport.update({
+  id: '/p/$pageId',
+  path: '/p/$pageId',
+  getParentRoute: () => WSlugRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -86,9 +98,11 @@ export interface FileRoutesByFullPath {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
+  '/w/$slug': typeof WSlugRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
+  '/w/$slug/p/$pageId': typeof WSlugPPageIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -98,9 +112,11 @@ export interface FileRoutesByTo {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
+  '/w/$slug': typeof WSlugRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
+  '/w/$slug/p/$pageId': typeof WSlugPPageIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -112,9 +128,11 @@ export interface FileRoutesById {
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
+  '/w/$slug': typeof WSlugRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
+  '/w/$slug/p/$pageId': typeof WSlugPPageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -127,9 +145,11 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/trash'
     | '/share/$pageId'
+    | '/w/$slug'
     | '/dashboard/'
     | '/auth/callback/$provider'
     | '/dashboard/p/$pageId'
+    | '/w/$slug/p/$pageId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -139,9 +159,11 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/trash'
     | '/share/$pageId'
+    | '/w/$slug'
     | '/dashboard'
     | '/auth/callback/$provider'
     | '/dashboard/p/$pageId'
+    | '/w/$slug/p/$pageId'
   id:
     | '__root__'
     | '/'
@@ -152,9 +174,11 @@ export interface FileRouteTypes {
     | '/dashboard/settings'
     | '/dashboard/trash'
     | '/share/$pageId'
+    | '/w/$slug'
     | '/dashboard/'
     | '/auth/callback/$provider'
     | '/dashboard/p/$pageId'
+    | '/w/$slug/p/$pageId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -163,6 +187,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   SharePageIdRoute: typeof SharePageIdRoute
+  WSlugRoute: typeof WSlugRouteWithChildren
   AuthCallbackProviderRoute: typeof AuthCallbackProviderRoute
 }
 
@@ -231,6 +256,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SharePageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/w/$slug': {
+      id: '/w/$slug'
+      path: '/w/$slug'
+      fullPath: '/w/$slug'
+      preLoaderRoute: typeof WSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/callback/$provider': {
       id: '/auth/callback/$provider'
       path: '/auth/callback/$provider'
@@ -244,6 +276,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/dashboard/p/$pageId'
       preLoaderRoute: typeof DashboardPPageIdRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/w/$slug/p/$pageId': {
+      id: '/w/$slug/p/$pageId'
+      path: '/p/$pageId'
+      fullPath: '/w/$slug/p/$pageId'
+      preLoaderRoute: typeof WSlugPPageIdRouteImport
+      parentRoute: typeof WSlugRoute
     }
   }
 }
@@ -268,12 +307,23 @@ const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
   DashboardRouteChildren,
 )
 
+interface WSlugRouteChildren {
+  WSlugPPageIdRoute: typeof WSlugPPageIdRoute
+}
+
+const WSlugRouteChildren: WSlugRouteChildren = {
+  WSlugPPageIdRoute: WSlugPPageIdRoute,
+}
+
+const WSlugRouteWithChildren = WSlugRoute._addFileChildren(WSlugRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRouteWithChildren,
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   SharePageIdRoute: SharePageIdRoute,
+  WSlugRoute: WSlugRouteWithChildren,
   AuthCallbackProviderRoute: AuthCallbackProviderRoute,
 }
 export const routeTree = rootRouteImport

@@ -74,7 +74,7 @@ export function OnboardingStep2({
         <label className="text-xs font-semibold text-neutral-700">Workspace Slug / URL</label>
         <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50/50 overflow-hidden focus-within:ring-1 focus-within:ring-black">
           <span className="px-3 py-2.5 text-xs text-neutral-400 bg-neutral-100 border-r border-neutral-200 select-none font-mono">
-            notling.dev/w/
+            notling.app/w/
           </span>
           <input
             type="text"
