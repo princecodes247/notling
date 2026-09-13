@@ -288,6 +288,58 @@
   transition: color 0.15s ease, text-decoration-color 0.15s ease !important;
 }
 
+/* Dark Mode Checklist Checkboxes */
+.dark .bn-container input[type="checkbox"],
+.dark .bn-editor input[type="checkbox"],
+[data-theme="dark"] .bn-container input[type="checkbox"],
+[data-theme="dark"] .bn-editor input[type="checkbox"] {
+  border-color: #44444c !important;
+  background-color: #222226 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .bn-container input[type="checkbox"]:hover,
+.dark .bn-editor input[type="checkbox"]:hover,
+[data-theme="dark"] .bn-container input[type="checkbox"]:hover,
+[data-theme="dark"] .bn-editor input[type="checkbox"]:hover {
+  border-color: #71717a !important;
+  background-color: #2a2a30 !important;
+}
+
+.dark .bn-container input[type="checkbox"]:focus-visible,
+.dark .bn-editor input[type="checkbox"]:focus-visible,
+[data-theme="dark"] .bn-container input[type="checkbox"]:focus-visible,
+[data-theme="dark"] .bn-editor input[type="checkbox"]:focus-visible {
+  border-color: #f4f4f5 !important;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.15) !important;
+}
+
+.dark .bn-container input[type="checkbox"]:checked,
+.dark .bn-editor input[type="checkbox"]:checked,
+[data-theme="dark"] .bn-container input[type="checkbox"]:checked,
+[data-theme="dark"] .bn-editor input[type="checkbox"]:checked {
+  background-color: #f4f4f5 !important;
+  border-color: #f4f4f5 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2318181b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='3.5 8.5 6.5 11.5 12.5 4.5'/%3E%3C/svg%3E") !important;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .bn-container input[type="checkbox"]:checked:hover,
+.dark .bn-editor input[type="checkbox"]:checked:hover,
+[data-theme="dark"] .bn-container input[type="checkbox"]:checked:hover,
+[data-theme="dark"] .bn-editor input[type="checkbox"]:checked:hover {
+  background-color: #e4e4e7 !important;
+  border-color: #e4e4e7 !important;
+}
+
+.dark .bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content,
+.dark .bn-block-content[data-content-type="checkListItem"]:has(input[type="checkbox"]:checked) .bn-inline-content,
+[data-theme="dark"] .bn-block-content[data-content-type="checkListItem"][data-checked="true"] .bn-inline-content,
+[data-theme="dark"] .bn-block-content[data-content-type="checkListItem"]:has(input[type="checkbox"]:checked) .bn-inline-content {
+  color: #71717a !important;
+  text-decoration-color: #52525b !important;
+}
+
 
 /* Clean scrollbars */
 ::-webkit-scrollbar {
