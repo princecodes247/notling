@@ -711,6 +711,12 @@ export async function reorderPageInDb(input: {
 
 export async function performSoftDelete(pageId: string) {
   try {
+    const canEdit = await checkCanUserEditPage(pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked soft delete for page ${pageId}.`);
+      return { success: false };
+    }
+
     const softDeleteRecursive = async (id: string) => {
       await db
         .update(pages)
@@ -733,6 +739,12 @@ export async function performSoftDelete(pageId: string) {
 
 export async function performRestore(pageId: string) {
   try {
+    const canEdit = await checkCanUserEditPage(pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked restore for page ${pageId}.`);
+      return { success: false };
+    }
+
     const restoreRecursive = async (id: string) => {
       await db
         .update(pages)
@@ -757,6 +769,12 @@ export async function fetchTrashPages(workspaceId: string) {
   try {
     const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
     if (!targetWorkspaceId) return [];
+
+    const session = await getSessionImpl();
+    if (!session || session.workspaceId !== targetWorkspaceId) {
+      return [];
+    }
+
     return await db
       .select({
         id: pages.id,
@@ -775,6 +793,12 @@ export async function fetchTrashPages(workspaceId: string) {
 
 export async function performPermanentDelete(pageId: string) {
   try {
+    const canEdit = await checkCanUserEditPage(pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked permanent delete for page ${pageId}.`);
+      return { success: false };
+    }
+
     await db.delete(pages).where(eq(pages.id, pageId));
     return { success: true };
   } catch (err) {
@@ -787,6 +811,12 @@ export async function performEmptyTrash(workspaceId: string) {
   try {
     const targetWorkspaceId = await resolveWorkspaceId(workspaceId);
     if (!targetWorkspaceId) return { success: false };
+
+    const session = await getSessionImpl();
+    if (!session || session.workspaceId !== targetWorkspaceId) {
+      console.warn(`[Permission Denied] Blocked empty trash for workspace ${workspaceId}.`);
+      return { success: false };
+    }
 
     await db
       .delete(pages)
