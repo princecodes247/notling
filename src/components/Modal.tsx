@@ -1,6 +1,9 @@
 import React, { useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon } from '@hugeicons/core-free-icons';
+import { useIsMobile } from '~/hooks/useIsMobile';
+import { BottomSheet } from './BottomSheet';
 
 interface ModalProps {
   isOpen: boolean;
@@ -33,6 +36,8 @@ export const Modal: React.FC<ModalProps> = ({
   footer,
   headerRight,
 }) => {
+  const isMobile = useIsMobile();
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -43,69 +48,100 @@ export const Modal: React.FC<ModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center max-sm:items-end justify-center p-4 max-sm:p-0 bg-stone-950/45 backdrop-blur-xs select-none animate-in fade-in duration-200">
-      {/* Click outside backdrop */}
-      <div className="fixed inset-0" onClick={onClose} />
-
-      {/* Modal / iOS Bottom Sheet Container */}
-      <div
-        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-2xl max-sm:rounded-b-none max-sm:rounded-t-[24px] shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 max-sm:slide-in-from-bottom-full duration-200 max-sm:max-h-[90vh]`}
-        onClick={(e) => e.stopPropagation()}
+  // On Mobile: Delegate to Apple-level BottomSheet with spring physics & swipe dismiss
+  if (isMobile) {
+    return (
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        title={title}
+        subtitle={subtitle}
+        icon={icon}
+        headerRight={headerRight}
+        footer={footer}
+        zIndex={9999}
+        bodyClassName="p-5"
       >
-        {/* iOS Sheet Drag Handle Pill */}
-        <div className="w-10 h-1 rounded-full bg-stone-300 mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+        {children}
+      </BottomSheet>
+    );
+  }
 
-        {/* Header */}
-        {(title || icon || subtitle) && (
-          <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              {icon && (
-                <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
-                  {icon}
+  // On Desktop: Centered animated modal dialog
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 select-none">
+          {/* Backdrop */}
+          <motion.div
+            key="modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed inset-0 bg-stone-950/45 backdrop-blur-xs"
+            onClick={onClose}
+          />
+
+          {/* Desktop Dialog Card */}
+          <motion.div
+            key="modal-card"
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+            className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-2xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            {(title || icon || subtitle) && (
+              <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90 shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  {icon && (
+                    <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
+                      {icon}
+                    </div>
+                  )}
+                  <div className="flex flex-col min-w-0">
+                    {title && (
+                      <h3 className="text-sm font-semibold text-stone-900 truncate tracking-tight">
+                        {title}
+                      </h3>
+                    )}
+                    {subtitle && (
+                      <span className="text-[11px] text-stone-500">{subtitle}</span>
+                    )}
+                  </div>
                 </div>
-              )}
-              <div className="flex flex-col min-w-0">
-                {title && (
-                  <h3 className="text-sm font-semibold text-stone-900 truncate tracking-tight">
-                    {title}
-                  </h3>
-                )}
-                {subtitle && (
-                  <span className="text-[11px] text-stone-500">{subtitle}</span>
-                )}
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {headerRight}
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="p-2 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
+                    title="Close"
+                  >
+                    <HugeiconsIcon icon={Cancel01Icon} size={18} />
+                  </button>
+                </div>
               </div>
+            )}
+
+            {/* Content Body */}
+            <div className="p-5 sm:px-6 sm:py-6 flex-1 overflow-y-auto max-h-[80vh]">
+              {children}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {headerRight}
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
-                title="Close"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} size={18} />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Content Body */}
-        <div className="p-5 sm:px-6 sm:py-6 flex-1 overflow-y-auto max-h-[75vh] sm:max-h-[80vh]">
-          {children}
+            {/* Optional Footer */}
+            {footer && (
+              <div className="px-5 sm:px-6 py-3.5 border-t border-stone-200/60 bg-[#f8f7f4]/80 flex items-center justify-between shrink-0">
+                {footer}
+              </div>
+            )}
+          </motion.div>
         </div>
-
-        {/* Optional Footer */}
-        {footer && (
-          <div className="px-5 sm:px-6 py-3.5 border-t border-stone-200/60 bg-[#f8f7f4]/80 flex items-center justify-between shrink-0 max-sm:pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {footer}
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   );
 };
-

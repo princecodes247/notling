@@ -260,6 +260,13 @@
   transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Hide desktop side hover handle on touch/mobile screens */
+@media (max-width: 767px) {
+  .bn-side-menu {
+    display: none !important;
+  }
+}
+
 
 
 

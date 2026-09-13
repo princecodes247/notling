@@ -18,6 +18,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
 import { useNavigate } from '@tanstack/react-router';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
+import { MobileEditorToolbar } from './MobileEditorToolbar';
 import {
   Search,
   ChevronRight,
@@ -1743,6 +1744,17 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           )}
         />
       </BlockNoteView>
+
+      <MobileEditorToolbar
+        editor={editor}
+        onOpenMediaPicker={handleOpenMediaPicker}
+        onOpenMentionModal={() => {
+          setTooltipPosition(getCursorPos());
+          setMentionSearchQuery('');
+          setMentionSelectedIndex(0);
+          setIsMentionModalOpen(true);
+        }}
+      />
 
       <PageMentionTooltip
         isOpen={isMentionModalOpen}

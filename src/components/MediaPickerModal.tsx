@@ -14,6 +14,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { uploadMediaFile, getRecentUploads } from '~/server/uploads';
+import { useIsMobile } from '~/hooks/useIsMobile';
+import { BottomSheet } from './BottomSheet';
 
 export interface MediaInsertPayload {
   url: string;
@@ -428,6 +430,8 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     onClose();
   };
 
+  const isMobile = useIsMobile();
+
   if (!isOpen) return null;
 
   const modalStyle: React.CSSProperties = position
@@ -443,12 +447,8 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
       transform: 'translateX(-50%)',
     };
 
-  return (
-    <div
-      ref={modalRef}
-      style={modalStyle}
-      className="z-[99999] w-[460px] bg-[#1c1c1c] text-white rounded-xl shadow-2xl border border-stone-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150 select-none font-sans"
-    >
+  const modalBody = (
+    <>
       {/* Header Tabs Navigation */}
       <div className="px-4 pt-3 pb-0 border-b border-stone-800 flex items-center justify-between bg-[#181818]">
         <div className="flex items-center gap-1">
@@ -822,6 +822,34 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
         <span></span>
         <span className="font-mono text-stone-600">Press Esc to exit</span>
       </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        dark
+        hideHeader
+        zIndex={99999}
+        maxHeight="max-h-[85vh]"
+        bodyClassName="p-0 flex flex-col"
+      >
+        <div className="bg-[#1c1c1c] text-white flex flex-col flex-1 overflow-hidden font-sans">
+          {modalBody}
+        </div>
+      </BottomSheet>
+    );
+  }
+
+  return (
+    <div
+      ref={modalRef}
+      style={modalStyle}
+      className="z-[99999] w-[460px] bg-[#1c1c1c] text-white rounded-xl shadow-2xl border border-stone-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150 select-none font-sans"
+    >
+      {modalBody}
     </div>
   );
 };
