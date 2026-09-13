@@ -30,10 +30,24 @@ export const FORBIDDEN_EXTENSIONS = new Set([
 
 export function isFileTypeAllowed(mimeType: string, fileName: string): { allowed: boolean; reason?: string } {
   const cleanMime = (mimeType || '').split(';')[0].trim().toLowerCase();
-  const ext = path.extname(fileName || '').toLowerCase();
+  const rawExt = path.extname(fileName || '') || getExtensionFromMime(cleanMime);
+  const ext = rawExt.toLowerCase();
 
+  // Block dangerous extensions (including extensionless files resolving to forbidden MIME types)
   if (FORBIDDEN_EXTENSIONS.has(ext)) {
     return { allowed: false, reason: `File extension ${ext} is blocked for security.` };
+  }
+
+  // Block executable / active content MIME types explicitly (mitigate Stored XSS)
+  if (
+    cleanMime === 'image/svg+xml' ||
+    cleanMime === 'text/html' ||
+    cleanMime === 'text/xml' ||
+    cleanMime === 'application/javascript' ||
+    cleanMime === 'application/ecmascript' ||
+    cleanMime === 'text/javascript'
+  ) {
+    return { allowed: false, reason: `File type '${cleanMime}' is restricted for security.` };
   }
 
   if (
@@ -41,7 +55,9 @@ export function isFileTypeAllowed(mimeType: string, fileName: string): { allowed
     cleanMime.startsWith('video/') ||
     cleanMime.startsWith('audio/') ||
     cleanMime === 'application/pdf' ||
-    cleanMime.startsWith('text/') ||
+    cleanMime === 'text/plain' ||
+    cleanMime === 'text/markdown' ||
+    cleanMime === 'text/csv' ||
     cleanMime.includes('json') ||
     cleanMime.includes('zip') ||
     cleanMime.includes('document') ||
