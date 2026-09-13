@@ -984,6 +984,22 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
 
 export async function fetchChildPages(parentId: string) {
   try {
+    const parentPage = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.id, parentId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (parentPage.length === 0) return [];
+
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    const access = await getPageAccessLevel(parentPage[0], session);
+    if (!access) return [];
+
     return await db
       .select({
         id: pages.id,
@@ -1007,10 +1023,20 @@ export async function fetchChildPages(parentId: string) {
 export async function fetchPageShares(pageId: string) {
   try {
     const pageRecord = await db
-      .select({ workspaceId: pages.workspaceId })
+      .select()
       .from(pages)
-      .where(eq(pages.id, pageId))
+      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
       .limit(1);
+
+    if (pageRecord.length === 0) return { owner: null, shares: [] };
+
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    const access = await getPageAccessLevel(pageRecord[0], session);
+    if (!access) return { owner: null, shares: [] };
 
     let owner: { id: string; email: string; name: string | null } | null = null;
 
