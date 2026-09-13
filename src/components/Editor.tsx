@@ -168,65 +168,75 @@ export const Editor: React.FC<EditorProps> = ({
   return (
     <div className="flex-1 flex flex-col h-full bg-white text-stone-900 overflow-hidden relative">
       {/* Top Header Strip */}
-      <header className="h-12 border-b border-stone-200/70 px-6 flex items-center justify-between bg-[#fdfcf9]/80 backdrop-blur-xs shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs text-stone-400 font-medium truncate">
+      <header className="h-11 sm:h-12 border-b border-stone-200/70 px-3.5 sm:px-6 flex items-center justify-between bg-[#fdfcf9]/80 backdrop-blur-xs shrink-0 select-none">
+        <div className="flex items-center gap-2 min-w-0 mr-2">
+          {/* Breadcrumb prefix: hidden on mobile, shown on desktop */}
+          <span className="hidden sm:inline text-xs text-stone-400 font-medium shrink-0">
             {isFolder ? 'Folder' : 'Document'}
           </span>
-          <span className="text-stone-300 text-xs">/</span>
-          <span className="text-xs text-stone-700 font-medium truncate max-w-[200px]">
+          <span className="hidden sm:inline text-stone-300 text-xs shrink-0">/</span>
+
+          {/* Document Title */}
+          <span className="text-xs sm:text-sm font-semibold sm:font-medium text-stone-900 sm:text-stone-700 truncate max-w-[140px] sm:max-w-[260px]">
             {title || 'Untitled'}
           </span>
 
-          {/* Visibility pill */}
-
-          {isReadOnly ? (
-            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 shadow-2xs">
-              <span>View only</span>
-            </span>
-          ) : (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public_edit'
-              ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
-              : visibility === 'public'
-                ? 'bg-blue-50 text-blue-700 border-blue-200/80'
-                : visibility === 'workspace'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                  : 'bg-amber-50 text-amber-700 border-amber-200/80'
-              }`}>
-              {visibility === 'public_edit'
-                ? 'Anyone can edit'
-                : visibility === 'public'
-                  ? 'Anyone with link'
-                  : visibility === 'workspace'
-                    ? 'Workspace'
-                    : 'Private'}
-            </span>
-          )}
+          {/* Visibility pill: hidden on mobile, shown on desktop */}
+          <div className="hidden sm:flex items-center">
+            {isReadOnly ? (
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 shadow-2xs">
+                <span>View only</span>
+              </span>
+            ) : (
+              <span
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
+                  visibility === 'public_edit'
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+                    : visibility === 'public'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200/80'
+                      : visibility === 'workspace'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                        : 'bg-amber-50 text-amber-700 border-amber-200/80'
+                }`}
+              >
+                {visibility === 'public_edit'
+                  ? 'Anyone can edit'
+                  : visibility === 'public'
+                    ? 'Anyone with link'
+                    : visibility === 'workspace'
+                      ? 'Workspace'
+                      : 'Private'}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Right Header Actions */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs">
+        {/* Right Header Actions: [saved dot] [collaborators if any] [Share] */}
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          {/* Quiet Save Status Indicator */}
+          <div className="flex items-center text-xs shrink-0">
             {saveStatus === 'saving' ? (
               <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
                 <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin text-stone-600" />
-                Saving...
+                <span className="hidden sm:inline">Saving...</span>
               </span>
             ) : saveStatus === 'saved' ? (
               <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-                Saved
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
+                <span>Saved</span>
               </span>
             ) : null}
           </div>
+
+          {/* Collaborator Avatars (renders only other active collaborators, never self) */}
           <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
 
-          {/* Share Button */}
+          {/* Share Button: full contrast black pill with room to breathe */}
           {!isReadOnly && (
             <button
               type="button"
               onClick={() => setIsShareModalOpen(true)}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95"
+              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 active:scale-95 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer shrink-0"
             >
               <HugeiconsIcon icon={Share01Icon} size={13} className="text-amber-200" />
               <span>Share</span>
