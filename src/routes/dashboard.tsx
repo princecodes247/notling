@@ -13,15 +13,7 @@ import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
-
-const DASHBOARD_LOADING_WORDS = [
-  'Verifying session credentials...',
-  'Loading workspace hierarchy...',
-  'Syncing recent pages...',
-  'Opening dashboard...',
-];
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardLayout,
