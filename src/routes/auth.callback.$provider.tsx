@@ -45,7 +45,7 @@ function OAuthCallbackPage() {
           navigate({ to: '/onboarding' });
         } else {
           sessionStorage.removeItem('notling_auth_redirect');
-          if (returnUrl) {
+          if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//') && !returnUrl.includes('\\')) {
             window.location.href = returnUrl;
           } else {
             navigate({ to: '/dashboard' });
