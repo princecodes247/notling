@@ -166,7 +166,7 @@ export const Editor: React.FC<EditorProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white text-stone-900 overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-white text-stone-900 overflow-hidden relative -mt-4 sm:-mt-8">
       {/* Top Header Strip */}
       <header className="h-11 sm:h-12 border-b border-stone-200/70 px-3.5 sm:px-6 flex items-center justify-between bg-[#fdfcf9]/80 backdrop-blur-xs shrink-0 select-none">
         <div className="flex items-center gap-2 min-w-0 mr-2">
@@ -189,15 +189,14 @@ export const Editor: React.FC<EditorProps> = ({
               </span>
             ) : (
               <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
-                  visibility === 'public_edit'
-                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
-                    : visibility === 'public'
-                      ? 'bg-blue-50 text-blue-700 border-blue-200/80'
-                      : visibility === 'workspace'
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                        : 'bg-amber-50 text-amber-700 border-amber-200/80'
-                }`}
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public_edit'
+                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200/80'
+                  : visibility === 'public'
+                    ? 'bg-blue-50 text-blue-700 border-blue-200/80'
+                    : visibility === 'workspace'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                      : 'bg-amber-50 text-amber-700 border-amber-200/80'
+                  }`}
               >
                 {visibility === 'public_edit'
                   ? 'Anyone can edit'
