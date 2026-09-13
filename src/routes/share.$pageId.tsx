@@ -25,6 +25,31 @@ const SHARED_PAGE_LOADING_WORDS = [
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
   path: '/share/$pageId',
+  loader: async ({ params }) => {
+    try {
+      return await getPublicPage({ data: params.pageId });
+    } catch {
+      return null;
+    }
+  },
+  head: ({ loaderData }) => {
+    const pageTitle = loaderData?.page?.title || 'Shared Document';
+    const displayTitle = `${pageTitle} - Notling`;
+
+    return {
+      meta: [
+        { title: displayTitle },
+        { name: 'description', content: `View shared document "${pageTitle}" on Notling.` },
+        { property: 'og:title', content: pageTitle },
+        { property: 'og:description', content: `View shared document "${pageTitle}" on Notling.` },
+        { property: 'og:type', content: 'article' },
+        { property: 'og:site_name', content: 'Notling' },
+        { name: 'twitter:card', content: 'summary' },
+        { name: 'twitter:title', content: pageTitle },
+        { name: 'twitter:description', content: `View shared document "${pageTitle}" on Notling.` },
+      ],
+    };
+  },
   component: PublicDocumentPageRoute,
 });
 
