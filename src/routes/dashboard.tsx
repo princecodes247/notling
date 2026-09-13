@@ -176,12 +176,12 @@ function DashboardLayout() {
         });
 
         if (resolvedTitle && resolvedTitle !== 'Untitled Document') {
-          document.title = `${resolvedTitle} — Notling`;
+          document.title = `${resolvedTitle} - Notling`;
         }
       }
     } else if (currentPath.includes('/dashboard/folders')) {
       doSetActivePageId(null);
-      document.title = 'Folders — Notling';
+      document.title = 'Folders - Notling';
       doOpenTab({
         id: 'folders',
         title: 'Folders',
@@ -190,7 +190,7 @@ function DashboardLayout() {
       });
     } else if (currentPath.includes('/dashboard/settings')) {
       doSetActivePageId(null);
-      document.title = 'Settings — Notling';
+      document.title = 'Settings - Notling';
       doOpenTab({
         id: 'settings',
         title: 'Settings',
