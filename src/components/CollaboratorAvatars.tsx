@@ -84,7 +84,7 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
                 whileHover={{ scale: 1.15, zIndex: 30 }}
                 whileTap={{ scale: 0.94 }}
                 transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-                className="relative rounded-full shadow-xs cursor-pointer border-2 border-white overflow-hidden shrink-0"
+                className="relative rounded-full cursor-pointer shrink-0"
               >
                 <UserAvatar
                   avatarUrl={user.avatarUrl}
@@ -96,11 +96,10 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
 
                 {/* Role Status Dot */}
                 <span
-                  className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white z-10 ${
-                    isEditor
-                      ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
-                      : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
-                  }`}
+                  className={`absolute bottom-1 right-0.5 w-2 h-2 rounded-full border border-white z-0 ${isEditor
+                    ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
+                    : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
+                    }`}
                 />
               </motion.div>
             </div>
@@ -126,15 +125,14 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               layout: { type: 'spring', stiffness: 450, damping: 30 },
               opacity: { duration: 0.15 },
             }}
-            className={`absolute top-full mt-2 bg-stone-900/95 backdrop-blur-md text-white text-[11px] font-sans px-3 py-2.5 rounded-xl shadow-2xl border border-stone-800 z-50 pointer-events-none w-[175px] ${
-              alignRight ? 'right-0' : ''
-            }`}
+            className={`absolute top-full mt-2 bg-stone-900/95 backdrop-blur-md text-white text-[11px] font-sans px-3 py-2.5 rounded-xl shadow-2xl border border-stone-800 z-50 pointer-events-none w-[175px] ${alignRight ? 'right-0' : ''
+              }`}
             style={
               alignRight
                 ? undefined
                 : {
-                    left: `${Math.max(0, hoveredIndex * 16 - 12)}px`,
-                  }
+                  left: `${Math.max(0, hoveredIndex * 16 - 12)}px`,
+                }
             }
             layout
           >
@@ -178,8 +176,8 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               {/* Fixed Height Email / Status Row to prevent Card Jitter */}
               <div className="h-4 flex items-center min-w-0">
                 {hoveredUser.email &&
-                !hoveredUser.email.includes('@notling.app') &&
-                !hoveredUser.email.startsWith('guest-') ? (
+                  !hoveredUser.email.includes('@notling.app') &&
+                  !hoveredUser.email.startsWith('guest-') ? (
                   <span
                     className="text-[10px] text-stone-400 font-mono tracking-tight truncate w-full"
                     title={hoveredUser.email}
@@ -196,11 +194,10 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               {/* Role Status Badge */}
               <div className="flex items-center gap-1.5 text-[10px] mt-1 pt-1.5 border-t border-stone-800/80">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    hoveredUser.role === 'editor'
-                      ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
-                      : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
-                  }`}
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${hoveredUser.role === 'editor'
+                    ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
+                    : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
+                    }`}
                 />
                 <span className={`font-semibold tracking-wide ${hoveredUser.role === 'editor' ? 'text-emerald-300' : 'text-amber-300'}`}>
                   {hoveredUser.role === 'editor' ? 'Can edit' : 'View only'}
