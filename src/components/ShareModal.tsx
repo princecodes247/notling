@@ -245,8 +245,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <UserAvatar
                         avatarUrl={owner.avatarUrl}
-                        seed={owner.email || owner.name || owner.id}
-                        name={owner.name || owner.email}
+                        email={owner.email}
+                        name={owner.name}
                         size={24}
                         className="w-6 h-6 shrink-0"
                       />
@@ -272,8 +272,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                         {person.userId ? (
                           <UserAvatar
                             avatarUrl={person.avatarUrl}
-                            seed={person.email || person.name || person.id}
-                            name={person.name || person.email}
+                            email={person.email}
+                            name={person.name}
                             size={24}
                             className="w-6 h-6 shrink-0"
                           />

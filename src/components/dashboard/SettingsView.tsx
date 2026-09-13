@@ -512,7 +512,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                     return (
                       <div key={u.id} className="p-3 flex items-center justify-between bg-white dark:bg-zinc-900/40 hover:bg-neutral-50/50 dark:hover:bg-zinc-800/50 transition-colors">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <UserAvatar avatarUrl={u.avatarUrl} name={u.name || u.email} size={28} />
+                          <UserAvatar avatarUrl={u.avatarUrl} email={u.email} name={u.name} size={28} />
                           <div className="flex flex-col min-w-0">
                             <div className="text-xs font-medium text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5 truncate">
                               <span className="truncate">{u.name || u.email.split('@')[0]}</span>
@@ -530,7 +530,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                 ) : (
                   <div className="p-3 flex items-center justify-between bg-white dark:bg-zinc-900/40">
                     <div className="flex items-center gap-2.5">
-                      <UserAvatar avatarUrl={session?.avatarUrl} name={userName || session?.name || session?.email} size={28} />
+                      <UserAvatar avatarUrl={session?.avatarUrl} email={session?.email} name={userName || session?.name} size={28} />
                       <div>
                         <div className="text-xs font-medium text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5">
                           <span>{userName || session?.name || 'User'}</span>

@@ -515,6 +515,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-center gap-2.5 min-w-0">
             <UserAvatar
               avatarUrl={session?.avatarUrl}
+              email={session?.email}
               name={session?.name}
               size={24}
               className="border border-stone-300/80 dark:border-zinc-700/80 shrink-0"

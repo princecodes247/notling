@@ -55,7 +55,8 @@ function OnboardingPage() {
         navigate({ to: '/login' });
       } else {
         if (session.name) setName(session.name);
-        if (session.email) setAvatarSeed(session.email);
+        const dbSeed = session.avatarUrl ? session.avatarUrl.replace(/^avatune:/, '').trim() : '';
+        setAvatarSeed(dbSeed || session.email || '');
         if (session.workspaceName) setWorkspaceName(session.workspaceName);
         if (session.workspaceSlug) setWorkspaceSlug(session.workspaceSlug);
       }

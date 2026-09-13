@@ -88,8 +88,8 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
               >
                 <UserAvatar
                   avatarUrl={user.avatarUrl}
-                  seed={user.email || user.name || user.id}
-                  name={user.name || user.email}
+                  email={user.email}
+                  name={user.name}
                   size={24}
                   className="w-6 h-6"
                 />
@@ -150,8 +150,8 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <UserAvatar
                     avatarUrl={hoveredUser.avatarUrl}
-                    seed={hoveredUser.email || hoveredUser.name || hoveredUser.id}
-                    name={hoveredUser.name || hoveredUser.email}
+                    email={hoveredUser.email}
+                    name={hoveredUser.name}
                     size={16}
                     className="w-4 h-4 shrink-0 border border-white/20"
                   />

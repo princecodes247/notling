@@ -518,14 +518,13 @@ export async function signUpWithEmailImpl(
 
   const { hash } = hashPassword(password);
   const displayName = name?.trim() || cleanEmail.split('@')[0];
-  const avatarUrl = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(displayName)}`;
 
   const [user] = await db
     .insert(users)
     .values({
       email: cleanEmail,
       name: displayName,
-      avatarUrl,
+      avatarUrl: null,
       passwordHash: hash,
       provider: 'email',
       providerAccountId: cleanEmail,
@@ -758,7 +757,7 @@ export async function processOAuthCallbackImpl(
         .values({
           email: cleanEmail,
           name: name || cleanEmail.split('@')[0],
-          avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
+          avatarUrl: avatarUrl || null,
           provider,
           providerAccountId,
           isOnboarded: false,

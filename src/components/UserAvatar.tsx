@@ -6,6 +6,7 @@ interface UserAvatarProps {
   avatarUrl?: string | null;
   seed?: string | null;
   name?: string | null;
+  email?: string | null;
   size?: number;
   className?: string;
 }
@@ -14,6 +15,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   avatarUrl,
   seed,
   name,
+  email,
   size = 32,
   className = '',
 }) => {
@@ -26,7 +28,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
     return (
       <img
         src={rawTarget}
-        alt={name || 'User Avatar'}
+        alt={name || email || 'User Avatar'}
         style={{ width: `${size}px`, height: `${size}px` }}
         className={`rounded-full object-cover shrink-0 ${className}`}
       />
@@ -36,7 +38,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   // Extract clean seed string (strip 'avatune:' prefix if present)
   let effectiveSeed = rawTarget.replace(/^avatune:/, '').trim();
   if (!effectiveSeed) {
-    effectiveSeed = (name || 'user-default').trim().toLowerCase();
+    effectiveSeed = (email || name || 'user-default').trim().toLowerCase();
   }
 
   return (
