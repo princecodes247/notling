@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star } from 'lucide-react';
+import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,
@@ -119,7 +119,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTogglePin,
   onLogout,
 }) => {
-  const { toggleSearch, toggleSidebar } = useUIStore();
+  const { toggleSearch, toggleSidebar, setImportOpen } = useUIStore();
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   const [isRootDropTarget, setIsRootDropTarget] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
@@ -210,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </div>
 
-                <div className="pt-1.5 mt-1 border-t border-stone-100 px-1">
+                <div className="pt-1.5 mt-1 border-t border-stone-100 px-1 flex flex-col gap-0.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -221,6 +221,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Plus className="w-3.5 h-3.5 text-stone-500" />
                     Create new workspace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowWorkspaceMenu(false);
+                      setImportOpen(true);
+                    }}
+                    className="w-full text-left px-2 py-1.5 rounded-lg hover:bg-stone-100 flex items-center gap-2 text-stone-700 font-medium cursor-pointer transition-colors"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-stone-500" />
+                    Import Notion / Notes
                   </button>
                 </div>
               </div>
@@ -306,6 +317,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {trashCount}
             </span>
           )}
+        </button>
+
+        {/* Import */}
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 hover:bg-stone-100/80 hover:text-stone-900 transition-all cursor-pointer"
+        >
+          <Upload className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+          <span>Import</span>
         </button>
       </div>
 

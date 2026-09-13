@@ -7,6 +7,7 @@ import { TabBar } from '~/components/TabBar';
 import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
+import { ImportModal } from '~/components/ImportModal';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
 import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
@@ -528,6 +529,13 @@ function DashboardLayout() {
           onClose={() => setIsCreateWorkspaceOpen(false)}
           onCreateWorkspace={async (data) => {
             await createWorkspaceMutation.mutateAsync(data);
+          }}
+        />
+        <ImportModal
+          workspaceId={session.workspaceId}
+          onSelectPage={(id) => {
+            useUIStore.getState().setActivePageId(id);
+            navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
           }}
         />
       </div>

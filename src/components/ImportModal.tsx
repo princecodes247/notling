@@ -1,0 +1,295 @@
+import React, { useState, useRef } from 'react';
+import { Upload, AlertCircle, Loader2, X, FolderInput } from 'lucide-react';
+import { useUIStore } from '~/store/uiStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { parseNotionZipArchive, parseMarkdownToBlocks, parseHTMLToBlocks, extractTitleFromContent, cleanNotionTitle, type ImportedDoc } from '~/lib/importParser';
+import { createPage, updatePageContent } from '~/server/pages';
+import { useNavigate } from '@tanstack/react-router';
+
+interface ImportModalProps {
+  workspaceId: string;
+  onSelectPage?: (pageId: string) => void;
+}
+
+export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectPage }) => {
+  const { isImportOpen, setImportOpen } = useUIStore();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [progressText, setProgressText] = useState('');
+  const [importedCount, setImportedCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  if (!isImportOpen) return null;
+
+  const handleClose = () => {
+    if (isImporting) return;
+    setImportOpen(false);
+    setErrorMsg(null);
+    setProgressText('');
+    setImportedCount(0);
+    setTotalCount(0);
+  };
+
+  const processImportDocs = async (docs: ImportedDoc[]) => {
+    if (!workspaceId || docs.length === 0) {
+      setErrorMsg('No valid documents found to import.');
+      setIsImporting(false);
+      return;
+    }
+
+    setTotalCount(docs.length);
+    setImportedCount(0);
+
+    // Track created folder IDs by relative path to maintain parent-child hierarchy
+    const pathToIdMap = new Map<string, string>();
+    let firstCreatedPageId: string | null = null;
+
+    try {
+      for (let i = 0; i < docs.length; i++) {
+        const doc = docs[i];
+        setImportedCount(i + 1);
+        setProgressText(`Importing document ${i + 1} of ${docs.length}: "${doc.title}"...`);
+
+        // Find parent page ID if relative parent path exists in path map
+        let parentId: string | null = null;
+        if (doc.parentPath && pathToIdMap.has(doc.parentPath)) {
+          parentId = pathToIdMap.get(doc.parentPath) || null;
+        }
+
+        // Create new page in workspace
+        const newPage = await createPage({
+          data: {
+            workspaceId,
+            parentId,
+            title: doc.title,
+            icon: doc.icon || '📄',
+          },
+        });
+
+        if (newPage) {
+          if (!firstCreatedPageId) {
+            firstCreatedPageId = newPage.id;
+          }
+
+          // Register relativePath in path map for potential child documents
+          pathToIdMap.set(doc.relativePath, newPage.id);
+
+          // Remove trailing filename from relative path to register folder path
+          const pathParts = doc.relativePath.split('/');
+          pathParts.pop();
+          if (pathParts.length > 0) {
+            const folderPath = pathParts.join('/');
+            if (!pathToIdMap.has(folderPath)) {
+              pathToIdMap.set(folderPath, newPage.id);
+            }
+          }
+
+          // Update page with imported BlockNote blocks
+          if (doc.contentBlocks && doc.contentBlocks.length > 0) {
+            const contentText = doc.title;
+            await updatePageContent({
+              data: {
+                pageId: newPage.id,
+                content: doc.contentBlocks,
+                contentText,
+              },
+            });
+          }
+        }
+      }
+
+      setProgressText(`Successfully imported ${docs.length} ${docs.length === 1 ? 'page' : 'pages'}!`);
+
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
+
+      setTimeout(() => {
+        setIsImporting(false);
+        setImportOpen(false);
+        if (firstCreatedPageId) {
+          if (onSelectPage) {
+            onSelectPage(firstCreatedPageId);
+          } else {
+            navigate({ to: '/dashboard/p/$pageId', params: { pageId: firstCreatedPageId } });
+          }
+        }
+      }, 900);
+    } catch (err: any) {
+      console.error('Import error:', err);
+      setErrorMsg(err?.message || 'Failed to import documents. Please try again.');
+      setIsImporting(false);
+    }
+  };
+
+  const handleFileSelect = async (files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+    setIsImporting(true);
+    setErrorMsg(null);
+
+    const firstFile = files[0];
+    const lowerName = firstFile.name.toLowerCase();
+
+    try {
+      if (lowerName.endsWith('.zip')) {
+        setProgressText('Extracting and reading Notion archive...');
+        const docs = await parseNotionZipArchive(firstFile);
+        await processImportDocs(docs);
+      } else {
+        const docs: ImportedDoc[] = [];
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const name = file.name;
+          const lower = name.toLowerCase();
+
+          if (lower.endsWith('.md') || lower.endsWith('.txt')) {
+            const text = await file.text();
+            const { title, bodyMarkdown } = extractTitleFromContent(text, name);
+            const blocks = parseMarkdownToBlocks(bodyMarkdown);
+            docs.push({
+              title,
+              icon: '📄',
+              contentBlocks: blocks,
+              relativePath: name,
+            });
+          } else if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+            const html = await file.text();
+            const title = cleanNotionTitle(name);
+            const blocks = parseHTMLToBlocks(html);
+            docs.push({
+              title,
+              icon: '📄',
+              contentBlocks: blocks,
+              relativePath: name,
+            });
+          }
+        }
+        await processImportDocs(docs);
+      }
+    } catch (err: any) {
+      console.error('File parsing error:', err);
+      setErrorMsg('Could not parse uploaded files. Ensure valid .zip, .md, or .html files.');
+      setIsImporting(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileSelect(e.dataTransfer.files);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-100 font-sans select-none">
+      <div className="fixed inset-0" onClick={handleClose} />
+
+      <div className="relative z-10 w-full max-w-lg bg-[#fdfcf9] border border-stone-200/90 rounded-xl shadow-2xl overflow-hidden flex flex-col">
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-200/60 bg-[#f8f7f4]/70">
+          <div className="flex items-center gap-2.5 text-stone-800">
+            <div className="w-7 h-7 rounded-lg bg-stone-200/70 border border-stone-300/80 flex items-center justify-center shrink-0">
+              <FolderInput className="w-4 h-4 text-stone-700" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm text-stone-900 tracking-tight">Import Notes & Documents</h3>
+              <p className="text-[11px] text-stone-500 font-normal">
+                Notion (.zip), Apple Notes (.html), Markdown (.md), or Text (.txt)
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={isImporting}
+            onClick={handleClose}
+            className="text-stone-400 hover:text-stone-700 p-1 rounded hover:bg-stone-200/60 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-5 flex flex-col gap-4">
+          {errorMsg && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {isImporting ? (
+            <div className="py-8 px-4 border border-stone-200/80 rounded-xl bg-stone-50/70 flex flex-col items-center justify-center gap-3 text-center">
+              <Loader2 className="w-8 h-8 text-stone-800 animate-spin" />
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold text-stone-900">
+                  Importing your content...
+                </span>
+                <span className="text-xs text-stone-500 max-w-sm leading-relaxed font-mono">
+                  {progressText}
+                </span>
+              </div>
+              {totalCount > 0 && (
+                <div className="w-full max-w-xs bg-stone-200/80 h-2 rounded-full overflow-hidden mt-1">
+                  <div
+                    className="bg-stone-900 h-full transition-all duration-300"
+                    style={{ width: `${Math.round((importedCount / totalCount) * 100)}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all ${
+                isDragOver
+                  ? 'border-stone-800 bg-stone-100/80 ring-2 ring-stone-400'
+                  : 'border-stone-300 hover:border-stone-400 bg-stone-50/50 hover:bg-stone-100/50'
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept=".zip,.md,.txt,.html,.htm"
+                onChange={(e) => e.target.files && handleFileSelect(e.target.files)}
+                className="hidden"
+              />
+              <div className="w-12 h-12 rounded-2xl bg-white border border-stone-200/90 flex items-center justify-center shadow-2xs text-stone-600">
+                <Upload className="w-6 h-6 stroke-1.5" />
+              </div>
+              <div className="flex flex-col items-center gap-1 text-center">
+                <span className="text-xs font-semibold text-stone-900">
+                  Click to browse or drag & drop files here
+                </span>
+                <span className="text-[11px] text-stone-400 max-w-xs leading-normal">
+                  Supports Notion workspace exports (<code className="font-mono text-stone-600">.zip</code>), Apple Notes (<code className="font-mono text-stone-600">.html</code>), and Markdown (<code className="font-mono text-stone-600">.md</code>)
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Supported Format Guide Badges */}
+          <div className="pt-2 border-t border-stone-100 flex items-center justify-between text-[11px] text-stone-400 font-mono">
+            <span>Supported formats:</span>
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-semibold border border-stone-200/60">Notion .zip</span>
+              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-semibold border border-stone-200/60">Apple Notes .html</span>
+              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 font-semibold border border-stone-200/60">Markdown .md</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

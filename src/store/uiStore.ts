@@ -45,6 +45,10 @@ interface UIState {
   setTrashOpen: (open: boolean) => void;
   toggleTrash: () => void;
 
+  isImportOpen: boolean;
+  setImportOpen: (open: boolean) => void;
+  toggleImport: () => void;
+
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
@@ -250,6 +254,10 @@ export const useUIStore = create<UIState>((set, get) => ({
   isTrashOpen: false,
   setTrashOpen: (open) => set({ isTrashOpen: open }),
   toggleTrash: () => set((state) => ({ isTrashOpen: !state.isTrashOpen })),
+
+  isImportOpen: false,
+  setImportOpen: (open) => set({ isImportOpen: open }),
+  toggleImport: () => set((state) => ({ isImportOpen: !state.isImportOpen })),
 
   sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
