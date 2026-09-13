@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PanelLeftClose, ChevronsUpDown, Check, Plus } from 'lucide-react';
+import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,
@@ -18,6 +18,18 @@ import type { UserSession, UserWorkspaceItem } from '~/server/auth';
 import { UserAvatar } from './UserAvatar';
 import { WorkspaceAvatar } from './WorkspaceAvatar';
 
+function getAllPinnedNodes(nodes: PageTreeNode[]): PageTreeNode[] {
+  let pinned: PageTreeNode[] = [];
+  for (const node of nodes) {
+    if (node.isPinned) {
+      pinned.push(node);
+    }
+    if (node.children && node.children.length > 0) {
+      pinned = pinned.concat(getAllPinnedNodes(node.children));
+    }
+  }
+  return pinned;
+}
 
 interface SidebarProps {
   workspaceName: string;
@@ -35,6 +47,7 @@ interface SidebarProps {
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
+  onTogglePin?: (pageId: string) => void;
   onLogout?: () => void;
 }
 
@@ -54,6 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSoftDelete,
   onUpdateMeta,
   onReorderPage,
+  onTogglePin,
   onLogout,
 }) => {
   const { toggleSearch, toggleSidebar } = useUIStore();
@@ -63,6 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const workspaceNodes = treeNodes.filter((n) => !n.isShared);
   const sharedNodes = treeNodes.filter((n) => n.isShared === true);
+  const pinnedNodes = getAllPinnedNodes(treeNodes);
 
   return (
     <aside className="w-full md:w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative pt-safe pb-safe">
@@ -247,6 +262,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 4. Folders & Document Tree Section */}
       <div className="flex-1 overflow-y-auto px-2 pt-3 pb-2 flex flex-col min-h-0">
+        {/* Favorites / Pinned Section */}
+        {pinnedNodes.length > 0 && (
+          <div className="mb-3 flex flex-col gap-0.5">
+            <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-600/90">
+              <div className="flex items-center gap-1.5">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-500" />
+                <span>Favorites</span>
+              </div>
+            </div>
+            <div className="mt-0.5 flex flex-col gap-0.5">
+              {pinnedNodes.map((node) => (
+                <PageTreeItem
+                  key={`pinned-${node.id}`}
+                  node={node}
+                  depth={0}
+                  onCreateChild={onCreatePage}
+                  onSelectPage={onSelectPage}
+                  onSoftDelete={onSoftDelete}
+                  onUpdateMeta={onUpdateMeta}
+                  onReorderPage={onReorderPage}
+                  onTogglePin={onTogglePin}
+                  draggedPageId={draggedPageId}
+                  setDraggedPageId={setDraggedPageId}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400">
           <span>Workspace Pages</span>
           <div className="flex items-center gap-1">
@@ -314,6 +358,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onSoftDelete={onSoftDelete}
                 onUpdateMeta={onUpdateMeta}
                 onReorderPage={onReorderPage}
+                onTogglePin={onTogglePin}
                 draggedPageId={draggedPageId}
                 setDraggedPageId={setDraggedPageId}
               />
@@ -340,6 +385,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSoftDelete={onSoftDelete}
                   onUpdateMeta={onUpdateMeta}
                   onReorderPage={onReorderPage}
+                  onTogglePin={onTogglePin}
                   draggedPageId={draggedPageId}
                   setDraggedPageId={setDraggedPageId}
                 />

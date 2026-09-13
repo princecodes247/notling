@@ -42,6 +42,7 @@ export const pages = pgTable('pages', {
   content: jsonb('content').$type<any[]>().notNull().default([]),
   contentText: text('content_text'),
   order: integer('order').notNull().default(0),
+  isPinned: boolean('is_pinned').notNull().default(false),
   isDeleted: boolean('is_deleted').notNull().default(false),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

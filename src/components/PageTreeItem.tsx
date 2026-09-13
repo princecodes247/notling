@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Star } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   ArrowRight01Icon,
@@ -20,6 +21,7 @@ interface PageTreeItemProps {
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
+  onTogglePin?: (pageId: string) => void;
   draggedPageId?: string | null;
   setDraggedPageId?: (id: string | null) => void;
 }
@@ -32,6 +34,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   onSoftDelete,
   onUpdateMeta,
   onReorderPage,
+  onTogglePin,
   draggedPageId,
   setDraggedPageId,
 }) => {
@@ -217,6 +220,26 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'
           )}
         >
+          {/* Pin / Favorite Button */}
+          {onTogglePin && (
+            <button
+              type="button"
+              title={node.isPinned ? "Remove from Favorites" : "Add to Favorites"}
+              className={clsx(
+                "p-1 rounded transition-colors cursor-pointer active-press",
+                node.isPinned
+                  ? "text-amber-500 hover:text-amber-600"
+                  : "text-stone-400 hover:text-stone-800 hover:bg-stone-200/70"
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin(node.id);
+              }}
+            >
+              <Star className={clsx("w-3.5 h-3.5", node.isPinned ? "fill-amber-400 text-amber-500" : "")} />
+            </button>
+          )}
+
           {/* Add Sub-Page */}
           <button
             type="button"
@@ -253,7 +276,21 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     setShowMenu(false);
                   }}
                 />
-                <div className="absolute right-0 top-6 w-36 bg-white border border-neutral-200 rounded-lg shadow-xl py-1 z-50 text-xs">
+                <div className="absolute right-0 top-6 w-38 bg-white border border-neutral-200 rounded-lg shadow-xl py-1 z-50 text-xs">
+                  {onTogglePin && (
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onTogglePin(node.id);
+                      }}
+                    >
+                      <Star className={clsx("w-3.5 h-3.5", node.isPinned ? "fill-amber-400 text-amber-500" : "text-neutral-500")} />
+                      {node.isPinned ? 'Unpin Page' : 'Pin to Favorites'}
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 flex items-center gap-2 text-neutral-700 font-medium"
@@ -298,6 +335,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               onSoftDelete={onSoftDelete}
               onUpdateMeta={onUpdateMeta}
               onReorderPage={onReorderPage}
+              onTogglePin={onTogglePin}
               draggedPageId={draggedPageId}
               setDraggedPageId={setDraggedPageId}
             />

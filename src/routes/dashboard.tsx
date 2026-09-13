@@ -8,7 +8,7 @@ import { CommandPalette } from '~/components/CommandPalette';
 import { TrashModal } from '~/components/TrashModal';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
-import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, type PageTreeNode } from '~/server/pages';
+import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -296,6 +296,17 @@ function DashboardLayout() {
     },
   });
 
+  // Toggle Pin / Favorite Mutation
+  const togglePinMutation = useMutation({
+    mutationFn: async (pageId: string) => {
+      return await togglePinPage({ data: { pageId } });
+    },
+    onSuccess: () => {
+      refetchTree();
+      queryClient.invalidateQueries({ queryKey: ['page'] });
+    },
+  });
+
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
     if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings' && tab.id !== 'trash') {
@@ -399,6 +410,7 @@ function DashboardLayout() {
                 onSoftDelete={(id) => softDeleteMutation.mutate(id)}
                 onUpdateMeta={(id, title, icon) => updateMetaMutation.mutate({ pageId: id, title, icon })}
                 onReorderPage={(input) => reorderPageMutation.mutate(input)}
+                onTogglePin={(id) => togglePinMutation.mutate(id)}
                 onLogout={handleLogout}
               />
             </motion.div>

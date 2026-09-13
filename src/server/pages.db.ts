@@ -44,6 +44,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           icon: pages.icon,
           visibility: pages.visibility,
           order: pages.order,
+          isPinned: pages.isPinned,
           createdAt: pages.createdAt,
           updatedAt: pages.updatedAt,
           contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
@@ -69,6 +70,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
               icon: pages.icon,
               visibility: pages.visibility,
               order: pages.order,
+              isPinned: pages.isPinned,
               createdAt: pages.createdAt,
               updatedAt: pages.updatedAt,
               contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
@@ -639,6 +641,26 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
     return updated;
   } catch (err) {
     console.error('Error updating page meta:', err);
+    return null;
+  }
+}
+
+export async function togglePinPageInDb(input: { pageId: string; isPinned?: boolean }) {
+  try {
+    const pageList = await db.select({ isPinned: pages.isPinned }).from(pages).where(eq(pages.id, input.pageId)).limit(1);
+    if (pageList.length === 0) return null;
+
+    const newPinnedState = input.isPinned !== undefined ? input.isPinned : !pageList[0].isPinned;
+
+    const [updated] = await db
+      .update(pages)
+      .set({ isPinned: newPinnedState, updatedAt: new Date() })
+      .where(eq(pages.id, input.pageId))
+      .returning();
+
+    return updated;
+  } catch (err) {
+    console.error('Error toggling page pin status:', err);
     return null;
   }
 }

@@ -13,6 +13,7 @@ export interface PageTreeNode {
   contentText?: string | null;
   children: PageTreeNode[];
   isShared?: boolean;
+  isPinned?: boolean;
 }
 
 // TanStack Start Server Functions
@@ -63,6 +64,13 @@ export const updatePageVisibility = createServerFn({ method: 'POST' })
   .handler(async ({ data }: { data: { pageId: string; visibility: 'private' | 'workspace' | 'public' | 'public_edit' } }) => {
     const { savePageVisibility } = await import('./pages.db');
     return savePageVisibility(data);
+  });
+
+export const togglePinPage = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; isPinned?: boolean }) => input)
+  .handler(async ({ data }: { data: { pageId: string; isPinned?: boolean } }) => {
+    const { togglePinPageInDb } = await import('./pages.db');
+    return togglePinPageInDb(data);
   });
 
 export const reorderPage = createServerFn({ method: 'POST' })
