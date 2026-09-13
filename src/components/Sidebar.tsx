@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const sharedNodes = treeNodes.filter((n) => n.isShared === true);
 
   return (
-    <aside className="w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative">
+    <aside className="w-full md:w-60 h-full bg-[#f9f8f5] flex flex-col shrink-0 select-none text-stone-800 text-sm border-r border-stone-200/60 relative pt-safe pb-safe">
       {/* 1. Header: Workspace Switcher Dropdown + Collapse Icon */}
       <div className="h-14 px-3 flex items-center justify-between border-b border-stone-200/40 relative">
         <div className="relative flex-1 min-w-0">

@@ -229,5 +229,37 @@
   transform: translateY(-1px);
 }
 
+/* Mobile & Touch Optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 640px) {
+  .bn-editor {
+    padding-inline: 16px !important;
+    margin-inline: -16px !important;
+    min-height: 320px !important;
+  }
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* iOS Spring Tap Feedback */
+.active-press:active {
+  transform: scale(0.96);
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
 
 

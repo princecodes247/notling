@@ -131,7 +131,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   }, [activeTabId]);
 
   return (
-    <div className="flex items-center gap-1.5 px-1 py-1 shrink-0 select-none relative w-full overflow-hidden">
+    <div className="hidden md:flex items-center gap-1.5 px-1 py-1 shrink-0 select-none relative w-full overflow-hidden">
       {/* Sidebar Reopen Toggle Button (Shown when sidebar is closed) */}
       <AnimatePresence mode="popLayout">
         {!sidebarOpen && (

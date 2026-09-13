@@ -40,7 +40,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-6 sm:p-10">
+    <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-28 sm:pb-10 pt-safe">
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100">

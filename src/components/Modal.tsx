@@ -46,18 +46,21 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-stone-950/45 backdrop-blur-sm select-none animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center max-sm:items-end justify-center p-4 max-sm:p-0 bg-stone-950/45 backdrop-blur-xs select-none animate-in fade-in duration-200">
       {/* Click outside backdrop */}
       <div className="fixed inset-0" onClick={onClose} />
 
-      {/* Modal Container */}
+      {/* Modal / iOS Bottom Sheet Container */}
       <div
-        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 duration-200`}
+        className={`w-full ${MAX_WIDTH_CLASSES[maxWidth]} bg-[#fdfcf9] border border-stone-200/90 rounded-2xl max-sm:rounded-b-none max-sm:rounded-t-[24px] shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col relative z-10 animate-in zoom-in-95 max-sm:slide-in-from-bottom-full duration-200 max-sm:max-h-[90vh]`}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* iOS Sheet Drag Handle Pill */}
+        <div className="w-10 h-1 rounded-full bg-stone-300 mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
         {/* Header */}
         {(title || icon || subtitle) && (
-          <div className="px-6 py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90">
+          <div className="px-5 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200/60 flex items-center justify-between bg-[#f8f7f4]/90 shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               {icon && (
                 <div className="w-8 h-8 rounded-lg bg-stone-900 text-amber-200/90 flex items-center justify-center shrink-0 shadow-xs ring-1 ring-white/20">
@@ -81,23 +84,23 @@ export const Modal: React.FC<ModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-1.5 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer"
+                className="p-2 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors cursor-pointer active-press"
                 title="Close"
               >
-                <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                <HugeiconsIcon icon={Cancel01Icon} size={18} />
               </button>
             </div>
           </div>
         )}
 
         {/* Content Body */}
-        <div className="p-6 flex-1 overflow-y-auto max-h-[80vh]">
+        <div className="p-5 sm:px-6 sm:py-6 flex-1 overflow-y-auto max-h-[75vh] sm:max-h-[80vh]">
           {children}
         </div>
 
         {/* Optional Footer */}
         {footer && (
-          <div className="px-6 py-3.5 border-t border-stone-200/60 bg-[#f8f7f4]/80 flex items-center justify-between">
+          <div className="px-5 sm:px-6 py-3.5 border-t border-stone-200/60 bg-[#f8f7f4]/80 flex items-center justify-between shrink-0 max-sm:pb-[calc(1rem+env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}

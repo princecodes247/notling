@@ -95,28 +95,31 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ workspaceId, onS
   if (!isSearchOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-stone-950/40 backdrop-blur-xs animate-in fade-in duration-150 select-none">
+    <div className="fixed inset-0 z-50 flex items-start max-sm:items-end justify-center pt-16 max-sm:pt-0 px-4 max-sm:px-0 bg-stone-950/45 backdrop-blur-xs animate-in fade-in duration-150 select-none">
       {/* Backdrop click to dismiss */}
       <div className="fixed inset-0" onClick={() => setSearchOpen(false)} />
 
-      {/* Modal Content */}
-      <div className="relative z-10 w-full max-w-xl bg-[#fdfcf9] border border-stone-200/90 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col">
+      {/* Modal Content / Mobile Sheet */}
+      <div className="relative z-10 w-full max-w-xl bg-[#fdfcf9] border border-stone-200/90 rounded-xl max-sm:rounded-t-[24px] max-sm:rounded-b-none shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col max-sm:max-h-[90vh] animate-in slide-in-from-bottom-full sm:zoom-in-95 duration-200">
+        {/* iOS Drag Handle */}
+        <div className="w-10 h-1 rounded-full bg-stone-300 mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+
         {/* Search Bar Input */}
-        <div className="flex items-center px-4 py-3.5 border-b border-stone-200/60 bg-[#f8f7f4]/70 gap-3">
+        <div className="flex items-center px-4 py-3 sm:py-3.5 border-b border-stone-200/60 bg-[#f8f7f4]/70 gap-3 shrink-0">
           <Search className="w-4 h-4 text-stone-400 shrink-0" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search documents, titles & content..."
-            className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-sm font-medium focus:outline-none"
+            className="w-full bg-transparent text-stone-900 placeholder-stone-400 text-base sm:text-sm font-medium focus:outline-none"
             autoFocus
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="text-xs text-stone-500 hover:text-stone-800 px-2 py-0.5 rounded-md bg-stone-200/60 font-medium cursor-pointer transition-colors"
+              className="text-xs text-stone-500 hover:text-stone-800 px-2 py-1 rounded-md bg-stone-200/60 font-medium cursor-pointer transition-colors active-press"
             >
               Clear
             </button>
@@ -124,7 +127,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ workspaceId, onS
           <button
             type="button"
             onClick={() => setSearchOpen(false)}
-            className="text-stone-400 hover:text-stone-700 p-1.5 rounded-md hover:bg-stone-200/60 cursor-pointer transition-colors"
+            className="text-stone-400 hover:text-stone-700 p-2 rounded-lg hover:bg-stone-200/60 cursor-pointer transition-colors active-press"
           >
             <X className="w-4 h-4" />
           </button>

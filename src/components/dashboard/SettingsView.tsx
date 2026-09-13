@@ -177,7 +177,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-6 sm:p-10">
+    <div className="flex-1 w-full h-full bg-white flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-28 sm:pb-10 pt-safe">
       <div className="max-w-4xl mx-auto w-full flex flex-col gap-8">
         {/* Header */}
         <div className="pb-5 border-b border-neutral-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
