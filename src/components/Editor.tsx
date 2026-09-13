@@ -4,7 +4,7 @@ import { useUIStore } from '~/store/uiStore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   PlusSignIcon,
-  File01Icon,
+  Folder01Icon,
   ArrowRight01Icon,
   Loading02Icon,
   Share01Icon,
@@ -391,14 +391,14 @@ export const Editor: React.FC<EditorProps> = ({
           {isFolder ? (
             <div className="mt-2 flex flex-col gap-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
                   Folder Contents
                 </span>
                 {!isReadOnly && (
                   <button
                     type="button"
                     onClick={() => createDocumentInFolderMutation.mutate()}
-                    className="flex items-center gap-1 text-xs font-medium text-stone-700 hover:text-stone-900 px-2.5 py-1 rounded-md bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs font-medium text-stone-700 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer active-press"
                   >
                     <HugeiconsIcon icon={PlusSignIcon} size={13} />
                     <span>New Document</span>
@@ -407,16 +407,26 @@ export const Editor: React.FC<EditorProps> = ({
               </div>
 
               {childPages.length === 0 ? (
-                <div className="py-12 border-2 border-dashed border-stone-200 rounded-xl flex flex-col items-center justify-center gap-2 text-stone-400">
-                  <HugeiconsIcon icon={File01Icon} size={28} className="text-stone-300" />
-                  <p className="text-xs font-medium">This folder is empty</p>
+                <div className="py-14 px-6 border border-dashed border-stone-200/90 dark:border-zinc-800/90 rounded-2xl flex flex-col items-center justify-center text-center gap-3 text-stone-400 dark:text-zinc-500 bg-stone-50/40 dark:bg-zinc-900/40 shadow-2xs">
+                  <div className="w-12 h-12 rounded-2xl bg-stone-100 dark:bg-zinc-800 text-stone-400 dark:text-zinc-400 flex items-center justify-center shadow-2xs">
+                    <HugeiconsIcon icon={Folder01Icon} size={24} />
+                  </div>
+                  <div className="flex flex-col gap-1 max-w-xs">
+                    <h4 className="text-sm font-semibold text-stone-900 dark:text-zinc-100 tracking-tight">
+                      This folder is empty
+                    </h4>
+                    <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
+                      Create your first document inside this folder to start organizing notes and pages.
+                    </p>
+                  </div>
                   {!isReadOnly && (
                     <button
                       type="button"
                       onClick={() => createDocumentInFolderMutation.mutate()}
-                      className="mt-1 text-xs text-stone-700 hover:underline font-semibold cursor-pointer"
+                      className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium shadow-2xs transition-all cursor-pointer active-press"
                     >
-                      Create a document inside
+                      <HugeiconsIcon icon={PlusSignIcon} size={14} />
+                      <span>Create document</span>
                     </button>
                   )}
                 </div>
@@ -430,15 +440,15 @@ export const Editor: React.FC<EditorProps> = ({
                         setActivePageId(child.id);
                         navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
                       }}
-                      className="p-3 rounded-xl border border-stone-200/80 hover:border-stone-400 hover:bg-stone-50/60 transition-all text-left flex items-center justify-between group cursor-pointer"
+                      className="p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 hover:border-stone-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900/60 hover:bg-stone-50/60 dark:hover:bg-zinc-800/60 transition-all text-left flex items-center justify-between group cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <span className="text-lg">{child.icon || '📄'}</span>
-                        <span className="text-xs font-medium text-stone-800 truncate group-hover:text-stone-900">
+                        <span className="text-xs font-medium text-stone-800 dark:text-zinc-200 truncate group-hover:text-stone-900 dark:group-hover:text-white">
                           {child.title || 'Untitled Document'}
                         </span>
                       </div>
-                      <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-stone-300 group-hover:text-stone-600 shrink-0 transition-colors" />
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-stone-300 dark:text-zinc-600 group-hover:text-stone-600 dark:group-hover:text-zinc-300 shrink-0 transition-colors" />
                     </button>
                   ))}
                 </div>

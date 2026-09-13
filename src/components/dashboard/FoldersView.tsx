@@ -92,20 +92,22 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         {/* Folders Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {folders.length === 0 ? (
-            <div className="col-span-1 md:col-span-2 py-16 px-4 text-center border border-stone-200/80 dark:border-zinc-800/80 rounded-2xl flex flex-col items-center justify-center gap-3 bg-stone-50/40 dark:bg-zinc-900/40 my-auto">
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 border border-stone-200/90 dark:border-zinc-700 text-stone-600 dark:text-zinc-300 flex items-center justify-center shadow-2xs">
-                <HugeiconsIcon icon={Folder01Icon} size={22} />
+            <div className="col-span-1 md:col-span-2 py-20 border border-dashed border-stone-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center p-8 gap-3 bg-stone-50/40 dark:bg-zinc-900/40 my-auto">
+              <div className="w-14 h-14 rounded-2xl bg-brand-light border border-brand-border text-brand-text flex items-center justify-center shadow-2xs">
+                <HugeiconsIcon icon={Folder01Icon} size={24} />
               </div>
-              <h3 className="text-base font-semibold text-stone-900 dark:text-white tracking-tight mt-1">
-                No folders created yet
-              </h3>
-              <p className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm leading-relaxed">
-                Organize your workspace documents, project plans, and research notes into custom folders.
-              </p>
+              <div className="flex flex-col gap-1 max-w-sm">
+                <h3 className="text-base font-semibold text-stone-950 dark:text-white tracking-tight">
+                  No folders created yet
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
+                  Organize your workspace documents, project plans, and research notes into structured folders.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={onCreateFolder}
-                className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium cursor-pointer shadow-2xs transition-all active-press"
+                className="mt-2 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium cursor-pointer shadow-2xs transition-all active-press"
               >
                 <HugeiconsIcon icon={FolderAddIcon} size={15} />
                 <span>Create your first folder</span>
@@ -168,14 +170,17 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                   {isExpanded && (
                     <div className="p-3 flex flex-col divide-y divide-neutral-100 dark:divide-zinc-800/60">
                       {!hasChildren ? (
-                        <div className="py-4 text-center text-xs text-neutral-400 dark:text-zinc-500">
-                          Empty folder &bull;{' '}
+                        <div className="py-6 border border-dashed border-stone-200/80 dark:border-zinc-800/80 rounded-lg bg-stone-50/30 dark:bg-zinc-900/30 text-center flex flex-col items-center justify-center gap-1.5 p-4 my-1">
+                          <span className="text-xs font-medium text-stone-600 dark:text-zinc-400">
+                            This folder is empty
+                          </span>
                           <button
                             type="button"
                             onClick={() => onCreateDocument(folder.id)}
-                            className="text-neutral-900 dark:text-zinc-200 font-medium hover:underline cursor-pointer"
+                            className="inline-flex items-center gap-1 text-xs text-brand-text hover:underline font-medium cursor-pointer"
                           >
-                            + Add page
+                            <HugeiconsIcon icon={PlusSignIcon} size={13} />
+                            <span>Add document</span>
                           </button>
                         </div>
                       ) : (
