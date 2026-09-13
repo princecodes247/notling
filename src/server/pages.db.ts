@@ -4,6 +4,7 @@ import { eq, and, or, desc, asc, isNull, lt, ne, sql } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
+import { sanitizeServerError } from './errors';
 
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1523,8 +1524,7 @@ export async function inviteWorkspaceMember(input: {
 
     return { success: true, member: newMember };
   } catch (err: any) {
-    console.error('Error inviting workspace member:', err);
-    return { success: false, error: err.message || 'Failed to invite workspace member.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to invite workspace member.') };
   }
 }
 

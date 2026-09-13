@@ -3,6 +3,7 @@ import { users, workspaces, sessions, pages, uploads, workspaceMembers } from '~
 import { eq, and, gt, or } from 'drizzle-orm';
 import type { UserSession, AuthResponse, UserWorkspaceItem } from './auth';
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server';
+import { sanitizeServerError } from './errors';
 import crypto from 'node:crypto';
 
 const COOKIE_NAME = 'notling_session';
@@ -314,8 +315,7 @@ export async function switchWorkspaceImpl(targetWorkspaceId: string): Promise<Au
       session: updatedSession,
     };
   } catch (err: any) {
-    console.error('Error switching workspace:', err);
-    return { success: false, error: err.message || 'Failed to switch workspace.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to switch workspace.') };
   }
 }
 
@@ -348,8 +348,7 @@ export async function switchWorkspaceBySlugImpl(slug: string): Promise<AuthRespo
       session: updatedSession,
     };
   } catch (err: any) {
-    console.error('Error switching workspace by slug:', err);
-    return { success: false, error: err.message || 'Failed to switch workspace.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to switch workspace.') };
   }
 }
 
@@ -392,8 +391,7 @@ export async function createWorkspaceImpl(input: {
       session: updatedSession,
     };
   } catch (err: any) {
-    console.error('Error creating workspace:', err);
-    return { success: false, error: err.message || 'Failed to create workspace.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to create workspace.') };
   }
 }
 
@@ -804,8 +802,7 @@ export async function processOAuthCallbackImpl(
       },
     };
   } catch (err: any) {
-    console.error('OAuth callback error:', err);
-    return { success: false, error: err.message || 'OAuth authentication failed.' };
+    return { success: false, error: sanitizeServerError(err, 'OAuth authentication failed.') };
   }
 }
 
@@ -1006,8 +1003,7 @@ export async function updateSettingsImpl(data: {
       session: updatedSession,
     };
   } catch (err: any) {
-    console.error('Error updating settings:', err);
-    return { success: false, error: err.message || 'Failed to update settings.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to update settings.') };
   }
 }
 
@@ -1065,10 +1061,9 @@ export async function deleteAccountAndDataImpl(): Promise<{ success: boolean; er
 
     return { success: true };
   } catch (err: any) {
-    console.error('Error deleting account and user data:', err);
     deleteCookie(COOKIE_NAME, { path: '/' });
     deleteCookie(ACTIVE_WS_COOKIE, { path: '/' });
-    return { success: false, error: err.message || 'Failed to delete account.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to delete account.') };
   }
 }
 
@@ -1110,8 +1105,7 @@ export async function deleteWorkspaceImpl(workspaceIdInput?: string): Promise<{ 
 
     return { success: true };
   } catch (err: any) {
-    console.error('Error deleting workspace:', err);
-    return { success: false, error: err.message || 'Failed to delete workspace.' };
+    return { success: false, error: sanitizeServerError(err, 'Failed to delete workspace.') };
   }
 }
 
