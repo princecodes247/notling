@@ -16,6 +16,7 @@ import {
   Star,
 } from 'lucide-react';
 import { COMMON_LINKS } from '#/lib/constants';
+import { Link } from '@tanstack/react-router';
 
 interface LandingViewProps {
   onEnterApp: () => void;
@@ -91,18 +92,18 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </p>
 
               <div className="mt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full sm:w-auto px-4 sm:px-0">
-                <button
+                <Link
+                  to='/dashboard'
                   type="button"
-                  onClick={onEnterApp}
-                  className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
+                  className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
                 >
                   <span>Get Started</span>
-                </button>
+                </Link>
                 <a
                   href={COMMON_LINKS.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto px-5 py-2.5 sm:py-3 rounded-full bg-white hover:bg-stone-50 text-neutral-900 border border-neutral-300/80 text-xs font-medium transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 cursor-pointer active-press"
+                  className="w-full sm:w-auto px-5 py-2.5 sm:py-3 rounded bg-white hover:bg-stone-50 text-neutral-900 border border-neutral-300/80 text-xs font-medium transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 cursor-pointer active-press"
                 >
                   <Github className="w-4 h-4 text-neutral-800" />
                   <span>Star on GitHub</span>

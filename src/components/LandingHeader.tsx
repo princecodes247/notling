@@ -1,6 +1,7 @@
 import React from 'react';
 import { NotlingLogoIcon } from './Icons';
 import { DistortedGlass } from './DistortedGlass';
+import { Link } from '@tanstack/react-router';
 
 interface LandingHeaderProps {
   onEnterApp?: () => void;
@@ -29,13 +30,13 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({
         {/* Right Links */}
         <div className="flex items-center gap-4 sm:gap-8">
           {/* Brand Pill Button */}
-          <button
+          <Link
+            to='/dashboard'
             type="button"
-            onClick={onEnterApp}
-            className="bg-brand-600 hover:bg-brand-700 text-white text-[11px] sm:text-xs font-medium px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active-press"
+            className="bg-brand-600 hover:bg-brand-700 text-white text-[11px] sm:text-xs font-medium px-3.5 py-1.5 sm:px-4 sm:py-2 rounded transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active-press"
           >
             Get Started
-          </button>
+          </Link>
         </div>
       </DistortedGlass>
       <div className="border-b-2 border-l-2 border-gray-300/30 p-2.5 sm:p-5 bg-white/40" />
