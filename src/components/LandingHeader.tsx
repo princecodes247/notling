@@ -14,7 +14,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({
 }) => {
   return (
     <header className={`sticky top-0 z-50 px-0 h-14 flex ${className}`}>
-      <div className="border-b-2 border-r-2 border-gray-300/30 p-2.5 sm:p-5 bg-white/40" />
+      <div className="border-b-2 border-r-2 border-gray-300/30 p-1 sm:p-5 bg-white/40" />
       <DistortedGlass className="px-3 sm:px-8 md:px-14 flex items-center justify-between border-b-2 border-gray-300/30 w-full bg-white/50">
         {/* Brand */}
         <div
@@ -39,7 +39,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({
           </Link>
         </div>
       </DistortedGlass>
-      <div className="border-b-2 border-l-2 border-gray-300/30 p-2.5 sm:p-5 bg-white/40" />
+      <div className="border-b-2 border-l-2 border-gray-300/30 p-1 sm:p-5 bg-white/40" />
     </header>
   );
 };

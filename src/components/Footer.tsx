@@ -239,7 +239,7 @@ export function Footer() {
         <div className="relative z-10 w-full h-16 sm:h-20 pl-0 overflow-hidden bg-gradient-to-b from-[#fafaf8] via-white/80 to-white select-none pointer-events-none flex items-center justify-center">
           {/* Mirrored Content with Water Distortion Filter */}
           <div
-            className="w-full -ml-6.5 py-3 sm:py-4 px-4 sm:px-12 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 opacity-75"
+            className="w-full -ml-3 sm:-ml-6.5 py-3 sm:py-4 px-4 sm:px-12 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 opacity-75"
             style={{
               transform: 'scaleY(-1)',
               transformOrigin: '50% 50%',
@@ -287,9 +287,9 @@ export function Footer() {
 
       {/* Architectonic Bottom Frame Cap (Matches Header Grid Cap) */}
       <div className="flex px-0 h-8 sm:h-10">
-        <div className="border-t-2 border-r-2 border-gray-300/30 p-2.5 sm:p-5" />
+        <div className="border-t-2 border-r-2 border-gray-300/30 p-1 sm:p-5" />
         <div className="bg-gray-100 border-t-2 border-gray-300/30 w-full" />
-        <div className="border-t-2 border-l-2 border-gray-300/30 p-2.5 sm:p-5" />
+        <div className="border-t-2 border-l-2 border-gray-300/30 p-1 sm:p-5" />
       </div>
     </footer>
   );
