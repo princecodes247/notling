@@ -478,7 +478,7 @@ export const Editor: React.FC<EditorProps> = ({
       </header>
 
       {/* Main Canvas */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 md:px-16 lg:px-24 pb-20 md:pb-12 bg-white dark:bg-[#18181b]">
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 md:px-16 lg:px-24 pb-32 sm:pb-24 md:pb-12 bg-white dark:bg-[#18181b]">
         <div className="max-w-3xl mx-auto flex flex-col">
           {/* Page/Folder Icon */}
           <div className="relative mb-3 group">

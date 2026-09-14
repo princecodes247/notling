@@ -950,10 +950,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const initialContent = useMemo(() => {
     try {
       const draft = getOfflineDraft(page.id);
-      if (draft?.content) return draft.content;
+      if (draft?.content && !isBlocksArrayEmpty(draft.content)) return draft.content;
 
-      if (typeof page.content === 'string') return JSON.parse(page.content);
-      if (Array.isArray(page.content) && page.content.length > 0) return page.content;
+      if (typeof page.content === 'string') {
+        const parsed = JSON.parse(page.content);
+        if (Array.isArray(parsed) && !isBlocksArrayEmpty(parsed)) return parsed;
+      }
+      if (Array.isArray(page.content) && !isBlocksArrayEmpty(page.content)) return page.content;
     } catch (e) {
       console.error('Failed to parse page content JSON', e);
     }
@@ -1066,18 +1069,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
+  const lastSavedHashRef = useRef<string>(initialContent ? JSON.stringify(initialContent) : '');
 
-  // Reset edit state whenever page ID changes
+  // Reset edit state & cancel pending save timers whenever page ID changes
   useEffect(() => {
-    editorRef.current = editor;
-    pageIdRef.current = page.id;
-    hasUserEditedRef.current = false;
-    pendingSaveRef.current = false;
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
-  }, [editor, page.id]);
+    editorRef.current = editor;
+    pageIdRef.current = page.id;
+    hasUserEditedRef.current = false;
+    pendingSaveRef.current = false;
+    lastSavedHashRef.current = initialContent ? JSON.stringify(initialContent) : '';
+  }, [editor, page.id, initialContent]);
 
   // Handle Undo / Redo window events and broadcast history availability state
   useEffect(() => {
@@ -1146,6 +1151,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       if (isBlocksArrayEmpty(currentDoc)) {
         try {
           editor.replaceBlocks(currentDoc, initialContent);
+          lastSavedHashRef.current = JSON.stringify(initialContent);
         } catch (err) {
           console.error('Error seeding initial collaborative content:', err);
         }
@@ -1154,19 +1160,31 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
     seedContentIfNeeded();
 
-    const timer1 = setTimeout(seedContentIfNeeded, 50);
-    const timer2 = setTimeout(seedContentIfNeeded, 200);
+    const timer1 = setTimeout(seedContentIfNeeded, 60);
+    const timer2 = setTimeout(seedContentIfNeeded, 250);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
     };
-  }, [editor, initialContent]);
+  }, [editor, page.id, initialContent]);
 
-  const performSave = async () => {
+  const performSave = async (targetPageId?: string) => {
+    const activePageId = targetPageId || pageIdRef.current;
     try {
       const currentBlocks = editorRef.current?.document;
       if (!currentBlocks) return;
+
+      const currentJson = JSON.stringify(currentBlocks);
+
+      // Data Storage & Network Optimization:
+      // Skip network HTTP call if content is identical to what was last saved
+      if (currentJson === lastSavedHashRef.current) {
+        pendingSaveRef.current = false;
+        hasUserEditedRef.current = false;
+        setSaveStatus('saved');
+        return;
+      }
 
       // Critical protection against wiping content on refresh/mount:
       // Never overwrite existing DB content if current document is empty while initial content was non-empty.
@@ -1177,7 +1195,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         return;
       }
 
-      const hasDraft = hasOfflineDraft(pageIdRef.current);
+      const hasDraft = hasOfflineDraft(activePageId);
 
       if (!hasUserEditedRef.current && !hasDraft) {
         pendingSaveRef.current = false;
@@ -1188,7 +1206,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       const plainText = extractPlainTextFromBlocks(currentBlocks);
 
       // Always update local draft immediately
-      saveOfflineDraft(pageIdRef.current, currentBlocks, plainText);
+      saveOfflineDraft(activePageId, currentBlocks, plainText);
 
       if (typeof window !== 'undefined' && !navigator.onLine) {
         setSaveStatus('offline');
@@ -1197,24 +1215,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
       const res = await updatePageContent({
         data: {
-          pageId: pageIdRef.current,
+          pageId: activePageId,
           content: currentBlocks,
           contentText: plainText,
         },
       }).catch(() => null);
 
       if (!res) {
-        if (typeof window !== 'undefined' && !navigator.onLine) {
-          setSaveStatus('offline');
-        } else {
-          console.warn('Server save failed or rejected, offline draft remains in local storage');
-          setSaveStatus('offline');
-        }
+        setSaveStatus('offline');
         return;
       }
 
-      // Saved successfully on server - clear local draft
-      clearOfflineDraft(pageIdRef.current);
+      // Saved successfully on server - update last saved hash & clear local draft
+      lastSavedHashRef.current = currentJson;
+      clearOfflineDraft(activePageId);
       pendingSaveRef.current = false;
       hasUserEditedRef.current = false;
       setSaveStatus('saved');
@@ -1232,7 +1246,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     const handleReconnect = () => {
       if (hasOfflineDraft(page.id)) {
         setSaveStatus('saving');
-        performSave();
+        performSave(page.id);
       }
     };
 
@@ -1250,14 +1264,15 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       return;
     }
 
+    const currentSavePageId = page.id;
     setSaveStatus('saving');
     pendingSaveRef.current = true;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
     saveTimeoutRef.current = setTimeout(() => {
-      performSave();
+      performSave(currentSavePageId);
     }, 500);
-  }, [initialContent]);
+  }, [initialContent, page.id]);
 
   const handleSelectMentionPage = useCallback(
     (item: MentionSuggestionItem) => {
