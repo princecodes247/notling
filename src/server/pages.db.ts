@@ -1,6 +1,6 @@
 import { db } from '~/db';
 import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates } from '~/db/schema';
-import { eq, and, or, desc, asc, isNull, lt, gt, ne, sql } from 'drizzle-orm';
+import { eq, and, or, desc, asc, isNull, lt, ne, sql } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
@@ -680,6 +680,38 @@ export interface BlockDelta {
   deleted?: string[];
 }
 
+function normalizeBlockValue(val: any): any {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val !== 'object') return val;
+  if (Array.isArray(val)) return val.map(normalizeBlockValue);
+
+  const normalized: Record<string, any> = {};
+  const keys = Object.keys(val).sort();
+  for (const k of keys) {
+    if (k === 'children' && Array.isArray(val[k]) && val[k].length === 0) continue;
+    if (k === 'props' && typeof val[k] === 'object' && val[k] !== null) {
+      const normProps = normalizeBlockValue(val[k]);
+      if (normProps && Object.keys(normProps).length > 0) {
+        normalized[k] = normProps;
+      }
+      continue;
+    }
+    const norm = normalizeBlockValue(val[k]);
+    if (norm !== undefined) {
+      normalized[k] = norm;
+    }
+  }
+  return normalized;
+}
+
+export function isBlockEqual(blockA: any, blockB: any): boolean {
+  if (blockA === blockB) return true;
+  if (!blockA || !blockB) return false;
+  const normA = JSON.stringify(normalizeBlockValue(blockA));
+  const normB = JSON.stringify(normalizeBlockValue(blockB));
+  return normA === normB;
+}
+
 export function computeBlockDeltas(oldBlocks: any[] = [], newBlocks: any[] = []): BlockDelta {
   if (!Array.isArray(oldBlocks)) oldBlocks = [];
   if (!Array.isArray(newBlocks)) newBlocks = [];
@@ -703,7 +735,7 @@ export function computeBlockDeltas(oldBlocks: any[] = [], newBlocks: any[] = [])
     const prevBlock = oldMap.get(blockId);
     if (!prevBlock) {
       added.push(block);
-    } else if (JSON.stringify(prevBlock) !== JSON.stringify(block)) {
+    } else if (!isBlockEqual(prevBlock, block)) {
       updated.push(block);
     }
   }
@@ -746,27 +778,29 @@ export async function recordPageHistory(input: {
 
     const finalTitle = input.title ?? page.title ?? 'Untitled Document';
     const finalContent = input.content ?? page.content ?? [];
-    const previousContent = page.content ?? [];
-    const delta = computeBlockDeltas(previousContent, finalContent);
+
+    // Fetch the 2 most recent history entries for this page to get the true previous baseline content
+    const historyEntries = await db
+      .select({ id: pageHistory.id, content: pageHistory.content, createdAt: pageHistory.createdAt })
+      .from(pageHistory)
+      .where(eq(pageHistory.pageId, input.pageId))
+      .orderBy(desc(pageHistory.createdAt))
+      .limit(2);
+
+    const latestHistory = historyEntries[0];
+    const previousContent = latestHistory?.content ?? page.content ?? [];
+
     const summary = input.changeSummary ?? (input.title !== undefined ? `Changed title to "${finalTitle}"` : 'Updated document content');
 
     // Throttle: if user recorded entry in last 20 sec for this page, update it instead of creating duplicate rows
     const twentySecsAgo = new Date(Date.now() - 20000);
-    const recent = await db
-      .select({ id: pageHistory.id, content: pageHistory.content })
-      .from(pageHistory)
-      .where(
-        and(
-          eq(pageHistory.pageId, input.pageId),
-          userId ? eq(pageHistory.userId, userId) : eq(pageHistory.userEmail, userEmail || ''),
-          gt(pageHistory.createdAt, twentySecsAgo)
-        )
-      )
-      .orderBy(desc(pageHistory.createdAt))
-      .limit(1);
+    const isRecent = latestHistory && new Date(latestHistory.createdAt).getTime() > twentySecsAgo.getTime();
 
-    if (recent.length > 0) {
-      const mergedDelta = computeBlockDeltas(recent[0].content ?? [], finalContent);
+    if (isRecent) {
+      // Baseline for throttled entry is the entry BEFORE it (historyEntries[1]), or empty array if first entry
+      const baselineContent = historyEntries[1]?.content ?? [];
+      const mergedDelta = computeBlockDeltas(baselineContent, finalContent);
+
       const [updated] = await db
         .update(pageHistory)
         .set({
@@ -776,10 +810,12 @@ export async function recordPageHistory(input: {
           changeSummary: summary,
           createdAt: new Date(),
         })
-        .where(eq(pageHistory.id, recent[0].id))
+        .where(eq(pageHistory.id, latestHistory.id))
         .returning();
       return updated;
     }
+
+    const delta = computeBlockDeltas(previousContent, finalContent);
 
     const [newHistory] = await db
       .insert(pageHistory)
