@@ -53,6 +53,8 @@ function OnboardingPage() {
     if (!sessionLoading) {
       if (!session) {
         navigate({ to: '/login' });
+      } else if (session.isOnboarded) {
+        navigate({ to: '/dashboard' });
       } else {
         if (session.name) setName(session.name);
         const dbSeed = session.avatarUrl ? session.avatarUrl.replace(/^avatune:/, '').trim() : '';
@@ -151,6 +153,9 @@ function OnboardingPage() {
     }
   };
 
+
+  if (!session) return null
+
   if (sessionLoading || loading) {
     return (
       <FullScreenWordListLoader
@@ -158,12 +163,11 @@ function OnboardingPage() {
       />
     );
   }
-
   return (
     <div className="min-h-screen bg-[#fafaf9] dark:bg-[#0e0e10] text-neutral-900 dark:text-neutral-100 flex flex-col items-center justify-center p-6 select-none font-sans relative">
       {/* Header Brand */}
       <div
-        className="flex items-center gap-2 cursor-pointer"
+        className="flex items-center gap-2 cursor-pointer mb-4"
       >
         <NotlingLogoIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-brand-600 drop-shadow-2xs" />
         <span className="font-bold text-sm sm:text-base tracking-tight text-neutral-900">

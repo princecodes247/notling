@@ -1,9 +1,11 @@
-import { createRoute } from '@tanstack/react-router';
+import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useState, useEffect } from 'react';
-import { getOAuthUrl } from '~/server/auth';
+import { useQuery } from '@tanstack/react-query';
+import { getOAuthUrl, getSession } from '~/server/auth';
 import { Route as rootRoute } from './__root';
 import { LoginCard } from '~/components/auth/LoginCard';
 import { OAuthButtons } from '~/components/auth/OAuthButtons';
+import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -12,8 +14,38 @@ export const Route = createRoute({
 });
 
 function LoginPage() {
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
+
+  // Auth Guard: Fetch current session
+  const { data: session, isLoading: sessionLoading } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => {
+      try {
+        return await getSession();
+      } catch {
+        return null;
+      }
+    },
+  });
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!sessionLoading && session) {
+      if (!session.isOnboarded) {
+        navigate({ to: '/onboarding' });
+      } else {
+        const returnUrl = sessionStorage.getItem('notling_auth_redirect');
+        if (returnUrl && returnUrl.startsWith('/') && !returnUrl.startsWith('//') && !returnUrl.includes('\\')) {
+          sessionStorage.removeItem('notling_auth_redirect');
+          window.location.href = returnUrl;
+        } else {
+          navigate({ to: '/dashboard' });
+        }
+      }
+    }
+  }, [session, sessionLoading, navigate]);
 
   useEffect(() => {
     try {
@@ -44,6 +76,14 @@ function LoginPage() {
       setLoadingProvider(null);
     }
   };
+
+  if (sessionLoading || session) {
+    return (
+      <FullScreenWordListLoader
+        words={['Checking session...', 'Verifying authorization...']}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-[var(--bg-canvas)] text-[var(--text-primary)] flex flex-col items-center justify-center p-6 select-none font-sans antialiased relative overflow-hidden transition-colors duration-200">
