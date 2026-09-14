@@ -116,10 +116,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
             {/* 3. Live Workspace Frame Preview */}
             <div className="px-2 sm:px-6 md:px-10 pb-12 sm:pb-20 max-w-6xl mx-auto w-full">
-              <div className="rounded-xl sm:rounded-2xl border border-neutral-300/80 bg-white/40 p-1.5 sm:p-3 shadow-xl backdrop-blur-xs">
+              <div className="rounded-xl sm:rounded-2xl border border-neutral-300/80 bg-white/40 p-1.5 sm:p-2 shadow-xl backdrop-blur-xs">
                 <div
                   onClick={onEnterApp}
-                  className="w-full h-[420px] sm:h-[520px] md:h-[620px] rounded-lg sm:rounded-xl overflow-hidden border border-neutral-200/90 bg-white relative cursor-pointer group hover:border-neutral-400 transition-colors"
+                  className="w-full h-[420px] sm:h-[520px] md:h-[620px] rounded-lg sm:rounded-xl overflow-hidden bg-white relative cursor-pointer group transition-colors"
                 >
                   {renderWorkspacePreview ? renderWorkspacePreview() : <DashboardMockup onNavigate={onEnterApp} />}
                 </div>
