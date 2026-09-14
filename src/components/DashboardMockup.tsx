@@ -10,8 +10,6 @@ import {
   MoreHorizontal,
   CheckSquare,
   Square,
-  Sparkles,
-  Code2,
   Home,
   Settings,
   GripVertical,
@@ -27,7 +25,6 @@ export const DashboardMockup: React.FC = () => {
     task3: false,
     task4: false,
   });
-  const [hoveredBlock, setHoveredBlock] = useState<string | null>(null);
 
   const toggleTask = (id: string) => {
     setCheckedTasks((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -58,7 +55,7 @@ export const DashboardMockup: React.FC = () => {
               <Search className="w-3.5 h-3.5 text-neutral-500" />
               <span>Search notes</span>
             </div>
-            <span className="text-[10px] font-mono text-neutral-400 bg-neutral-200/70 px-1.5 py-0.5 rounded">⌘K</span>
+            <span className="text-[10px] font-mono text-neutral-400 bg-neutral-200/70 px-1.5 py-0.5 rounded">/</span>
           </button>
 
           <button
@@ -103,11 +100,10 @@ export const DashboardMockup: React.FC = () => {
             <div className="mt-1 space-y-0.5">
               <div
                 onClick={() => setActiveTab('roadmap')}
-                className={`group flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors cursor-pointer ${
-                  activeTab === 'roadmap'
-                    ? 'bg-neutral-200/80 font-medium text-neutral-900'
-                    : 'text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900'
-                }`}
+                className={`group flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors cursor-pointer ${activeTab === 'roadmap'
+                  ? 'bg-neutral-200/80 font-medium text-neutral-900'
+                  : 'text-neutral-600 hover:bg-neutral-200/50 hover:text-neutral-900'
+                  }`}
               >
                 <div className="flex items-center gap-2 truncate">
                   <ChevronDown className="w-3 h-3 text-neutral-400 flex-shrink-0" />
@@ -234,9 +230,6 @@ export const DashboardMockup: React.FC = () => {
           <div className="space-y-3 pb-2 border-b border-neutral-100">
             <div className="flex items-center gap-2">
               <span className="text-3xl sm:text-4xl">🚀</span>
-              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/60">
-                Live Document
-              </span>
               <span className="text-xs text-neutral-400 ml-auto flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Updated 2m ago
               </span>
@@ -251,31 +244,8 @@ export const DashboardMockup: React.FC = () => {
             </p>
           </div>
 
-          {/* Block 1: Callout Banner */}
-          <div
-            onMouseEnter={() => setHoveredBlock('block1')}
-            onMouseLeave={() => setHoveredBlock(null)}
-            className={`group relative p-3.5 rounded-xl bg-[#1f4d3d]/10 border border-[#1f4d3d]/20 flex items-start gap-3 transition-all ${
-              hoveredBlock === 'block1' ? 'shadow-xs border-[#1f4d3d]/40' : ''
-            }`}
-          >
-            {/* Block Hover Drag Handle */}
-            <div className="absolute -left-6 top-3.5 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-neutral-300 hover:text-neutral-500 cursor-grab transition-opacity">
-              <GripVertical className="w-3.5 h-3.5" />
-            </div>
-
-            <Sparkles className="w-4 h-4 text-[#1f4d3d] flex-shrink-0 mt-0.5" />
-            <div className="text-xs sm:text-sm text-neutral-800 leading-relaxed">
-              <span className="font-semibold text-neutral-950">Core Objective:</span> Build the fastest distraction-free workspace that turns fleeting thoughts into structured knowledge effortlessly.
-            </div>
-          </div>
-
           {/* Block 2: Heading & Paragraph */}
-          <div
-            onMouseEnter={() => setHoveredBlock('block2')}
-            onMouseLeave={() => setHoveredBlock(null)}
-            className="group relative space-y-2"
-          >
+          <div className="group relative space-y-2">
             <div className="absolute -left-6 top-1 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-neutral-300 hover:text-neutral-500 cursor-grab transition-opacity">
               <GripVertical className="w-3.5 h-3.5" />
             </div>
@@ -288,11 +258,7 @@ export const DashboardMockup: React.FC = () => {
           </div>
 
           {/* Block 3: Interactive Checklist */}
-          <div
-            onMouseEnter={() => setHoveredBlock('block3')}
-            onMouseLeave={() => setHoveredBlock(null)}
-            className="group relative space-y-2 bg-neutral-50/70 p-3.5 rounded-xl border border-neutral-200/70"
-          >
+          <div className="group relative space-y-2">
             <div className="absolute -left-6 top-3.5 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-neutral-300 hover:text-neutral-500 cursor-grab transition-opacity">
               <GripVertical className="w-3.5 h-3.5" />
             </div>
@@ -360,36 +326,6 @@ export const DashboardMockup: React.FC = () => {
             </div>
           </div>
 
-          {/* Block 4: Code Block Preview (Scrapped light variant; kept dark variant) */}
-          <div
-            onMouseEnter={() => setHoveredBlock('block4')}
-            onMouseLeave={() => setHoveredBlock(null)}
-            className="group relative rounded-xl border border-neutral-800 bg-neutral-900 text-neutral-200 overflow-hidden text-xs shadow-md"
-          >
-            <div className="absolute -left-6 top-3 opacity-0 group-hover:opacity-100 flex items-center gap-0.5 text-neutral-300 hover:text-neutral-500 cursor-grab transition-opacity">
-              <GripVertical className="w-3.5 h-3.5" />
-            </div>
-
-            <div className="px-3.5 py-2 bg-neutral-950 border-b border-neutral-800 flex items-center justify-between text-neutral-400 font-mono text-[11px]">
-              <div className="flex items-center gap-2">
-                <Code2 className="w-3.5 h-3.5 text-[#1f4d3d]" />
-                <span>sync-pipeline.ts</span>
-              </div>
-              <span className="text-[10px] text-neutral-500 uppercase">TypeScript</span>
-            </div>
-
-            <pre className="p-3.5 font-mono overflow-x-auto leading-relaxed text-[11px] sm:text-xs text-emerald-300">
-              <code>{`// Instant document synchronization pipeline
-export async function syncDocument(pageId: string, delta: BlockDelta) {
-  const session = await getSession();
-  await db.page.update({
-    where: { id: pageId },
-    data: { content: delta, lastEditedAt: new Date() }
-  });
-  broadcastToCollaborators(pageId, delta);
-}`}</code>
-            </pre>
-          </div>
         </div>
       </main>
     </div>
