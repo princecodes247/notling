@@ -1381,19 +1381,91 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     return () => clearInterval(timer);
   }, [page.id]);
 
-  // Listen for text selection changes to check live @ mention context
+  const checkAutoLinkTrigger = useCallback((e?: KeyboardEvent) => {
+    if (e && e.key !== ' ' && e.key !== 'Enter') return;
+    const sel = window.getSelection();
+    if (!sel || !sel.anchorNode) return;
+
+    const textNode =
+      sel.anchorNode.nodeType === Node.TEXT_NODE
+        ? sel.anchorNode
+        : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
+        ? sel.anchorNode.lastChild
+        : null;
+
+    if (!textNode || !textNode.textContent) return;
+
+    // Do not transform if already inside a link element <a>
+    if (textNode.parentElement && textNode.parentElement.closest('a')) return;
+
+    const text = textNode.textContent;
+    const offset = sel.anchorOffset;
+    const textBefore = text.slice(0, offset).trimEnd();
+    const words = textBefore.split(/\s+/);
+    const lastWord = words[words.length - 1];
+
+    if (!lastWord || lastWord.length < 4) return;
+
+    const URL_PATTERN = /^(https?:\/\/[^\s]+|www\.[^\s]+\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|org|net|io|co|app|dev|ai|me|edu|gov|xyz|tech|info)(?:\/[^\s]*)?)$/i;
+
+    if (URL_PATTERN.test(lastWord)) {
+      const href = lastWord.startsWith('http://') || lastWord.startsWith('https://')
+        ? lastWord
+        : `https://${lastWord}`;
+
+      const idx = textBefore.lastIndexOf(lastWord);
+      if (idx !== -1) {
+        textNode.textContent = text.slice(0, idx) + text.slice(idx + lastWord.length);
+        const inlineLinkObj = {
+          type: 'link' as const,
+          href,
+          content: [
+            {
+              type: 'text' as const,
+              text: lastWord,
+              styles: {},
+            },
+          ],
+        };
+        const trailingSpaceObj = {
+          type: 'text' as const,
+          text: ' ',
+          styles: {},
+        };
+
+        if (editor && typeof (editor as any).insertInlineContent === 'function') {
+          (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+          hasUserEditedRef.current = true;
+          handleContentChange();
+        }
+      }
+    }
+  }, [editor, handleContentChange]);
+
+  // Listen for text selection changes & keyup events to check live @ mention and link autolink context
   useEffect(() => {
-    const handleSelectionOrInput = () => {
-      setTimeout(() => checkMentionTrigger(), 10);
+    const handleSelectionOrInput = (e: Event) => {
+      setTimeout(() => {
+        checkMentionTrigger();
+        if (e instanceof KeyboardEvent && (e.key === ' ' || e.key === 'Enter')) {
+          checkAutoLinkTrigger(e);
+        }
+      }, 10);
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        checkAutoLinkTrigger(e);
+      }
     };
 
     document.addEventListener('selectionchange', handleSelectionOrInput);
-    window.addEventListener('keyup', handleSelectionOrInput);
+    window.addEventListener('keyup', handleKeyUp);
     return () => {
       document.removeEventListener('selectionchange', handleSelectionOrInput);
-      window.removeEventListener('keyup', handleSelectionOrInput);
+      window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [checkMentionTrigger]);
+  }, [checkMentionTrigger, checkAutoLinkTrigger]);
 
   // Handle keyboard navigation for mention popover & atomic Backspace deletion
   useEffect(() => {

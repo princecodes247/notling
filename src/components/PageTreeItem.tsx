@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, ChevronRight, ChevronDown, Plus, FileText } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus, FileText, Copy } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Delete02Icon,
@@ -22,6 +22,7 @@ interface PageTreeItemProps {
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onTogglePin?: (pageId: string) => void;
+  onDuplicatePage?: (pageId: string) => void;
   draggedPageId?: string | null;
   setDraggedPageId?: (id: string | null) => void;
 }
@@ -35,6 +36,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   onUpdateMeta,
   onReorderPage,
   onTogglePin,
+  onDuplicatePage,
   draggedPageId,
   setDraggedPageId,
 }) => {
@@ -392,6 +394,20 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       Rename
                     </button>
                   )}
+                  {canEdit && onDuplicatePage && (
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowMenu(false);
+                        onDuplicatePage(node.id);
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                      Duplicate
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
@@ -439,6 +455,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               onUpdateMeta={onUpdateMeta}
               onReorderPage={onReorderPage}
               onTogglePin={onTogglePin}
+              onDuplicatePage={onDuplicatePage}
               draggedPageId={draggedPageId}
               setDraggedPageId={setDraggedPageId}
             />

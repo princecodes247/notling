@@ -8,7 +8,7 @@ import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
-import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, type PageTreeNode } from '~/server/pages';
+import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
 import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
@@ -332,6 +332,20 @@ function DashboardLayout() {
     },
   });
 
+  // Duplicate Page Mutation
+  const duplicatePageMutation = useMutation({
+    mutationFn: async (pageId: string) => {
+      return await duplicatePage({ data: pageId });
+    },
+    onSuccess: (newPage) => {
+      refetchTree();
+      if (newPage) {
+        useUIStore.getState().setActivePageId(newPage.id);
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
+      }
+    },
+  });
+
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
     if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings' && tab.id !== 'trash') {
@@ -439,6 +453,7 @@ function DashboardLayout() {
                 }}
                 onReorderPage={(input) => reorderPageMutation.mutate(input)}
                 onTogglePin={(id) => togglePinMutation.mutate(id)}
+                onDuplicatePage={(id) => duplicatePageMutation.mutate(id)}
                 onLogout={handleLogout}
               />
             </motion.div>

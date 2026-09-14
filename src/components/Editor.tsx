@@ -8,7 +8,7 @@ import {
   Loading02Icon,
   Download01Icon,
 } from '@hugeicons/core-free-icons';
-import { Star, Share2, MoreHorizontal, Clock, Undo, Redo } from 'lucide-react';
+import { Star, Share2, MoreHorizontal, Clock, Undo, Redo, Copy } from 'lucide-react';
 import {
   updatePageMeta,
   getChildPages,
@@ -18,6 +18,7 @@ import {
   getActivePresence,
   removePagePresence,
   togglePinPage,
+  duplicatePage,
 } from '~/server/pages';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
@@ -180,6 +181,20 @@ export const Editor: React.FC<EditorProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
       queryClient.invalidateQueries({ queryKey: ['page', page.id] });
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async () => {
+      if (isReadOnly) return null;
+      return await duplicatePage({ data: page.id });
+    },
+    onSuccess: (newPage) => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      if (newPage) {
+        setActivePageId(newPage.id);
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
+      }
     },
   });
 
@@ -423,6 +438,22 @@ export const Editor: React.FC<EditorProps> = ({
                       <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
                       <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
                     </button>
+
+                    {/* Duplicate Page Option */}
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowHeaderMenu(false);
+                          duplicateMutation.mutate();
+                        }}
+                        disabled={duplicateMutation.isPending}
+                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                        <span>{duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate Page'}</span>
+                      </button>
+                    )}
 
                     {/* Change Icon Option */}
                     {!isReadOnly && (

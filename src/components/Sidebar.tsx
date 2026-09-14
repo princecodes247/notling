@@ -51,6 +51,7 @@ interface SidebarProps {
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onTogglePin?: (pageId: string) => void;
+  onDuplicatePage?: (pageId: string) => void;
   onLogout?: () => void;
 }
 
@@ -161,6 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onUpdateMeta,
   onReorderPage,
   onTogglePin,
+  onDuplicatePage,
   onLogout,
 }) => {
   const { toggleSearch, toggleSidebar, setImportOpen } = useUIStore();
@@ -398,6 +400,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onUpdateMeta={onUpdateMeta}
                       onReorderPage={onReorderPage}
                       onTogglePin={onTogglePin}
+                      onDuplicatePage={onDuplicatePage}
                       draggedPageId={draggedPageId}
                       setDraggedPageId={setDraggedPageId}
                     />
@@ -482,6 +485,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onUpdateMeta={onUpdateMeta}
                       onReorderPage={onReorderPage}
                       onTogglePin={onTogglePin}
+                      onDuplicatePage={onDuplicatePage}
                       draggedPageId={draggedPageId}
                       setDraggedPageId={setDraggedPageId}
                     />
@@ -508,6 +512,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onUpdateMeta={onUpdateMeta}
                       onReorderPage={onReorderPage}
                       onTogglePin={onTogglePin}
+                      onDuplicatePage={onDuplicatePage}
                       draggedPageId={draggedPageId}
                       setDraggedPageId={setDraggedPageId}
                     />

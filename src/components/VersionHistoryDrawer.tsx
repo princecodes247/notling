@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Clock01Icon,
@@ -89,18 +90,30 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
     },
   });
 
-  if (!isOpen) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-stone-900/30 dark:bg-black/50 backdrop-blur-xs z-40 transition-opacity animate-in fade-in"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="history-drawer-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+            className="fixed inset-0 bg-stone-900/30 dark:bg-black/50 backdrop-blur-xs z-40"
+            onClick={onClose}
+          />
 
-      {/* Slide-over Drawer Container */}
-      <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#18181b] border-l border-stone-200/80 dark:border-zinc-800 shadow-2xl flex flex-col font-sans select-none animate-in slide-in-from-right duration-200">
+          {/* Slide-over Drawer Container */}
+          <motion.aside
+            key="history-drawer-aside"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+            className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white dark:bg-[#18181b] border-l border-stone-200/80 dark:border-zinc-800 shadow-2xl flex flex-col font-sans select-none"
+          >
         {/* Drawer Header */}
         <div className="h-14 px-5 border-b border-stone-100 dark:border-zinc-800 flex items-center justify-between bg-stone-50/60 dark:bg-zinc-900/40">
           <div className="flex items-center gap-2">
@@ -231,7 +244,9 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
             </div>
           )}
         </div>
-      </aside>
+          </motion.aside>
+        </>
+      )}
 
       {/* Snapshot Preview Modal */}
       {previewItem && (
@@ -279,6 +294,6 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
           </div>
         </Modal>
       )}
-    </>
+    </AnimatePresence>
   );
 };

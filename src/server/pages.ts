@@ -228,6 +228,13 @@ export const restorePageVersion = createServerFn({ method: 'POST' })
     return restoreImpl(historyId);
   });
 
+export const duplicatePage = createServerFn({ method: 'POST' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data: pageId }: { data: string }) => {
+    const { duplicatePageInDb } = await import('./pages.db');
+    return duplicatePageInDb(pageId);
+  });
+
 
 
 

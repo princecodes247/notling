@@ -559,6 +559,77 @@ export async function createNewPage(input: {
   }
 }
 
+export async function duplicatePageInDb(pageId: string) {
+  try {
+    const session = await getSessionImpl();
+    if (!session) return null;
+
+    const sourceList = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (sourceList.length === 0) return null;
+    const source = sourceList[0];
+
+    const canEdit = await checkCanUserEditPage(pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked page duplication for page ${pageId}`);
+      return null;
+    }
+
+    async function copyPageRecursive(src: typeof pages.$inferSelect, targetParentId: string | null): Promise<typeof pages.$inferSelect> {
+      const existingInParent = await db
+        .select({ order: pages.order })
+        .from(pages)
+        .where(
+          and(
+            eq(pages.workspaceId, src.workspaceId),
+            targetParentId ? eq(pages.parentId, targetParentId) : isNull(pages.parentId),
+            eq(pages.isDeleted, false)
+          )
+        )
+        .orderBy(desc(pages.order))
+        .limit(1);
+
+      const nextOrder = existingInParent.length > 0 ? existingInParent[0].order + 1 : 0;
+      const copyTitle = targetParentId === src.parentId ? `${src.title || 'Untitled'} (Copy)` : (src.title || 'Untitled');
+
+      const [newPage] = await db
+        .insert(pages)
+        .values({
+          workspaceId: src.workspaceId,
+          parentId: targetParentId,
+          title: copyTitle,
+          icon: src.icon || '📄',
+          visibility: src.visibility || 'workspace',
+          order: nextOrder,
+          content: src.content ? JSON.parse(JSON.stringify(src.content)) : [],
+          contentText: src.contentText || '',
+        })
+        .returning();
+
+      const children = await db
+        .select()
+        .from(pages)
+        .where(and(eq(pages.parentId, src.id), eq(pages.isDeleted, false)));
+
+      for (const child of children) {
+        await copyPageRecursive(child, newPage.id);
+      }
+
+      return newPage;
+    }
+
+    const duplicatedRoot = await copyPageRecursive(source, source.parentId);
+    return duplicatedRoot;
+  } catch (err) {
+    console.error('Error duplicating page:', err);
+    return null;
+  }
+}
+
 function isBlocksContentEmpty(content: any): boolean {
   if (!content) return true;
   if (!Array.isArray(content) || content.length === 0) return true;
