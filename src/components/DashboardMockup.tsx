@@ -17,7 +17,15 @@ import {
   Folder,
 } from 'lucide-react';
 
-export const DashboardMockup: React.FC = () => {
+interface DashboardMockupProps {
+  onNavigate?: () => void;
+  className?: string;
+}
+
+export const DashboardMockup: React.FC<DashboardMockupProps> = ({
+  onNavigate,
+  className = '',
+}) => {
   const [activeTab, setActiveTab] = useState<string>('roadmap');
   const [checkedTasks, setCheckedTasks] = useState<Record<string, boolean>>({
     task1: true,
@@ -26,12 +34,16 @@ export const DashboardMockup: React.FC = () => {
     task4: false,
   });
 
-  const toggleTask = (id: string) => {
+  const toggleTask = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     setCheckedTasks((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
-    <div className="w-full h-full bg-white text-neutral-900 font-sans antialiased flex overflow-hidden select-none text-xs md:text-sm">
+    <div 
+      onClick={onNavigate}
+      className={`w-full h-full bg-white text-neutral-900 font-sans antialiased flex overflow-hidden select-none text-xs md:text-sm cursor-pointer ${className}`}
+    >
       {/* 1. Left Sidebar (Fixed theme styling - isolated from global theme toggles) */}
       <aside className="hidden md:flex w-56 md:w-64 bg-[#f8fafc] border-r border-neutral-200/80 flex-col flex-shrink-0">
         {/* Workspace Selector */}
