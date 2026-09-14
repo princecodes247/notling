@@ -135,7 +135,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   }, [activeTabId]);
 
   return (
-    <div className="hidden md:flex items-center gap-1.5 px-1 py-1 shrink-0 select-none relative w-full overflow-hidden">
+    <div className="hidden md:flex items-center gap-1.5 px-1 py-0 shrink-0 select-none relative w-full overflow-hidden">
       {/* Sidebar Reopen Toggle Button (Shown when sidebar is closed) */}
       <AnimatePresence mode="popLayout">
         {!sidebarOpen && (
@@ -196,7 +196,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex items-center gap-1.5 overflow-x-auto overflow-y-hidden whitespace-nowrap scroll-smooth py-0.5 px-0.5 w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex min-h-10 items-center gap-1.5 overflow-x-auto overflow-y-hidden whitespace-nowrap scroll-smooth py-0.5 px-0.5 w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {fileTabs.map((tab) => {
             const isActive = tab.id === activeTabId;

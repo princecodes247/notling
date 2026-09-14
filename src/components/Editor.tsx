@@ -316,7 +316,7 @@ export const Editor: React.FC<EditorProps> = ({
             <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Document'}</span>
           </span>
           <span>/</span>
-          <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-[160px] sm:max-w-[300px]">
+          <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">
             {title || 'Untitled Document'}
           </span>
         </div>
@@ -337,11 +337,10 @@ export const Editor: React.FC<EditorProps> = ({
                   onClick={handleTriggerUndo}
                   disabled={!canUndo}
                   aria-label="Undo (Cmd+Z)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    canUndo
-                      ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
-                      : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
-                  }`}
+                  className={`p-1.5 rounded-md transition-colors ${canUndo
+                    ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
+                    : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
+                    }`}
                 >
                   <Undo className="w-3.5 h-3.5" />
                 </button>
@@ -352,36 +351,27 @@ export const Editor: React.FC<EditorProps> = ({
                   onClick={handleTriggerRedo}
                   disabled={!canRedo}
                   aria-label="Redo (Cmd+Shift+Z)"
-                  className={`p-1.5 rounded-md transition-colors ${
-                    canRedo
-                      ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
-                      : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
-                  }`}
+                  className={`p-1.5 rounded-md transition-colors ${canRedo
+                    ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
+                    : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
+                    }`}
                 >
                   <Redo className="w-3.5 h-3.5" />
                 </button>
 
                 {/* History Button */}
-                <button
+                {/* <button
                   type="button"
                   onClick={() => setIsHistoryDrawerOpen(true)}
                   className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
                   aria-label="Page history & revisions"
                 >
                   <Clock className="w-3.5 h-3.5" />
-                </button>
+                </button> */}
+                <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800 mr-2" />
               </>
             )}
 
-            {/* Bookmark Star Button */}
-            <button
-              type="button"
-              onClick={() => togglePinMutation.mutate()}
-              className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              aria-label={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
-            >
-              <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : '')} />
-            </button>
 
             {/* 3. Share Button: neutral-900 black pill with Share2 icon */}
             {!isReadOnly && (
@@ -523,15 +513,14 @@ export const Editor: React.FC<EditorProps> = ({
                 </span>
               ) : (
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
-                    visibility === 'public_edit'
-                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
-                      : visibility === 'public'
-                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60'
-                        : visibility === 'workspace'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
-                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60'
-                  }`}
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public_edit'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
+                    : visibility === 'public'
+                      ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60'
+                      : visibility === 'workspace'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
+                        : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60'
+                    }`}
                 >
                   {visibility === 'public_edit'
                     ? 'Anyone can edit'
