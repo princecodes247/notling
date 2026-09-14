@@ -1,9 +1,8 @@
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
-// import { Sidebar } from '~/components/Sidebar';
 import { LandingView } from '~/components/LandingView';
-// import { HomeView } from '~/components/dashboard/HomeView';
+import { DashboardMockup } from '~/components/DashboardMockup';
 import { Route as rootRoute } from './__root';
 
 export const Route = createRoute({
@@ -41,9 +40,7 @@ function LandingPageRoute() {
   return (
     <LandingView
       onEnterApp={handleEnterApp}
-      renderWorkspacePreview={() => (
-        <div className="w-full h-full bg-white" />
-      )}
+      renderWorkspacePreview={() => <DashboardMockup />}
     />
   );
 }

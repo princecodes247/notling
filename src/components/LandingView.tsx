@@ -3,6 +3,7 @@ import { FeatureCard, type FeatureCardData } from './FeatureCard';
 import { Footer } from './Footer';
 import { BloomFieldGradient } from './BloomFieldGradient';
 import { LandingHeader } from './LandingHeader';
+import { DashboardMockup } from './DashboardMockup';
 import {
   FileText,
   Search,
@@ -17,7 +18,7 @@ import {
 
 interface LandingViewProps {
   onEnterApp: () => void;
-  renderWorkspacePreview: () => React.ReactNode;
+  renderWorkspacePreview?: () => React.ReactNode;
 }
 
 const FEATURE_CARDS: FeatureCardData[] = [
@@ -116,7 +117,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <div className="px-4 sm:px-10 pb-20 max-w-6xl mx-auto w-full">
               <div className="rounded-2xl border border-neutral-300/80 bg-white/40 p-2 sm:p-3 shadow-xl backdrop-blur-xs">
                 <div className="w-full h-[520px] md:h-[620px] rounded-xl overflow-hidden border border-neutral-200/90 bg-white relative">
-                  {renderWorkspacePreview()}
+                  {renderWorkspacePreview ? renderWorkspacePreview() : <DashboardMockup />}
                 </div>
               </div>
             </div>
