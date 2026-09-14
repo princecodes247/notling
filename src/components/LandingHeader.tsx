@@ -20,7 +20,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({
           className="flex items-center gap-2.5 cursor-pointer"
           onClick={onEnterApp}
         >
-          <NotlingLogoIcon className="w-5 h-5 text-brand-text drop-shadow-2xs" />
+          <NotlingLogoIcon className="w-5 h-5 text-brand-600 drop-shadow-2xs" />
           <span className="font-bold text-base tracking-tight text-neutral-900">
             Notling
           </span>
@@ -32,7 +32,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({
           <button
             type="button"
             onClick={onEnterApp}
-            className="bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium px-4 py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active-press"
+            className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-4 py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active-press"
           >
             Get Started
           </button>

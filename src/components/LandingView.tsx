@@ -94,7 +94,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <button
                   type="button"
                   onClick={onEnterApp}
-                  className="w-full sm:w-auto px-6 py-3 rounded-full bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
+                  className="w-full sm:w-auto px-6 py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
                 >
                   <span>Get Started</span>
                 </button>
