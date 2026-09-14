@@ -55,11 +55,6 @@ export const Route = createRootRoute({
       { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover' },
       { title: 'Notling - The smartest way to organize your workspace' },
     ],
-    scripts: [
-      {
-        children: THEME_INIT_SCRIPT,
-      },
-    ],
     links: [
       { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -88,7 +83,7 @@ function RootComponent() {
         />
         <HeadContent />
       </head>
-      <body className="text-neutral-900 font-sans antialiased selection:bg-brand-bg selection:text-brand-fg min-h-screen" suppressHydrationWarning>
+      <body className="text-[var(--text-primary)] bg-[var(--bg-canvas)] font-sans antialiased selection:bg-brand-bg selection:text-brand-fg min-h-screen" suppressHydrationWarning>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
             <Outlet />

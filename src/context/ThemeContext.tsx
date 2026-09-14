@@ -13,33 +13,42 @@ export interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-export function getInitialThemeMode(): ThemeMode {
-  if (typeof window === 'undefined') return 'light';
-  try {
-    const stored = window.localStorage.getItem('theme');
-    if (stored === 'light' || stored === 'dark' || stored === 'system') {
-      return stored;
-    }
-    if (stored === 'auto') return 'system';
-  } catch (e) {
-    // localStorage might be blocked or disabled
-  }
-  return 'light';
-}
+// ---------------------------------------------------------------------------
+// Pure helpers — no side effects
+// ---------------------------------------------------------------------------
 
-export function getSystemTheme(): ResolvedTheme {
+function getSystemPreference(): ResolvedTheme {
   if (typeof window === 'undefined') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-export function applyThemeMode(mode: ThemeMode): ResolvedTheme {
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  if (mode === 'system') return getSystemPreference();
+  return mode;
+}
+
+function getStoredMode(): ThemeMode {
   if (typeof window === 'undefined') return 'light';
+  try {
+    const stored = window.localStorage.getItem('theme');
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+    if (stored === 'auto') return 'system';
+  } catch {
+    // localStorage might be blocked
+  }
+  return 'light';
+}
 
-  const systemTheme = getSystemTheme();
-  const effective: ResolvedTheme = mode === 'system' ? systemTheme : mode;
+// ---------------------------------------------------------------------------
+// DOM manipulation — following the article's technique of directly setting
+// classes on the root element. This is the ONLY place classes are changed
+// after the initial blocking script runs.
+// ---------------------------------------------------------------------------
+
+function applyThemeToDOM(resolved: ResolvedTheme) {
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
-
-  if (effective === 'dark') {
+  if (resolved === 'dark') {
     root.classList.remove('light');
     root.classList.add('dark');
     root.setAttribute('data-theme', 'dark');
@@ -50,79 +59,62 @@ export function applyThemeMode(mode: ThemeMode): ResolvedTheme {
     root.setAttribute('data-theme', 'light');
     root.style.colorScheme = 'light';
   }
-
-  return effective;
 }
 
-export interface ThemeProviderProps {
-  children: React.ReactNode;
-  defaultMode?: ThemeMode;
-}
+// ---------------------------------------------------------------------------
+// Provider — reads initial state but does NOT re-apply to DOM on mount.
+// The blocking <script> in __root.tsx already set the correct class before
+// the first paint, so we just need to keep React state in sync.
+// ---------------------------------------------------------------------------
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, defaultMode }) => {
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    if (defaultMode) return defaultMode;
-    return getInitialThemeMode();
-  });
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [mode, setModeState] = useState<ThemeMode>(getStoredMode);
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(getStoredMode()));
 
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
-    const initialMode = defaultMode || getInitialThemeMode();
-    if (initialMode === 'system') {
-      return getSystemTheme();
-    }
-    return initialMode;
-  });
-
-  const syncTheme = useCallback((targetMode: ThemeMode) => {
-    const resolved = applyThemeMode(targetMode);
-    setResolvedTheme(resolved);
-  }, []);
-
-  // Update theme mode and save to storage
+  // Toggle / explicit set — the article's toggle pattern:
+  // directly manipulate DOM classes + persist to localStorage.
   const setMode = useCallback((newMode: ThemeMode) => {
+    const resolved = resolveTheme(newMode);
     setModeState(newMode);
+    setResolvedTheme(resolved);
+    applyThemeToDOM(resolved);
     try {
       window.localStorage.setItem('theme', newMode);
-    } catch (e) {}
-    syncTheme(newMode);
-  }, [syncTheme]);
+    } catch {}
+  }, []);
 
   const toggleTheme = useCallback(() => {
-    const next: ThemeMode = mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light';
-    setMode(next);
+    setMode(mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light');
   }, [mode, setMode]);
 
-  // Synchronize on mount and handle system preference changes
-  useEffect(() => {
-    const initial = getInitialThemeMode();
-    setModeState(initial);
-    syncTheme(initial);
-
-    // Listen for storage changes across tabs
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === 'theme') {
-        const val = event.newValue as ThemeMode | null;
-        if (val === 'light' || val === 'dark' || val === 'system') {
-          setModeState(val);
-          syncTheme(val);
-        }
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [syncTheme]);
-
-  // Listen for system theme media query changes when in system mode
+  // Listen for system preference changes when in 'system' mode
   useEffect(() => {
     if (mode !== 'system') return;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => {
-      syncTheme('system');
+      const resolved = resolveTheme('system');
+      setResolvedTheme(resolved);
+      applyThemeToDOM(resolved);
     };
-    media.addEventListener('change', onChange);
-    return () => media.removeEventListener('change', onChange);
-  }, [mode, syncTheme]);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [mode]);
+
+  // Sync across browser tabs via storage events
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== 'theme') return;
+      const val = e.newValue as ThemeMode | null;
+      if (val === 'light' || val === 'dark' || val === 'system') {
+        setModeState(val);
+        const resolved = resolveTheme(val);
+        setResolvedTheme(resolved);
+        applyThemeToDOM(resolved);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
 
   const value = useMemo<ThemeContextValue>(() => ({
     mode,
@@ -132,27 +124,20 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children, defaultM
     toggleTheme,
   }), [mode, resolvedTheme, setMode, toggleTheme]);
 
-  return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 };
 
 export function useTheme(): ThemeContextValue {
   const context = useContext(ThemeContext);
   if (!context) {
-    // Fallback if rendered outside ThemeProvider (e.g. isolated story or test)
-    const initial = getInitialThemeMode();
-    const system = getSystemTheme();
-    const resolved = initial === 'system' ? system : initial;
     return {
-      mode: initial,
-      resolvedTheme: resolved,
-      isDark: resolved === 'dark',
+      mode: 'light',
+      resolvedTheme: 'light',
+      isDark: false,
       setMode: () => {},
       toggleTheme: () => {},
     };
   }
   return context;
 }
+

@@ -4,7 +4,7 @@ import { Sun02Icon, Moon02Icon, ComputerIcon } from '@hugeicons/core-free-icons'
 import { useTheme, type ThemeMode } from '~/context/ThemeContext';
 
 export type { ThemeMode } from '~/context/ThemeContext';
-export { getInitialThemeMode, applyThemeMode } from '~/context/ThemeContext';
+
 
 interface ThemeToggleProps {
   variant?: 'pill' | 'segmented' | 'icon' | 'cards';
