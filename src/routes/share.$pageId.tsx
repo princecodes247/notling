@@ -121,10 +121,12 @@ function PublicDocumentPageRoute() {
     navigate({ to: '/login', search: pageId ? ({ redirect: `/share/${pageId}` } as any) : undefined });
   };
 
+
   if (isLoading) {
     return (
       <FullScreenWordListLoader
         words={SHARED_PAGE_LOADING_WORDS}
+        theme='light'
       />
     );
   }
