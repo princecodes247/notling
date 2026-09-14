@@ -40,7 +40,7 @@ export const DashboardMockup: React.FC<DashboardMockupProps> = ({
   };
 
   return (
-    <div 
+    <div
       onClick={onNavigate}
       className={`w-full h-full bg-white text-neutral-900 font-sans antialiased flex overflow-hidden select-none text-xs md:text-sm cursor-pointer ${className}`}
     >
@@ -237,7 +237,7 @@ export const DashboardMockup: React.FC<DashboardMockupProps> = ({
         </header>
 
         {/* Page Content Canvas (Scrollable Document View) */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 max-w-4xl mx-auto w-full space-y-6 no-scrollbar">
+        <div className="flex-1 overflow-hidden px-6 sm:px-12 py-8 max-w-4xl mx-auto w-full space-y-6 no-scrollbar">
           {/* Document Header */}
           <div className="space-y-3 pb-2 border-b border-neutral-100">
             <div className="flex items-center gap-2">
