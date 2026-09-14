@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { createRoute, useNavigate } from '@tanstack/react-router';
+import { createRoute, useNavigate, redirect } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicPage, pingPagePresence, removePagePresence } from '~/server/pages';
 import { Route as rootRoute } from './__root';
@@ -23,8 +23,13 @@ export const Route = createRoute({
   path: '/share/$pageId',
   loader: async ({ params }) => {
     try {
-      return await getPublicPage({ data: params.pageId });
-    } catch {
+      const data = await getPublicPage({ data: params.pageId });
+      if (data?.isLoggedIn && (data.accessLevel === 'editor' || data.isWorkspaceMember)) {
+        throw redirect({ to: '/dashboard/p/$pageId', params: { pageId: params.pageId } });
+      }
+      return data;
+    } catch (err: any) {
+      if (err?.to) throw err;
       return null;
     }
   },
@@ -65,12 +70,12 @@ function PublicDocumentPageRoute() {
 
   const userEmail = sharedData?.userEmail ?? null;
 
-  // Auto-redirect logged-in workspace members directly to their dashboard document view
+  // Auto-redirect logged-in users with edit access directly to dashboard document view
   useEffect(() => {
-    if (sharedData?.isLoggedIn && sharedData?.isWorkspaceMember && pageId) {
+    if (sharedData?.isLoggedIn && (sharedData.accessLevel === 'editor' || sharedData.isWorkspaceMember) && pageId) {
       navigate({ to: '/dashboard/p/$pageId', params: { pageId } });
     }
-  }, [sharedData?.isLoggedIn, sharedData?.isWorkspaceMember, pageId, navigate]);
+  }, [sharedData?.isLoggedIn, sharedData?.accessLevel, sharedData?.isWorkspaceMember, pageId, navigate]);
 
   // Synchronize document.title for viewers on share page
   useEffect(() => {
