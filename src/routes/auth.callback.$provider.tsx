@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { processOAuthCallback } from '~/server/auth';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon } from '@hugeicons/core-free-icons';
@@ -13,8 +13,12 @@ function OAuthCallbackPage() {
   const { provider } = Route.useParams();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const hasRunRef = useRef(false);
 
   useEffect(() => {
+    if (hasRunRef.current) return;
+    hasRunRef.current = true;
+
     async function runCallback() {
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');

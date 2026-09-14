@@ -750,37 +750,64 @@ export async function processOAuthCallbackImpl(
     let welcomePageId: string | undefined;
 
     if (!user) {
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          email: cleanEmail,
-          name: name || cleanEmail.split('@')[0],
-          avatarUrl: avatarUrl || null,
-          provider,
-          providerAccountId,
-          isOnboarded: false,
-        })
-        .returning();
-      user = newUser;
+      try {
+        const [newUser] = await db
+          .insert(users)
+          .values({
+            email: cleanEmail,
+            name: name || cleanEmail.split('@')[0],
+            avatarUrl: avatarUrl || null,
+            provider,
+            providerAccountId,
+            isOnboarded: false,
+          })
+          .onConflictDoUpdate({
+            target: users.email,
+            set: {
+              name: name || cleanEmail.split('@')[0],
+              avatarUrl: avatarUrl || null,
+              provider,
+              providerAccountId,
+            },
+          })
+          .returning();
+        user = newUser;
+      } catch {
+        const reFetch = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1);
+        if (reFetch[0]) {
+          user = reFetch[0];
+        } else {
+          throw new Error(`Failed to create or retrieve user for email ${cleanEmail}`);
+        }
+      }
     }
 
     let existingWs = await db.select().from(workspaces).where(eq(workspaces.ownerId, user.id)).limit(1);
     let workspace = existingWs[0];
 
     if (!workspace) {
-      const wsName = `${user.name || 'User'}'s Workspace`;
-      const wsSlug = await generateUniqueWorkspaceSlug(wsName);
-      const [newWs] = await db
-        .insert(workspaces)
-        .values({
-          ownerId: user.id,
-          name: wsName,
-          slug: wsSlug,
-          icon: '🚀',
-        })
-        .returning();
-      workspace = newWs;
-      welcomePageId = await seedWelcomeDocument(workspace.id);
+      try {
+        const wsName = `${user.name || 'User'}'s Workspace`;
+        const wsSlug = await generateUniqueWorkspaceSlug(wsName);
+        const [newWs] = await db
+          .insert(workspaces)
+          .values({
+            ownerId: user.id,
+            name: wsName,
+            slug: wsSlug,
+            icon: '🚀',
+          })
+          .returning();
+        workspace = newWs;
+        welcomePageId = await seedWelcomeDocument(workspace.id);
+      } catch {
+        const reFetchWs = await db.select().from(workspaces).where(eq(workspaces.ownerId, user.id)).limit(1);
+        if (reFetchWs[0]) {
+          workspace = reFetchWs[0];
+        } else {
+          throw new Error(`Failed to create or retrieve workspace for user ${user.id}`);
+        }
+      }
     }
 
     await createSessionAndCookie(user.id);
