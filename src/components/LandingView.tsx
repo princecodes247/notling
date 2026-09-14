@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { NotlingLogoIcon } from './Icons';
 import { FeatureCard, type FeatureCardData } from './FeatureCard';
 import { Footer } from './Footer';
+import { BloomFieldGradient } from './BloomFieldGradient';
 import {
   FileText,
   Search,
@@ -74,7 +75,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* 1. Top Navbar */}
       <header className="sticky top-0 z-50 px-0 h-16 border-neutral-200/50 flex">
         <div className="border-b-2 border-r-2 border-gray-300/30 p-5" />
-        <div className="bg-[#eef2f6]/90 backdrop-blur-sm px-14 flex items-center justify-between border-b-2 border-gray-300/30 w-full">
+        <div className="bg-[#EBF6F7]/80 backdrop-blur-md px-14 flex items-center justify-between border-b-2 border-gray-300/30 w-full">
           {/* Brand */}
           <div className="flex items-center gap-2.5 cursor-pointer" onClick={onEnterApp}>
             <NotlingLogoIcon className="w-5 h-5 text-brand-text" />
@@ -102,7 +103,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
       <main className="mx-10 border-x-2 border-gray-300/30">
         <section>
-          <div className="bg-[#eef2f6]">
+          <BloomFieldGradient className="relative">
             {/* 2. Hero Section */}
             <div className="px-6 pt-16 md:pt-24 pb-12 text-center max-w-4xl mx-auto flex flex-col items-center gap-5">
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-neutral-950 max-w-3xl leading-[1.15]">
@@ -145,7 +146,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
               </div>
             </div>
-          </div>
+          </BloomFieldGradient>
         </section>
 
         {/* 4. Consolidate Knowledge Section (Data-Driven Feature Cards) */}
@@ -202,7 +203,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="max-w-2xl mx-auto flex flex-col gap-6 text-left">
             <h2 className="text-3xl sm:text-4xl font-normal text-neutral-950 tracking-tight leading-tight">
               You wanted a simple workspace.<br />
-              I built it.
+              We built it.
             </h2>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
@@ -218,7 +219,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </p>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
-              I created <span className="text-neutral-900 font-medium px-px">Notling</span> to bring back clarity: Instant speed, pure typography, and easy collaboration in a design that feels like second nature.
+              We created <span className="text-neutral-900 font-medium px-px">Notling</span> to bring back clarity:
+              <br />
+              Instant speed, pure typography, and easy collaboration in a design that feels like second nature.
             </p>
 
             <p className="text-sm text-neutral-600 leading-relaxed">
