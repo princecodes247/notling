@@ -5,7 +5,7 @@ import { getOAuthUrl, getSession } from '~/server/auth';
 import { Route as rootRoute } from './__root';
 import { LoginCard } from '~/components/auth/LoginCard';
 import { OAuthButtons } from '~/components/auth/OAuthButtons';
-import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
+// import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -77,13 +77,15 @@ function LoginPage() {
     }
   };
 
-  if (sessionLoading || session) {
-    return (
-      <FullScreenWordListLoader
-        words={['Checking session...', 'Verifying authorization...']}
-      />
-    );
-  }
+  if (sessionLoading || session) return null
+
+  // if (sessionLoading || session) {
+  //   return (
+  //     <FullScreenWordListLoader
+  //       words={['Checking session...', 'Verifying authorization...']}
+  //     />
+  //   );
+  // }
 
   return (
     <div className="min-h-screen w-full bg-[var(--bg-canvas)] text-[var(--text-primary)] flex flex-col items-center justify-center p-6 select-none font-sans antialiased relative overflow-hidden transition-colors duration-200">
