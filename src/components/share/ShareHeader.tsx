@@ -35,11 +35,14 @@ export function ShareHeader({
 
   return (
     <header className="h-14 border-b border-stone-200/70 px-6 sm:px-12 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
-      <div className="flex items-center gap-2.5 cursor-pointer" onClick={onNavigateHome}>
-        <div className="w-7 h-7 rounded-lg bg-brand-bg text-brand-fg flex items-center justify-center shadow-xs">
-          <NotlingLogoIcon className="w-3.5 h-3.5" />
-        </div>
-        <span className="font-semibold text-sm tracking-tight text-stone-900">Notling</span>
+      <div
+        className="flex items-center gap-2 cursor-pointer"
+        onClick={onNavigateHome}
+      >
+        <NotlingLogoIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-brand-600 drop-shadow-2xs" />
+        <span className="font-bold text-sm sm:text-base tracking-tight text-neutral-900">
+          Notling
+        </span>
       </div>
 
       <div className="flex items-center gap-3">

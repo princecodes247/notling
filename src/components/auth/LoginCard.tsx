@@ -12,7 +12,7 @@ export function LoginCard({ error, children }: LoginCardProps) {
       {/* Brand Icon */}
       <a
         href="/"
-        className="w-10 h-10 rounded-lg bg-brand-bg text-brand-fg flex items-center justify-center mb-5 shadow-2xs hover:bg-brand-hover transition-colors"
+        className="w-10 h-10 flex items-center justify-center mb-5 transition-colors"
       >
         <NotlingLogoIcon className="w-5 h-5" />
       </a>
