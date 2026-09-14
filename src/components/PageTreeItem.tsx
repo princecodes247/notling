@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, ChevronRight, ChevronDown, Plus } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus, FileText } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Delete02Icon,
@@ -41,7 +41,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const { expandedNodeIds, toggleNodeExpand, setNodeExpand, activePageId } = useUIStore();
   const liveMeta = useUIStore((s) => s.pageMeta[node.id]);
   const displayTitle = liveMeta?.title ?? node.title;
-  const displayIcon = liveMeta?.icon ?? node.icon ?? '📄';
+  const rawIcon = liveMeta?.icon ?? node.icon;
+  const hasCustomEmoji = Boolean(rawIcon && rawIcon !== '📄');
+  const displayIcon = hasCustomEmoji ? rawIcon : '📄';
 
   const isExpanded = !!expandedNodeIds[node.id];
   const isActive = activePageId === node.id;
@@ -199,19 +201,27 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           </button>
 
           {/* Page Icon with interactive emoji picker */}
-          <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="relative shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {canEdit ? (
               <button
                 type="button"
-                className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
+                className="leading-none shrink-0 p-0.5 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer flex items-center justify-center"
                 title="Change icon"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               >
-                {displayIcon}
+                {hasCustomEmoji ? (
+                  <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
+                ) : (
+                  <FileText className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+                )}
               </button>
             ) : (
-              <span className="text-base leading-none shrink-0 p-0.5 select-none">
-                {displayIcon}
+              <span className="leading-none shrink-0 p-0.5 select-none flex items-center justify-center">
+                {hasCustomEmoji ? (
+                  <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
+                ) : (
+                  <FileText className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+                )}
               </span>
             )}
 

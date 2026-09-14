@@ -50,6 +50,7 @@ import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPic
 
 interface BlockEditorInnerProps {
   page: Page;
+  readOnly?: boolean;
 }
 
 function extractPlainTextFromBlocks(blocks: any[]): string {

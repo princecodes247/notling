@@ -5,22 +5,44 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   PlusSignIcon,
   Folder01Icon,
-  ArrowRight01Icon,
   Loading02Icon,
-  Share01Icon,
   Download01Icon,
 } from '@hugeicons/core-free-icons';
-import { updatePageMeta, getChildPages, createPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
+import { Star, Share2, MoreHorizontal, Clock } from 'lucide-react';
+import {
+  updatePageMeta,
+  getChildPages,
+  createPage,
+  updatePageVisibility,
+  pingPagePresence,
+  getActivePresence,
+  removePagePresence,
+  togglePinPage,
+} from '~/server/pages';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
-import { PublicBlockViewer } from '~/components/share/PublicBlockViewer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
 import { EMOJI_OPTIONS } from '#/lib/constants';
+import { clsx } from 'clsx';
+
+function formatRelativeTime(dateInput?: string | Date | null): string {
+  if (!dateInput) return 'Just now';
+  const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
 
 interface EditorProps {
   page: Page & { canEdit?: boolean };
@@ -40,10 +62,12 @@ export const Editor: React.FC<EditorProps> = ({
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || '📄');
   const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
+  const [isPinned, setIsPinned] = useState(!!(page as any).isPinned);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [, setMounted] = useState(false);
 
   const titleInputRef = React.useRef<HTMLInputElement>(null);
   const pendingSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -63,7 +87,8 @@ export const Editor: React.FC<EditorProps> = ({
     }
     setIcon(page.icon || '📄');
     setVisibility((page as any).visibility || 'workspace');
-  }, [page.id, page.title, page.icon, (page as any).visibility]);
+    setIsPinned(!!(page as any).isPinned);
+  }, [page.id, page.title, page.icon, (page as any).visibility, (page as any).isPinned]);
 
   // Query active collaborators
   const { data: activeUsers = [] } = useQuery({
@@ -116,6 +141,18 @@ export const Editor: React.FC<EditorProps> = ({
       if (isReadOnly) return null;
       setVisibility(newVisibility);
       return await updatePageVisibility({ data: { pageId: page.id, visibility: newVisibility } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['page', page.id] });
+    },
+  });
+
+  const togglePinMutation = useMutation({
+    mutationFn: async () => {
+      const nextPinned = !isPinned;
+      setIsPinned(nextPinned);
+      return await togglePinPage({ data: { pageId: page.id } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
@@ -193,7 +230,6 @@ export const Editor: React.FC<EditorProps> = ({
     setTitle(newTitle);
     latestMetaRef.current.title = newTitle;
 
-    // 1. Immediately reflect client-side everywhere BEFORE performing any API calls!
     updateClientPageMeta(queryClient, {
       pageId: page.id,
       title: newTitle,
@@ -201,7 +237,6 @@ export const Editor: React.FC<EditorProps> = ({
     });
     onTitleOrIconChange?.(newTitle, latestMetaRef.current.icon);
 
-    // 2. Schedule debounced server save
     setSaveStatus('saving');
     if (pendingSaveTimeoutRef.current) {
       clearTimeout(pendingSaveTimeoutRef.current);
@@ -222,7 +257,6 @@ export const Editor: React.FC<EditorProps> = ({
     latestMetaRef.current.icon = selectedIcon;
     setShowEmojiPicker(false);
 
-    // 1. Immediately reflect client-side everywhere BEFORE performing any API calls!
     updateClientPageMeta(queryClient, {
       pageId: page.id,
       title: latestMetaRef.current.title,
@@ -230,107 +264,118 @@ export const Editor: React.FC<EditorProps> = ({
     });
     onTitleOrIconChange?.(latestMetaRef.current.title, selectedIcon);
 
-    // 2. Flush save to server
     flushSaveMeta(latestMetaRef.current.title, selectedIcon);
   };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-stone-100 overflow-hidden relative -mt-4 sm:-mt-8">
-      {/* Top Header Strip */}
-      <header className="h-11 sm:h-12 border-b border-stone-200/70 dark:border-stone-800 px-3.5 sm:px-6 flex items-center justify-between bg-[#fdfcf9]/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
-        <div className="flex items-center gap-2 min-w-0 mr-2">
-          {/* Breadcrumb prefix: hidden on mobile, shown on desktop */}
-          <span className="hidden sm:inline text-xs text-stone-400 dark:text-stone-500 font-medium shrink-0">
-            {isFolder ? 'Folder' : 'Page'}
+      {/* 2. Top Header Strip (Updated to match DashboardMockup 1:1) */}
+      <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
+        {/* Left: Breadcrumb Trail */}
+        <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden">
+          <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1">
+            <span>{icon}</span>
+            <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Document'}</span>
           </span>
-          <span className="hidden sm:inline text-stone-300 dark:text-stone-700 text-xs shrink-0">/</span>
-
-          {/* Document Title */}
-          <span className="text-xs font-semibold sm:font-medium text-stone-900 dark:text-stone-100 sm:text-stone-700 dark:sm:text-stone-300 truncate max-w-[140px] sm:max-w-[260px]">
-            {title || 'Untitled'}
+          <span>/</span>
+          <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-[160px] sm:max-w-[300px]">
+            {title || 'Untitled Document'}
           </span>
-
-          {/* Visibility pill: hidden on mobile, shown on desktop */}
-          <div className="hidden sm:flex items-center">
-            {isReadOnly ? (
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-1 shadow-2xs">
-                <span>View only</span>
-              </span>
-            ) : (
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${visibility === 'public_edit'
-                  ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
-                  : visibility === 'public'
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60'
-                    : visibility === 'workspace'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
-                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60'
-                  }`}
-              >
-                {visibility === 'public_edit'
-                  ? 'Anyone can edit'
-                  : visibility === 'public'
-                    ? 'Anyone with link'
-                    : visibility === 'workspace'
-                      ? 'Workspace'
-                      : 'Private'}
-              </span>
-            )}
-          </div>
         </div>
 
-        {/* Right Header Actions: [saved dot] [collaborators if any] [Share] */}
-        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {/* Quiet Save Status Indicator */}
-          <div className="flex items-center text-xs shrink-0">
-            {saveStatus === 'saving' ? (
-              <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
-                <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin text-stone-600" />
-                <span className="hidden sm:inline">Saving...</span>
-              </span>
-            ) : saveStatus === 'saved' ? (
-              <span className="flex items-center gap-1.5 text-stone-500 font-medium text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
-                <span>Saved</span>
-              </span>
-            ) : saveStatus === 'offline' ? (
-              <span className="flex items-center gap-1.5 text-amber-600 font-medium text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.6)] shrink-0" />
-                <span>Saved Locally (Offline)</span>
-              </span>
-            ) : saveStatus === 'error' ? (
-              <span className="flex items-center gap-1.5 text-red-500 font-medium text-[11px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.6)] shrink-0" />
-                <span>Save Error</span>
-              </span>
-            ) : null}
-          </div>
-
-          {/* Collaborator Avatars (renders only other active collaborators, never self) */}
+        {/* Right: Actions & Collaborator Avatars */}
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Collaborator Avatars (Unchanged logic) */}
           <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
 
-          {/* Export Button */}
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 border border-stone-200/60 shadow-2xs active:scale-95"
-            title="Export page to Markdown or PDF"
-          >
-            <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600" />
-            <span className="hidden sm:inline">Export</span>
-          </button>
+          <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800" />
 
-          {/* Share Button: full contrast brand pill */}
-          {!isReadOnly && (
+          <div className="flex items-center gap-1">
+            {/* Bookmark Star Button */}
             <button
               type="button"
-              onClick={() => setIsShareModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg active:scale-95 text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer shrink-0"
+              onClick={() => togglePinMutation.mutate()}
+              className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              title={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
             >
-              <HugeiconsIcon icon={Share01Icon} size={13} className="opacity-90" />
-              <span>Share</span>
+              <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : '')} />
             </button>
-          )}
+
+            {/* 3. Share Button: neutral-900 black pill with Share2 icon */}
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => setIsShareModalOpen(true)}
+                className="px-2.5 py-1 rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer active-press"
+              >
+                <Share2 className="w-3 h-3" />
+                <span>Share</span>
+              </button>
+            )}
+
+            {/* 5. Kebab More Options Dropdown (includes Export option) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+                className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                title="More options"
+              >
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </button>
+
+              {showHeaderMenu && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowHeaderMenu(false)}
+                  />
+                  <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
+                    {/* Export Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        setIsExportModalOpen(true);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
+                      <span>Export Document</span>
+                    </button>
+
+                    {/* Bookmark Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        togglePinMutation.mutate();
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
+                      <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
+                    </button>
+
+                    {/* Change Icon Option */}
+                    {!isReadOnly && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowHeaderMenu(false);
+                          setShowEmojiPicker(true);
+                        }}
+                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                      >
+                        <span className="text-xs">✨</span>
+                        <span>Change Icon</span>
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -368,6 +413,73 @@ export const Editor: React.FC<EditorProps> = ({
                 ))}
               </div>
             )}
+          </div>
+
+          {/* 1 & 4. Document Header Metadata Row: Visibility Pill + Timestamp Display & Moved Saved Status */}
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap text-xs text-stone-400 dark:text-zinc-500">
+            {/* Left: Visibility Pill */}
+            <div className="flex items-center gap-2">
+              {isReadOnly ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-1 shadow-2xs">
+                  <span>View only</span>
+                </span>
+              ) : (
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-medium border flex items-center gap-1 ${
+                    visibility === 'public_edit'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60'
+                      : visibility === 'public'
+                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/80 dark:border-blue-800/60'
+                        : visibility === 'workspace'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60'
+                          : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/80 dark:border-amber-800/60'
+                  }`}
+                >
+                  {visibility === 'public_edit'
+                    ? 'Anyone can edit'
+                    : visibility === 'public'
+                      ? 'Anyone with link'
+                      : visibility === 'workspace'
+                        ? 'Workspace'
+                        : 'Private'}
+                </span>
+              )}
+            </div>
+
+            {/* Right: Timestamp display & Moved Saved status */}
+            <div className="flex items-center gap-2 text-xs text-stone-400 dark:text-zinc-500 font-normal">
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3 text-stone-400 dark:text-zinc-500" />
+                <span>Updated {formatRelativeTime((page as any).updatedAt || (page as any).createdAt)}</span>
+              </span>
+              <span>&bull;</span>
+              {saveStatus === 'saving' ? (
+                <span className="flex items-center gap-1 text-stone-500 font-medium">
+                  <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin text-stone-600" />
+                  <span>Saving...</span>
+                </span>
+              ) : saveStatus === 'saved' ? (
+                <span className="flex items-center gap-1 text-stone-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
+                  <span>Saved</span>
+                </span>
+              ) : saveStatus === 'offline' ? (
+                <span className="flex items-center gap-1 text-amber-600 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <span>Saved Locally</span>
+                </span>
+              ) : saveStatus === 'error' ? (
+                <span className="flex items-center gap-1 text-red-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                  <span>Save Error</span>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1 text-stone-500 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span>Saved</span>
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Title Input */}
@@ -448,41 +560,27 @@ export const Editor: React.FC<EditorProps> = ({
                           {child.title || 'Untitled Document'}
                         </span>
                       </div>
-                      <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-stone-300 dark:text-zinc-600 group-hover:text-stone-600 dark:group-hover:text-zinc-300 shrink-0 transition-colors" />
                     </button>
                   ))}
                 </div>
               )}
             </div>
           ) : (
-            mounted ? (
-              isReadOnly ? (
-                <PublicBlockViewer pageId={page.id} content={page.content} />
-              ) : (
-                <BlockEditorInner key={page.id} page={page} />
-              )
-            ) : (
-              <div className="min-h-[420px] flex flex-col items-center justify-center gap-2.5 text-xs text-neutral-400 dark:text-zinc-500">
-                <HugeiconsIcon icon={Loading02Icon} size={18} className="animate-spin text-stone-600 dark:text-zinc-400" />
-                <span>Loading block editor...</span>
-              </div>
-            )
+            <BlockEditorInner page={page} readOnly={isReadOnly} />
           )}
         </div>
       </div>
 
-      {/* Google Docs-Style Share Modal */}
-      {!isReadOnly && (
-        <ShareModal
-          isOpen={isShareModalOpen}
-          onClose={() => setIsShareModalOpen(false)}
-          page={page}
-          visibility={visibility}
-          onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
-        />
-      )}
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        page={page}
+        visibility={visibility}
+        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+      />
 
-      {/* Export Modal (Markdown / PDF) */}
+      {/* Export Modal */}
       <ExportModal
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
@@ -491,3 +589,5 @@ export const Editor: React.FC<EditorProps> = ({
     </div>
   );
 };
+
+export default Editor;
