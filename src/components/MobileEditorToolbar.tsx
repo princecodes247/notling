@@ -535,7 +535,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={() => setActiveSheet('insert')}
             className="flex items-center justify-center w-8 h-8 rounded-lg bg-stone-900 dark:bg-white text-white dark:text-zinc-950 shadow-2xs hover:bg-stone-800 dark:hover:bg-zinc-200 active:scale-95 transition-all shrink-0"
-            title="Insert block"
+            aria-label="Insert block"
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -545,7 +545,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={() => setActiveSheet('turnInto')}
             className="flex items-center gap-1 px-2.5 h-8 rounded-lg bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200/70 dark:hover:bg-zinc-700/70 text-stone-800 dark:text-zinc-200 text-xs font-medium active:scale-95 transition-all shrink-0 border border-stone-200/80 dark:border-zinc-700/60"
-            title="Turn block into..."
+            aria-label="Turn block into..."
           >
             <Type className="w-3.5 h-3.5 text-stone-600 dark:text-zinc-400" />
             <span className="max-w-[70px] truncate text-[11px]">
@@ -572,7 +572,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={handleMoveUp}
             className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
-            title="Move block up"
+            aria-label="Move block up"
           >
             <ArrowUp className="w-4 h-4" />
           </button>
@@ -582,7 +582,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={handleMoveDown}
             className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
-            title="Move block down"
+            aria-label="Move block down"
           >
             <ArrowDown className="w-4 h-4" />
           </button>
@@ -592,7 +592,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={handleIndent}
             className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
-            title="Indent"
+            aria-label="Indent"
           >
             <Indent className="w-4 h-4" />
           </button>
@@ -601,7 +601,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={handleOutdent}
             className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
-            title="Outdent"
+            aria-label="Outdent"
           >
             <Outdent className="w-4 h-4" />
           </button>
@@ -614,7 +614,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             onClick={() => handleFormat('bold')}
             className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-bold transition-all shrink-0 ${activeStyles.bold ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
-            title="Bold"
+            aria-label="Bold"
           >
             <Bold className="w-3.5 h-3.5" />
           </button>
@@ -624,7 +624,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             onClick={() => handleFormat('italic')}
             className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.italic ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
-            title="Italic"
+            aria-label="Italic"
           >
             <Italic className="w-3.5 h-3.5" />
           </button>
@@ -634,7 +634,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             onClick={() => handleFormat('strike')}
             className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.strike ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
-            title="Strikethrough"
+            aria-label="Strikethrough"
           >
             <Strikethrough className="w-3.5 h-3.5" />
           </button>
@@ -644,7 +644,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             onClick={() => handleFormat('code')}
             className={`flex items-center justify-center w-8 h-8 rounded-lg text-xs font-medium transition-all shrink-0 ${activeStyles.code ? 'bg-stone-900 dark:bg-white text-white dark:text-zinc-950' : 'text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800'
               }`}
-            title="Inline code"
+            aria-label="Inline code"
           >
             <Code className="w-3.5 h-3.5" />
           </button>
@@ -654,7 +654,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={() => setActiveSheet('actions')}
             className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0"
-            title="More block actions"
+            aria-label="More block actions"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
@@ -665,7 +665,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           type="button"
           onClick={handleDismissKeyboard}
           className="flex items-center justify-center w-8 h-8 rounded-lg text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all shrink-0 ml-1"
-          title="Dismiss keyboard"
+          aria-label="Dismiss keyboard"
         >
           <ChevronDown className="w-4 h-4" />
         </button>
