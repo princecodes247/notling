@@ -8,23 +8,12 @@ export function Footer() {
   return (
     <footer className="w-full bg-gray-100 text-neutral-900 font-sans antialiased flex flex-col select-none">
       {/* Footer Content inside Landing Grid Frame with Subtle Dither/Halftone Effect */}
-      <div className="mx-10 border-x-2 border-gray-300/30 bg-[#eef2f6] text-neutral-900 relative overflow-hidden">
-        
-        {/* Subtle Halftone / Dither Dot Texture Layer */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-25"
-          style={{
-            backgroundImage: `radial-gradient(#334155 0.75px, transparent 0.75px), radial-gradient(#334155 0.75px, transparent 0.75px)`,
-            backgroundSize: '10px 10px',
-            backgroundPosition: '0 0, 5px 5px',
-            maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.2))',
-            WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.2))',
-          }}
-        />
+      <div className="mx-10 border-x-2 border-gray-300/50 bg-[#fafaf8] text-neutral-900 relative overflow-hidden">
+
 
         {/* Ultra-Minimal Single-Row Footer */}
         <div className="relative z-10 py-8 px-6 sm:px-12 border-t-2 border-gray-300/30 flex flex-col sm:flex-row items-center justify-between gap-4">
-          
+
           {/* Left: Brand & Copyright */}
           <div className="flex items-center gap-3">
             <Link to="/" className="flex items-center gap-2 group">
@@ -70,7 +59,7 @@ export function Footer() {
       {/* Architectonic Bottom Frame Cap (Matches Header Grid Cap) */}
       <div className="flex px-0 h-10">
         <div className="border-t-2 border-r-2 border-gray-300/30 p-5" />
-        <div className="bg-[#eef2f6] border-t-2 border-gray-300/30 w-full" />
+        <div className="bg-gray-100 border-t-2 border-gray-300/30 w-full" />
         <div className="border-t-2 border-l-2 border-gray-300/30 p-5" />
       </div>
     </footer>
