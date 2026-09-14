@@ -413,7 +413,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             type="button"
             onClick={handleCopyLink}
             className={`h-8 px-3.5 rounded-lg text-xs font-semibold tracking-tight transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95 flex items-center gap-1.5 ${copied
-              ? 'bg-emerald-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+              ? 'bg-brand-bg text-white shadow-[0_0_12px_rgba(16,185,129,0.25)]'
               : 'bg-white hover:bg-stone-50 text-stone-800 border border-stone-200'
               }`}
           >
