@@ -934,8 +934,6 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     setIsMentionModalOpen(true);
   }, []);
   const queryClient = useQueryClient();
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingSaveRef = useRef<boolean>(false);
   const draggedBlockRef = useRef<any>(null);
 
   const { data: session } = useQuery({
@@ -1069,20 +1067,167 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
-  const lastSavedHashRef = useRef<string>(initialContent ? JSON.stringify(initialContent) : '');
+  const lastSyncedHashRef = useRef<string>(initialContent ? JSON.stringify(initialContent) : '');
 
-  // Reset edit state & cancel pending save timers whenever page ID changes
-  useEffect(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = null;
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const maxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstEditTimeRef = useRef<number | null>(null);
+
+  const performServerSync = useCallback(
+    async (targetPageId?: string) => {
+      const activePageId = targetPageId || pageIdRef.current;
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+      if (maxWaitTimerRef.current) {
+        clearTimeout(maxWaitTimerRef.current);
+        maxWaitTimerRef.current = null;
+      }
+      firstEditTimeRef.current = null;
+
+      try {
+        const currentBlocks = editorRef.current?.document;
+        if (!currentBlocks) return;
+
+        const currentJson = JSON.stringify(currentBlocks);
+
+        // Point 2: Server Diffing / Hash Check
+        // Skip network HTTP call if document content JSON is identical to last synced server state
+        if (currentJson === lastSyncedHashRef.current) {
+          hasUserEditedRef.current = false;
+          setSaveStatus('saved');
+          return;
+        }
+
+        // Anti-Wipe Protection:
+        // Never overwrite existing DB content if current document is empty while initial content was non-empty.
+        if (initialContent && !isBlocksArrayEmpty(initialContent) && isBlocksArrayEmpty(currentBlocks)) {
+          console.warn('[Anti-Wipe Guard] Blocked server sync: editor document is blank while initial content was non-empty.');
+          setSaveStatus('idle');
+          return;
+        }
+
+        const plainText = extractPlainTextFromBlocks(currentBlocks);
+
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          setSaveStatus('offline');
+          return;
+        }
+
+        const res = await updatePageContent({
+          data: {
+            pageId: activePageId,
+            content: currentBlocks,
+            contentText: plainText,
+          },
+        }).catch(() => null);
+
+        if (!res) {
+          setSaveStatus('offline');
+          return;
+        }
+
+        // Synced successfully on server - update last synced hash & clear local draft
+        lastSyncedHashRef.current = currentJson;
+        clearOfflineDraft(activePageId);
+        hasUserEditedRef.current = false;
+        setSaveStatus('saved');
+        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      } catch (err) {
+        console.error('Server sync failed:', err);
+        setSaveStatus('offline');
+      }
+    },
+    [initialContent, queryClient, setSaveStatus]
+  );
+
+  // Point 1 & 3: Local-First Instant Writes + True Debounce (800ms pause) + Max-Wait Cap (4s)
+  const handleContentChange = useCallback(() => {
+    const currentBlocks = editorRef.current?.document;
+    if (!currentBlocks) return;
+
+    // Guard against blank blocks when initial content exists
+    if (initialContent && !isBlocksArrayEmpty(initialContent) && isBlocksArrayEmpty(currentBlocks)) {
+      console.warn('Blocked handleContentChange: current blocks are empty while initial content is non-empty.');
+      return;
     }
-    editorRef.current = editor;
-    pageIdRef.current = page.id;
-    hasUserEditedRef.current = false;
-    pendingSaveRef.current = false;
-    lastSavedHashRef.current = initialContent ? JSON.stringify(initialContent) : '';
-  }, [editor, page.id, initialContent]);
+
+    const activePageId = page.id;
+    const plainText = extractPlainTextFromBlocks(currentBlocks);
+
+    // Point 3: Instant Local Write
+    // Save to local storage instantly & update UI status immediately (0ms perceived latency)
+    saveOfflineDraft(activePageId, currentBlocks, plainText);
+    hasUserEditedRef.current = true;
+    setSaveStatus('saved');
+
+    // Point 1: Track first edit time for Max-Wait Cap (4000ms)
+    if (!firstEditTimeRef.current) {
+      firstEditTimeRef.current = Date.now();
+    }
+
+    const elapsed = Date.now() - firstEditTimeRef.current;
+
+    // If continuous fast typing exceeds 4s max-wait, force a server sync!
+    if (elapsed >= 4000) {
+      performServerSync(activePageId);
+      return;
+    }
+
+    // Point 1: Reset 800ms silence debounce timer on every keystroke
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      performServerSync(activePageId);
+    }, 800);
+
+    // Schedule max-wait cap fallback timer if not already running
+    if (!maxWaitTimerRef.current) {
+      const remainingMaxWait = Math.max(100, 4000 - elapsed);
+      maxWaitTimerRef.current = setTimeout(() => {
+        performServerSync(activePageId);
+      }, remainingMaxWait);
+    }
+  }, [initialContent, page.id, performServerSync, setSaveStatus]);
+
+  // Point 3: Immediate Server Sync on Page Switch or Component Unmount
+  useEffect(() => {
+    const activePageId = page.id;
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      if (maxWaitTimerRef.current) clearTimeout(maxWaitTimerRef.current);
+
+      if (hasUserEditedRef.current) {
+        performServerSync(activePageId);
+      }
+      editorRef.current = editor;
+      pageIdRef.current = page.id;
+      hasUserEditedRef.current = false;
+      lastSyncedHashRef.current = initialContent ? JSON.stringify(initialContent) : '';
+    };
+  }, [editor, page.id, initialContent, performServerSync]);
+
+  // Point 3: Immediate Server Sync on Tab-Hide, Blur, or Navigation-Away
+  useEffect(() => {
+    const handleVisibilityOrBlur = () => {
+      if ((document.visibilityState === 'hidden' || !document.hasFocus()) && hasUserEditedRef.current) {
+        performServerSync(page.id);
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleVisibilityOrBlur);
+    window.addEventListener('blur', handleVisibilityOrBlur);
+    window.addEventListener('beforeunload', handleVisibilityOrBlur);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityOrBlur);
+      window.removeEventListener('blur', handleVisibilityOrBlur);
+      window.removeEventListener('beforeunload', handleVisibilityOrBlur);
+    };
+  }, [page.id, performServerSync]);
 
   // Handle Undo / Redo window events and broadcast history availability state
   useEffect(() => {
@@ -1151,7 +1296,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       if (isBlocksArrayEmpty(currentDoc)) {
         try {
           editor.replaceBlocks(currentDoc, initialContent);
-          lastSavedHashRef.current = JSON.stringify(initialContent);
+          lastSyncedHashRef.current = JSON.stringify(initialContent);
         } catch (err) {
           console.error('Error seeding initial collaborative content:', err);
         }
@@ -1169,110 +1314,19 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     };
   }, [editor, page.id, initialContent]);
 
-  const performSave = async (targetPageId?: string) => {
-    const activePageId = targetPageId || pageIdRef.current;
-    try {
-      const currentBlocks = editorRef.current?.document;
-      if (!currentBlocks) return;
-
-      const currentJson = JSON.stringify(currentBlocks);
-
-      // Data Storage & Network Optimization:
-      // Skip network HTTP call if content is identical to what was last saved
-      if (currentJson === lastSavedHashRef.current) {
-        pendingSaveRef.current = false;
-        hasUserEditedRef.current = false;
-        setSaveStatus('saved');
-        return;
-      }
-
-      // Critical protection against wiping content on refresh/mount:
-      // Never overwrite existing DB content if current document is empty while initial content was non-empty.
-      if (initialContent && !isBlocksArrayEmpty(initialContent) && isBlocksArrayEmpty(currentBlocks)) {
-        console.warn('Blocked autosave: editor document is blank while initial content was non-empty.');
-        pendingSaveRef.current = false;
-        setSaveStatus('idle');
-        return;
-      }
-
-      const hasDraft = hasOfflineDraft(activePageId);
-
-      if (!hasUserEditedRef.current && !hasDraft) {
-        pendingSaveRef.current = false;
-        setSaveStatus('idle');
-        return;
-      }
-
-      const plainText = extractPlainTextFromBlocks(currentBlocks);
-
-      // Always update local draft immediately
-      saveOfflineDraft(activePageId, currentBlocks, plainText);
-
-      if (typeof window !== 'undefined' && !navigator.onLine) {
-        setSaveStatus('offline');
-        return;
-      }
-
-      const res = await updatePageContent({
-        data: {
-          pageId: activePageId,
-          content: currentBlocks,
-          contentText: plainText,
-        },
-      }).catch(() => null);
-
-      if (!res) {
-        setSaveStatus('offline');
-        return;
-      }
-
-      // Saved successfully on server - update last saved hash & clear local draft
-      lastSavedHashRef.current = currentJson;
-      clearOfflineDraft(activePageId);
-      pendingSaveRef.current = false;
-      hasUserEditedRef.current = false;
-      setSaveStatus('saved');
-      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
-    } catch (err) {
-      console.error('Autosave failed:', err);
-      setSaveStatus('offline');
-    }
-  };
-
   // Reconnection auto-sync effect
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const handleReconnect = () => {
       if (hasOfflineDraft(page.id)) {
-        setSaveStatus('saving');
-        performSave(page.id);
+        performServerSync(page.id);
       }
     };
 
     window.addEventListener('online', handleReconnect);
     return () => window.removeEventListener('online', handleReconnect);
-  }, [page.id]);
-
-  const handleContentChange = useCallback(() => {
-    // Only schedule autosave if user actually typed or interacted
-    if (!hasUserEditedRef.current) return;
-
-    const currentBlocks = editorRef.current?.document;
-    if (initialContent && !isBlocksArrayEmpty(initialContent) && currentBlocks && isBlocksArrayEmpty(currentBlocks)) {
-      console.warn('Blocked handleContentChange: current blocks are empty while initial content is non-empty.');
-      return;
-    }
-
-    const currentSavePageId = page.id;
-    setSaveStatus('saving');
-    pendingSaveRef.current = true;
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-
-    saveTimeoutRef.current = setTimeout(() => {
-      performSave(currentSavePageId);
-    }, 500);
-  }, [initialContent, page.id]);
+  }, [page.id, performServerSync]);
 
   const handleSelectMentionPage = useCallback(
     (item: MentionSuggestionItem) => {
@@ -1655,21 +1709,18 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     [editor, handleContentChange]
   );
 
-  // Immediate save on unmount if pending changes exist
+  // Immediate save on unmount if user edits exist
   useEffect(() => {
     return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      if (pendingSaveRef.current) {
-        performSave();
+      if (hasUserEditedRef.current) {
+        performServerSync(page.id);
       }
     };
-  }, []);
+  }, [page.id, performServerSync]);
 
   // Sync remote block updates from DB only if collaboration is NOT active
   useEffect(() => {
-    if (collab || !editor || pendingSaveRef.current || hasUserEditedRef.current || editor.isFocused()) return;
+    if (collab || !editor || hasUserEditedRef.current || editor.isFocused()) return;
     try {
       const incomingBlocks = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
       if (Array.isArray(incomingBlocks) && incomingBlocks.length > 0) {
