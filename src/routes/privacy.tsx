@@ -16,14 +16,14 @@ function PrivacyPage() {
       lastUpdated="September 14, 2026"
     >
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">1. Introduction</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">1. Introduction</h2>
         <p>
           Notling Technologies ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how your personal information is collected, used, and safeguarded when you use our workspace application and related services.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">2. Information We Collect</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">2. Information We Collect</h2>
         <p>
           We collect minimal information necessary to deliver a fast, reliable workspace experience:
         </p>
@@ -35,7 +35,7 @@ function PrivacyPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">3. How We Use Your Information</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">3. How We Use Your Information</h2>
         <p>
           Your information is used strictly to provide and improve the Notling workspace platform:
         </p>
@@ -47,14 +47,14 @@ function PrivacyPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">4. Data Ownership & Storage</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">4. Data Ownership & Storage</h2>
         <p>
           Your notes, documents, and assets belong exclusively to you. Notling does not sell your personal data or use your private document content to train public AI models.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">5. Your Rights & Data Portability</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">5. Your Rights & Data Portability</h2>
         <p>
           You retain full control over your data. You may export your pages to Markdown or HTML formats at any time, or permanently delete documents and workspaces directly from the application.
         </p>

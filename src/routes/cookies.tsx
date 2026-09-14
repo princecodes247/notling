@@ -12,66 +12,45 @@ function CookiesPage() {
   return (
     <LegalLayout
       title="Cookie Policy"
-      subtitle="How Notling uses essential cookies and local storage to deliver an instant, secure workspace."
+      subtitle="How Notling uses essential storage and local caching to deliver an instant, secure workspace."
       lastUpdated="September 14, 2026"
     >
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">1. What Are Cookies</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">1. What Is Essential Storage</h2>
         <p>
-          Cookies are small text files stored in your browser when you visit a website. Notling uses essential cookies and client storage mechanisms strictly required for security, authentication, and performance.
+          Essential storage includes cookies, local browser storage (`localStorage`), and client-side database caches (`IndexedDB`) required for Notling to function securely, remember your preferences, and load your workspace instantly.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">2. Essential Cookies We Use</h2>
-        <div className="overflow-x-auto my-4 border border-neutral-200 dark:border-zinc-800 rounded-xl">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-neutral-100 dark:bg-zinc-800/80 text-neutral-900 dark:text-white border-b border-neutral-200 dark:border-zinc-800">
-              <tr>
-                <th className="p-3 font-semibold">Cookie Name</th>
-                <th className="p-3 font-semibold">Purpose</th>
-                <th className="p-3 font-semibold">Duration</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-zinc-800">
-              <tr>
-                <td className="p-3 font-mono">session_token</td>
-                <td className="p-3">Encrypted token used to verify your signed-in session securely.</td>
-                <td className="p-3">Session / 30 Days</td>
-              </tr>
-              <tr>
-                <td className="p-3 font-mono">active_workspace_id</td>
-                <td className="p-3">Remembers your current active workspace selection across refreshes.</td>
-                <td className="p-3">30 Days</td>
-              </tr>
-              <tr>
-                <td className="p-3 font-mono">theme</td>
-                <td className="p-3">Stores your interface appearance preference (Light / Dark mode).</td>
-                <td className="p-3">Persistent</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <h2 className="text-lg font-semibold text-neutral-900">2. Essential Storage</h2>
+        <p>
+          Notling uses essential storage mechanisms strictly for necessary platform operations:
+        </p>
+        <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm">
+          <li>
+            <strong>Authentication & Session Security:</strong> Encrypted tokens used to verify your identity and maintain a secure sign-in session across refreshes.
+          </li>
+          <li>
+            <strong>Workspace Context & Preferences:</strong> Remembers your active workspace selection, folder collapse states, theme settings (Light or Dark mode), and UI view modes.
+          </li>
+          <li>
+            <strong>Local-First Document Caching:</strong> Uses high-performance local storage and IndexedDB to cache document blocks, search indices, and offline edits locally for instant reactivity.
+          </li>
+        </ul>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">3. Local Storage Usage</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">3. Zero Third-Party Advertising Trackers</h2>
         <p>
-          As a local-first workspace platform, Notling uses browser `localStorage` and `IndexedDB` to cache document state locally for instant page loading and offline resilience.
+          Notling does <strong>not</strong> use third-party advertising cookies, cross-site tracking pixels, or third-party analytics scripts that profile your activity.
         </p>
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">4. Zero Third-Party Advertising Trackers</h2>
+        <h2 className="text-lg font-semibold text-neutral-900">4. Managing Storage Preferences</h2>
         <p>
-          Notling does <strong>not</strong> use third-party advertising cookies, cross-site tracking pixels, or data brokers.
-        </p>
-      </section>
-
-      <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-neutral-900 dark:text-white">5. Managing Cookies</h2>
-        <p>
-          You can disable or manage cookies through your browser settings. Please note that clearing essential session cookies will log you out of your workspace.
+          You can manage or clear storage data through your browser settings at any time. Please note that clearing essential session storage will sign you out and reset local UI preferences.
         </p>
       </section>
     </LegalLayout>
