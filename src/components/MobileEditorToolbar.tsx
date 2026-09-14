@@ -540,7 +540,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
 
       {/* Floating Apple-Style Docked Mobile Accessory Bar */}
       <div
-        className="md:hidden pb-2 fixed left-0 right-0 z-40 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border-t border-stone-200/90 dark:border-zinc-800/90 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-2 flex items-center justify-between select-none"
+        className="md:hidden fixed left-0 right-0 z-40 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border-t border-stone-200/90 dark:border-zinc-800/90 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex items-center justify-between select-none transition-[bottom] duration-75"
         style={{ bottom: `${keyboardOffset}px` }}
       >
         {/* Scrollable Toolbar Strip */}
