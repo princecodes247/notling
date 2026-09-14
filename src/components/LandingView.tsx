@@ -77,25 +77,24 @@ export const LandingView: React.FC<LandingViewProps> = ({
       {/* 1. Top Navbar */}
       <LandingHeader onEnterApp={onEnterApp} />
 
-      <main className="mx-10 border-x-2 border-gray-300/30">
+      <main className="mx-2 sm:mx-6 md:mx-10 border-x-2 border-gray-300/30">
         <section>
           <BloomFieldGradient className="relative">
             {/* 2. Hero Section */}
-            <div className="px-6 pt-16 md:pt-24 pb-12 text-center max-w-4xl mx-auto flex flex-col items-center gap-5">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-tight text-neutral-950 max-w-3xl leading-[1.15]">
-                {/* Everything you write. <br />Nowhere it doesn't belong. */}
+            <div className="px-4 sm:px-6 pt-12 sm:pt-16 md:pt-24 pb-8 sm:pb-12 text-center max-w-4xl mx-auto flex flex-col items-center gap-4 sm:gap-5">
+              <h1 className="text-3xl sm:text-5xl md:text-6xl font-medium tracking-tight text-neutral-950 max-w-3xl leading-[1.15]">
                 The home for your<br />greatest ideas.
               </h1>
 
-              <p className="text-sm sm:text-base text-neutral-600 max-w-md font-normal leading-relaxed text-center">
+              <p className="text-xs sm:text-base text-neutral-600 max-w-md font-normal leading-relaxed text-center px-2">
                 Write, think, and collaborate in one impossibly fast, beautifully distraction-free workspace.
               </p>
 
-              <div className="mt-2 flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
+              <div className="mt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full sm:w-auto px-4 sm:px-0">
                 <button
                   type="button"
                   onClick={onEnterApp}
-                  className="w-full sm:w-auto px-6 py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
+                  className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded-full bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
                 >
                   <span>Get Started</span>
                 </button>
@@ -103,7 +102,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   href={COMMON_LINKS.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto px-5 py-3 rounded-full bg-white hover:bg-stone-50 text-neutral-900 border border-neutral-300/80 text-xs font-medium transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 cursor-pointer active-press"
+                  className="w-full sm:w-auto px-5 py-2.5 sm:py-3 rounded-full bg-white hover:bg-stone-50 text-neutral-900 border border-neutral-300/80 text-xs font-medium transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 cursor-pointer active-press"
                 >
                   <Github className="w-4 h-4 text-neutral-800" />
                   <span>Star on GitHub</span>
@@ -115,9 +114,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
 
             {/* 3. Live Workspace Frame Preview */}
-            <div className="px-4 sm:px-10 pb-20 max-w-6xl mx-auto w-full">
-              <div className="rounded-2xl border border-neutral-300/80 bg-white/40 p-2 sm:p-3 shadow-xl backdrop-blur-xs">
-                <div className="w-full h-[520px] md:h-[620px] rounded-xl overflow-hidden border border-neutral-200/90 bg-white relative">
+            <div className="px-2 sm:px-6 md:px-10 pb-12 sm:pb-20 max-w-6xl mx-auto w-full">
+              <div className="rounded-xl sm:rounded-2xl border border-neutral-300/80 bg-white/40 p-1.5 sm:p-3 shadow-xl backdrop-blur-xs">
+                <div className="w-full h-[420px] sm:h-[520px] md:h-[620px] rounded-lg sm:rounded-xl overflow-hidden border border-neutral-200/90 bg-white relative">
                   {renderWorkspacePreview ? renderWorkspacePreview() : <DashboardMockup />}
                 </div>
               </div>
@@ -126,9 +125,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </section>
 
         {/* 4. Consolidate Knowledge Section (Data-Driven Feature Cards) */}
-        <section id="features" className="py-20 px-6 sm:px-12 bg-white">
-          <div className="max-w-6xl mx-auto flex flex-col gap-10">
-            <div className="max-w-2xl flex flex-col gap-3">
+        <section id="features" className="py-12 sm:py-20 px-4 sm:px-12 bg-white">
+          <div className="max-w-6xl mx-auto flex flex-col gap-8 sm:gap-10">
+            <div className="max-w-2xl flex flex-col gap-2.5 sm:gap-3">
               <h2 className="text-2xl sm:text-3xl font-medium text-neutral-950 tracking-tight leading-snug">
                 All your thoughts.<br className="hidden sm:inline" /> One beautiful place.
               </h2>
@@ -141,7 +140,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <div className="relative group">
               <div
                 ref={scrollRef}
-                className="flex items-stretch gap-4 overflow-x-auto pb-4 scroll-smooth no-scrollbar snap-x snap-mandatory"
+                className="flex items-stretch gap-3 sm:gap-4 overflow-x-auto pb-4 scroll-smooth no-scrollbar snap-x snap-mandatory"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
                 {FEATURE_CARDS.map((card) => (
@@ -175,32 +174,32 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </section>
 
         {/* 5. Manifesto / Story Section */}
-        <section id="why-notling" className="py-24 px-6 sm:px-12 bg-[#fafaf8] border-t border-neutral-200/80 text-neutral-800">
-          <div className="max-w-2xl mx-auto flex flex-col gap-6 text-left">
-            <h2 className="text-3xl sm:text-4xl font-normal text-neutral-950 tracking-tight leading-tight">
+        <section id="why-notling" className="py-16 sm:py-24 px-4 sm:px-12 bg-[#fafaf8] border-t border-neutral-200/80 text-neutral-800">
+          <div className="max-w-2xl mx-auto flex flex-col gap-5 sm:gap-6 text-left">
+            <h2 className="text-2xl sm:text-4xl font-normal text-neutral-950 tracking-tight leading-tight">
               You wanted a simple workspace.<br />
               We built it.
             </h2>
 
-            <p className="text-sm text-neutral-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
               Noisy software. Endless menus. Slow apps that are more work than work.
             </p>
 
-            <p className="text-sm text-neutral-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
               Modern tools got complicated and only got in the way of true focus.
             </p>
 
-            <p className="text-sm text-neutral-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
               Now you're managing the tool more than capturing your actual thoughts.
             </p>
 
-            <p className="text-sm text-neutral-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
               We created <span className="text-neutral-900 font-medium px-px">Notling</span> to bring back clarity:
               <br />
               Instant speed, pure typography, and easy collaboration in a design that feels like second nature.
             </p>
 
-            <p className="text-sm text-neutral-600 leading-relaxed">
+            <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
               No complicated onboarding. Just you and your thoughts.
             </p>
           </div>

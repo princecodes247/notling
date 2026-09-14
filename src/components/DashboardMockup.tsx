@@ -33,7 +33,7 @@ export const DashboardMockup: React.FC = () => {
   return (
     <div className="w-full h-full bg-white text-neutral-900 font-sans antialiased flex overflow-hidden select-none text-xs md:text-sm">
       {/* 1. Left Sidebar (Fixed theme styling - isolated from global theme toggles) */}
-      <aside className="w-56 md:w-64 bg-[#f8fafc] border-r border-neutral-200/80 flex flex-col flex-shrink-0">
+      <aside className="hidden md:flex w-56 md:w-64 bg-[#f8fafc] border-r border-neutral-200/80 flex-col flex-shrink-0">
         {/* Workspace Selector */}
         <div className="p-3 border-b border-neutral-200/60 flex items-center justify-between hover:bg-neutral-200/50 transition-colors cursor-pointer group">
           <div className="flex items-center gap-2 overflow-hidden">
