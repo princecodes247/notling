@@ -17,10 +17,10 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  
+
   // Unique filter ID to avoid conflicts
   const [filterId] = useState(() => `water-ripple-${Math.random().toString(36).substring(2, 9)}`);
-  
+
   // Water animation state
   const ripplesRef = useRef<Ripple[]>([]);
   const animationFrameRef = useRef<number | null>(null);
@@ -65,7 +65,7 @@ export function Footer() {
 
     const render = () => {
       time += 0.025;
-      
+
       // Gentle sine-wave modulation for realistic ambient liquid motion
       const currentFreq = 0.012 + Math.sin(time) * 0.003;
       setTurbulenceFreq(currentFreq);
@@ -86,7 +86,7 @@ export function Footer() {
 
       // Draw dynamic concentric ripple rings
       const activeRipples: Ripple[] = [];
-      
+
       for (const r of ripplesRef.current) {
         r.radius += r.speed;
         r.intensity *= 0.965;
@@ -95,9 +95,9 @@ export function Footer() {
           activeRipples.push(r);
 
           const alpha = (1 - r.radius / r.maxRadius) * r.intensity;
-          
+
           ctx.save();
-          
+
           // White wave crest specular highlight
           ctx.beginPath();
           ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
@@ -111,7 +111,7 @@ export function Footer() {
           ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.55})`;
           ctx.lineWidth = 1.5;
           ctx.stroke();
-          
+
           ctx.restore();
         }
       }
@@ -153,13 +153,13 @@ export function Footer() {
       </svg>
 
       {/* Main Outer Grid Frame */}
-      <div 
+      <div
         ref={containerRef}
         onMouseMove={handleMouseMove}
-        className="mx-2 sm:mx-6 md:mx-10 border-x-2 border-gray-300/50 bg-[#fafaf8] text-neutral-900 relative flex flex-col overflow-hidden"
+        className="mx-2 relative sm:mx-6 md:mx-10 border-x-2 border-gray-300/50 bg-[#fafaf8] text-neutral-900 relative flex flex-col overflow-hidden"
       >
         {/* UPPER CONTENT (The Object above water) */}
-        <div className="relative z-20 py-6 sm:py-8 px-4 sm:px-12 border-t-2 border-gray-300/30 bg-[#fafaf8]/95 backdrop-blur-xs flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
+        <div className="relative z-20 py-6 sm:py-8 px-4 sm:px-12 border-t-2 border-gray-300/30 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
           {/* Left: Brand & Copyright */}
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-center sm:text-left">
             <Link to="/" className="flex items-center gap-2 group">
@@ -208,11 +208,8 @@ export function Footer() {
           </div>
         </div>
 
-        {/* WATERLINE DIVIDER (Liquid surface horizon highlight) */}
-        <div className="relative z-20 h-0.5 w-full bg-gradient-to-r from-transparent via-sky-400/60 to-transparent shadow-[0_1px_6px_rgba(56,189,248,0.4)]" />
-
         {/* LOWER WATER REFLECTION LAYER */}
-        <div className="relative w-full h-24 sm:h-32 overflow-hidden bg-gradient-to-b from-[#e0f2fe]/80 via-[#bae6fd]/45 to-slate-200/60 select-none pointer-events-none">
+        <div className="absolute inset-0 w-full h-24 sm:h-32 overflow-hidden bg-gradient-to-b from-[#e0f2fe]/80 via-[#bae6fd]/45 to-slate-200/60 select-none pointer-events-none">
           {/* Mirrored Content with Water Distortion Filter */}
           <div
             className="w-full py-6 sm:py-8 px-4 sm:px-12 opacity-60 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 origin-top"
