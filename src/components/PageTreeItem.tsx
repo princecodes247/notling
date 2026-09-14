@@ -8,7 +8,9 @@ import {
   Download01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
+import { getPage } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
+import { useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { EMOJI_OPTIONS } from '#/lib/constants';
 import { exportPageToMarkdown } from '~/lib/pageExport';
@@ -40,7 +42,16 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   draggedPageId,
   setDraggedPageId,
 }) => {
+  const queryClient = useQueryClient();
   const { expandedNodeIds, toggleNodeExpand, setNodeExpand, activePageId } = useUIStore();
+
+  const handleMouseEnter = () => {
+    queryClient.query({
+      queryKey: ['page', node.id],
+      queryFn: async () => await getPage({ data: node.id }),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
   const liveMeta = useUIStore((s) => s.pageMeta[node.id]);
   const displayTitle = liveMeta?.title ?? node.title;
   const rawIcon = liveMeta?.icon ?? node.icon;
@@ -173,6 +184,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50 hover:text-stone-900 dark:hover:text-white'
         )}
         onClick={() => onSelectPage(node.id)}
+        onMouseEnter={handleMouseEnter}
       >
         {/* Drop Line Indicators */}
         {dropTargetMode === 'above' && (

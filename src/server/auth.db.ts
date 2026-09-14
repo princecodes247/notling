@@ -1,6 +1,6 @@
 import { db } from '~/db';
 import { users, workspaces, sessions, pages, uploads, workspaceMembers } from '~/db/schema';
-import { eq, and, gt, or } from 'drizzle-orm';
+import { eq, and, gt, or, sql } from 'drizzle-orm';
 import type { UserSession, AuthResponse, UserWorkspaceItem } from './auth';
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server';
 import { sanitizeServerError } from './errors';
@@ -402,13 +402,18 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       return null;
     }
 
+    const activeWsCookie = getCookie(ACTIVE_WS_COOKIE);
+
+    // Single query joining sessions, users, and optionally the active workspace
     const activeSession = await db
       .select({
         session: sessions,
         user: users,
+        workspace: workspaces,
       })
       .from(sessions)
       .innerJoin(users, eq(sessions.userId, users.id))
+      .leftJoin(workspaces, activeWsCookie ? eq(workspaces.id, activeWsCookie) : sql`false`)
       .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())))
       .limit(1);
 
@@ -417,38 +422,27 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       return null;
     }
 
-    const { user } = activeSession[0];
-
-    // Check active workspace cookie
-    const activeWsCookie = getCookie(ACTIVE_WS_COOKIE);
+    const { user, workspace: cookieWs } = activeSession[0];
     let workspace = null;
 
-    if (activeWsCookie) {
-      const targetWs = await db
-        .select()
-        .from(workspaces)
-        .where(eq(workspaces.id, activeWsCookie))
-        .limit(1);
-
-      if (targetWs.length > 0) {
-        if (targetWs[0].ownerId === user.id) {
-          workspace = targetWs[0];
-        } else if (user.email) {
-          const cleanEmail = user.email.trim().toLowerCase();
-          const memberRecord = await db
-            .select({ id: workspaceMembers.id })
-            .from(workspaceMembers)
-            .where(
-              and(
-                eq(workspaceMembers.workspaceId, targetWs[0].id),
-                or(eq(workspaceMembers.userId, user.id), eq(workspaceMembers.email, cleanEmail))
-              )
+    if (cookieWs) {
+      if (cookieWs.ownerId === user.id) {
+        workspace = cookieWs;
+      } else if (user.email) {
+        const cleanEmail = user.email.trim().toLowerCase();
+        const memberRecord = await db
+          .select({ id: workspaceMembers.id })
+          .from(workspaceMembers)
+          .where(
+            and(
+              eq(workspaceMembers.workspaceId, cookieWs.id),
+              or(eq(workspaceMembers.userId, user.id), eq(workspaceMembers.email, cleanEmail))
             )
-            .limit(1);
+          )
+          .limit(1);
 
-          if (memberRecord.length > 0) {
-            workspace = targetWs[0];
-          }
+        if (memberRecord.length > 0) {
+          workspace = cookieWs;
         }
       }
     }

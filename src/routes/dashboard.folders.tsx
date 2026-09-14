@@ -22,6 +22,7 @@ function DashboardFoldersPage() {
   const { data: session } = useQuery({
     queryKey: ['session'],
     queryFn: async () => await getSession(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const workspaceId = session?.workspaceId;
@@ -33,6 +34,7 @@ function DashboardFoldersPage() {
       return await getPageTree({ data: workspaceId });
     },
     enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const isCreatingFolderRef = useRef(false);

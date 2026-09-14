@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, useNavigate, useLocation } from '@tanstack/react-router';
+import { createFileRoute, Outlet, useNavigate, useLocation, redirect } from '@tanstack/react-router';
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sidebar } from '~/components/Sidebar';
@@ -16,6 +16,27 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
 
 export const Route = createFileRoute('/dashboard')({
+  loader: async () => {
+    try {
+      const session = await getSession();
+      if (!session) {
+        throw redirect({ to: '/login' });
+      }
+      if (!session.isOnboarded) {
+        throw redirect({ to: '/onboarding' });
+      }
+
+      const [userWorkspaces, treeNodes] = await Promise.all([
+        getUserWorkspaces().catch(() => []),
+        session.workspaceId ? getPageTree({ data: session.workspaceId }).catch(() => []) : Promise.resolve([]),
+      ]);
+
+      return { session, userWorkspaces, treeNodes };
+    } catch (err: any) {
+      if (err?.to) throw err;
+      return { session: null, userWorkspaces: [], treeNodes: [] };
+    }
+  },
   component: DashboardLayout,
 });
 
@@ -31,6 +52,7 @@ function findNodeInTree(nodes: PageTreeNode[], id: string): PageTreeNode | null 
 }
 
 function DashboardLayout() {
+  const loaderData = Route.useLoaderData();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -67,6 +89,8 @@ function DashboardLayout() {
         return null;
       }
     },
+    initialData: loaderData?.session ?? undefined,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Redirect if unauthenticated or incomplete onboarding
@@ -89,6 +113,8 @@ function DashboardLayout() {
       return await getUserWorkspaces();
     },
     enabled: !!session,
+    initialData: loaderData?.userWorkspaces ?? [],
+    staleTime: 5 * 60 * 1000,
   });
 
   // Switch Workspace Mutation
@@ -125,6 +151,8 @@ function DashboardLayout() {
       return await getPageTree({ data: workspaceId });
     },
     enabled: !!workspaceId,
+    initialData: loaderData?.treeNodes ?? [],
+    staleTime: 5 * 60 * 1000,
   });
 
   // Determine current active nav based on pathname

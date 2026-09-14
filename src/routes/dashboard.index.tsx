@@ -22,6 +22,7 @@ function DashboardIndexPage() {
   const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => await getSession(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const workspaceId = session?.workspaceId;
@@ -33,6 +34,7 @@ function DashboardIndexPage() {
       return await getPageTree({ data: workspaceId });
     },
     enabled: !!workspaceId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const isCreatingPageRef = useRef(false);

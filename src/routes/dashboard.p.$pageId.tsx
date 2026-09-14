@@ -10,6 +10,14 @@ import { Route as dashboardRoute } from './dashboard';
 export const Route = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/p/$pageId',
+  loader: async ({ params }) => {
+    try {
+      if (!params.pageId) return null;
+      return await getPage({ data: params.pageId });
+    } catch {
+      return null;
+    }
+  },
   component: DocumentPageRoute,
 });
 
@@ -19,6 +27,7 @@ export const Route = createRoute({
 
 function DocumentPageRoute() {
   const { pageId } = Route.useParams();
+  const initialPage = Route.useLoaderData();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -29,6 +38,7 @@ function DocumentPageRoute() {
       return await getPage({ data: pageId });
     },
     enabled: !!pageId,
+    initialData: initialPage ?? undefined,
     staleTime: 5 * 60 * 1000,
   });
 
