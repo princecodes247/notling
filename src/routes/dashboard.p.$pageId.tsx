@@ -29,8 +29,7 @@ function DocumentPageRoute() {
       return await getPage({ data: pageId });
     },
     enabled: !!pageId,
-    staleTime: 1000,
-    refetchInterval: 1500,
+    staleTime: 5 * 60 * 1000,
   });
 
   // Synchronize Tab title, icon, and document title as soon as page data is loaded

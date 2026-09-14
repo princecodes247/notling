@@ -118,7 +118,7 @@ export const Editor: React.FC<EditorProps> = ({
   const { data: activeUsers = [] } = useQuery({
     queryKey: ['activePresence', page.id],
     queryFn: async () => await getActivePresence({ data: page.id }),
-    refetchInterval: 1500,
+    refetchInterval: 10000,
   });
 
   // Heartbeat presence ping & immediate cleanup on unmount/leave
@@ -132,7 +132,7 @@ export const Editor: React.FC<EditorProps> = ({
       } catch { }
     };
     sendPing();
-    const timer = setInterval(sendPing, 3000);
+    const timer = setInterval(sendPing, 15000);
 
     const handleLeave = () => {
       if (typeof window !== 'undefined' && !navigator.onLine) return;

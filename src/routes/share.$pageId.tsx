@@ -60,8 +60,7 @@ function PublicDocumentPageRoute() {
       return await getPublicPage({ data: pageId });
     },
     enabled: !!pageId,
-    staleTime: 1000,
-    refetchInterval: 1500,
+    staleTime: 5 * 60 * 1000,
   });
 
   const userEmail = sharedData?.userEmail ?? null;
@@ -97,7 +96,7 @@ function PublicDocumentPageRoute() {
       } catch { }
     };
     sendPing();
-    const timer = setInterval(sendPing, 3000);
+    const timer = setInterval(sendPing, 15000);
 
     const handleLeave = () => {
       try {
