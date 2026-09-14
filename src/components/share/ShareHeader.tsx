@@ -34,31 +34,33 @@ export function ShareHeader({
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   return (
-    <header className="h-14 border-b border-stone-200/70 px-6 sm:px-12 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
+    <header className="h-14 border-b border-stone-200/70 px-3.5 sm:px-6 md:px-10 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
       <div
-        className="flex items-center gap-2 cursor-pointer"
+        className="flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
         onClick={onNavigateHome}
       >
-        <NotlingLogoIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-brand-600 drop-shadow-2xs" />
-        <span className="font-bold text-sm sm:text-base tracking-tight text-neutral-900">
+        <NotlingLogoIcon className="w-4 h-4 sm:w-5 sm:h-5 text-brand-600 drop-shadow-2xs" />
+        <span className="font-bold text-xs sm:text-base tracking-tight text-neutral-900">
           Notling
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 min-w-0">
         {/* Active Collaborator Avatars */}
         <CollaboratorAvatars activeUsers={activeUsers} currentClientId={currentClientId} />
 
         {/* Access Status Badge */}
         {accessLevel === 'editor' ? (
-          <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1.5 shadow-2xs">
+          <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse" />
-            <span>Can edit</span>
+            <span className="hidden xs:inline">Can edit</span>
+            <span className="xs:hidden">Edit</span>
           </span>
         ) : (
-          <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1.5 shadow-2xs">
+          <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
             <HugeiconsIcon icon={LockIcon} size={11} />
-            <span>View only</span>
+            <span className="hidden xs:inline">View only</span>
+            <span className="xs:hidden">View</span>
           </span>
         )}
 
@@ -67,8 +69,8 @@ export function ShareHeader({
           <button
             type="button"
             onClick={() => setIsExportOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer"
-            title="Export page to Markdown or PDF"
+            className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer shrink-0"
+            aria-label="Export page to Markdown or PDF"
           >
             <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600" />
             <span className="hidden sm:inline">Export</span>
@@ -80,7 +82,7 @@ export function ShareHeader({
           <button
             type="button"
             onClick={onOpenDashboard}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer shrink-0"
           >
             <span>Open in Dashboard</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
@@ -89,8 +91,8 @@ export function ShareHeader({
 
         {/* User Status / Profile */}
         {isLoggedIn ? (
-          <div className="flex items-center gap-2 pl-2 border-l border-stone-200">
-            <div className="w-7 h-7 rounded-full bg-brand-bg text-brand-fg flex items-center justify-center text-xs font-semibold shadow-2xs">
+          <div className="flex items-center gap-2 pl-1.5 sm:pl-2 border-l border-stone-200 shrink-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-brand-bg text-brand-fg flex items-center justify-center text-xs font-semibold shadow-2xs">
               {(userEmail || 'U').charAt(0).toUpperCase()}
             </div>
             <span className="text-xs font-medium text-stone-700 hidden md:inline truncate max-w-[140px]">
@@ -101,7 +103,7 @@ export function ShareHeader({
           <button
             type="button"
             onClick={onSignIn}
-            className="px-4 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98"
+            className="px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98 shrink-0"
           >
             Sign in
           </button>

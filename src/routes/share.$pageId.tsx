@@ -66,12 +66,12 @@ function PublicDocumentPageRoute() {
 
   const userEmail = sharedData?.userEmail ?? null;
 
-  // Auto-redirect logged-in users directly to their dashboard document view
+  // Auto-redirect logged-in workspace members directly to their dashboard document view
   useEffect(() => {
-    if (sharedData?.isLoggedIn && pageId) {
+    if (sharedData?.isLoggedIn && sharedData?.isWorkspaceMember && pageId) {
       navigate({ to: '/dashboard/p/$pageId', params: { pageId } });
     }
-  }, [sharedData?.isLoggedIn, pageId, navigate]);
+  }, [sharedData?.isLoggedIn, sharedData?.isWorkspaceMember, pageId, navigate]);
 
   // Synchronize document.title for viewers on share page
   useEffect(() => {
