@@ -124,3 +124,22 @@ export const pageViews = pgTable('page_views', {
 export type PageView = typeof pageViews.$inferSelect;
 export type NewPageView = typeof pageViews.$inferInsert;
 
+export const pageHistory = pgTable('page_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  userEmail: text('user_email'),
+  userName: text('user_name'),
+  userAvatarUrl: text('user_avatar_url'),
+  title: text('title'),
+  content: jsonb('content').$type<any[]>().notNull().default([]),
+  changeSummary: text('change_summary'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  pageIdx: index('page_history_page_idx').on(table.pageId, table.createdAt),
+}));
+
+export type PageHistory = typeof pageHistory.$inferSelect;
+export type NewPageHistory = typeof pageHistory.$inferInsert;
+
+

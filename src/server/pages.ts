@@ -214,6 +214,21 @@ export const recordPageViewFn = createServerFn({ method: 'POST' })
 
 export type { WorkspaceUserItem } from './pages.db';
 
+export const getPageHistory = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data: pageId }: { data: string }) => {
+    const { fetchPageHistory } = await import('./pages.db');
+    return fetchPageHistory(pageId);
+  });
+
+export const restorePageVersion = createServerFn({ method: 'POST' })
+  .validator((historyId: string) => historyId)
+  .handler(async ({ data: historyId }: { data: string }) => {
+    const { restorePageVersion: restoreImpl } = await import('./pages.db');
+    return restoreImpl(historyId);
+  });
+
+
 
 
 

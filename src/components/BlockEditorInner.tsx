@@ -1079,6 +1079,64 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     }
   }, [editor, page.id]);
 
+  // Handle Undo / Redo window events and broadcast history availability state
+  useEffect(() => {
+    if (!editor) return;
+
+    const emitHistoryState = () => {
+      try {
+        const canUndo = !!(editor._tiptapEditor as any)?.can().undo();
+        const canRedo = !!(editor._tiptapEditor as any)?.can().redo();
+        window.dispatchEvent(new CustomEvent('editor-history-state', { detail: { canUndo, canRedo } }));
+      } catch {}
+    };
+
+    const handleUndo = () => {
+      try {
+        const tt = editor._tiptapEditor as any;
+        if (tt?.can().undo()) {
+          tt.commands.undo();
+          emitHistoryState();
+        }
+      } catch (err) {
+        console.error('Error executing undo:', err);
+      }
+    };
+
+    const handleRedo = () => {
+      try {
+        const tt = editor._tiptapEditor as any;
+        if (tt?.can().redo()) {
+          tt.commands.redo();
+          emitHistoryState();
+        }
+      } catch (err) {
+        console.error('Error executing redo:', err);
+      }
+    };
+
+    window.addEventListener('editor-undo', handleUndo);
+    window.addEventListener('editor-redo', handleRedo);
+
+    emitHistoryState();
+
+    let unsubUpdate: any;
+    let unsubSelection: any;
+    try {
+      unsubUpdate = editor._tiptapEditor?.on('update', emitHistoryState);
+      unsubSelection = editor._tiptapEditor?.on('selectionUpdate', emitHistoryState);
+    } catch {}
+
+    return () => {
+      window.removeEventListener('editor-undo', handleUndo);
+      window.removeEventListener('editor-redo', handleRedo);
+      try {
+        if (typeof unsubUpdate === 'function') unsubUpdate();
+        if (typeof unsubSelection === 'function') unsubSelection();
+      } catch {}
+    };
+  }, [editor]);
+
   // If editor document is blank and initialContent exists, seed from database content
   useEffect(() => {
     if (!editor || !initialContent || isBlocksArrayEmpty(initialContent)) return;

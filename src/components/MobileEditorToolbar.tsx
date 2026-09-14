@@ -27,14 +27,16 @@ import {
   Link,
   ChevronDown,
   Check,
+  Undo,
+  Redo,
 } from 'lucide-react';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { BottomSheet } from './BottomSheet';
 
 interface MobileEditorToolbarProps {
   editor: any;
-  onOpenMediaPicker?: () => void;
   onOpenMentionModal?: () => void;
+  onOpenMediaPicker?: (tab: 'upload' | 'link' | 'unsplash' | 'giphy') => void;
 }
 
 interface BlockTypeOption {
@@ -84,6 +86,19 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
   const [colorMode, setColorMode] = useState<'text' | 'bg'>('text');
   const [copiedLink, setCopiedLink] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  useEffect(() => {
+    const handleHistoryState = (e: any) => {
+      if (e.detail) {
+        setCanUndo(!!e.detail.canUndo);
+        setCanRedo(!!e.detail.canRedo);
+      }
+    };
+    window.addEventListener('editor-history-state', handleHistoryState);
+    return () => window.removeEventListener('editor-history-state', handleHistoryState);
+  }, []);
 
   // Sync virtual keyboard offset via VisualViewport API
   useEffect(() => {
@@ -350,7 +365,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
               type="button"
               onClick={() => {
                 setActiveSheet(null);
-                onOpenMediaPicker?.();
+                onOpenMediaPicker?.('upload');
               }}
               className="flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/80 active:bg-stone-200/70 dark:active:bg-zinc-800 transition-colors"
             >
@@ -538,6 +553,36 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             aria-label="Insert block"
           >
             <Plus className="w-4 h-4" />
+          </button>
+
+          {/* Undo Button */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('editor-undo'))}
+            disabled={!canUndo}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shrink-0 ${
+              canUndo
+                ? 'text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95'
+                : 'text-stone-300 dark:text-zinc-700 opacity-40 cursor-not-allowed'
+            }`}
+            aria-label="Undo"
+          >
+            <Undo className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Redo Button */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('editor-redo'))}
+            disabled={!canRedo}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shrink-0 ${
+              canRedo
+                ? 'text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95'
+                : 'text-stone-300 dark:text-zinc-700 opacity-40 cursor-not-allowed'
+            }`}
+            aria-label="Redo"
+          >
+            <Redo className="w-3.5 h-3.5" />
           </button>
 
           {/* 2. Turn Into / Style Badge */}

@@ -8,7 +8,7 @@ import {
   Loading02Icon,
   Download01Icon,
 } from '@hugeicons/core-free-icons';
-import { Star, Share2, MoreHorizontal, Clock } from 'lucide-react';
+import { Star, Share2, MoreHorizontal, Clock, Undo, Redo } from 'lucide-react';
 import {
   updatePageMeta,
   getChildPages,
@@ -24,6 +24,7 @@ import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
+import { VersionHistoryDrawer } from './VersionHistoryDrawer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
@@ -67,7 +68,29 @@ export const Editor: React.FC<EditorProps> = ({
   const [showHeaderMenu, setShowHeaderMenu] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const [, setMounted] = useState(false);
+
+  useEffect(() => {
+    const handleHistoryState = (e: any) => {
+      if (e.detail) {
+        setCanUndo(!!e.detail.canUndo);
+        setCanRedo(!!e.detail.canRedo);
+      }
+    };
+    window.addEventListener('editor-history-state', handleHistoryState);
+    return () => window.removeEventListener('editor-history-state', handleHistoryState);
+  }, []);
+
+  const handleTriggerUndo = () => {
+    window.dispatchEvent(new CustomEvent('editor-undo'));
+  };
+
+  const handleTriggerRedo = () => {
+    window.dispatchEvent(new CustomEvent('editor-redo'));
+  };
 
   const titleInputRef = React.useRef<HTMLInputElement>(null);
   const pendingSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,12 +314,56 @@ export const Editor: React.FC<EditorProps> = ({
           <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800" />
 
           <div className="flex items-center gap-1">
+            {!isReadOnly && (
+              <>
+                {/* Undo Button */}
+                <button
+                  type="button"
+                  onClick={handleTriggerUndo}
+                  disabled={!canUndo}
+                  aria-label="Undo (Cmd+Z)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    canUndo
+                      ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
+                      : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
+                  }`}
+                >
+                  <Undo className="w-3.5 h-3.5" />
+                </button>
+
+                {/* Redo Button */}
+                <button
+                  type="button"
+                  onClick={handleTriggerRedo}
+                  disabled={!canRedo}
+                  aria-label="Redo (Cmd+Shift+Z)"
+                  className={`p-1.5 rounded-md transition-colors ${
+                    canRedo
+                      ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
+                      : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
+                  }`}
+                >
+                  <Redo className="w-3.5 h-3.5" />
+                </button>
+
+                {/* History Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsHistoryDrawerOpen(true)}
+                  className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  aria-label="Page history & revisions"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+
             {/* Bookmark Star Button */}
             <button
               type="button"
               onClick={() => togglePinMutation.mutate()}
               className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              title={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
+              aria-label={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
             >
               <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : '')} />
             </button>
@@ -585,6 +652,17 @@ export const Editor: React.FC<EditorProps> = ({
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         page={page}
+      />
+
+      {/* Version History Drawer */}
+      <VersionHistoryDrawer
+        isOpen={isHistoryDrawerOpen}
+        onClose={() => setIsHistoryDrawerOpen(false)}
+        pageId={page.id}
+        onVersionRestored={() => {
+          queryClient.invalidateQueries({ queryKey: ['page', page.id] });
+          queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
+        }}
       />
     </div>
   );

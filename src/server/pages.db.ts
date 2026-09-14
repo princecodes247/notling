@@ -1,6 +1,6 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews } from '~/db/schema';
-import { eq, and, or, desc, asc, isNull, lt, ne, sql } from 'drizzle-orm';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory } from '~/db/schema';
+import { eq, and, or, desc, asc, isNull, lt, gt, ne, sql } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
@@ -603,6 +603,157 @@ export async function checkCanUserEditPage(pageId: string, includeDeleted = fals
   }
 }
 
+export async function recordPageHistory(input: {
+  pageId: string;
+  title?: string;
+  content?: any;
+  changeSummary?: string;
+}) {
+  try {
+    let session: UserSession | null = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    const userId = session?.userId ?? null;
+    const userEmail = session?.email ?? null;
+    const userName = session?.name ?? (userEmail ? userEmail.split('@')[0] : 'Guest');
+    const userAvatarUrl = session?.avatarUrl ?? null;
+
+    const pageList = await db
+      .select({ title: pages.title, content: pages.content })
+      .from(pages)
+      .where(eq(pages.id, input.pageId))
+      .limit(1);
+
+    if (pageList.length === 0) return null;
+    const page = pageList[0];
+
+    const finalTitle = input.title ?? page.title ?? 'Untitled Document';
+    const finalContent = input.content ?? page.content ?? [];
+    const summary = input.changeSummary ?? (input.title !== undefined ? `Changed title to "${finalTitle}"` : 'Updated document content');
+
+    // Throttle: if user recorded entry in last 20 sec for this page, update it instead of creating duplicate rows
+    const twentySecsAgo = new Date(Date.now() - 20000);
+    const recent = await db
+      .select({ id: pageHistory.id })
+      .from(pageHistory)
+      .where(
+        and(
+          eq(pageHistory.pageId, input.pageId),
+          userId ? eq(pageHistory.userId, userId) : eq(pageHistory.userEmail, userEmail || ''),
+          gt(pageHistory.createdAt, twentySecsAgo)
+        )
+      )
+      .orderBy(desc(pageHistory.createdAt))
+      .limit(1);
+
+    if (recent.length > 0) {
+      const [updated] = await db
+        .update(pageHistory)
+        .set({
+          title: finalTitle,
+          content: finalContent,
+          changeSummary: summary,
+          createdAt: new Date(),
+        })
+        .where(eq(pageHistory.id, recent[0].id))
+        .returning();
+      return updated;
+    }
+
+    const [newHistory] = await db
+      .insert(pageHistory)
+      .values({
+        pageId: input.pageId,
+        userId,
+        userEmail,
+        userName,
+        userAvatarUrl,
+        title: finalTitle,
+        content: finalContent,
+        changeSummary: summary,
+      })
+      .returning();
+
+    return newHistory;
+  } catch (err) {
+    console.error('Error recording page history:', err);
+    return null;
+  }
+}
+
+export async function fetchPageHistory(pageId: string) {
+  try {
+    const historyList = await db
+      .select()
+      .from(pageHistory)
+      .where(eq(pageHistory.pageId, pageId))
+      .orderBy(desc(pageHistory.createdAt))
+      .limit(50);
+
+    return historyList;
+  } catch (err) {
+    console.error('Error fetching page history:', err);
+    return [];
+  }
+}
+
+export async function restorePageVersion(historyId: string) {
+  try {
+    const historyEntry = await db
+      .select()
+      .from(pageHistory)
+      .where(eq(pageHistory.id, historyId))
+      .limit(1);
+
+    if (historyEntry.length === 0) return null;
+    const entry = historyEntry[0];
+
+    const canEdit = await checkCanUserEditPage(entry.pageId);
+    if (!canEdit) {
+      console.warn(`[Permission Denied] Blocked restorePageVersion for page ${entry.pageId}.`);
+      return null;
+    }
+
+    let contentText = '';
+    if (Array.isArray(entry.content)) {
+      for (const block of entry.content) {
+        if (block?.content && Array.isArray(block.content)) {
+          for (const item of block.content) {
+            if (item.text) contentText += item.text + ' ';
+          }
+        }
+      }
+    }
+
+    const [updatedPage] = await db
+      .update(pages)
+      .set({
+        title: entry.title || 'Untitled Document',
+        content: entry.content,
+        contentText: contentText.trim(),
+        updatedAt: new Date(),
+      })
+      .where(eq(pages.id, entry.pageId))
+      .returning();
+
+    if (updatedPage) {
+      await recordPageHistory({
+        pageId: entry.pageId,
+        title: entry.title || 'Untitled Document',
+        content: entry.content,
+        changeSummary: `Restored version from ${new Date(entry.createdAt).toLocaleDateString()}`,
+      });
+    }
+
+    return updatedPage;
+  } catch (err) {
+    console.error('Error restoring page version:', err);
+    return null;
+  }
+}
+
 export async function savePageContent(input: { pageId: string; content: any; contentText: string }) {
   try {
     const canEdit = await checkCanUserEditPage(input.pageId);
@@ -636,6 +787,14 @@ export async function savePageContent(input: { pageId: string; content: any; con
       .where(eq(pages.id, input.pageId))
       .returning({ id: pages.id, updatedAt: pages.updatedAt });
 
+    if (updated) {
+      recordPageHistory({
+        pageId: input.pageId,
+        content: input.content,
+        changeSummary: 'Updated document content',
+      }).catch((e) => console.error('Failed to log page content history:', e));
+    }
+
     return updated;
   } catch (err) {
     console.error('Error updating page content:', err);
@@ -660,6 +819,14 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
       .set(updatePayload)
       .where(eq(pages.id, input.pageId))
       .returning();
+
+    if (updated && input.title !== undefined) {
+      recordPageHistory({
+        pageId: input.pageId,
+        title: input.title,
+        changeSummary: `Changed title to "${input.title}"`,
+      }).catch((e) => console.error('Failed to log page meta history:', e));
+    }
 
     return updated;
   } catch (err) {
