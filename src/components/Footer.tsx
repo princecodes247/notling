@@ -185,7 +185,7 @@ export function Footer() {
         className="mx-2 relative sm:mx-6 md:mx-10 border-x-2 border-gray-300/50 bg-[#fafaf8] text-neutral-900 flex flex-col overflow-hidden"
       >
         {/* UPPER CONTENT (The Object above water - snug bottom padding) */}
-        <div className="relative z-20 pt-6 pb-2 sm:pt-8 sm:pb-2.5 px-4 sm:px-12 border-t-2 border-gray-300/30 bg-[#fafaf8] flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
+        <div className="relative z-20 pt-6 pb-6 sm:pt-8 sm:pb-8 px-4 sm:px-12 border-t-2 border-gray-300/30 bg-[#fafaf8] flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6">
           {/* Left: Brand & Copyright */}
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-center sm:text-left">
             <Link to="/" className="flex items-center gap-2 group">
@@ -236,8 +236,7 @@ export function Footer() {
 
 
         {/* LOWER WATER REFLECTION LAYER (Snug waterline alignment & localized cursor wave distortion) */}
-        <div className="relative z-10 w-full h-16 sm:h-20 pl-0 overflow-hidden bg-gradient-to-b from-[#fafaf8] via-white/80 to-white select-none pointer-events-none flex items-center justify-center">
-          {/* Mirrored Content with Water Distortion Filter */}
+        {/* <div className="relative z-10 w-full h-16 sm:h-20 pl-0 overflow-hidden bg-gradient-to-b from-[#fafaf8] via-white/80 to-white select-none pointer-events-none flex items-center justify-center">
           <div
             className="w-full -ml-3 sm:-ml-6.5 py-3 sm:py-4 px-4 sm:px-12 flex flex-col md:flex-row items-center justify-between gap-4 sm:gap-6 opacity-75"
             style={{
@@ -248,7 +247,6 @@ export function Footer() {
               WebkitMaskImage: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.3) 75%, transparent 100%)',
             }}
           >
-            {/* Mirrored Brand */}
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-center sm:text-left">
               <div className="flex items-center gap-2">
                 <NotlingLogoIcon className="w-4.5 h-4.5 text-neutral-900" />
@@ -262,7 +260,6 @@ export function Footer() {
               </span>
             </div>
 
-            {/* Mirrored Links */}
             <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3.5 sm:gap-6 text-xs text-neutral-700 font-medium">
               <span>Privacy</span>
               <span>Terms</span>
@@ -282,7 +279,7 @@ export function Footer() {
               </button>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Architectonic Bottom Frame Cap (Matches Header Grid Cap) */}
