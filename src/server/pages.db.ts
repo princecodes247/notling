@@ -858,19 +858,40 @@ export async function appendPageUpdate(input: { pageId: string; updateData: stri
   }
 }
 
-export async function fetchPageHistory(pageId: string) {
+export async function fetchPageHistory(input: { pageId: string; cursor?: string; limit?: number } | string) {
   try {
+    const pageId = typeof input === 'string' ? input : input.pageId;
+    const cursor = typeof input === 'string' ? undefined : input.cursor;
+    const limit = (typeof input === 'string' ? 20 : input.limit) ?? 20;
+
+    const conditions = [eq(pageHistory.pageId, pageId)];
+
+    if (cursor) {
+      const cursorDate = new Date(cursor);
+      if (!isNaN(cursorDate.getTime())) {
+        conditions.push(lt(pageHistory.createdAt, cursorDate));
+      }
+    }
+
     const historyList = await db
       .select()
       .from(pageHistory)
-      .where(eq(pageHistory.pageId, pageId))
+      .where(and(...conditions))
       .orderBy(desc(pageHistory.createdAt))
-      .limit(50);
+      .limit(limit + 1);
 
-    return historyList;
+    const hasMore = historyList.length > limit;
+    const items = hasMore ? historyList.slice(0, limit) : historyList;
+    const nextCursor = hasMore && items.length > 0 ? items[items.length - 1].createdAt.toISOString() : null;
+
+    return {
+      items,
+      nextCursor,
+      hasMore,
+    };
   } catch (err) {
     console.error('Error fetching page history:', err);
-    return [];
+    return { items: [], nextCursor: null, hasMore: false };
   }
 }
 

@@ -222,10 +222,10 @@ export const recordPageViewFn = createServerFn({ method: 'POST' })
 export type { WorkspaceUserItem } from './pages.db';
 
 export const getPageHistory = createServerFn({ method: 'GET' })
-  .validator((pageId: string) => pageId)
-  .handler(async ({ data: pageId }: { data: string }) => {
+  .validator((input: string | { pageId: string; cursor?: string; limit?: number }) => input)
+  .handler(async ({ data }: { data: string | { pageId: string; cursor?: string; limit?: number } }) => {
     const { fetchPageHistory } = await import('./pages.db');
-    return fetchPageHistory(pageId);
+    return fetchPageHistory(data);
   });
 
 export const restorePageVersion = createServerFn({ method: 'POST' })

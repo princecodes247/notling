@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -19,6 +19,29 @@ interface VersionHistoryDrawerProps {
   onClose: () => void;
   pageId: string;
   onVersionRestored?: (restoredPage: any) => void;
+}
+
+function VersionHistorySkeleton() {
+  return (
+    <div className="relative pl-4 border-l-2 border-stone-100 dark:border-zinc-800/80 flex flex-col gap-4 my-1">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="relative group">
+          <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full border-2 border-stone-200 dark:border-zinc-800 bg-stone-100 dark:bg-zinc-800 animate-pulse" />
+          <div className="p-3.5 rounded-xl border border-stone-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 flex flex-col gap-2.5 animate-pulse">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="w-5.5 h-5.5 rounded-full bg-stone-200 dark:bg-zinc-800 shrink-0" />
+                <div className="w-24 h-3 bg-stone-200 dark:bg-zinc-800 rounded" />
+              </div>
+              <div className="w-12 h-2.5 bg-stone-200 dark:bg-zinc-800 rounded" />
+            </div>
+            <div className="w-3/4 h-3 bg-stone-200 dark:bg-zinc-800 rounded" />
+            <div className="w-full h-9 bg-stone-100 dark:bg-zinc-800/60 rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function formatRelativeTime(dateInput?: string | Date | null): string {
@@ -162,16 +185,49 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
   const [previewItem, setPreviewItem] = useState<PageHistory | null>(null);
   const [viewMode, setViewMode] = useState<'diff' | 'full'>('diff');
   const [restoredSuccess, setRestoredSuccess] = useState<string | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const { data: historyItems = [], isLoading } = useQuery({
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+  } = useInfiniteQuery({
     queryKey: ['pageHistory', pageId],
-    queryFn: async () => {
-      if (!pageId) return [];
-      return await getPageHistory({ data: pageId });
+    queryFn: async ({ pageParam }) => {
+      if (!pageId) return { items: [], nextCursor: null, hasMore: false };
+      const res = await getPageHistory({
+        data: {
+          pageId,
+          cursor: pageParam ? String(pageParam) : undefined,
+          limit: 15,
+        },
+      });
+
+      if (Array.isArray(res)) {
+        return { items: res, nextCursor: null, hasMore: false };
+      }
+      return res || { items: [], nextCursor: null, hasMore: false };
     },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
     enabled: isOpen && !!pageId,
-    refetchInterval: isOpen ? 4000 : false,
+    refetchInterval: isOpen ? 5000 : false,
   });
+
+  const historyItems = useMemo(() => {
+    return data?.pages.flatMap((page) => page.items) ?? [];
+  }, [data]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el || !hasNextPage || isFetchingNextPage) return;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    if (scrollHeight - scrollTop - clientHeight < 140) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const restoreMutation = useMutation({
     mutationFn: async (historyId: string) => {
@@ -250,8 +306,10 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
             )}
 
             {/* History List */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+            <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
               {isLoading ? (
+                <VersionHistorySkeleton />
+              ) : historyItems.length === 0 ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-stone-400 dark:text-zinc-500 text-xs">
                   <div className="w-4 h-4 rounded-full border-2 border-brand-bg border-t-transparent animate-spin" />
                   <span>Loading version history...</span>
@@ -371,6 +429,13 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {isFetchingNextPage && (
+                <div className="py-3.5 flex items-center justify-center gap-2 text-stone-400 dark:text-zinc-500 text-xs font-medium">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-brand-bg border-t-transparent animate-spin" />
+                  <span>Loading older versions...</span>
                 </div>
               )}
             </div>
