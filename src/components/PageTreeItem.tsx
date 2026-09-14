@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
-import { Star } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  ArrowRight01Icon,
-  ArrowDown01Icon,
-  PlusSignIcon,
   Delete02Icon,
   Edit02Icon,
   MoreHorizontalIcon,
@@ -28,7 +25,6 @@ interface PageTreeItemProps {
   draggedPageId?: string | null;
   setDraggedPageId?: (id: string | null) => void;
 }
-
 
 export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   node,
@@ -163,16 +159,15 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
         onDrop={canEdit ? handleDrop : undefined}
         onDragEnd={canEdit ? handleDragEnd : undefined}
         className={clsx(
-          'group relative flex items-center justify-between px-2 py-1.5 rounded-lg transition-all duration-150 cursor-pointer my-0.5',
+          'group relative flex items-center justify-between px-2.5 py-1 rounded-md transition-all duration-150 cursor-pointer my-0.5',
           isDraggingCurrent
             ? 'opacity-40 border border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
             : isActive
-              ? 'bg-neutral-100 dark:bg-zinc-800 text-neutral-900 dark:text-white font-semibold'
+              ? 'bg-stone-200/80 dark:bg-zinc-800 text-stone-900 dark:text-white font-medium shadow-2xs'
               : dropTargetMode === 'inside'
                 ? 'bg-stone-200/90 dark:bg-zinc-700/80 ring-1 ring-stone-400 dark:ring-zinc-500 text-stone-900 dark:text-white font-medium'
-                : 'text-neutral-600 dark:text-zinc-400 hover:bg-neutral-50 dark:hover:bg-zinc-800/60 hover:text-neutral-900 dark:hover:text-zinc-100'
+                : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50 hover:text-stone-900 dark:hover:text-white'
         )}
-        style={{ paddingLeft: `${Math.max(6, depth * 14 + 6)}px` }}
         onClick={() => onSelectPage(node.id)}
       >
         {/* Drop Line Indicators */}
@@ -184,12 +179,12 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
         )}
 
         {/* Left Side: Toggle Chevron + Icon + Title */}
-        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <button
             type="button"
             className={clsx(
-              'p-0.5 rounded text-neutral-400 dark:text-zinc-500 hover:text-neutral-800 dark:hover:text-zinc-200 transition-transform',
-              !hasChildren && 'opacity-0 max-w-0 pointer-events-none'
+              'pl-0.5 pr-0 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 transition-transform shrink-0',
+              !hasChildren && 'hidden opacity-0 max-w-0 pointer-events-none'
             )}
             onClick={(e) => {
               e.stopPropagation();
@@ -197,9 +192,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             }}
           >
             {isExpanded ? (
-              <HugeiconsIcon icon={ArrowDown01Icon} size={13} />
+              <ChevronDown className="w-3 h-3 text-stone-400 dark:text-zinc-500 shrink-0" />
             ) : (
-              <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
+              <ChevronRight className="w-3 h-3 text-stone-400 dark:text-zinc-500 shrink-0" />
             )}
           </button>
 
@@ -208,14 +203,14 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             {canEdit ? (
               <button
                 type="button"
-                className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-neutral-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
+                className="text-sm leading-none shrink-0 p-0.5 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
                 title="Change icon"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               >
                 {displayIcon}
               </button>
             ) : (
-              <span className="text-sm leading-none shrink-0 p-0.5 select-none">
+              <span className="text-base leading-none shrink-0 p-0.5 select-none">
                 {displayIcon}
               </span>
             )}
@@ -227,7 +222,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   onClick={() => setShowEmojiPicker(false)}
                 />
                 <div
-                  className="absolute left-0 top-6 z-50 p-2 bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-zinc-800 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"
+                  className="absolute left-0 top-6 z-50 p-2 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {EMOJI_OPTIONS.map((em) => (
@@ -235,7 +230,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                       key={em}
                       type="button"
                       onClick={() => handleSelectIcon(em)}
-                      className="text-lg p-1 rounded hover:bg-neutral-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                      className="text-lg p-1 rounded hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
                     >
                       {em}
                     </button>
@@ -259,7 +254,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   }
                 }}
                 autoFocus
-                className="w-full bg-white dark:bg-zinc-900 text-neutral-900 dark:text-zinc-100 text-xs px-1.5 py-0.5 rounded border border-neutral-300 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400"
+                className="w-full bg-white dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 text-xs px-1.5 py-0.5 rounded border border-stone-300 dark:border-zinc-700 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400"
               />
             </form>
           ) : (
@@ -277,7 +272,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           )}
         </div>
 
-        {/* Right Side: Actions (Visible on mobile / touch, hover on desktop) */}
+        {/* Right Side: Actions (Visible on hover) */}
         <div
           className={clsx(
             'flex items-center gap-0.5 shrink-0 transition-opacity',
@@ -317,7 +312,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 onCreateChild(node.id);
               }}
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={14} />
+              <Plus className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200" />
             </button>
           )}
 
@@ -344,25 +339,25 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     setShowMenu(false);
                   }}
                 />
-                <div className="absolute right-0 top-6 w-38 bg-white dark:bg-[#18181b] border border-neutral-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 text-xs">
+                <div className="absolute right-0 top-6 w-38 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 text-xs">
                   {onTogglePin && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
                         onTogglePin(node.id);
                       }}
                     >
-                      <Star className={clsx("w-3.5 h-3.5", node.isPinned ? "fill-amber-400 text-amber-500" : "text-neutral-500 dark:text-zinc-400")} />
+                      <Star className={clsx("w-3.5 h-3.5", node.isPinned ? "fill-amber-400 text-amber-500" : "text-stone-500 dark:text-zinc-400")} />
                       {node.isPinned ? 'Unpin Page' : 'Pin to Favorites'}
                     </button>
                   )}
                   {canEdit && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
@@ -376,27 +371,27 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   {canEdit && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
                         setIsEditing(true);
                       }}
                     >
-                      <HugeiconsIcon icon={Edit02Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
+                      <HugeiconsIcon icon={Edit02Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
                       Rename
                     </button>
                   )}
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-neutral-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-neutral-700 dark:text-zinc-300 font-medium"
+                    className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
                       exportPageToMarkdown(node);
                     }}
                   >
-                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-neutral-500 dark:text-zinc-400" />
+                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
                     Export Page
                   </button>
                   {canEdit && (
@@ -420,9 +415,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
         </div>
       </div>
 
-      {/* Render Child Tree Nodes if Expanded */}
+      {/* Render Child Tree Nodes with Left Vertical Indentation Guide Line */}
       {isExpanded && hasChildren && (
-        <div className="flex flex-col">
+        <div className="flex flex-col pl-3 border-l-2 border-stone-200 dark:border-zinc-800 ml-3 my-0.5 space-y-0.5">
           {node.children.map((child) => (
             <PageTreeItem
               key={child.id}
