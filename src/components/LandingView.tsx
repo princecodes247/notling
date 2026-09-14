@@ -1,8 +1,8 @@
 import React, { useRef } from 'react';
-import { NotlingLogoIcon } from './Icons';
 import { FeatureCard, type FeatureCardData } from './FeatureCard';
 import { Footer } from './Footer';
 import { BloomFieldGradient } from './BloomFieldGradient';
+import { LandingHeader } from './LandingHeader';
 import {
   FileText,
   Search,
@@ -72,42 +72,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
   return (
     <div className="min-h-screen bg-gray-100 text-neutral-900 font-sans antialiased flex flex-col selection:bg-neutral-900 selection:text-white">
-      {/* 1. Top Navbar (Frosty Church Window Glass Effect) */}
-      <header className="sticky top-0 z-50 px-0 h-14 flex">
-        <div className="border-b-2 border-r-2 border-gray-300/30 p-5 bg-white/40 backdrop-blur-xl" />
-        <div className="relative bg-white/55 backdrop-blur-2xl backdrop-saturate-150 px-14 flex items-center justify-between border-b-2 border-gray-300/30 w-full shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.95),0_8px_32px_rgba(31,38,135,0.05)] overflow-hidden">
-          {/* Frosted Glass Satin Light Highlight */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/40 via-white/20 to-white/40 pointer-events-none" />
-          <div
-            className="absolute inset-0 pointer-events-none opacity-20"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.6'/></svg>")`,
-              backgroundSize: '100px 100px',
-            }}
-          />
-
-          {/* Brand */}
-          <div className="relative z-10 flex items-center gap-2.5 cursor-pointer" onClick={onEnterApp}>
-            <NotlingLogoIcon className="w-5 h-5 text-brand-text drop-shadow-2xs" />
-            <span className="font-bold text-base tracking-tight text-neutral-900">
-              Notling
-            </span>
-          </div>
-
-          {/* Right Links */}
-          <div className="relative z-10 flex items-center gap-6 sm:gap-8">
-            {/* Brand Pill Button */}
-            <button
-              type="button"
-              onClick={onEnterApp}
-              className="bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium px-4 py-2 rounded-full transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer active-press"
-            >
-              Get Started
-            </button>
-          </div>
-        </div>
-        <div className="border-b-2 border-l-2 border-gray-300/30 p-5 bg-white/40 backdrop-blur-xl" />
-      </header>
+      {/* 1. Top Navbar */}
+      <LandingHeader onEnterApp={onEnterApp} />
 
       <main className="mx-10 border-x-2 border-gray-300/30">
         <section>
