@@ -44,7 +44,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
   const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
   const [workspaceIcon, setWorkspaceIcon] = useState('🚀');
   const [userName, setUserName] = useState('');
-  const [userRole, setUserRole] = useState('Workspace Owner');
   const [timezone, setTimezone] = useState('Eastern Time (US & Canada) - New York');
 
   const [saved, setSaved] = useState(false);
@@ -120,7 +119,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
       setWorkspaceSlug(session.workspaceSlug || '');
       setWorkspaceIcon(session.workspaceIcon || '🚀');
       setUserName(session.name || '');
-      setUserRole(session.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member'));
     }
   }, [session, isWorkspaceOwner]);
 
@@ -159,7 +157,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
           workspaceSlug: isWorkspaceOwner ? workspaceSlug : undefined,
           workspaceIcon: isWorkspaceOwner ? workspaceIcon : undefined,
           name: userName,
-          role: userRole,
         },
       });
     },
@@ -266,19 +263,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                         Verified
                       </span>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
-                      Your Role / Title
-                    </label>
-                    <input
-                      type="text"
-                      value={userRole}
-                      onChange={(e) => setUserRole(e.target.value)}
-                      placeholder="e.g. Workspace Owner, Product Manager"
-                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-zinc-700/80 text-xs text-neutral-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400"
-                    />
                   </div>
 
                   <div>
@@ -522,7 +506,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                           </div>
                         </div>
                         <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300 shrink-0">
-                          {u.role || (isMe ? (userRole || session?.role || 'Workspace Owner') : 'Member')}
+                          {u.role || (isMe ? (session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')) : 'Member')}
                         </span>
                       </div>
                     );
@@ -540,7 +524,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ session: initialSess
                       </div>
                     </div>
                     <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300">
-                      {userRole || session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')}
+                      {session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')}
                     </span>
                   </div>
                 )}

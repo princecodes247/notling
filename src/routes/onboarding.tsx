@@ -39,7 +39,6 @@ function OnboardingPage() {
 
   // Form State
   const [name, setName] = useState('');
-  const [role, setRole] = useState('Software Engineer');
   const [avatarSeed, setAvatarSeed] = useState("");
   const [workspaceName, setWorkspaceName] = useState('My Workspace');
   const [workspaceSlug, setWorkspaceSlug] = useState('my-workspace');
@@ -119,7 +118,6 @@ function OnboardingPage() {
         data: {
           name: name.trim() || session?.name || 'Workspace Member',
           avatarUrl: `avatune:${avatarSeed}`,
-          role,
           workspaceName: workspaceName.trim() || 'My Workspace',
           workspaceSlug: workspaceSlug.trim() || 'my-workspace',
           workspaceIcon: effectiveRingsSeed,
@@ -184,8 +182,6 @@ function OnboardingPage() {
           <OnboardingStep1
             name={name}
             setName={setName}
-            role={role}
-            setRole={setRole}
             avatarSeed={avatarSeed}
             onRerollAvatar={() => setAvatarSeed('avatar-' + Math.random().toString(36).substring(2, 9))}
             onNext={() => setStep(2)}

@@ -2,16 +2,12 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { ArrowRight01Icon, RefreshIcon } from '@hugeicons/core-free-icons';
 import { Avatar } from '@avatune/react';
 import pacovqzzTheme from '@avatune/pacovqzz-theme/react';
-import { Select } from '~/components/ui/Select';
 import { Button } from '~/components/ui/Button';
 import { Input } from '~/components/ui/Input';
-import { ONBOARDING_ROLE_OPTIONS } from '#/lib/constants';
 
 interface OnboardingStep1Props {
   name: string;
   setName: (val: string) => void;
-  role: string;
-  setRole: (val: string) => void;
   avatarSeed: string;
   onRerollAvatar: () => void;
   onNext: () => void;
@@ -20,8 +16,6 @@ interface OnboardingStep1Props {
 export function OnboardingStep1({
   name,
   setName,
-  role,
-  setRole,
   avatarSeed,
   onRerollAvatar,
   onNext,
@@ -60,21 +54,6 @@ export function OnboardingStep1({
             placeholder="e.g. Scotty Prince"
           />
         </div>
-      </div>
-
-      {/* Role */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-semibold text-neutral-700 dark:text-zinc-300">Your Primary Role</label>
-        <Select
-          value={role}
-          options={ONBOARDING_ROLE_OPTIONS}
-          onChange={(newRole) => setRole(newRole)}
-          size="lg"
-          variant="outline"
-          align="left"
-          matchTriggerWidth
-          className="w-full bg-neutral-50/50 dark:bg-zinc-900/80 hover:bg-neutral-100/60 dark:hover:bg-zinc-800"
-        />
       </div>
 
       <Button onClick={onNext} className="w-full mt-2">
