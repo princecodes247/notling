@@ -15,6 +15,7 @@ import {
   Github,
   Star,
 } from 'lucide-react';
+import { COMMON_LINKS } from '#/lib/constants';
 
 interface LandingViewProps {
   onEnterApp: () => void;
@@ -99,7 +100,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   <span>Get Started</span>
                 </button>
                 <a
-                  href="https://github.com"
+                  href={COMMON_LINKS.github}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto px-5 py-3 rounded-full bg-white hover:bg-stone-50 text-neutral-900 border border-neutral-300/80 text-xs font-medium transition-all shadow-2xs hover:shadow-xs flex items-center justify-center gap-2 cursor-pointer active-press"

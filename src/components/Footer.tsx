@@ -1,6 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { NotlingLogoIcon } from './Icons';
 import { Github } from 'lucide-react';
+import { COMMON_LINKS } from '#/lib/constants';
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -43,7 +44,7 @@ export function Footer() {
               Cookies
             </Link>
             <a
-              href="https://github.com"
+              href={COMMON_LINKS.github}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-neutral-950 transition-colors inline-flex items-center gap-1.5"
