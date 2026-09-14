@@ -3,18 +3,11 @@ import { useEffect, useState } from 'react';
 import { processOAuthCallback } from '~/server/auth';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Cancel01Icon } from '@hugeicons/core-free-icons';
-import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 
 export const Route = createFileRoute('/auth/callback/$provider')({
   component: OAuthCallbackPage,
 });
 
-const OAUTH_LOADING_WORDS = [
-  'Verifying OAuth credentials...',
-  'Securing session token...',
-  'Syncing user profile...',
-  'Preparing your workspace...',
-];
 
 function OAuthCallbackPage() {
   const { provider } = Route.useParams();
@@ -80,9 +73,5 @@ function OAuthCallbackPage() {
     );
   }
 
-  return (
-    <FullScreenWordListLoader
-      words={OAUTH_LOADING_WORDS}
-    />
-  );
+  return null;
 }

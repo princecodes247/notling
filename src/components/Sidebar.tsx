@@ -173,7 +173,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const pinnedNodes = getAllPinnedNodes(treeNodes);
 
   return (
-    <aside className="w-full md:w-60 h-full bg-[#f8fafc] dark:bg-[#121214] flex flex-col shrink-0 select-none text-stone-800 dark:text-zinc-200 text-xs md:text-sm border-r border-stone-200/80 dark:border-zinc-800/80 relative pt-safe pb-safe">
+    <aside className="w-full md:w-60 h-full bg-white dark:bg-[#121214] flex flex-col shrink-0 select-none text-stone-800 dark:text-zinc-200 text-xs md:text-sm border-r border-stone-200/80 dark:border-zinc-800/80 relative pt-safe pb-safe">
       {/* 1. Header: Workspace Switcher Dropdown + Collapse Icon */}
       <div className="p-3 border-b border-stone-200/60 dark:border-zinc-800/80 flex items-center justify-between relative">
         <div className="relative flex-1 min-w-0">
@@ -220,9 +220,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                               onSwitchWorkspace?.(ws.id);
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer ${
-                            isActive ? 'bg-stone-50 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-white' : 'text-stone-700 dark:text-zinc-300'
-                          }`}
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer ${isActive ? 'bg-stone-50 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-white' : 'text-stone-700 dark:text-zinc-300'
+                            }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <WorkspaceAvatar
@@ -437,9 +436,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
 
               <div
-                className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${
-                  isRootDropTarget ? 'bg-stone-200/50 dark:bg-zinc-800/50 ring-1 ring-stone-300 dark:ring-zinc-700' : ''
-                }`}
+                className={`mt-1 flex flex-col gap-0.5 rounded-lg transition-colors min-h-[40px] ${isRootDropTarget ? 'bg-stone-200/50 dark:bg-zinc-800/50 ring-1 ring-stone-300 dark:ring-zinc-700' : ''
+                  }`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   if (draggedPageId) {
