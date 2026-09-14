@@ -19,14 +19,14 @@ export const Route = createRoute({
 function DashboardIndexPage() {
   const navigate = useNavigate();
 
-  const { data: session } = useQuery({
+  const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => await getSession(),
   });
 
   const workspaceId = session?.workspaceId;
 
-  const { data: treeNodes = [], refetch } = useQuery({
+  const { data: treeNodes = [], refetch, isLoading: treeLoading } = useQuery({
     queryKey: ['pageTree', workspaceId],
     queryFn: async () => {
       if (!workspaceId) return [];
@@ -81,6 +81,7 @@ function DashboardIndexPage() {
     <HomeView
       userName={session?.name ? session.name.split(' ')[0] : 'Scotty'}
       treeNodes={treeNodes}
+      isLoading={sessionLoading || (!!workspaceId && treeLoading)}
       onSelectPage={(id) => navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } })}
       onCreateFolder={() => createFolderMutation.mutate()}
       onCreatePage={() => createPageMutation.mutate()}

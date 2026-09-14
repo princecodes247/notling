@@ -15,7 +15,73 @@ interface HomeViewProps {
   onCreateFolder: () => void;
   onCreatePage: () => void;
   onNavigate: (nav: string) => void;
+  isLoading?: boolean;
 }
+
+export const HomeSkeleton: React.FC = () => {
+  return (
+    <div className="animate-pulse flex flex-col gap-8">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
+        <div className="flex flex-col gap-2">
+          <div className="h-7 w-56 bg-stone-200 dark:bg-zinc-800 rounded-md" />
+          <div className="h-4 w-44 bg-stone-100 dark:bg-zinc-800/60 rounded-md" />
+        </div>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="h-9 w-28 bg-stone-200 dark:bg-zinc-800 rounded-lg" />
+          <div className="h-9 w-32 bg-stone-200 dark:bg-zinc-800 rounded-lg" />
+        </div>
+      </div>
+
+      {/* Folders Skeleton Section */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-32 bg-stone-200 dark:bg-zinc-800 rounded-md" />
+          <div className="h-3 w-20 bg-stone-100 dark:bg-zinc-800/60 rounded-md" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="p-4 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-stone-50/50 dark:bg-zinc-900/40 flex flex-col justify-between h-28"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-6 h-6 rounded bg-stone-200 dark:bg-zinc-800" />
+                <div className="w-12 h-4 rounded bg-stone-200 dark:bg-zinc-800" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <div className="h-3.5 w-28 bg-stone-200 dark:bg-zinc-800 rounded" />
+                <div className="h-2.5 w-16 bg-stone-100 dark:bg-zinc-800/60 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recents Skeleton Section */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div className="h-4 w-20 bg-stone-200 dark:bg-zinc-800 rounded-md" />
+          <div className="h-3 w-24 bg-stone-100 dark:bg-zinc-800/60 rounded-md" />
+        </div>
+        <div className="flex flex-col divide-y divide-stone-100 dark:divide-zinc-800/80 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-stone-50/30 dark:bg-zinc-900/20 overflow-hidden">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="p-3.5 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-5 h-5 rounded bg-stone-200 dark:bg-zinc-800 shrink-0" />
+                <div className="flex flex-col gap-1.5 flex-1 max-w-sm">
+                  <div className="h-3.5 w-3/4 bg-stone-200 dark:bg-zinc-800 rounded" />
+                  <div className="h-2.5 w-1/2 bg-stone-100 dark:bg-zinc-800/60 rounded" />
+                </div>
+              </div>
+              <div className="w-4 h-4 rounded bg-stone-200 dark:bg-zinc-800 shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function flattenTreeNodes(nodes: PageTreeNode[]): PageTreeNode[] {
   let result: PageTreeNode[] = [];
@@ -35,6 +101,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onCreateFolder,
   onCreatePage,
   onNavigate,
+  isLoading = false,
 }) => {
   const pageMeta = useUIStore((s) => s.pageMeta);
 
@@ -86,61 +153,65 @@ export const HomeView: React.FC<HomeViewProps> = ({
   return (
     <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans pt-safe flex flex-col">
       <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
-              Good afternoon, {userName}
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
-              Welcome back to your workspace.
-            </p>
-          </div>
-
-          {hasAnyContent && (
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={onCreateFolder}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
-              >
-                <HugeiconsIcon icon={FolderAddIcon} size={15} />
-                <span>New Folder</span>
-              </button>
-              <button
-                type="button"
-                onClick={onCreatePage}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
-              >
-                <HugeiconsIcon icon={PlusSignIcon} size={15} />
-                <span>New Document</span>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {!hasAnyContent ? (
-          /* Single Centered Empty State (HIG Deference) */
-          <div className="flex-1 flex flex-col items-center justify-center text-center py-16 px-4 my-auto">
-            <div className="w-14 h-14 rounded-2xl bg-brand-light border border-brand-border text-brand-text flex items-center justify-center mb-4 shadow-2xs">
-              <HugeiconsIcon icon={PlusSignIcon} size={24} />
-            </div>
-            <h3 className="text-base font-semibold text-stone-950 dark:text-white tracking-tight">
-              Your workspace is empty
-            </h3>
-            <p className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm mt-1 mb-6 leading-relaxed">
-              Create your first document to start organizing notes, specs, and project ideas.
-            </p>
-            <button
-              type="button"
-              onClick={onCreatePage}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium shadow-2xs transition-all cursor-pointer active-press"
-            >
-              <HugeiconsIcon icon={PlusSignIcon} size={15} />
-            </button>
-          </div>
+        {isLoading ? (
+          <HomeSkeleton />
         ) : (
           <>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
+                  Good afternoon, {userName}
+                </h1>
+                <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
+                  Welcome back to your workspace.
+                </p>
+              </div>
+
+              {hasAnyContent && (
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={onCreateFolder}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
+                  >
+                    <HugeiconsIcon icon={FolderAddIcon} size={15} />
+                    <span>New Folder</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onCreatePage}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
+                  >
+                    <HugeiconsIcon icon={PlusSignIcon} size={15} />
+                    <span>New Document</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!hasAnyContent ? (
+              /* Single Centered Empty State (HIG Deference) */
+              <div className="flex-1 flex flex-col items-center justify-center text-center py-16 px-4 my-auto">
+                <div className="w-14 h-14 rounded-2xl bg-brand-light border border-brand-border text-brand-text flex items-center justify-center mb-4 shadow-2xs">
+                  <HugeiconsIcon icon={PlusSignIcon} size={24} />
+                </div>
+                <h3 className="text-base font-semibold text-stone-950 dark:text-white tracking-tight">
+                  Your workspace is empty
+                </h3>
+                <p className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm mt-1 mb-6 leading-relaxed">
+                  Create your first document to start organizing notes, specs, and project ideas.
+                </p>
+                <button
+                  type="button"
+                  onClick={onCreatePage}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium shadow-2xs transition-all cursor-pointer active-press"
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} size={15} />
+                </button>
+              </div>
+            ) : (
+              <>
             {/* Workspace Folders Section */}
             {folders.length > 0 && (
               <div className="flex flex-col gap-3">
@@ -239,6 +310,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
                 ))}
               </div>
             </div>
+          </>
+        )}
           </>
         )}
       </div>
