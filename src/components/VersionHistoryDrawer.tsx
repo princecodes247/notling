@@ -211,6 +211,35 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       {item.changeSummary || item.title || 'Updated page'}
                     </div>
 
+                    {/* Block Delta Badges */}
+                    {(() => {
+                      const delta = (item as any).delta;
+                      const addedCount = delta?.added?.length ?? 0;
+                      const updatedCount = delta?.updated?.length ?? 0;
+                      const deletedCount = delta?.deleted?.length ?? 0;
+                      if (addedCount === 0 && updatedCount === 0 && deletedCount === 0) return null;
+
+                      return (
+                        <div className="flex items-center gap-1.5 pt-0.5">
+                          {addedCount > 0 && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60">
+                              +{addedCount} added
+                            </span>
+                          )}
+                          {updatedCount > 0 && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sky-50 dark:bg-sky-950/40 text-sky-600 dark:text-sky-400 border border-sky-200/60 dark:border-sky-800/60">
+                              ~{updatedCount} updated
+                            </span>
+                          )}
+                          {deletedCount > 0 && (
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-800/60">
+                              -{deletedCount} deleted
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     <div className="text-[11px] text-stone-400 dark:text-zinc-500 line-clamp-2 bg-stone-50/80 dark:bg-zinc-800/40 p-2 rounded-lg font-mono">
                       {extractTextSummaryFromBlocks(item.content as any[])}
                     </div>
@@ -287,6 +316,39 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
             <h1 className="text-2xl font-bold text-stone-900 dark:text-white">
               {previewItem.title || 'Untitled Document'}
             </h1>
+
+            {/* Block Delta Summary in Preview Modal */}
+            {(() => {
+              const delta = (previewItem as any).delta;
+              if (!delta) return null;
+              const { added = [], updated = [], deleted = [] } = delta;
+              if (added.length === 0 && updated.length === 0 && deleted.length === 0) return null;
+
+              return (
+                <div className="p-3 rounded-xl bg-stone-100/70 dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 flex flex-col gap-2">
+                  <span className="text-xs font-semibold text-stone-800 dark:text-zinc-200">
+                    Block-Level Changes in this Version
+                  </span>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {added.length > 0 && (
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-medium">
+                        +{added.length} blocks added
+                      </span>
+                    )}
+                    {updated.length > 0 && (
+                      <span className="px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 font-medium">
+                        ~{updated.length} blocks modified
+                      </span>
+                    )}
+                    {deleted.length > 0 && (
+                      <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 font-medium">
+                        -{deleted.length} blocks deleted
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="p-4 rounded-xl border border-stone-200/80 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/40 text-xs text-stone-800 dark:text-zinc-200 leading-relaxed font-mono whitespace-pre-wrap">
               {extractTextSummaryFromBlocks(previewItem.content as any[]) || 'Empty document.'}

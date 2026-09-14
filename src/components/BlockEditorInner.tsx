@@ -12,7 +12,7 @@ import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
-import { updatePageContent } from '~/server/pages';
+import { updatePageContent, syncPageUpdate } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
@@ -1717,6 +1717,39 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       }
     };
   }, [page.id, performServerSync]);
+
+  // Listen to local Yjs updates and send incremental update vectors to server
+  useEffect(() => {
+    if (!collab?.doc) return;
+    const doc = collab.doc;
+
+    const handleYUpdate = (update: Uint8Array, origin: any) => {
+      if (origin === 'server' || origin === collab.provider) return;
+
+      try {
+        let binary = '';
+        const len = update.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(update[i]);
+        }
+        const updateBase64 = btoa(binary);
+
+        syncPageUpdate({
+          data: {
+            pageId: page.id,
+            updateData: updateBase64,
+          },
+        }).catch((err) => console.error('Failed to sync Yjs update vector:', err));
+      } catch (err) {
+        console.error('Error encoding Yjs update vector:', err);
+      }
+    };
+
+    doc.on('update', handleYUpdate);
+    return () => {
+      doc.off('update', handleYUpdate);
+    };
+  }, [collab?.doc, collab?.provider, page.id]);
 
   // Sync remote block updates from DB only if collaboration is NOT active
   useEffect(() => {

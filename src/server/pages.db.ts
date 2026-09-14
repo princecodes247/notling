@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates } from '~/db/schema';
 import { eq, and, or, desc, asc, isNull, lt, gt, ne, sql } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
@@ -674,6 +674,50 @@ export async function checkCanUserEditPage(pageId: string, includeDeleted = fals
   }
 }
 
+export interface BlockDelta {
+  added?: any[];
+  updated?: any[];
+  deleted?: string[];
+}
+
+export function computeBlockDeltas(oldBlocks: any[] = [], newBlocks: any[] = []): BlockDelta {
+  if (!Array.isArray(oldBlocks)) oldBlocks = [];
+  if (!Array.isArray(newBlocks)) newBlocks = [];
+
+  const oldMap = new Map<string, any>();
+  for (const block of oldBlocks) {
+    if (block && typeof block === 'object' && block.id) {
+      oldMap.set(String(block.id), block);
+    }
+  }
+
+  const newMap = new Map<string, any>();
+  const added: any[] = [];
+  const updated: any[] = [];
+
+  for (const block of newBlocks) {
+    if (!block || typeof block !== 'object' || !block.id) continue;
+    const blockId = String(block.id);
+    newMap.set(blockId, block);
+
+    const prevBlock = oldMap.get(blockId);
+    if (!prevBlock) {
+      added.push(block);
+    } else if (JSON.stringify(prevBlock) !== JSON.stringify(block)) {
+      updated.push(block);
+    }
+  }
+
+  const deleted: string[] = [];
+  for (const [oldId] of oldMap) {
+    if (!newMap.has(oldId)) {
+      deleted.push(oldId);
+    }
+  }
+
+  return { added, updated, deleted };
+}
+
 export async function recordPageHistory(input: {
   pageId: string;
   title?: string;
@@ -702,12 +746,14 @@ export async function recordPageHistory(input: {
 
     const finalTitle = input.title ?? page.title ?? 'Untitled Document';
     const finalContent = input.content ?? page.content ?? [];
+    const previousContent = page.content ?? [];
+    const delta = computeBlockDeltas(previousContent, finalContent);
     const summary = input.changeSummary ?? (input.title !== undefined ? `Changed title to "${finalTitle}"` : 'Updated document content');
 
     // Throttle: if user recorded entry in last 20 sec for this page, update it instead of creating duplicate rows
     const twentySecsAgo = new Date(Date.now() - 20000);
     const recent = await db
-      .select({ id: pageHistory.id })
+      .select({ id: pageHistory.id, content: pageHistory.content })
       .from(pageHistory)
       .where(
         and(
@@ -720,11 +766,13 @@ export async function recordPageHistory(input: {
       .limit(1);
 
     if (recent.length > 0) {
+      const mergedDelta = computeBlockDeltas(recent[0].content ?? [], finalContent);
       const [updated] = await db
         .update(pageHistory)
         .set({
           title: finalTitle,
           content: finalContent,
+          delta: mergedDelta,
           changeSummary: summary,
           createdAt: new Date(),
         })
@@ -743,6 +791,7 @@ export async function recordPageHistory(input: {
         userAvatarUrl,
         title: finalTitle,
         content: finalContent,
+        delta,
         changeSummary: summary,
       })
       .returning();
@@ -750,6 +799,25 @@ export async function recordPageHistory(input: {
     return newHistory;
   } catch (err) {
     console.error('Error recording page history:', err);
+    return null;
+  }
+}
+
+export async function appendPageUpdate(input: { pageId: string; updateData: string }) {
+  try {
+    const canEdit = await checkCanUserEditPage(input.pageId);
+    if (!canEdit) return null;
+
+    const [inserted] = await db
+      .insert(pageUpdates)
+      .values({
+        pageId: input.pageId,
+        updateData: input.updateData,
+      })
+      .returning();
+    return inserted;
+  } catch (err) {
+    console.error('Error appending page update:', err);
     return null;
   }
 }

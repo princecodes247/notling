@@ -133,6 +133,7 @@ export const pageHistory = pgTable('page_history', {
   userAvatarUrl: text('user_avatar_url'),
   title: text('title'),
   content: jsonb('content').$type<any[]>().notNull().default([]),
+  delta: jsonb('delta').$type<{ added?: any[]; updated?: any[]; deleted?: string[] }>(),
   changeSummary: text('change_summary'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
@@ -141,5 +142,17 @@ export const pageHistory = pgTable('page_history', {
 
 export type PageHistory = typeof pageHistory.$inferSelect;
 export type NewPageHistory = typeof pageHistory.$inferInsert;
+
+export const pageUpdates = pgTable('page_updates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }).notNull(),
+  updateData: text('update_data').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  pageIdx: index('page_updates_page_idx').on(table.pageId, table.createdAt),
+}));
+
+export type PageUpdate = typeof pageUpdates.$inferSelect;
+export type NewPageUpdate = typeof pageUpdates.$inferInsert;
 
 
