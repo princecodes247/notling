@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useCallback, useRef, useState, useMemo } from 'react';
+import * as Y from 'yjs';
 import {
   useCreateBlockNote,
   SideMenuController,
@@ -1169,24 +1170,24 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
 
     const elapsed = Date.now() - firstEditTimeRef.current;
 
-    // If continuous fast typing exceeds 4s max-wait, force a server sync!
-    if (elapsed >= 4000) {
+    // If continuous fast typing exceeds 5s max-wait, force a snapshot server sync!
+    if (elapsed >= 5000) {
       performServerSync(activePageId);
       return;
     }
 
-    // Point 1: Reset 800ms silence debounce timer on every keystroke
+    // Reset 1500ms silence debounce timer on every keystroke
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
 
     debounceTimerRef.current = setTimeout(() => {
       performServerSync(activePageId);
-    }, 800);
+    }, 1500);
 
     // Schedule max-wait cap fallback timer if not already running
     if (!maxWaitTimerRef.current) {
-      const remainingMaxWait = Math.max(100, 4000 - elapsed);
+      const remainingMaxWait = Math.max(100, 5000 - elapsed);
       maxWaitTimerRef.current = setTimeout(() => {
         performServerSync(activePageId);
       }, remainingMaxWait);
@@ -1718,19 +1719,23 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     };
   }, [page.id, performServerSync]);
 
-  // Listen to local Yjs updates and send incremental update vectors to server
+  // Listen to local Yjs updates, buffer for 250ms, merge with Y.mergeUpdates, and stream to server
   useEffect(() => {
     if (!collab?.doc) return;
     const doc = collab.doc;
+    const updateBuffer: Uint8Array[] = [];
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const handleYUpdate = (update: Uint8Array, origin: any) => {
-      if (origin === 'server' || origin === collab.provider) return;
-
+    const flushUpdates = () => {
+      if (updateBuffer.length === 0) return;
       try {
+        const merged = Y.mergeUpdates(updateBuffer);
+        updateBuffer.length = 0;
+
         let binary = '';
-        const len = update.byteLength;
+        const len = merged.byteLength;
         for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(update[i]);
+          binary += String.fromCharCode(merged[i]);
         }
         const updateBase64 = btoa(binary);
 
@@ -1741,13 +1746,28 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           },
         }).catch((err) => console.error('Failed to sync Yjs update vector:', err));
       } catch (err) {
-        console.error('Error encoding Yjs update vector:', err);
+        console.error('Error merging Yjs update vectors:', err);
+        updateBuffer.length = 0;
+      }
+    };
+
+    const handleYUpdate = (update: Uint8Array, origin: any) => {
+      if (origin === 'server' || origin === collab.provider) return;
+      updateBuffer.push(update);
+
+      if (!flushTimer) {
+        flushTimer = setTimeout(() => {
+          flushTimer = null;
+          flushUpdates();
+        }, 250);
       }
     };
 
     doc.on('update', handleYUpdate);
     return () => {
       doc.off('update', handleYUpdate);
+      if (flushTimer) clearTimeout(flushTimer);
+      flushUpdates();
     };
   }, [collab?.doc, collab?.provider, page.id]);
 

@@ -984,6 +984,7 @@ export async function savePageContent(input: { pageId: string; content: any; con
       .returning({ id: pages.id, updatedAt: pages.updatedAt });
 
     if (updated) {
+      db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => {});
       recordPageHistory({
         pageId: input.pageId,
         content: input.content,
