@@ -20,6 +20,7 @@ import { Route as SecurityRouteImport } from './routes/security'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardFoldersRouteImport } from './routes/dashboard.folders'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard.profile'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard.settings'
 import { Route as DashboardTrashRouteImport } from './routes/dashboard.trash'
 import { Route as SharePageIdRouteImport } from './routes/share.$pageId'
@@ -83,6 +84,11 @@ const DashboardFoldersRoute = DashboardFoldersRouteImport.update({
   path: '/folders',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/security': typeof SecurityRoute
   '/terms': typeof TermsRoute
   '/dashboard/folders': typeof DashboardFoldersRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/settings': typeof DashboardSettingsRoute
   '/dashboard/trash': typeof DashboardTrashRoute
   '/share/$pageId': typeof SharePageIdRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/dashboard/folders'
+    | '/dashboard/profile'
     | '/dashboard/settings'
     | '/dashboard/trash'
     | '/share/$pageId'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/dashboard/folders'
+    | '/dashboard/profile'
     | '/dashboard/settings'
     | '/dashboard/trash'
     | '/share/$pageId'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/security'
     | '/terms'
     | '/dashboard/folders'
+    | '/dashboard/profile'
     | '/dashboard/settings'
     | '/dashboard/trash'
     | '/share/$pageId'
@@ -335,6 +347,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardFoldersRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/profile': {
+      id: '/dashboard/profile'
+      path: '/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/settings': {
       id: '/dashboard/settings'
       path: '/settings'
@@ -389,6 +408,7 @@ declare module '@tanstack/react-router' {
 
 interface DashboardRouteChildren {
   DashboardFoldersRoute: typeof DashboardFoldersRoute
+  DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardTrashRoute: typeof DashboardTrashRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
@@ -397,6 +417,7 @@ interface DashboardRouteChildren {
 
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardFoldersRoute: DashboardFoldersRoute,
+  DashboardProfileRoute: DashboardProfileRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardTrashRoute: DashboardTrashRoute,
   DashboardIndexRoute: DashboardIndexRoute,

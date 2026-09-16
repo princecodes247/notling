@@ -1,0 +1,307 @@
+import React, { useState, useEffect } from 'react';
+import { Check, AlertTriangle, Trash2, X, Loader2, User, Sun, LogOut } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import { getSession, updateSettings, deleteAccount, signOut, type UserSession } from '~/server/auth';
+import { Select, type SelectOption } from '~/components/ui/Select';
+import ThemeToggle from '../ThemeToggle';
+
+const TIMEZONE_OPTIONS: SelectOption[] = [
+  { value: 'Eastern Time (US & Canada) - New York', label: 'Eastern Time (US & Canada) - New York' },
+  { value: 'Pacific Time (US & Canada) - Los Angeles', label: 'Pacific Time (US & Canada) - Los Angeles' },
+  { value: 'Central European Time - Berlin', label: 'Central European Time - Berlin' },
+  { value: 'UTC / Greenwich Mean Time', label: 'UTC / Greenwich Mean Time' },
+];
+
+interface ProfileSettingsViewProps {
+  session?: UserSession | null;
+}
+
+export const ProfileSettingsView: React.FC<ProfileSettingsViewProps> = ({ session: initialSession }) => {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: async () => await getSession(),
+    initialData: initialSession || undefined,
+  });
+
+  const [userName, setUserName] = useState('');
+  const [timezone, setTimezone] = useState('Eastern Time (US & Canada) - New York');
+  const [saved, setSaved] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (session) {
+      setUserName(session.name || '');
+    }
+  }, [session]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      return await updateSettings({
+        data: {
+          name: userName,
+        },
+      });
+    },
+    onSuccess: (res) => {
+      if (res?.success) {
+        setSaved(true);
+        queryClient.invalidateQueries({ queryKey: ['session'] });
+        setTimeout(() => setSaved(false), 2000);
+      }
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      return await deleteAccount();
+    },
+    onSuccess: (res) => {
+      if (res?.success) {
+        queryClient.clear();
+        window.location.href = '/login';
+      } else {
+        setDeleteError(res?.error || 'Failed to delete account.');
+      }
+    },
+  });
+
+  const handleLogout = async () => {
+    await signOut();
+    queryClient.invalidateQueries({ queryKey: ['session'] });
+    navigate({ to: '/login' });
+  };
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateMutation.mutate();
+  };
+
+  return (
+    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-safe">
+      <div className="max-w-4xl mx-auto w-full flex flex-col gap-8">
+        {/* Header */}
+        <div className="pb-5 border-b border-neutral-100 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-normal text-neutral-950 dark:text-white tracking-tight">Profile Settings</h1>
+            <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-0.5">
+              Manage your personal information, interface theme, and account settings.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="px-3.5 py-2 rounded-lg border border-neutral-200 dark:border-zinc-700/80 hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-800 dark:text-zinc-200 text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5 text-neutral-500 dark:text-zinc-400" />
+            <span>Sign Out</span>
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          {/* User Profile Form */}
+          <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-neutral-500 dark:text-zinc-400" />
+                <h2 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">Personal Information</h2>
+              </div>
+              <span className="text-[11px] text-neutral-400 dark:text-zinc-500">User Profile</span>
+            </div>
+
+            <form onSubmit={handleSave} className="flex flex-col gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
+                    Your Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    placeholder="Your Name"
+                    className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-zinc-700/80 text-xs text-neutral-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      value={session?.email || ''}
+                      disabled
+                      className="w-full px-3 py-2 rounded-lg border border-neutral-200 dark:border-zinc-700/80 text-xs text-neutral-500 dark:text-zinc-400 bg-neutral-50 dark:bg-zinc-800/50 cursor-not-allowed"
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-medium text-neutral-400 dark:text-zinc-500 bg-white dark:bg-zinc-900 px-1.5 py-0.5 rounded border border-neutral-200 dark:border-zinc-700">
+                      Verified
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
+                    Primary Timezone
+                  </label>
+                  <Select
+                    value={timezone}
+                    options={TIMEZONE_OPTIONS}
+                    onChange={(newTz) => setTimezone(newTz)}
+                    size="md"
+                    variant="outline"
+                    align="left"
+                    matchTriggerWidth
+                    className="w-full bg-white dark:bg-zinc-900 hover:bg-neutral-50 dark:hover:bg-zinc-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end pt-3 border-t border-neutral-100 dark:border-zinc-800">
+                <button
+                  type="submit"
+                  disabled={updateMutation.isPending}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 disabled:opacity-50 text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+                >
+                  {saved ? <Check className="w-3.5 h-3.5 text-white dark:text-neutral-950" /> : null}
+                  <span>{saved ? 'Saved' : updateMutation.isPending ? 'Saving...' : 'Save Profile'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Appearance & Theme Section */}
+          <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Sun className="w-4 h-4 text-neutral-500 dark:text-zinc-400" />
+                <h2 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">Appearance &amp; Theme</h2>
+              </div>
+              <span className="text-[11px] text-neutral-400 dark:text-zinc-500">Interface Preference</span>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <p className="text-xs text-neutral-500 dark:text-zinc-400">
+                Select your preferred color theme for Notling across desktop and mobile devices.
+              </p>
+              <ThemeToggle variant="cards" />
+            </div>
+          </div>
+
+          {/* Account Danger Zone */}
+          <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              <h2 className="text-sm font-semibold text-rose-600 dark:text-rose-400">Account Danger Zone</h2>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-lg bg-neutral-50/60 dark:bg-zinc-800/30 border border-neutral-200/60 dark:border-zinc-800/60">
+              <div>
+                <h3 className="text-xs font-semibold text-neutral-900 dark:text-zinc-100">Delete Account &amp; Personal Data</h3>
+                <p className="text-[11px] text-neutral-500 dark:text-zinc-400 mt-0.5 max-w-md">
+                  Permanently remove your account, owned workspaces, documents, pages, and all uploaded media files. This action is irreversible.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmText('');
+                  setDeleteError(null);
+                  setIsDeleteModalOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white text-xs font-medium transition-all shadow-xs shrink-0 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Account
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-[#18181b] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-neutral-200 dark:border-zinc-800 flex flex-col gap-5 relative text-neutral-900 dark:text-zinc-100">
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(false)}
+              className="absolute top-4 right-4 text-neutral-400 dark:text-zinc-500 hover:text-neutral-700 dark:hover:text-zinc-200 p-1 rounded-lg hover:bg-neutral-100 dark:hover:bg-zinc-800 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-neutral-900 dark:text-white">Delete Account &amp; Workspace?</h3>
+                <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-0.5">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="text-xs text-neutral-600 dark:text-zinc-300 leading-relaxed bg-rose-50/50 dark:bg-rose-950/30 p-3.5 rounded-xl border border-rose-100 dark:border-rose-900/40">
+              This will permanently wipe your user profile, all workspaces owned by you, all associated pages and documents, and all uploaded files.
+            </div>
+
+            {deleteError && (
+              <div className="p-3 rounded-lg bg-rose-100 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900/60 text-xs text-rose-700 dark:text-rose-300 font-medium">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-neutral-700 dark:text-zinc-300">
+                Type <span className="font-mono font-bold select-all text-neutral-900 dark:text-white">DELETE</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                placeholder="DELETE"
+                className="w-full px-3 py-2 text-xs rounded-lg border border-neutral-300 dark:border-zinc-700 text-neutral-900 dark:text-zinc-100 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 font-mono"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-neutral-100 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 rounded-lg text-xs font-medium text-neutral-600 dark:text-zinc-400 hover:bg-neutral-100 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={confirmText.trim() !== 'DELETE' || deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate()}
+                className="px-4 py-2 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-700 disabled:opacity-50 disabled:hover:bg-rose-600 text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                {deleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Permanently Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

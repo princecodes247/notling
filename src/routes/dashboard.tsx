@@ -162,6 +162,8 @@ function DashboardLayout() {
     activeNav = 'folders';
   } else if (currentPath.includes('/dashboard/settings')) {
     activeNav = 'settings';
+  } else if (currentPath.includes('/dashboard/profile')) {
+    activeNav = 'profile';
   } else if (currentPath.includes('/dashboard/trash')) {
     activeNav = 'trash';
   } else if (currentPath.includes('/dashboard/p/')) {
@@ -208,11 +210,19 @@ function DashboardLayout() {
       });
     } else if (currentPath.includes('/dashboard/settings')) {
       doSetActivePageId(null);
-      document.title = 'Settings - Notling';
+      document.title = 'Workspace Settings - Notling';
       doOpenTab({
         id: 'settings',
-        title: 'Settings',
+        title: 'Workspace Settings',
         path: '/dashboard/settings',
+      });
+    } else if (currentPath.includes('/dashboard/profile')) {
+      doSetActivePageId(null);
+      document.title = 'Profile Settings - Notling';
+      doOpenTab({
+        id: 'profile',
+        title: 'Profile Settings',
+        path: '/dashboard/profile',
       });
     } else if (currentPath.includes('/dashboard/trash')) {
       doSetActivePageId(null);
@@ -376,7 +386,7 @@ function DashboardLayout() {
 
   const handleSelectTab = (tab: TabItem) => {
     setActiveTabId(tab.id);
-    if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings' && tab.id !== 'trash') {
+    if (tab.id !== 'home' && tab.id !== 'folders' && tab.id !== 'settings' && tab.id !== 'profile' && tab.id !== 'trash') {
       useUIStore.getState().setActivePageId(tab.id);
     } else {
       useUIStore.getState().setActivePageId(null);
@@ -456,6 +466,7 @@ function DashboardLayout() {
                   if (nav === 'home') navigate({ to: '/dashboard' });
                   else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
                   else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
+                  else if (nav === 'profile') navigate({ to: '/dashboard/profile' });
                   else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
                   closeSidebarOnMobile();
                 }}

@@ -353,7 +353,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <SidebarNavItem
           icon={Settings02Icon}
-          label="Settings"
+          label="Workspace Settings"
           isActive={activeNav === 'settings'}
           onClick={() => onNavClick?.('settings')}
         />
@@ -526,7 +526,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* 5. User Footer in Sidebar */}
       <div className="p-3 border-t border-stone-200/60 dark:border-zinc-800/80 flex items-center justify-between bg-white/50 dark:bg-zinc-900/40">
-        <div className="flex items-center gap-2 min-w-0">
+        <button
+          type="button"
+          onClick={() => onNavClick?.('profile')}
+          className="flex items-center gap-2 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer group flex-1"
+        >
           <UserAvatar
             avatarUrl={session?.avatarUrl}
             email={session?.email}
@@ -535,25 +539,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="border border-stone-300/80 dark:border-zinc-700/80 shrink-0"
           />
           <div className="flex flex-col min-w-0">
-            <span className="font-medium text-stone-800 dark:text-zinc-200 text-xs leading-tight truncate">
+            <span className="font-medium text-stone-800 dark:text-zinc-200 text-xs leading-tight truncate group-hover:underline">
               {session?.name ? session.name.split(' ')[0] : 'Workspace Member'}
             </span>
             <span className="text-[10px] text-stone-400 dark:text-zinc-500 leading-tight truncate">
               {session?.email || 'authenticated'}
             </span>
           </div>
-        </div>
+        </button>
 
-        {onLogout && (
-          <button
-            type="button"
-            onClick={onLogout}
-            className="p-1 rounded-md text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/50 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer shrink-0"
-            title="Sign out"
-          >
-            <HugeiconsIcon icon={Logout01Icon} size={14} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => onNavClick?.('profile')}
+          className={cn(
+            "p-1.5 rounded-md transition-colors cursor-pointer shrink-0 ml-1",
+            activeNav === 'profile'
+              ? "bg-stone-200 dark:bg-zinc-800 text-stone-900 dark:text-zinc-100"
+              : "text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/50 dark:hover:bg-zinc-800/60"
+          )}
+          title="Profile Settings"
+        >
+          <HugeiconsIcon icon={Settings02Icon} size={15} />
+        </button>
       </div>
     </aside>
   );

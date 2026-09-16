@@ -1,20 +1,20 @@
 import { createRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
-import { WorkspaceSettingsView } from '~/components/dashboard/WorkspaceSettingsView';
+import { ProfileSettingsView } from '~/components/dashboard/ProfileSettingsView';
 import { Route as dashboardRoute } from './dashboard';
 
 export const Route = createRoute({
   getParentRoute: () => dashboardRoute,
-  path: '/settings',
-  component: DashboardSettingsPage,
+  path: '/profile',
+  component: DashboardProfilePage,
 });
 
-function DashboardSettingsPage() {
+function DashboardProfilePage() {
   const { data: session } = useQuery({
     queryKey: ['session'],
     queryFn: async () => await getSession(),
   });
 
-  return <WorkspaceSettingsView session={session} />;
+  return <ProfileSettingsView session={session} />;
 }
