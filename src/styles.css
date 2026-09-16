@@ -533,6 +533,14 @@
   .bn-side-menu {
     display: none !important;
   }
+
+  /* Position editor inline formatting toolbar below highlighted text on mobile */
+  .bn-formatting-toolbar,
+  .bn-link-toolbar,
+  .bn-toolbar {
+    margin-top: 10px !important;
+    z-index: 9999 !important;
+  }
 }
 
 

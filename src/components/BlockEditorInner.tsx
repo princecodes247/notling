@@ -6,6 +6,8 @@ import {
   SideMenu,
   DragHandleMenu,
   SuggestionMenuController,
+  FormattingToolbarController,
+  LinkToolbarController,
   getDefaultReactSlashMenuItems,
 } from '@blocknote/react';
 import { filterSuggestionItems } from '@blocknote/core';
@@ -22,6 +24,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
+import { useIsMobile } from '~/hooks/useIsMobile';
 import {
   Search,
   ChevronRight,
@@ -853,6 +856,7 @@ function updateDropIndicator(
 
 export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { setSaveStatus, setActivePageId } = useUIStore();
   const [isMentionModalOpen, setIsMentionModalOpen] = useState(false);
   const [mentionSearchQuery, setMentionSearchQuery] = useState('');
@@ -872,11 +876,11 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         const range = sel.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         if (rect && rect.top > 0) {
-          return { top: rect.bottom + 6, left: Math.max(16, rect.left) };
+          return { top: isMobile ? rect.bottom + 14 : rect.bottom + 6, left: Math.max(16, rect.left) };
         }
       }
     } catch { }
-    return { top: 180, left: 320 };
+    return { top: isMobile ? 220 : 180, left: 320 };
   };
 
   const handleOpenMediaPicker = useCallback((tab: 'upload' | 'link' | 'unsplash' | 'giphy' = 'upload', pos?: { top: number; left: number }) => {
@@ -926,7 +930,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       rect = range.getBoundingClientRect();
     } catch { }
 
-    const top = rect && rect.bottom > 0 ? rect.bottom + 6 : 200;
+    const top = rect && rect.bottom > 0 ? (isMobile ? rect.bottom + 14 : rect.bottom + 6) : 200;
     const left = rect && rect.left > 0 ? Math.max(16, rect.left) : 300;
 
     setTooltipPosition({ top, left });
@@ -1992,8 +1996,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
         theme={isDark ? 'dark' : 'light'}
         sideMenu={false}
         slashMenu={false}
+        formattingToolbar={false}
+        linkToolbar={false}
         onChange={handleContentChange}
       >
+        <FormattingToolbarController
+          floatingOptions={{
+            placement: isMobile ? 'bottom-start' : 'top-start',
+          }}
+        />
+        <LinkToolbarController
+          floatingOptions={{
+            placement: isMobile ? 'bottom-start' : 'top-start',
+          }}
+        />
         <SuggestionMenuController
           triggerCharacter="/"
           getItems={getSlashMenuItems}
