@@ -324,8 +324,11 @@ export const Editor: React.FC<EditorProps> = ({
 
         {/* Right: Actions & Collaborator Avatars */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* Collaborator Avatars (Unchanged logic) */}
-          <CollaboratorAvatars activeUsers={activeUsers} currentClientId={getClientId()} />
+          <CollaboratorAvatars
+            activeUsers={activeUsers}
+            currentClientId={getClientId()}
+            onOpenShare={() => setIsShareModalOpen(true)}
+          />
 
           <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800" />
 

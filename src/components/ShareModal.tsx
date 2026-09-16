@@ -15,9 +15,11 @@ import { Select, type SelectOption } from '~/components/ui/Select';
 import { UserAvatar } from '~/components/UserAvatar';
 import {
   getPageShares,
+  getPageVisitors,
   inviteUserToPage,
   removePageShare,
   updatePageShareRole,
+  type PageVisitorItem,
 } from '~/server/pages';
 
 const ROLE_OPTIONS: SelectOption<'viewer' | 'editor'>[] = [
@@ -55,6 +57,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [inviteRole] = useState<'editor' | 'viewer'>('viewer');
   const [owner, setOwner] = useState<{ id: string; email: string; name?: string | null; avatarUrl?: string | null; userId?: string | null } | null>(null);
   const [people, setPeople] = useState<SharedPerson[]>([]);
+  const [visitors, setVisitors] = useState<PageVisitorItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [invitedSuccess, setInvitedSuccess] = useState<string | null>(null);
@@ -64,15 +67,18 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   useEffect(() => {
     if (isOpen && page?.id) {
       setLoading(true);
-      getPageShares({ data: page.id })
-        .then((res: any) => {
-          if (res) {
-            if (res.owner) {
-              setOwner({ ...res.owner, userId: res.owner.id });
+      Promise.all([
+        getPageShares({ data: page.id }),
+        getPageVisitors({ data: page.id }),
+      ])
+        .then(([sharesRes, visitorsRes]: [any, any]) => {
+          if (sharesRes) {
+            if (sharesRes.owner) {
+              setOwner({ ...sharesRes.owner, userId: sharesRes.owner.id });
             } else {
               setOwner(null);
             }
-            const sharesList = res.shares || (Array.isArray(res) ? res : []);
+            const sharesList = sharesRes.shares || (Array.isArray(sharesRes) ? sharesRes : []);
             setPeople(
               sharesList.map((s: any) => ({
                 id: s.id,
@@ -84,8 +90,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               }))
             );
           }
+          if (Array.isArray(visitorsRes)) {
+            setVisitors(visitorsRes);
+          }
         })
-        .catch((err) => console.error('Failed to load page shares:', err))
+        .catch((err) => console.error('Failed to load page shares/visitors:', err))
         .finally(() => setLoading(false));
     }
   }, [isOpen, page?.id]);
@@ -137,6 +146,52 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setInviteEmail('');
   };
 
+  const handleQuickInvite = async (email: string, role: 'editor' | 'viewer') => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !page?.id) return;
+
+    try {
+      const newShare: any = await inviteUserToPage({
+        data: {
+          pageId: page.id,
+          email: cleanEmail,
+          role,
+        },
+      });
+
+      if (newShare) {
+        setPeople((prev) => {
+          const filtered = prev.filter((p) => p.email !== cleanEmail);
+          return [
+            ...filtered,
+            {
+              id: newShare.id,
+              email: newShare.email,
+              role: newShare.role as 'editor' | 'viewer',
+              name: newShare.name,
+              avatarUrl: newShare.avatarUrl,
+              userId: newShare.userId,
+            },
+          ];
+        });
+        setVisitors((prev) =>
+          prev.map((v) =>
+            v.email.toLowerCase() === cleanEmail
+              ? { ...v, shareRole: role, shareId: newShare.id }
+              : v
+          )
+        );
+        setInvitedSuccess(`Access granted to ${cleanEmail}`);
+        queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
+        queryClient.invalidateQueries({ queryKey: ['page', page.id] });
+        queryClient.invalidateQueries({ queryKey: ['pageVisitors', page.id] });
+        setTimeout(() => setInvitedSuccess(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to quick invite user:', err);
+    }
+  };
+
   const handleRoleChange = async (shareId: string, newRole: 'editor' | 'viewer') => {
     try {
       await updatePageShareRole({
@@ -173,6 +228,10 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const uninvitedVisitors = visitors.filter(
+    (v) => v.shareRole === 'none' && (!owner || v.email.toLowerCase() !== owner.email.toLowerCase())
+  );
 
   return (
     <Modal
@@ -227,6 +286,48 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <div className="px-3 py-1.5 rounded-md bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-[11px] text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-1.5 animate-in fade-in">
               <HugeiconsIcon icon={CheckmarkCircle01Icon} size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{invitedSuccess}</span>
+            </div>
+          )}
+
+          {/* Logged-in Page Visitors Section (Quick 1-Click Invitations) */}
+          {uninvitedVisitors.length > 0 && (
+            <div className="mt-2 flex flex-col gap-1.5 py-3">
+              <label className="text-xs font-semibold text-stone-800 dark:text-stone-200 tracking-tight flex items-center justify-between">
+                <span>Recent visitors</span>
+              </label>
+              <p className="text-[10.5px] text-stone-500 dark:text-stone-400">
+                These logged-in users have visited this document. Click to grant access instantly.
+              </p>
+              <div className="flex flex-col divide-y divide-stone-200/60 dark:divide-stone-800 mt-1 max-h-36 overflow-y-auto">
+                {uninvitedVisitors.map((v) => (
+                  <div key={v.email} className="py-2 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <UserAvatar avatarUrl={v.avatarUrl} email={v.email} name={v.name} size={24} className="w-6 h-6 shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="truncate font-medium text-stone-900 dark:text-stone-100">{v.name || v.email.split('@')[0]}</span>
+                          {v.isOnline && (
+                            <span className="text-[9px] px-1 py-0.1 rounded font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                              Online now
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-stone-400 dark:text-stone-500 truncate font-mono">{v.email}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+
+                      <button
+                        type="button"
+                        onClick={() => handleQuickInvite(v.email, 'editor')}
+                        className="px-2 py-1 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[11px] font-medium transition-colors hover:bg-stone-300 dark:hover:bg-stone-700 cursor-pointer"
+                      >
+                        Invite as Editor
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

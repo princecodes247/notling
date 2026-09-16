@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { FileText, AtSign, User } from 'lucide-react';
+import { FileText, AtSign, User, Users } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { getPageTree, getWorkspaceUsers, type PageTreeNode } from '~/server/pages';
+import { getPageTree, getWorkspaceUsers, getPageVisitors, type PageTreeNode } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { UserAvatar } from '~/components/UserAvatar';
 
@@ -12,6 +12,8 @@ export interface MentionSuggestionItem {
   subtitle?: string;
   icon?: string | null;
   email?: string;
+  isOnPage?: boolean;
+  isOnline?: boolean;
 }
 
 interface PageMentionTooltipProps {
@@ -75,15 +77,41 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
     queryFn: async () => await getWorkspaceUsers({ data: workspaceId }),
   });
 
-  // Prepare user items
-  const userItems: MentionSuggestionItem[] = workspaceUsers.map((u) => ({
+  const { data: pageVisitors = [] } = useQuery({
+    queryKey: ['pageVisitors', currentPageId],
+    queryFn: async () => {
+      if (!currentPageId) return [];
+      return await getPageVisitors({ data: currentPageId });
+    },
+    enabled: Boolean(currentPageId),
+  });
+
+  // Prepare user items (Merge visitors & workspace users)
+  const visitorEmails = new Set(pageVisitors.map((v) => v.email.toLowerCase()));
+
+  const visitorUserItems: MentionSuggestionItem[] = pageVisitors.map((v) => ({
     type: 'user',
-    id: u.id,
-    title: u.name || u.email.split('@')[0],
-    subtitle: u.email,
-    icon: u.avatarUrl,
-    email: u.email,
+    id: v.userId || v.email,
+    title: v.name || v.email.split('@')[0],
+    subtitle: v.email,
+    icon: v.avatarUrl,
+    email: v.email,
+    isOnPage: true,
+    isOnline: v.isOnline,
   }));
+
+  const otherUserItems: MentionSuggestionItem[] = workspaceUsers
+    .filter((u) => !visitorEmails.has(u.email.toLowerCase()))
+    .map((u) => ({
+      type: 'user',
+      id: u.id,
+      title: u.name || u.email.split('@')[0],
+      subtitle: u.email,
+      icon: u.avatarUrl,
+      email: u.email,
+      isOnPage: false,
+      isOnline: false,
+    }));
 
   // Prepare page items
   const pageItems: MentionSuggestionItem[] = flattenPageTree(treeNodes)
@@ -97,13 +125,21 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
 
   const cleanQuery = searchQuery.toLowerCase().trim();
 
-  const filteredUsers = userItems.filter(
+  const filteredOnPageUsers = visitorUserItems.filter(
+    (u) => u.title.toLowerCase().includes(cleanQuery) || (u.subtitle && u.subtitle.toLowerCase().includes(cleanQuery))
+  );
+
+  const filteredWorkspaceUsers = otherUserItems.filter(
     (u) => u.title.toLowerCase().includes(cleanQuery) || (u.subtitle && u.subtitle.toLowerCase().includes(cleanQuery))
   );
 
   const filteredPages = pageItems.filter((p) => p.title.toLowerCase().includes(cleanQuery));
 
-  const allFilteredSuggestions: MentionSuggestionItem[] = [...filteredUsers, ...filteredPages];
+  const allFilteredSuggestions: MentionSuggestionItem[] = [
+    ...filteredOnPageUsers,
+    ...filteredWorkspaceUsers,
+    ...filteredPages,
+  ];
 
   // Click outside to close
   useEffect(() => {
@@ -136,7 +172,7 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
     <div
       ref={containerRef}
       style={style}
-      className="z-[9999] w-72 bg-white dark:bg-[#18181b] rounded-xl shadow-2xl border border-stone-200/90 dark:border-zinc-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100 select-none text-stone-900 dark:text-zinc-100 pointer-events-auto"
+      className="z-[9999] w-76 bg-white dark:bg-[#18181b] rounded-xl shadow-2xl border border-stone-200/90 dark:border-zinc-800 overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100 select-none text-stone-900 dark:text-zinc-100 pointer-events-auto"
     >
       {/* Header bar */}
       <div className="px-3 py-2 bg-stone-50 dark:bg-zinc-900/60 border-b border-stone-200/70 dark:border-zinc-800 flex items-center justify-between">
@@ -144,24 +180,145 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
           <div className="w-4 h-4 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 flex items-center justify-center shrink-0">
             <AtSign className="w-3 h-3" />
           </div>
-          <span>Mention User or Page</span>
+          <span>Mention Person or Page</span>
         </div>
         <span className="text-[10px] font-mono text-stone-400 dark:text-zinc-500">
-          {searchQuery ? `Searching "${searchQuery}"` : 'Type name or title'}
+          {searchQuery ? `"${searchQuery}"` : 'Type @name'}
         </span>
       </div>
 
       {/* Results List */}
-      <div className="max-h-60 overflow-y-auto p-1.5 flex flex-col gap-1">
+      <div className="max-h-64 overflow-y-auto p-1.5 flex flex-col gap-1">
         {allFilteredSuggestions.length === 0 ? (
           <div className="py-6 text-center text-xs text-stone-400 dark:text-zinc-500 flex flex-col items-center gap-1">
             <FileText className="w-4 h-4 text-stone-300 dark:text-zinc-600 stroke-1" />
-            <span>No matching users or pages</span>
+            <span>No matching people or pages</span>
           </div>
         ) : (
           <>
+            {/* Section 1: People on this page (Active / Recent Visitors) */}
+            {filteredOnPageUsers.length > 0 && (
+              <div className="flex flex-col gap-0.5">
+                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3 h-3 text-emerald-500" />
+                    <span>People on this page ({filteredOnPageUsers.length})</span>
+                  </div>
+                </div>
+                {filteredOnPageUsers.map((user) => {
+                  const index = allFilteredSuggestions.findIndex((s) => s.id === user.id);
+                  const isSelected = index === selectedIndex;
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSelectItem(user);
+                        onClose();
+                      }}
+                      onMouseEnter={() => onHoverIndex?.(index)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected
+                        ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-200 font-medium'
+                        : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="relative shrink-0">
+                          <UserAvatar
+                            avatarUrl={user.icon}
+                            seed={user.id}
+                            name={user.title}
+                            size={20}
+                            className="w-5 h-5"
+                          />
+                          {user.isOnline && (
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border border-white dark:border-[#18181b]" />
+                          )}
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs truncate ${isSelected ? 'font-semibold text-emerald-900 dark:text-emerald-300' : 'text-stone-800 dark:text-zinc-200'}`}>
+                              {user.title}
+                            </span>
+                            <span className="text-[9px] px-1 py-0.1 rounded font-medium bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                              On page
+                            </span>
+                          </div>
+                          {user.subtitle && (
+                            <span className="text-[10px] text-stone-400 dark:text-zinc-500 truncate font-mono">
+                              {user.subtitle}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded shrink-0">
+                          ↵
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-            {/* Pages section */}
+            {/* Section 2: Other Workspace Members */}
+            {filteredWorkspaceUsers.length > 0 && (
+              <div className="flex flex-col gap-0.5 mt-1">
+                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-zinc-500 flex items-center gap-1">
+                  <User className="w-3 h-3 text-stone-400 dark:text-zinc-500" />
+                  <span>Workspace Members ({filteredWorkspaceUsers.length})</span>
+                </div>
+                {filteredWorkspaceUsers.map((user) => {
+                  const index = allFilteredSuggestions.findIndex((s) => s.id === user.id);
+                  const isSelected = index === selectedIndex;
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSelectItem(user);
+                        onClose();
+                      }}
+                      onMouseEnter={() => onHoverIndex?.(index)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected
+                        ? 'bg-stone-100 dark:bg-zinc-800 text-stone-950 dark:text-zinc-100 font-medium'
+                        : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <UserAvatar
+                          avatarUrl={user.icon}
+                          seed={user.id}
+                          name={user.title}
+                          size={20}
+                          className="w-5 h-5 shrink-0"
+                        />
+                        <div className="flex flex-col min-w-0">
+                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-stone-900 dark:text-zinc-100' : 'text-stone-800 dark:text-zinc-200'}`}>
+                            {user.title}
+                          </span>
+                          {user.subtitle && (
+                            <span className="text-[10px] text-stone-400 dark:text-zinc-500 truncate font-mono">
+                              {user.subtitle}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {isSelected && (
+                        <span className="text-[10px] font-mono text-stone-600 dark:text-zinc-400 bg-stone-200/80 dark:bg-zinc-700 px-1.5 py-0.2 rounded shrink-0">
+                          ↵
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Section 3: Pages */}
             {filteredPages.length > 0 && (
               <div className="flex flex-col gap-0.5 mt-1">
                 <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-zinc-500 flex items-center gap-1">
@@ -181,7 +338,9 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                         onClose();
                       }}
                       onMouseEnter={() => onHoverIndex?.(index)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 font-medium' : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected
+                        ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 font-medium'
+                        : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
                         }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
@@ -200,60 +359,6 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                 })}
               </div>
             )}
-            {/* Users section */}
-            {filteredUsers.length > 0 && (
-              <div className="flex flex-col gap-0.5">
-                <div className="px-2 py-1 text-[10px] uppercase font-bold tracking-wider text-stone-400 dark:text-zinc-500 flex items-center gap-1">
-                  <User className="w-3 h-3 text-stone-400 dark:text-zinc-500" />
-                  <span>Members ({filteredUsers.length})</span>
-                </div>
-                {filteredUsers.map((user) => {
-                  const index = allFilteredSuggestions.findIndex((s) => s.id === user.id);
-                  const isSelected = index === selectedIndex;
-                  return (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onSelectItem(user);
-                        onClose();
-                      }}
-                      onMouseEnter={() => onHoverIndex?.(index)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-colors cursor-pointer group ${isSelected ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-950 dark:text-emerald-200 font-medium' : 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200'
-                        }`}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <UserAvatar
-                          avatarUrl={user.icon}
-                          seed={user.id}
-                          name={user.title}
-                          size={20}
-                          className="w-5 h-5"
-                        />
-                        <div className="flex flex-col min-w-0">
-                          <span className={`text-xs truncate ${isSelected ? 'font-semibold text-emerald-900 dark:text-emerald-300' : 'text-stone-800 dark:text-zinc-200'}`}>
-                            {user.title}
-                          </span>
-                          {user.subtitle && (
-                            <span className="text-[10px] text-stone-400 dark:text-zinc-500 truncate font-mono">
-                              {user.subtitle}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {isSelected && (
-                        <span className="text-[10px] font-mono text-emerald-700 dark:text-emerald-400 bg-emerald-100/80 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded shrink-0">
-                          ↵
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-
           </>
         )}
       </div>

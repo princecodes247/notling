@@ -1894,5 +1894,153 @@ export async function inviteWorkspaceMember(input: {
   }
 }
 
+export interface PageVisitorItem {
+  userId?: string | null;
+  email: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  lastVisited: string;
+  isOnline: boolean;
+  shareRole: 'owner' | 'editor' | 'viewer' | 'none';
+  shareId?: string | null;
+}
+
+export async function fetchPageVisitors(pageId: string): Promise<PageVisitorItem[]> {
+  try {
+    const pageRecord = await db
+      .select({ id: pages.id, workspaceId: pages.workspaceId })
+      .from(pages)
+      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (pageRecord.length === 0) return [];
+
+    let ownerEmail: string | null = null;
+    const ws = await db
+      .select({ ownerId: workspaces.ownerId })
+      .from(workspaces)
+      .where(eq(workspaces.id, pageRecord[0].workspaceId))
+      .limit(1);
+
+    if (ws.length > 0) {
+      const ownerUsers = await db
+        .select({ email: users.email })
+        .from(users)
+        .where(eq(users.id, ws[0].ownerId))
+        .limit(1);
+      if (ownerUsers.length > 0) {
+        ownerEmail = ownerUsers[0].email.toLowerCase().trim();
+      }
+    }
+
+    const sharesList = await db
+      .select({
+        id: pageShares.id,
+        email: pageShares.email,
+        role: pageShares.role,
+      })
+      .from(pageShares)
+      .where(eq(pageShares.pageId, pageId));
+
+    const shareMap = new Map<string, { shareId: string; role: 'editor' | 'viewer' }>();
+    for (const s of sharesList) {
+      shareMap.set(s.email.toLowerCase().trim(), { shareId: s.id, role: s.role as 'editor' | 'viewer' });
+    }
+
+    const presenceList = await fetchActivePresence(pageId);
+    const onlineEmailSet = new Set<string>();
+    for (const p of presenceList) {
+      const cleanEmail = (p.email || '').split('#')[0].toLowerCase().trim();
+      if (cleanEmail && !cleanEmail.includes('@notling.app') && !cleanEmail.startsWith('guest-')) {
+        onlineEmailSet.add(cleanEmail);
+      }
+    }
+
+    const viewsList = await db
+      .select({
+        userId: pageViews.userId,
+        viewedAt: pageViews.viewedAt,
+        email: users.email,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(pageViews)
+      .innerJoin(users, eq(pageViews.userId, users.id))
+      .where(eq(pageViews.pageId, pageId))
+      .orderBy(desc(pageViews.viewedAt));
+
+    const visitorsMap = new Map<string, PageVisitorItem>();
+
+    for (const v of viewsList) {
+      const cleanEmail = v.email.toLowerCase().trim();
+      if (!cleanEmail) continue;
+
+      let shareRole: 'owner' | 'editor' | 'viewer' | 'none' = 'none';
+      let shareId: string | null = null;
+
+      if (ownerEmail && cleanEmail === ownerEmail) {
+        shareRole = 'owner';
+      } else if (shareMap.has(cleanEmail)) {
+        const sh = shareMap.get(cleanEmail)!;
+        shareRole = sh.role;
+        shareId = sh.shareId;
+      }
+
+      visitorsMap.set(cleanEmail, {
+        userId: v.userId,
+        email: cleanEmail,
+        name: v.name,
+        avatarUrl: v.avatarUrl,
+        lastVisited: v.viewedAt.toISOString(),
+        isOnline: onlineEmailSet.has(cleanEmail),
+        shareRole,
+        shareId,
+      });
+    }
+
+    for (const p of presenceList) {
+      const cleanEmail = (p.email || '').split('#')[0].toLowerCase().trim();
+      if (!cleanEmail || cleanEmail.includes('@notling.app') || cleanEmail.startsWith('guest-')) continue;
+
+      if (!visitorsMap.has(cleanEmail)) {
+        let shareRole: 'owner' | 'editor' | 'viewer' | 'none' = 'none';
+        let shareId: string | null = null;
+
+        if (ownerEmail && cleanEmail === ownerEmail) {
+          shareRole = 'owner';
+        } else if (shareMap.has(cleanEmail)) {
+          const sh = shareMap.get(cleanEmail)!;
+          shareRole = sh.role;
+          shareId = sh.shareId;
+        }
+
+        visitorsMap.set(cleanEmail, {
+          userId: p.id,
+          email: cleanEmail,
+          name: p.name,
+          avatarUrl: p.avatarUrl,
+          lastVisited: new Date().toISOString(),
+          isOnline: true,
+          shareRole,
+          shareId,
+        });
+      }
+    }
+
+    const result = Array.from(visitorsMap.values());
+    result.sort((a, b) => {
+      if (a.isOnline && !b.isOnline) return -1;
+      if (!a.isOnline && b.isOnline) return 1;
+      return new Date(b.lastVisited).getTime() - new Date(a.lastVisited).getTime();
+    });
+
+    return result;
+  } catch (err) {
+    console.error('Error fetching page visitors:', err);
+    return [];
+  }
+}
+
+
 
 

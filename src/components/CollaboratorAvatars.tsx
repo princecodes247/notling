@@ -7,12 +7,14 @@ interface CollaboratorAvatarsProps {
   activeUsers: ActiveUserPresence[];
   currentClientId?: string;
   className?: string;
+  onOpenShare?: () => void;
 }
 
 export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
   activeUsers,
   currentClientId,
   className = '',
+  onOpenShare,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [alignRight, setAlignRight] = useState(false);
@@ -191,17 +193,31 @@ export const CollaboratorAvatars: React.FC<CollaboratorAvatarsProps> = ({
                 )}
               </div>
 
-              {/* Role Status Badge */}
-              <div className="flex items-center gap-1.5 text-[10px] mt-1 pt-1.5 border-t border-stone-800/80">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${hoveredUser.role === 'editor'
-                    ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
-                    : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
-                    }`}
-                />
-                <span className={`font-semibold tracking-wide ${hoveredUser.role === 'editor' ? 'text-emerald-300' : 'text-amber-300'}`}>
-                  {hoveredUser.role === 'editor' ? 'Can edit' : 'View only'}
-                </span>
+              {/* Role Status Badge & Quick Invite */}
+              <div className="flex items-center justify-between text-[10px] mt-1 pt-1.5 border-t border-stone-800/80">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${hoveredUser.role === 'editor'
+                      ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse'
+                      : 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]'
+                      }`}
+                  />
+                  <span className={`font-semibold tracking-wide ${hoveredUser.role === 'editor' ? 'text-emerald-300' : 'text-amber-300'}`}>
+                    {hoveredUser.role === 'editor' ? 'Can edit' : 'View only'}
+                  </span>
+                </div>
+                {hoveredUser.role !== 'editor' && hoveredUser.email && !hoveredUser.email.includes('@notling.app') && !hoveredUser.email.startsWith('guest-') && onOpenShare && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenShare();
+                    }}
+                    className="text-[9.5px] font-semibold text-emerald-400 hover:text-emerald-300 hover:underline cursor-pointer"
+                  >
+                    + Invite
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

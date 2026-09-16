@@ -242,6 +242,15 @@ export const duplicatePage = createServerFn({ method: 'POST' })
     return duplicatePageInDb(pageId);
   });
 
+export const getPageVisitors = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data: pageId }: { data: string }) => {
+    const { fetchPageVisitors } = await import('./pages.db');
+    return fetchPageVisitors(pageId);
+  });
+
+export type { PageVisitorItem } from './pages.db';
+
 
 
 
