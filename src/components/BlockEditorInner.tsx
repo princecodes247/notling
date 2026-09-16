@@ -1129,8 +1129,16 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
           return;
         }
 
-        // Synced successfully on server - update last synced hash & clear local draft
+        // Synced successfully on server - update last synced hash, TanStack Query cache & clear local draft
         lastSyncedHashRef.current = currentJson;
+        queryClient.setQueryData<Page>(['page', activePageId], (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            content: currentBlocks,
+            contentText: plainText,
+          };
+        });
         clearOfflineDraft(activePageId);
         hasUserEditedRef.current = false;
         setSaveStatus('saved');
@@ -1194,6 +1202,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     }
   }, [initialContent, page.id, performServerSync, setSaveStatus]);
 
+  // Keep editorRef and pageIdRef continuously updated for async sync callbacks
+  useEffect(() => {
+    editorRef.current = editor;
+    pageIdRef.current = page.id;
+  }, [editor, page.id]);
+
   // Point 3: Immediate Server Sync on Page Switch or Component Unmount
   useEffect(() => {
     const activePageId = page.id;
@@ -1204,12 +1218,10 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
       if (hasUserEditedRef.current) {
         performServerSync(activePageId);
       }
-      editorRef.current = editor;
-      pageIdRef.current = page.id;
       hasUserEditedRef.current = false;
       lastSyncedHashRef.current = initialContent ? JSON.stringify(initialContent) : '';
     };
-  }, [editor, page.id, initialContent, performServerSync]);
+  }, [page.id, initialContent, performServerSync]);
 
   // Point 3: Immediate Server Sync on Tab-Hide, Blur, or Navigation-Away
   useEffect(() => {

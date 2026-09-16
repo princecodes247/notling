@@ -239,6 +239,7 @@ export const Editor: React.FC<EditorProps> = ({
       const i = overrideIcon !== undefined ? overrideIcon : latestMetaRef.current.icon;
 
       if (t !== page.title || i !== (page.icon || '📄')) {
+        updateClientPageMeta(queryClient, { pageId: page.id, title: t, icon: i });
         setSaveStatus('saving');
         try {
           await updatePageMeta({
@@ -250,7 +251,7 @@ export const Editor: React.FC<EditorProps> = ({
         }
       }
     },
-    [isReadOnly, page.id, page.title, page.icon, setSaveStatus]
+    [isReadOnly, page.id, page.title, page.icon, queryClient, setSaveStatus]
   );
 
   // Flush pending save on unmount or page switch
