@@ -249,7 +249,49 @@ export const getPageVisitors = createServerFn({ method: 'GET' })
     return fetchPageVisitors(pageId);
   });
 
-export type { PageVisitorItem } from './pages.db';
+export type { PageVisitorItem, AccessRequestResult } from './pages.db';
+
+export const requestPageEditAccessFn = createServerFn({ method: 'POST' })
+  .validator((input: { pageId: string; note?: string; email?: string; name?: string }) => input)
+  .handler(async ({ data }: { data: { pageId: string; note?: string; email?: string; name?: string } }) => {
+    const { requestPageEditAccess } = await import('./pages.db');
+    return requestPageEditAccess(data);
+  });
+
+export const getUserPageAccessRequestFn = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data: pageId }: { data: string }) => {
+    const { fetchUserPageAccessRequest } = await import('./pages.db');
+    return fetchUserPageAccessRequest(pageId);
+  });
+
+export const getPendingPageAccessRequestsFn = createServerFn({ method: 'GET' })
+  .validator((pageId: string) => pageId)
+  .handler(async ({ data: pageId }: { data: string }) => {
+    const { fetchPendingPageAccessRequests } = await import('./pages.db');
+    return fetchPendingPageAccessRequests(pageId);
+  });
+
+export const respondToPageAccessRequestFn = createServerFn({ method: 'POST' })
+  .validator((input: { requestId: string; action: 'approve' | 'reject'; role?: 'editor' | 'viewer' }) => input)
+  .handler(async ({ data }: { data: { requestId: string; action: 'approve' | 'reject'; role?: 'editor' | 'viewer' } }) => {
+    const { respondToPageAccessRequest } = await import('./pages.db');
+    return respondToPageAccessRequest(data);
+  });
+
+export const cancelPageAccessRequestFn = createServerFn({ method: 'POST' })
+  .validator((requestId: string) => requestId)
+  .handler(async ({ data: requestId }: { data: string }) => {
+    const { cancelPageAccessRequest } = await import('./pages.db');
+    return cancelPageAccessRequest(requestId);
+  });
+
+export const getAllUserPendingAccessRequestsFn = createServerFn({ method: 'GET' })
+  .handler(async () => {
+    const { fetchAllUserPendingAccessRequests } = await import('./pages.db');
+    return fetchAllUserPendingAccessRequests();
+  });
+
 
 
 

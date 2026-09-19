@@ -1,6 +1,6 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates } from '~/db/schema';
-import { eq, and, or, desc, asc, isNull, lt, ne, sql } from 'drizzle-orm';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests } from '~/db/schema';
+import { eq, and, or, desc, asc, isNull, lt, ne, sql, inArray } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
@@ -2040,6 +2040,346 @@ export async function fetchPageVisitors(pageId: string): Promise<PageVisitorItem
     return [];
   }
 }
+
+// Access Requests table initialization helper
+let accessRequestsTableChecked = false;
+export async function ensureAccessRequestsTable() {
+  if (accessRequestsTableChecked) return;
+  try {
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS page_access_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        page_id UUID NOT NULL REFERENCES pages(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        name TEXT,
+        requested_role TEXT NOT NULL DEFAULT 'editor',
+        note TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS page_access_requests_page_user_idx ON page_access_requests(page_id, email);
+    `);
+    accessRequestsTableChecked = true;
+  } catch (err) {
+    console.error('Failed to ensure page_access_requests table exists:', err);
+  }
+}
+
+export interface AccessRequestResult {
+  id: string;
+  pageId: string;
+  userId?: string | null;
+  email: string;
+  name?: string | null;
+  requestedRole: 'editor' | 'viewer';
+  note?: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  avatarUrl?: string | null;
+  pageTitle?: string | null;
+}
+
+export async function requestPageEditAccess(input: {
+  pageId: string;
+  note?: string;
+  email?: string;
+  name?: string;
+}) {
+  await ensureAccessRequestsTable();
+  try {
+    const session = await getSessionImpl().catch(() => null);
+    const cleanEmail = (input.email || session?.email || '').trim().toLowerCase();
+
+    if (!cleanEmail) {
+      return { success: false, error: 'Email is required to request edit access.' };
+    }
+
+    const pageList = await db
+      .select()
+      .from(pages)
+      .where(and(eq(pages.id, input.pageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (pageList.length === 0) {
+      return { success: false, error: 'Document not found.' };
+    }
+    const page = pageList[0];
+
+    const accessLevel = await getPageAccessLevel(page, session);
+    if (accessLevel === 'editor') {
+      return { success: false, error: 'You already have edit access to this document.' };
+    }
+
+    // Check if user already has an active or pending request for this page
+    const existing = await db
+      .select()
+      .from(pageAccessRequests)
+      .where(
+        and(
+          eq(pageAccessRequests.pageId, input.pageId),
+          eq(pageAccessRequests.email, cleanEmail)
+        )
+      )
+      .limit(1);
+
+    const userName = input.name || session?.name || cleanEmail.split('@')[0];
+    const userId = session?.userId || null;
+    const noteText = input.note?.trim() || null;
+
+    if (existing.length > 0) {
+      const req = existing[0];
+      if (req.status === 'approved') {
+        return { success: true, message: 'Your edit access request has already been approved!', request: req };
+      }
+      // Re-open request or update note if pending or rejected
+      const [updated] = await db
+        .update(pageAccessRequests)
+        .set({
+          status: 'pending',
+          note: noteText ?? req.note,
+          name: userName ?? req.name,
+          userId: userId ?? req.userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(pageAccessRequests.id, req.id))
+        .returning();
+
+      return { success: true, message: 'Access request updated successfully.', request: updated };
+    }
+
+    const [created] = await db
+      .insert(pageAccessRequests)
+      .values({
+        pageId: input.pageId,
+        userId,
+        email: cleanEmail,
+        name: userName,
+        requestedRole: 'editor',
+        note: noteText,
+        status: 'pending',
+      })
+      .returning();
+
+    return { success: true, message: 'Edit access request submitted to document owner.', request: created };
+  } catch (err: any) {
+    console.error('Error requesting page edit access:', err);
+    return { success: false, error: sanitizeServerError(err) };
+  }
+}
+
+export async function fetchUserPageAccessRequest(pageId: string) {
+  await ensureAccessRequestsTable();
+  try {
+    const session = await getSessionImpl().catch(() => null);
+    if (!session?.email) return null;
+
+    const cleanEmail = session.email.trim().toLowerCase();
+    const rows = await db
+      .select()
+      .from(pageAccessRequests)
+      .where(
+        and(
+          eq(pageAccessRequests.pageId, pageId),
+          eq(pageAccessRequests.email, cleanEmail)
+        )
+      )
+      .orderBy(desc(pageAccessRequests.updatedAt))
+      .limit(1);
+
+    return rows[0] || null;
+  } catch (err) {
+    console.error('Error fetching user page access request:', err);
+    return null;
+  }
+}
+
+export async function fetchPendingPageAccessRequests(pageId: string): Promise<AccessRequestResult[]> {
+  await ensureAccessRequestsTable();
+  try {
+    const rows = await db
+      .select({
+        id: pageAccessRequests.id,
+        pageId: pageAccessRequests.pageId,
+        userId: pageAccessRequests.userId,
+        email: pageAccessRequests.email,
+        name: pageAccessRequests.name,
+        requestedRole: pageAccessRequests.requestedRole,
+        note: pageAccessRequests.note,
+        status: pageAccessRequests.status,
+        createdAt: pageAccessRequests.createdAt,
+        updatedAt: pageAccessRequests.updatedAt,
+        avatarUrl: users.avatarUrl,
+        pageTitle: pages.title,
+      })
+      .from(pageAccessRequests)
+      .leftJoin(users, eq(pageAccessRequests.email, users.email))
+      .leftJoin(pages, eq(pageAccessRequests.pageId, pages.id))
+      .where(
+        and(
+          eq(pageAccessRequests.pageId, pageId),
+          eq(pageAccessRequests.status, 'pending')
+        )
+      )
+      .orderBy(desc(pageAccessRequests.createdAt));
+
+    return rows.map((r) => ({
+      ...r,
+      requestedRole: r.requestedRole as 'editor' | 'viewer',
+      status: r.status as 'pending' | 'approved' | 'rejected',
+    }));
+  } catch (err) {
+    console.error('Error fetching pending page access requests:', err);
+    return [];
+  }
+}
+
+export async function fetchAllUserPendingAccessRequests(): Promise<AccessRequestResult[]> {
+  await ensureAccessRequestsTable();
+  try {
+    const session = await getSessionImpl().catch(() => null);
+    if (!session?.email) return [];
+
+    const userEmail = session.email.trim().toLowerCase();
+
+    // Find all pages where user is owner or editor/workspace member
+    const userWorkspaceIds = await db
+      .select({ workspaceId: workspaceMembers.workspaceId })
+      .from(workspaceMembers)
+      .where(
+        or(
+          eq(workspaceMembers.userId, session.userId),
+          eq(workspaceMembers.email, userEmail)
+        )
+      );
+
+    const wsIds = userWorkspaceIds.map((w) => w.workspaceId);
+
+    const rows = await db
+      .select({
+        id: pageAccessRequests.id,
+        pageId: pageAccessRequests.pageId,
+        userId: pageAccessRequests.userId,
+        email: pageAccessRequests.email,
+        name: pageAccessRequests.name,
+        requestedRole: pageAccessRequests.requestedRole,
+        note: pageAccessRequests.note,
+        status: pageAccessRequests.status,
+        createdAt: pageAccessRequests.createdAt,
+        updatedAt: pageAccessRequests.updatedAt,
+        avatarUrl: users.avatarUrl,
+        pageTitle: pages.title,
+      })
+      .from(pageAccessRequests)
+      .innerJoin(pages, eq(pageAccessRequests.pageId, pages.id))
+      .leftJoin(users, eq(pageAccessRequests.email, users.email))
+      .where(
+        and(
+          eq(pageAccessRequests.status, 'pending'),
+          wsIds.length > 0 ? inArray(pages.workspaceId, wsIds) : eq(pages.isDeleted, false)
+        )
+      )
+      .orderBy(desc(pageAccessRequests.createdAt))
+      .limit(20);
+
+    return rows.map((r) => ({
+      ...r,
+      requestedRole: r.requestedRole as 'editor' | 'viewer',
+      status: r.status as 'pending' | 'approved' | 'rejected',
+    }));
+  } catch (err) {
+    console.error('Error fetching all user pending access requests:', err);
+    return [];
+  }
+}
+
+export async function respondToPageAccessRequest(input: {
+  requestId: string;
+  action: 'approve' | 'reject';
+  role?: 'editor' | 'viewer';
+}) {
+  await ensureAccessRequestsTable();
+  try {
+    const session = await getSessionImpl().catch(() => null);
+    if (!session) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    const reqRows = await db
+      .select()
+      .from(pageAccessRequests)
+      .where(eq(pageAccessRequests.id, input.requestId))
+      .limit(1);
+
+    if (reqRows.length === 0) {
+      return { success: false, error: 'Access request not found.' };
+    }
+    const accessReq = reqRows[0];
+
+    const targetRole = input.role || (accessReq.requestedRole as 'editor' | 'viewer') || 'editor';
+
+    if (input.action === 'approve') {
+      // Grant page share permission in DB
+      const cleanEmail = accessReq.email.trim().toLowerCase();
+      const existingShares = await db
+        .select()
+        .from(pageShares)
+        .where(
+          and(
+            eq(pageShares.pageId, accessReq.pageId),
+            eq(pageShares.email, cleanEmail)
+          )
+        )
+        .limit(1);
+
+      if (existingShares.length > 0) {
+        await db
+          .update(pageShares)
+          .set({ role: targetRole })
+          .where(eq(pageShares.id, existingShares[0].id));
+      } else {
+        await db.insert(pageShares).values({
+          pageId: accessReq.pageId,
+          email: cleanEmail,
+          role: targetRole,
+        });
+      }
+
+      const [updatedReq] = await db
+        .update(pageAccessRequests)
+        .set({ status: 'approved', updatedAt: new Date() })
+        .where(eq(pageAccessRequests.id, accessReq.id))
+        .returning();
+
+      return { success: true, message: `Access granted to ${cleanEmail}`, request: updatedReq };
+    } else {
+      const [updatedReq] = await db
+        .update(pageAccessRequests)
+        .set({ status: 'rejected', updatedAt: new Date() })
+        .where(eq(pageAccessRequests.id, accessReq.id))
+        .returning();
+
+      return { success: true, message: 'Access request declined.', request: updatedReq };
+    }
+  } catch (err: any) {
+    console.error('Error responding to access request:', err);
+    return { success: false, error: sanitizeServerError(err) };
+  }
+}
+
+export async function cancelPageAccessRequest(requestId: string) {
+  await ensureAccessRequestsTable();
+  try {
+    await db.delete(pageAccessRequests).where(eq(pageAccessRequests.id, requestId));
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error cancelling access request:', err);
+    return { success: false, error: sanitizeServerError(err) };
+  }
+}
+
 
 
 

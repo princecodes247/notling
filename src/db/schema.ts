@@ -155,4 +155,23 @@ export const pageUpdates = pgTable('page_updates', {
 export type PageUpdate = typeof pageUpdates.$inferSelect;
 export type NewPageUpdate = typeof pageUpdates.$inferInsert;
 
+export const pageAccessRequests = pgTable('page_access_requests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }).notNull(),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  name: text('name'),
+  requestedRole: text('requested_role', { enum: ['editor', 'viewer'] }).notNull().default('editor'),
+  note: text('note'),
+  status: text('status', { enum: ['pending', 'approved', 'rejected'] }).notNull().default('pending'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  pageUserIdx: index('page_access_requests_page_user_idx').on(table.pageId, table.email),
+}));
+
+export type PageAccessRequest = typeof pageAccessRequests.$inferSelect;
+export type NewPageAccessRequest = typeof pageAccessRequests.$inferInsert;
+
+
 

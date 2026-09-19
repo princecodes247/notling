@@ -7,7 +7,6 @@ import {
   FolderAddIcon,
   Search01Icon,
   Settings02Icon,
-  Logout01Icon,
   Delete02Icon,
   Loading02Icon,
 } from '@hugeicons/core-free-icons';
@@ -163,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onReorderPage,
   onTogglePin,
   onDuplicatePage,
-  onLogout,
+  onLogout: _onLogout,
 }) => {
   const { toggleSearch, toggleSidebar, setImportOpen } = useUIStore();
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);

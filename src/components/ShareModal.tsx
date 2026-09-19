@@ -19,7 +19,10 @@ import {
   inviteUserToPage,
   removePageShare,
   updatePageShareRole,
+  getPendingPageAccessRequestsFn,
+  respondToPageAccessRequestFn,
   type PageVisitorItem,
+  type AccessRequestResult,
 } from '~/server/pages';
 
 const ROLE_OPTIONS: SelectOption<'viewer' | 'editor'>[] = [
@@ -58,6 +61,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [owner, setOwner] = useState<{ id: string; email: string; name?: string | null; avatarUrl?: string | null; userId?: string | null } | null>(null);
   const [people, setPeople] = useState<SharedPerson[]>([]);
   const [visitors, setVisitors] = useState<PageVisitorItem[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<AccessRequestResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [invitedSuccess, setInvitedSuccess] = useState<string | null>(null);
@@ -70,8 +74,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       Promise.all([
         getPageShares({ data: page.id }),
         getPageVisitors({ data: page.id }),
+        getPendingPageAccessRequestsFn({ data: page.id }).catch(() => []),
       ])
-        .then(([sharesRes, visitorsRes]: [any, any]) => {
+        .then(([sharesRes, visitorsRes, accessReqsRes]: [any, any, any]) => {
           if (sharesRes) {
             if (sharesRes.owner) {
               setOwner({ ...sharesRes.owner, userId: sharesRes.owner.id });
@@ -93,11 +98,49 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           if (Array.isArray(visitorsRes)) {
             setVisitors(visitorsRes);
           }
+          if (Array.isArray(accessReqsRes)) {
+            setPendingRequests(accessReqsRes);
+          }
         })
-        .catch((err) => console.error('Failed to load page shares/visitors:', err))
+        .catch((err) => console.error('Failed to load page shares/visitors/requests:', err))
         .finally(() => setLoading(false));
     }
   }, [isOpen, page?.id]);
+
+  const handleRespondToRequest = async (requestId: string, action: 'approve' | 'reject') => {
+    try {
+      const res = await respondToPageAccessRequestFn({
+        data: { requestId, action, role: 'editor' },
+      });
+      if (res?.success) {
+        setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
+        if (action === 'approve') {
+          setInvitedSuccess(res.message || 'Access request approved!');
+          // Refresh shares list
+          const sharesRes = await getPageShares({ data: page.id });
+          if (sharesRes?.shares) {
+            setPeople(
+              sharesRes.shares.map((s: any) => ({
+                id: s.id,
+                email: s.email,
+                role: s.role as 'editor' | 'viewer',
+                name: s.name,
+                avatarUrl: s.avatarUrl,
+                userId: s.userId,
+              }))
+            );
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
+        queryClient.invalidateQueries({ queryKey: ['page', page.id] });
+        queryClient.invalidateQueries({ queryKey: ['pendingAccessRequests', page.id] });
+        queryClient.invalidateQueries({ queryKey: ['allPendingAccessRequests'] });
+        setTimeout(() => setInvitedSuccess(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to respond to access request:', err);
+    }
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -256,6 +299,56 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       <div className="flex flex-col gap-5 select-none text-stone-900">
         {/* Section 1: Invite People */}
         <div className="flex flex-col gap-2">
+
+          {/* Pending Access Requests Banner */}
+          {pendingRequests.length > 0 && (
+            <div className="mb-2 p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/90 dark:border-amber-800/80 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  Pending Edit Access Requests ({pendingRequests.length})
+                </span>
+              </div>
+              <div className="flex flex-col divide-y divide-amber-200/50 dark:divide-amber-800/50">
+                {pendingRequests.map((req) => (
+                  <div key={req.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <UserAvatar avatarUrl={req.avatarUrl} email={req.email} name={req.name} size={28} className="w-7 h-7 shrink-0 mt-0.5" />
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-semibold text-stone-900 dark:text-stone-100 truncate">
+                          {req.name || req.email.split('@')[0]}
+                        </span>
+                        <span className="text-[10.5px] font-mono text-stone-500 dark:text-stone-400 truncate">
+                          {req.email}
+                        </span>
+                        {req.note && (
+                          <span className="text-[11px] text-amber-800 dark:text-amber-300 italic mt-0.5 line-clamp-2">
+                            "{req.note}"
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <button
+                        type="button"
+                        onClick={() => handleRespondToRequest(req.id, 'approve')}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                      >
+                        Approve Edit Access
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRespondToRequest(req.id, 'reject')}
+                        className="px-2.5 py-1.5 rounded-lg bg-stone-200 dark:bg-stone-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-stone-700 hover:text-rose-700 dark:text-stone-300 dark:hover:text-rose-300 text-xs font-medium transition-colors cursor-pointer"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
 
           <form onSubmit={handleInvite} className="flex items-center gap-2">

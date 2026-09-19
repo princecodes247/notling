@@ -7,6 +7,8 @@ import {
   Folder01Icon,
   Loading02Icon,
   Download01Icon,
+  Edit02Icon,
+  LockIcon,
 } from '@hugeicons/core-free-icons';
 import { Star, Share2, MoreHorizontal, Clock, Undo, Redo, Copy } from 'lucide-react';
 import {
@@ -25,6 +27,7 @@ import { BlockEditorInner } from './BlockEditorInner';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
+import { RequestEditAccessModal } from './RequestEditAccessModal';
 import { VersionHistoryDrawer } from './VersionHistoryDrawer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
@@ -70,6 +73,7 @@ export const Editor: React.FC<EditorProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [, setMounted] = useState(false);
@@ -377,8 +381,17 @@ export const Editor: React.FC<EditorProps> = ({
             )}
 
 
-            {/* 3. Share Button: neutral-900 black pill with Share2 icon */}
-            {!isReadOnly && (
+            {/* Share or Request Edit Access Button */}
+            {isReadOnly ? (
+              <button
+                type="button"
+                onClick={() => setIsRequestAccessOpen(true)}
+                className="px-2.5 py-1 rounded-md bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              >
+                <HugeiconsIcon icon={Edit02Icon} size={12} />
+                <span>Request Edit</span>
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={() => setIsShareModalOpen(true)}
@@ -513,6 +526,7 @@ export const Editor: React.FC<EditorProps> = ({
             <div className="flex items-center gap-2">
               {isReadOnly ? (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 flex items-center gap-1 shadow-2xs">
+                  <HugeiconsIcon icon={LockIcon} size={11} />
                   <span>View only</span>
                 </span>
               ) : (
@@ -687,6 +701,15 @@ export const Editor: React.FC<EditorProps> = ({
           queryClient.invalidateQueries({ queryKey: ['page', page.id] });
           queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
         }}
+      />
+
+      {/* Request Edit Access Modal */}
+      <RequestEditAccessModal
+        isOpen={isRequestAccessOpen}
+        onClose={() => setIsRequestAccessOpen(false)}
+        pageId={page.id}
+        pageTitle={page.title || 'Untitled Document'}
+        isLoggedIn={true}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NotlingLogoIcon } from '~/components/Icons';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { LockIcon, ArrowRight01Icon, Download01Icon } from '@hugeicons/core-free-icons';
+import { LockIcon, ArrowRight01Icon, Download01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
 import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
 import { ExportModal } from '~/components/ExportModal';
 
@@ -17,6 +17,7 @@ interface ShareHeaderProps {
   onNavigateHome: () => void;
   onOpenDashboard: () => void;
   onSignIn: () => void;
+  onRequestEditAccess?: () => void;
 }
 
 export function ShareHeader({
@@ -30,6 +31,7 @@ export function ShareHeader({
   onNavigateHome,
   onOpenDashboard,
   onSignIn,
+  onRequestEditAccess,
 }: ShareHeaderProps) {
   const [isExportOpen, setIsExportOpen] = useState(false);
 
@@ -49,7 +51,7 @@ export function ShareHeader({
         {/* Active Collaborator Avatars */}
         <CollaboratorAvatars activeUsers={activeUsers} currentClientId={currentClientId} />
 
-        {/* Access Status Badge */}
+        {/* Access Status Badge & Request Edit Access Button */}
         {accessLevel === 'editor' ? (
           <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse" />
@@ -57,11 +59,24 @@ export function ShareHeader({
             <span className="xs:hidden">Edit</span>
           </span>
         ) : (
-          <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
-            <HugeiconsIcon icon={LockIcon} size={11} />
-            <span className="hidden xs:inline">View only</span>
-            <span className="xs:hidden">View</span>
-          </span>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
+              <HugeiconsIcon icon={LockIcon} size={11} />
+              <span className="hidden xs:inline">View only</span>
+              <span className="xs:hidden">View</span>
+            </span>
+            {onRequestEditAccess && (
+              <button
+                type="button"
+                onClick={onRequestEditAccess}
+                className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
+              >
+                <HugeiconsIcon icon={Edit02Icon} size={12} />
+                <span className="hidden sm:inline">Request Edit Access</span>
+                <span className="sm:hidden">Request Edit</span>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Export Button */}

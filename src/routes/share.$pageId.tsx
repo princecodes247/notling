@@ -1,15 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createRoute, useNavigate, redirect } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicPage, pingPagePresence, removePagePresence } from '~/server/pages';
 import { Route as rootRoute } from './__root';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { LockIcon, ArrowRight01Icon } from '@hugeicons/core-free-icons';
+import { LockIcon, ArrowRight01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
 import { getClientId } from '~/lib/collaboration';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { ShareHeader } from '~/components/share/ShareHeader';
 import { SharedEditablePage } from '~/components/share/SharedEditablePage';
 import { PublicBlockViewer } from '~/components/share/PublicBlockViewer';
+import { RequestEditAccessModal } from '~/components/RequestEditAccessModal';
 
 const SHARED_PAGE_LOADING_WORDS = [
   'Locating shared document...',
@@ -57,6 +58,7 @@ export const Route = createRoute({
 function PublicDocumentPageRoute() {
   const { pageId } = Route.useParams();
   const navigate = useNavigate();
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
 
   const { data: sharedData, isLoading, isError } = useQuery({
     queryKey: ['publicPage', pageId],
@@ -176,6 +178,7 @@ function PublicDocumentPageRoute() {
         onNavigateHome={() => navigate({ to: isLoggedIn ? '/dashboard' : '/' })}
         onOpenDashboard={() => navigate({ to: '/dashboard/p/$pageId', params: { pageId: page.id } })}
         onSignIn={handleSignInToEdit}
+        onRequestEditAccess={() => setIsRequestModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -184,27 +187,28 @@ function PublicDocumentPageRoute() {
           <SharedEditablePage page={page as any} />
         ) : (
           <div className="w-full flex flex-col">
-            {/* Prompt for unauthenticated viewers if page is set to public_edit */}
-            {page.visibility === 'public_edit' && !isLoggedIn && (
-              <div className="mb-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                    <HugeiconsIcon icon={LockIcon} size={16} />
-                  </div>
-                  <div>
-                    <span className="font-semibold text-amber-900 block text-xs">Sign in to edit this document</span>
-                    <span className="text-amber-700 text-[11px]">Editing is enabled for all signed-in users.</span>
-                  </div>
+            {/* Read-Only Viewer Banner with Request Edit Access option */}
+            <div className="mb-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <HugeiconsIcon icon={LockIcon} size={16} />
                 </div>
-                <button
-                  type="button"
-                  onClick={handleSignInToEdit}
-                  className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
-                >
-                  Sign in to Edit
-                </button>
+                <div>
+                  <span className="font-semibold text-amber-900 block text-xs">You have view-only access to this document</span>
+                  <span className="text-amber-700 text-[11px]">
+                    {isLoggedIn ? 'Need to make changes? Request edit access from the owner.' : 'Sign in or submit a request to get editing access.'}
+                  </span>
+                </div>
               </div>
-            )}
+              <button
+                type="button"
+                onClick={() => setIsRequestModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
+              >
+                <HugeiconsIcon icon={Edit02Icon} size={13} />
+                <span>Request Edit Access</span>
+              </button>
+            </div>
 
             <div className="text-4xl mb-4">{page.icon || '📄'}</div>
             <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-8">
@@ -214,6 +218,16 @@ function PublicDocumentPageRoute() {
           </div>
         )}
       </main>
+
+      <RequestEditAccessModal
+        isOpen={isRequestModalOpen}
+        onClose={() => setIsRequestModalOpen(false)}
+        pageId={page.id}
+        pageTitle={page.title || 'Untitled Document'}
+        userEmail={userEmail}
+        isLoggedIn={isLoggedIn}
+      />
     </div>
   );
 }
+
