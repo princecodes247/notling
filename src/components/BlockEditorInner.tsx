@@ -854,7 +854,7 @@ function updateDropIndicator(
   indicator.style.width = `${width}px`;
 }
 
-export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
+export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOnly = false }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { setSaveStatus, setActivePageId } = useUIStore();
@@ -1993,81 +1993,88 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page }) => {
     >
       <BlockNoteView
         editor={editor}
+        editable={!readOnly}
         theme={isDark ? 'dark' : 'light'}
         sideMenu={false}
         slashMenu={false}
         formattingToolbar={false}
         linkToolbar={false}
-        onChange={handleContentChange}
+        onChange={readOnly ? undefined : handleContentChange}
       >
-        <FormattingToolbarController
-          floatingOptions={{
-            placement: isMobile ? 'bottom-start' : 'top-start',
-          }}
-        />
-        <LinkToolbarController
-          floatingOptions={{
-            placement: isMobile ? 'bottom-start' : 'top-start',
-          }}
-        />
-        <SuggestionMenuController
-          triggerCharacter="/"
-          getItems={getSlashMenuItems}
-        />
-        <SideMenuController
-          sideMenu={(props) => (
-            <SideMenu
-              {...props}
-              blockDragStart={(event, block) => {
-                draggedBlockRef.current = block;
-                const sideMenuView = (editor as any)?.sideMenu?.view;
-                if (sideMenuView) {
-                  sideMenuView.isDragOrigin = false;
-                }
-                props.blockDragStart(event, block);
-                if (sideMenuView) {
-                  sideMenuView.isDragOrigin = false;
-                }
+        {!readOnly && (
+          <>
+            <FormattingToolbarController
+              floatingOptions={{
+                placement: isMobile ? 'bottom-start' : 'top-start',
               }}
-              blockDragEnd={() => {
-                removeDropIndicator();
-                props.blockDragEnd();
-                draggedBlockRef.current = null;
+            />
+            <LinkToolbarController
+              floatingOptions={{
+                placement: isMobile ? 'bottom-start' : 'top-start',
               }}
-              dragHandleMenu={(menuProps) => (
-                <DragHandleMenu {...menuProps}>
-                  <CustomActionMenu
-                    editor={props.editor}
-                    block={props.block}
-                    freezeMenu={props.freezeMenu}
-                    unfreezeMenu={props.unfreezeMenu}
-                    userName={userName}
-                    pageUpdatedAt={page.updatedAt}
-                    onOpenMentionModal={() => {
-                      setTooltipPosition(getCursorPos());
-                      setMentionSearchQuery('');
-                      setMentionSelectedIndex(0);
-                      setIsMentionModalOpen(true);
-                    }}
-                    onOpenMediaPicker={handleOpenMediaPicker}
-                  />
-                </DragHandleMenu>
+            />
+            <SuggestionMenuController
+              triggerCharacter="/"
+              getItems={getSlashMenuItems}
+            />
+            <SideMenuController
+              sideMenu={(props) => (
+                <SideMenu
+                  {...props}
+                  blockDragStart={(event, block) => {
+                    draggedBlockRef.current = block;
+                    const sideMenuView = (editor as any)?.sideMenu?.view;
+                    if (sideMenuView) {
+                      sideMenuView.isDragOrigin = false;
+                    }
+                    props.blockDragStart(event, block);
+                    if (sideMenuView) {
+                      sideMenuView.isDragOrigin = false;
+                    }
+                  }}
+                  blockDragEnd={() => {
+                    removeDropIndicator();
+                    props.blockDragEnd();
+                    draggedBlockRef.current = null;
+                  }}
+                  dragHandleMenu={(menuProps) => (
+                    <DragHandleMenu {...menuProps}>
+                      <CustomActionMenu
+                        editor={props.editor}
+                        block={props.block}
+                        freezeMenu={props.freezeMenu}
+                        unfreezeMenu={props.unfreezeMenu}
+                        userName={userName}
+                        pageUpdatedAt={page.updatedAt}
+                        onOpenMentionModal={() => {
+                          setTooltipPosition(getCursorPos());
+                          setMentionSearchQuery('');
+                          setMentionSelectedIndex(0);
+                          setIsMentionModalOpen(true);
+                        }}
+                        onOpenMediaPicker={handleOpenMediaPicker}
+                      />
+                    </DragHandleMenu>
+                  )}
+                />
               )}
             />
-          )}
-        />
+          </>
+        )}
       </BlockNoteView>
 
-      <MobileEditorToolbar
-        editor={editor}
-        onOpenMediaPicker={handleOpenMediaPicker}
-        onOpenMentionModal={() => {
-          setTooltipPosition(getCursorPos());
-          setMentionSearchQuery('');
-          setMentionSelectedIndex(0);
-          setIsMentionModalOpen(true);
-        }}
-      />
+      {!readOnly && (
+        <MobileEditorToolbar
+          editor={editor}
+          onOpenMediaPicker={handleOpenMediaPicker}
+          onOpenMentionModal={() => {
+            setTooltipPosition(getCursorPos());
+            setMentionSearchQuery('');
+            setMentionSelectedIndex(0);
+            setIsMentionModalOpen(true);
+          }}
+        />
+      )}
 
       <PageMentionTooltip
         isOpen={isMentionModalOpen}
