@@ -1869,6 +1869,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
   // Position cursor at the end of line on mousedown to prevent ProseMirror from placing cursor at start
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     const target = e.target as HTMLElement;
     const blockEl =
       target.closest('[data-id]') ||
@@ -1976,19 +1977,19 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
   return (
     <div
-      className="min-h-[420px]"
+      className={`min-h-[420px] ${readOnly ? 'bn-read-only cursor-default select-text' : ''}`}
       onClick={handleContainerClick}
       onMouseDown={(e) => {
-        handleMouseDown(e);
+        if (!readOnly) handleMouseDown(e);
       }}
       onKeyDown={() => {
-        hasUserEditedRef.current = true;
+        if (!readOnly) hasUserEditedRef.current = true;
       }}
       onInput={() => {
-        hasUserEditedRef.current = true;
+        if (!readOnly) hasUserEditedRef.current = true;
       }}
       onPaste={() => {
-        hasUserEditedRef.current = true;
+        if (!readOnly) hasUserEditedRef.current = true;
       }}
     >
       <BlockNoteView

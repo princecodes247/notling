@@ -543,6 +543,28 @@
   }
 }
 
+/* Read-Only Document Cursor & Caret Protection */
+.bn-read-only,
+.bn-read-only .bn-editor,
+.bn-read-only .bn-block-content,
+.bn-read-only [contenteditable="false"],
+.bn-container[data-editable="false"],
+.bn-container[data-editable="false"] .bn-editor,
+.bn-container[data-editable="false"] .bn-block-content,
+.bn-container[data-editable="false"] p,
+.bn-container[data-editable="false"] h1,
+.bn-container[data-editable="false"] h2,
+.bn-container[data-editable="false"] h3 {
+  cursor: default !important;
+  caret-color: transparent !important;
+}
+
+.bn-read-only a,
+.bn-container[data-editable="false"] a {
+  cursor: pointer !important;
+}
+
+
 
 
 
