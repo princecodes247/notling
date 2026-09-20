@@ -16,6 +16,7 @@ import {
 import { uploadMediaFile, getRecentUploads } from '~/server/uploads';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { BottomSheet } from './BottomSheet';
+import { optimizeImageFile } from '~/lib/imageOptimization';
 
 export interface MediaInsertPayload {
   url: string;
@@ -307,7 +308,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
     return () => clearTimeout(timer);
   }, [giphyQuery, activeTab]);
 
-  const processFile = (file: File) => {
+  const processFile = async (file: File) => {
     if (!file) return;
 
     setUploadError(null);
@@ -337,66 +338,64 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
 
     setIsUploading(true);
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        try {
-          const res = await uploadMediaFile({
-            data: {
-              fileName: file.name,
-              fileType: file.type || 'application/octet-stream',
-              base64Data: dataUrl,
-            },
-          });
+    try {
+      // Optimize image before payload transmission (compress & resize large JPEGs/PNGs to WebP)
+      const optimized = await optimizeImageFile(file, { maxWidth: 2048, maxHeight: 2048, quality: 0.82 });
+      const targetFile = optimized.file;
+      const dataUrl = optimized.dataUrl;
 
-          if (res?.url) {
-            const newItem = {
-              id: res.id || Math.random().toString(36).substring(2),
-              fileName: file.name,
-              fileType: file.type || 'application/octet-stream',
-              url: res.url,
-              createdAt: 'Just now',
-            };
+      const res = await uploadMediaFile({
+        data: {
+          fileName: targetFile.name,
+          fileType: targetFile.type || 'application/octet-stream',
+          base64Data: dataUrl,
+        },
+      });
 
-            setRecentUploads((prev) => {
-              const updated = [newItem, ...prev.filter((i) => i.url !== res.url)];
-              try {
-                localStorage.setItem('notling_recent_uploads', JSON.stringify(updated.slice(0, 30)));
-              } catch { }
-              return updated;
-            });
+      if (res?.url) {
+        const newItem = {
+          id: res.id || Math.random().toString(36).substring(2),
+          fileName: targetFile.name,
+          fileType: targetFile.type || 'application/octet-stream',
+          url: res.url,
+          createdAt: 'Just now',
+        };
 
-            onSelectMedia({
-              url: res.url,
-              type: fileType,
-              name: file.name,
-              caption: file.name,
-            });
-            onClose();
-          } else {
-            setUploadError('Failed to upload file. Please try again.');
-          }
-        } catch (err: any) {
-          console.error('Error uploading file:', err);
-          const rawMsg = err?.message || err?.toString() || '';
-          if (rawMsg.includes('quota') || rawMsg.includes('100 MB')) {
-            setUploadError('Workspace storage quota reached (100 MB max). Please delete old files first.');
-          } else if (rawMsg.includes('rate limit')) {
-            setUploadError('Upload rate limit reached (10 files/min). Please wait a moment.');
-          } else if (rawMsg.includes('limit') || rawMsg.includes('exceeds')) {
-            setUploadError(rawMsg);
-          } else if (rawMsg.includes('Authentication required')) {
-            setUploadError('Please sign in to upload files.');
-          } else {
-            setUploadError(rawMsg || 'Error uploading file.');
-          }
-        } finally {
-          setIsUploading(false);
-        }
+        setRecentUploads((prev) => {
+          const updated = [newItem, ...prev.filter((i) => i.url !== res.url)];
+          try {
+            localStorage.setItem('notling_recent_uploads', JSON.stringify(updated.slice(0, 30)));
+          } catch { }
+          return updated;
+        });
+
+        onSelectMedia({
+          url: res.url,
+          type: fileType,
+          name: targetFile.name,
+          caption: targetFile.name,
+        });
+        onClose();
+      } else {
+        setUploadError('Failed to upload file. Please try again.');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error('Error uploading file:', err);
+      const rawMsg = err?.message || err?.toString() || '';
+      if (rawMsg.includes('quota') || rawMsg.includes('100 MB')) {
+        setUploadError('Workspace storage quota reached (100 MB max). Please delete old files first.');
+      } else if (rawMsg.includes('rate limit')) {
+        setUploadError('Upload rate limit reached (10 files/min). Please wait a moment.');
+      } else if (rawMsg.includes('limit') || rawMsg.includes('exceeds')) {
+        setUploadError(rawMsg);
+      } else if (rawMsg.includes('Authentication required')) {
+        setUploadError('Please sign in to upload files.');
+      } else {
+        setUploadError(rawMsg || 'Error uploading file.');
+      }
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -536,10 +535,10 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
                   <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
                   <div className="text-center flex flex-col gap-1">
                     <span className="text-xs font-semibold text-stone-200">
-                      Uploading file to storage...
+                      Optimizing & uploading file to storage...
                     </span>
-                    <span className="text-[11px] text-stone-500">
-                      This will only take a few seconds.
+                    <span className="text-[11px] text-stone-400 font-medium">
+                      Auto-scaling & compressing high-res media to WebP for fast loads.
                     </span>
                   </div>
                 </div>
