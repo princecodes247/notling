@@ -68,12 +68,48 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const [showMenu, setShowMenu] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [dropTargetMode, setDropTargetMode] = useState<'above' | 'below' | 'inside' | null>(null);
+  const [isProcessingAction, setIsProcessingAction] = useState<'duplicating' | 'deleting' | 'creating' | null>(null);
 
   React.useEffect(() => {
     if (!isEditing) {
       setEditTitle(displayTitle);
     }
   }, [displayTitle, isEditing]);
+
+  const handleDuplicate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onDuplicatePage || isProcessingAction) return;
+    setShowMenu(false);
+    setIsProcessingAction('duplicating');
+    try {
+      await Promise.resolve(onDuplicatePage(node.id));
+    } finally {
+      setIsProcessingAction(null);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isProcessingAction) return;
+    setShowMenu(false);
+    setIsProcessingAction('deleting');
+    try {
+      await Promise.resolve(onSoftDelete(node.id));
+    } finally {
+      setIsProcessingAction(null);
+    }
+  };
+
+  const handleCreateChild = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isProcessingAction) return;
+    setIsProcessingAction('creating');
+    try {
+      await Promise.resolve(onCreateChild(node.id));
+    } finally {
+      setIsProcessingAction(null);
+    }
+  };
 
   const isDraggingCurrent = draggedPageId === node.id;
 
@@ -330,29 +366,37 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             <button
               type="button"
               title="Add sub-page"
-              className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCreateChild(node.id);
-              }}
+              disabled={!!isProcessingAction}
+              className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press disabled:opacity-50"
+              onClick={handleCreateChild}
             >
-              <Plus className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200" />
+              {isProcessingAction === 'creating' ? (
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-500 border-t-transparent animate-spin" />
+              ) : (
+                <Plus className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200" />
+              )}
             </button>
           )}
 
-          {/* Context Options */}
+          {/* Context Options or Active Action Spinner */}
           <div className="relative">
-            <button
-              type="button"
-              title="More options"
-              className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-            >
-              <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
-            </button>
+            {isProcessingAction && isProcessingAction !== 'creating' ? (
+              <div className="p-1 flex items-center justify-center">
+                <div className="w-3.5 h-3.5 rounded-full border-2 border-brand-bg border-t-transparent animate-spin" />
+              </div>
+            ) : (
+              <button
+                type="button"
+                title="More options"
+                className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+              >
+                <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
+              </button>
+            )}
 
             {showMenu && (
               <>
@@ -409,15 +453,12 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   {canEdit && onDuplicatePage && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        onDuplicatePage(node.id);
-                      }}
+                      disabled={!!isProcessingAction}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium disabled:opacity-50"
+                      onClick={handleDuplicate}
                     >
                       <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
-                      Duplicate
+                      <span>{isProcessingAction === 'duplicating' ? 'Duplicating...' : 'Duplicate'}</span>
                     </button>
                   )}
                   <button
@@ -435,15 +476,12 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   {canEdit && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowMenu(false);
-                        onSoftDelete(node.id);
-                      }}
+                      disabled={!!isProcessingAction}
+                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium disabled:opacity-50"
+                      onClick={handleDelete}
                     >
                       <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500 dark:text-rose-400" />
-                      Delete
+                      <span>{isProcessingAction === 'deleting' ? 'Deleting...' : 'Delete'}</span>
                     </button>
                   )}
                 </div>

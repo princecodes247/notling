@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCheck, Sparkles, User, Lock, Check, X } from 'lucide-react';
+import { CheckCheck, Sparkles, User, Lock, Check, X, Loader2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getAllUserPendingAccessRequestsFn, respondToPageAccessRequestFn } from '~/server/pages';
 import { useNavigate } from '@tanstack/react-router';
@@ -70,6 +70,7 @@ export const InboxView: React.FC = () => {
   const [items, setItems] = useState(INBOX_ITEMS);
   const [filter, setFilter] = useState<'all' | 'requests' | 'unread' | 'agent'>('all');
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [pendingRespondId, setPendingRespondId] = useState<string | null>(null);
 
   const { data: pendingRequests = [], refetch: refetchRequests } = useQuery({
     queryKey: ['allPendingAccessRequests'],
@@ -80,6 +81,7 @@ export const InboxView: React.FC = () => {
 
   const respondMutation = useMutation({
     mutationFn: async ({ requestId, action }: { requestId: string; action: 'approve' | 'reject' }) => {
+      setPendingRespondId(requestId);
       return await respondToPageAccessRequestFn({
         data: { requestId, action, role: 'editor' },
       });
@@ -91,6 +93,9 @@ export const InboxView: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['pageTree'] });
         setTimeout(() => setActionSuccess(null), 3000);
       }
+    },
+    onSettled: () => {
+      setPendingRespondId(null);
     },
   });
 
@@ -190,19 +195,32 @@ export const InboxView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => respondMutation.mutate({ requestId: req.id, action: 'approve' })}
-                      disabled={respondMutation.isPending}
-                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
+                      disabled={pendingRespondId === req.id}
+                      className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
                     >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Approve</span>
+                      {pendingRespondId === req.id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Approving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Approve</span>
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"
                       onClick={() => respondMutation.mutate({ requestId: req.id, action: 'reject' })}
-                      disabled={respondMutation.isPending}
-                      className="px-3 py-1.5 rounded-lg bg-neutral-200 dark:bg-zinc-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-neutral-700 hover:text-rose-700 dark:text-zinc-300 dark:hover:text-rose-300 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5"
+                      disabled={pendingRespondId === req.id}
+                      className="px-3 py-1.5 rounded-lg bg-neutral-200 dark:bg-zinc-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-neutral-700 hover:text-rose-700 dark:text-zinc-300 dark:hover:text-rose-300 text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      {pendingRespondId === req.id ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <X className="w-3.5 h-3.5" />
+                      )}
                       <span>Decline</span>
                     </button>
                   </div>

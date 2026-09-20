@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, Trash2, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -8,7 +8,7 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'warning' | 'info';
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -22,14 +22,26 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
   if (!isOpen) return null;
 
   const isDanger = variant === 'danger';
 
+  const handleConfirmClick = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      await Promise.resolve(onConfirm());
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150 font-sans select-none">
       {/* Backdrop click */}
-      <div className="fixed inset-0" onClick={onCancel} />
+      <div className="fixed inset-0" onClick={isLoading ? undefined : onCancel} />
 
       {/* Modal Dialog */}
       <div className="relative z-10 w-full max-w-md bg-[#fdfcf9] dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800 rounded-xl shadow-[0_24px_70px_-15px_rgba(28,25,23,0.24),0_0_0_1px_rgba(28,25,23,0.06)] overflow-hidden flex flex-col p-6 gap-4 text-stone-900 dark:text-zinc-100">
@@ -51,8 +63,9 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </div>
           <button
             type="button"
+            disabled={isLoading}
             onClick={onCancel}
-            className="text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 p-1 rounded-md hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 p-1 rounded-md hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -61,23 +74,30 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-stone-200/60 dark:border-zinc-800">
           <button
             type="button"
+            disabled={isLoading}
             onClick={onCancel}
-            className="px-4 py-2 rounded-lg bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200/80 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-200 text-xs font-semibold tracking-tight transition-colors cursor-pointer border border-stone-200/80 dark:border-zinc-700/80"
+            className="px-4 py-2 rounded-lg bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200/80 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-200 text-xs font-semibold tracking-tight transition-colors cursor-pointer border border-stone-200/80 dark:border-zinc-700/80 disabled:opacity-50"
           >
             {cancelText}
           </button>
           <button
             type="button"
-            onClick={() => {
-              onConfirm();
-            }}
-            className={`px-4 py-2 rounded-lg text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98 ${
+            disabled={isLoading}
+            onClick={handleConfirmClick}
+            className={`px-4 py-2 rounded-lg text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-98 flex items-center justify-center gap-1.5 disabled:opacity-60 ${
               isDanger
                 ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/20'
                 : 'bg-brand-bg hover:bg-brand-hover text-brand-fg'
             }`}
           >
-            {confirmText}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Processing...</span>
+              </>
+            ) : (
+              <span>{confirmText}</span>
+            )}
           </button>
         </div>
       </div>

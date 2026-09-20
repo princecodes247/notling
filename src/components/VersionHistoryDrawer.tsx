@@ -185,6 +185,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
   const [previewItem, setPreviewItem] = useState<PageHistory | null>(null);
   const [viewMode, setViewMode] = useState<'diff' | 'full'>('diff');
   const [restoredSuccess, setRestoredSuccess] = useState<string | null>(null);
+  const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -231,6 +232,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
 
   const restoreMutation = useMutation({
     mutationFn: async (historyId: string) => {
+      setPendingRestoreId(historyId);
       return await restorePageVersion({ data: historyId });
     },
     onSuccess: (updatedPage) => {
@@ -245,6 +247,9 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
       if (updatedPage && onVersionRestored) {
         onVersionRestored(updatedPage);
       }
+    },
+    onSettled: () => {
+      setPendingRestoreId(null);
     },
   });
 
@@ -418,11 +423,20 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                             <button
                               type="button"
                               onClick={() => restoreMutation.mutate(item.id)}
-                              disabled={restoreMutation.isPending}
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-brand-bg hover:bg-brand-hover text-brand-fg text-[11px] font-medium transition-all cursor-pointer shadow-2xs active:scale-98"
+                              disabled={pendingRestoreId === item.id || restoreMutation.isPending}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-brand-bg hover:bg-brand-hover text-brand-fg text-[11px] font-medium transition-all cursor-pointer shadow-2xs active:scale-98 disabled:opacity-60"
                             >
-                              <HugeiconsIcon icon={RotateLeftIcon} size={12} />
-                              <span>{restoreMutation.isPending ? 'Restoring...' : 'Restore'}</span>
+                              {pendingRestoreId === item.id ? (
+                                <>
+                                  <div className="w-3 h-3 rounded-full border-2 border-brand-fg border-t-transparent animate-spin" />
+                                  <span>Restoring...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <HugeiconsIcon icon={RotateLeftIcon} size={12} />
+                                  <span>Restore</span>
+                                </>
+                              )}
                             </button>
                           )}
                         </div>
@@ -466,13 +480,20 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                 </button>
                 <button
                   type="button"
+                  disabled={pendingRestoreId === previewItem.id}
                   onClick={() => {
                     restoreMutation.mutate(previewItem.id);
-                    setPreviewItem(null);
                   }}
-                  className="px-4 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                  className="px-4 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
                 >
-                  Restore this version
+                  {pendingRestoreId === previewItem.id ? (
+                    <>
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-brand-fg border-t-transparent animate-spin" />
+                      <span>Restoring version...</span>
+                    </>
+                  ) : (
+                    <span>Restore this version</span>
+                  )}
                 </button>
               </div>
             </div>
