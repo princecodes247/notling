@@ -502,7 +502,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
               <div className="mt-0 flex flex-col divide-y divide-stone-100 dark:divide-stone-800 overflow-hidden max-h-40 overflow-y-auto">
                 {owner && (
-                  <div key="owner" className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 dark:hover:bg-stone-800/50 transition-colors">
+                  <div key="owner" className="py-2.5 px-1 flex items-center justify-between text-xs hover:bg-stone-50/60 dark:hover:bg-stone-800/50 transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <UserAvatar
                         avatarUrl={owner.avatarUrl}
@@ -528,7 +528,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 {people
                   .filter((person) => !owner || person.email.toLowerCase() !== owner.email.toLowerCase())
                   .map((person) => (
-                    <div key={person.id} className="py-2.5 flex items-center justify-between text-xs hover:bg-stone-50/60 dark:hover:bg-stone-800/50 transition-colors">
+                    <div key={person.id} className="py-2.5 px-1 flex items-center justify-between text-xs hover:bg-stone-50/60 dark:hover:bg-stone-800/50 transition-colors">
                       <div className="flex items-center gap-2.5 min-w-0">
                         {person.userId ? (
                           <UserAvatar
