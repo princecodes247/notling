@@ -280,6 +280,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 <div
                   className="fixed inset-0 z-50"
                   onClick={() => setShowEmojiPicker(false)}
+                  onTouchStart={() => setShowEmojiPicker(false)}
                 />
                 <div
                   className="absolute left-0 top-6 z-50 p-2 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"

@@ -505,18 +505,25 @@ export const Editor: React.FC<EditorProps> = ({
             )}
 
             {showEmojiPicker && !isReadOnly && (
-              <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-[#222226] border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">
-                {EMOJI_OPTIONS.map((emoji) => (
-                  <button
-                    key={emoji}
-                    type="button"
-                    onClick={() => handleSelectIcon(emoji)}
-                    className="text-2xl p-1.5 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors cursor-pointer text-center"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setShowEmojiPicker(false)}
+                  onTouchStart={() => setShowEmojiPicker(false)}
+                />
+                <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-[#222226] border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">
+                  {EMOJI_OPTIONS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleSelectIcon(emoji)}
+                      className="text-2xl p-1.5 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors cursor-pointer text-center"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
