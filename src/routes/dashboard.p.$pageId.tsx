@@ -1,23 +1,16 @@
 import { useEffect } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
 import { getPage } from '~/server/pages';
 import { Editor } from '~/components/Editor';
+import { EditorSkeleton } from '~/components/EditorSkeleton';
 import { useUIStore } from '~/store/uiStore';
 import { Route as dashboardRoute } from './dashboard';
 
 export const Route = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/p/$pageId',
-  loader: async ({ params }) => {
-    try {
-      if (!params.pageId) return null;
-      return await getPage({ data: params.pageId });
-    } catch {
-      return null;
-    }
-  },
+  loader: () => null,
   component: DocumentPageRoute,
 });
 
@@ -79,12 +72,7 @@ function DocumentPageRoute() {
   }, [pageId, page?.id, page?.title, page?.icon]);
 
   if (isLoading) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 text-xs text-neutral-400 dark:text-zinc-500 bg-white dark:bg-[#18181b]">
-        <Loader2 className="w-5 h-5 animate-spin text-neutral-600 dark:text-zinc-400" />
-        <span>Loading document...</span>
-      </div>
-    );
+    return <EditorSkeleton />;
   }
 
   if (!page) {
