@@ -38,12 +38,24 @@ function DocumentPageRoute() {
       return await getPage({ data: pageId });
     },
     enabled: !!pageId,
-    initialData: initialPage ?? undefined,
+    initialData: () => {
+      const cached = queryClient.getQueryData<any>(['page', pageId]);
+      if (cached) return cached;
+      if (initialPage && (initialPage as any).id === pageId) {
+        return initialPage;
+      }
+      return undefined;
+    },
     staleTime: 5 * 60 * 1000,
   });
 
-  // Synchronize Tab title, icon, and document title as soon as page data is loaded
+  // Synchronize Tab title, icon, active tab/page ID, and document title as soon as page data is loaded
   useEffect(() => {
+    if (pageId) {
+      const { setActivePageId, setActiveTabId } = useUIStore.getState();
+      setActivePageId(pageId);
+      setActiveTabId(pageId);
+    }
     if (page?.id) {
       const { openTabs, updateTabMeta, openTab, pageMeta } = useUIStore.getState();
       const live = pageMeta[page.id];
@@ -64,7 +76,7 @@ function DocumentPageRoute() {
 
       document.title = `${title} — Notling`;
     }
-  }, [page?.id, page?.title, page?.icon]);
+  }, [pageId, page?.id, page?.title, page?.icon]);
 
   if (isLoading) {
     return (

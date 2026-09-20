@@ -79,6 +79,13 @@ export const Editor: React.FC<EditorProps> = ({
   const [, setMounted] = useState(false);
 
   useEffect(() => {
+    setTitle(page.title);
+    setIcon(page.icon || '📄');
+    setVisibility((page as any).visibility || 'workspace');
+    setIsPinned(!!(page as any).isPinned);
+  }, [page.id, page.title, page.icon, (page as any).visibility, (page as any).isPinned]);
+
+  useEffect(() => {
     const handleHistoryState = (e: any) => {
       if (e.detail) {
         setCanUndo(!!e.detail.canUndo);

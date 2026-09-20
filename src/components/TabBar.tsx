@@ -15,6 +15,8 @@ import {
   Delete02Icon,
 } from '@hugeicons/core-free-icons';
 import { useUIStore, type TabItem } from '~/store/uiStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { getPage } from '~/server/pages';
 
 interface TabBarProps {
   tabs: TabItem[];
@@ -33,7 +35,18 @@ export const TabBar: React.FC<TabBarProps> = ({
   onCloseTab,
   onNewTab,
 }) => {
+  const queryClient = useQueryClient();
   const { sidebarOpen, toggleSidebar, reorderTabs } = useUIStore();
+
+  const handleTabMouseEnter = (tabId: string) => {
+    if (tabId !== 'home' && tabId !== 'folders' && tabId !== 'settings' && tabId !== 'profile' && tabId !== 'trash') {
+      queryClient.prefetchQuery({
+        queryKey: ['page', tabId],
+        queryFn: async () => await getPage({ data: tabId }),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
+  };
   const isHomeActive = activeTabId === 'home' || (!activeTabId && tabs.length === 0);
   const fileTabs = tabs.filter((t) => t.id !== 'home');
 
@@ -215,6 +228,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                 onDragLeave={(e) => handleDragLeave(e, tab.id)}
                 onDrop={(e) => handleDrop(e, tab.id)}
                 onDragEnd={handleDragEnd}
+                onMouseEnter={() => handleTabMouseEnter(tab.id)}
                 onClick={() => onSelectTab(tab)}
                 className={`group relative flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg transition-all cursor-pointer border shrink-0 ${isDragging
                   ? 'opacity-40 border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'

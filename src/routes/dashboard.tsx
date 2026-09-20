@@ -8,7 +8,7 @@ import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
-import { getPageTree, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
+import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
 import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
@@ -252,6 +252,26 @@ function DashboardLayout() {
       }
     }
   }, [currentPath, treeNodes]);
+
+  // Background pre-fetch open document tabs into query cache for instant 0ms tab switching
+  React.useEffect(() => {
+    openTabs.forEach((t) => {
+      if (
+        t.id &&
+        t.id !== 'home' &&
+        t.id !== 'folders' &&
+        t.id !== 'settings' &&
+        t.id !== 'profile' &&
+        t.id !== 'trash'
+      ) {
+        queryClient.prefetchQuery({
+          queryKey: ['page', t.id],
+          queryFn: async () => await getPage({ data: t.id }),
+          staleTime: 5 * 60 * 1000,
+        });
+      }
+    });
+  }, [openTabs, queryClient]);
 
   const isCreatingPageRef = React.useRef(false);
 
