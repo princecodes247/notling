@@ -22,7 +22,7 @@ export const LegalLayout: React.FC<LegalLayoutProps> = ({
       {/* Top Navbar */}
       <header className="sticky top-0 z-50 bg-[#fafaf8]/90 backdrop-blur-md px-6 sm:px-12 h-16 flex items-center justify-between border-b border-neutral-200/70">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <NotlingLogoIcon className="w-5 h-5 text-brand-text transition-transform group-hover:scale-105" />
+          <NotlingLogoIcon className="w-5 h-5 text-black transition-transform group-hover:scale-105" />
           <span className="font-bold text-base tracking-tight text-neutral-900">
             Notling
           </span>

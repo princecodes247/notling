@@ -41,8 +41,8 @@ export function ShareHeader({
         className="flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
         onClick={onNavigateHome}
       >
-        <NotlingLogoIcon className="w-4 h-4 sm:w-5 sm:h-5 text-brand-600 drop-shadow-2xs" />
-        <span className="font-bold text-xs sm:text-base tracking-tight text-neutral-900">
+        <NotlingLogoIcon className="w-4 h-4 sm:w-5 sm:h-5 text-brand-600 dark:text-brand-400 drop-shadow-2xs" />
+        <span className="font-bold text-xs sm:text-base tracking-tight text-neutral-900 dark:text-white">
           Notling
         </span>
       </div>

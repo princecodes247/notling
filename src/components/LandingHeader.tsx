@@ -21,7 +21,7 @@ export const LandingHeader: React.FC<LandingHeaderProps> = ({
           className="flex items-center gap-2 cursor-pointer"
           onClick={onEnterApp}
         >
-          <NotlingLogoIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-brand-600 drop-shadow-2xs" />
+          <NotlingLogoIcon className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-brand-600  drop-shadow-2xs" />
           <span className="font-bold text-sm sm:text-base tracking-tight text-neutral-900">
             Notling
           </span>

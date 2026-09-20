@@ -249,18 +249,18 @@ export function Footer() {
           >
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-center sm:text-left">
               <div className="flex items-center gap-2">
-                <NotlingLogoIcon className="w-4.5 h-4.5 text-neutral-900" />
-                <span className="font-bold text-sm tracking-tight text-neutral-900">
+                <NotlingLogoIcon className="w-4.5 h-4.5 text-neutral-900 dark:text-white" />
+                <span className="font-bold text-sm tracking-tight text-neutral-900 dark:text-white">
                   Notling
                 </span>
               </div>
               <span className="text-gray-400 hidden sm:inline">&bull;</span>
-              <span className="text-xs text-neutral-600 font-normal">
+              <span className="text-xs text-neutral-600 dark:text-neutral-400 font-normal">
                 &copy; {currentYear} Notling. All rights reserved.
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3.5 sm:gap-6 text-xs text-neutral-700 font-medium">
+            <div className="flex flex-wrap items-center justify-center sm:justify-end gap-3.5 sm:gap-6 text-xs text-neutral-700 dark:text-neutral-300 font-medium">
               <span>Privacy</span>
               <span>Terms</span>
               <span>Acceptable Use</span>

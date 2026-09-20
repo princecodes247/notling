@@ -14,7 +14,7 @@ export function LoginCard({ error, children }: LoginCardProps) {
         href="/"
         className="w-10 h-10 flex items-center justify-center mb-5 transition-colors"
       >
-        <NotlingLogoIcon className="w-5 h-5" />
+        <NotlingLogoIcon className="w-5 h-5 text-neutral-900 dark:text-white" />
       </a>
 
       {/* Title & Subtitle */}
