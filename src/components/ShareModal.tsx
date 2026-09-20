@@ -66,6 +66,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [invitedSuccess, setInvitedSuccess] = useState<string | null>(null);
 
+  // Action progress states
+  const [isInviting, setIsInviting] = useState(false);
+  const [pendingQuickInviteEmail, setPendingQuickInviteEmail] = useState<string | null>(null);
+  const [pendingRespondId, setPendingRespondId] = useState<string | null>(null);
+  const [pendingRoleChangeShareId, setPendingRoleChangeShareId] = useState<string | null>(null);
+  const [pendingRemoveShareId, setPendingRemoveShareId] = useState<string | null>(null);
+  const [pendingVisibility, setPendingVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit' | null>(null);
+
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -108,6 +116,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   }, [isOpen, page?.id]);
 
   const handleRespondToRequest = async (requestId: string, action: 'approve' | 'reject') => {
+    if (pendingRespondId) return;
+    setPendingRespondId(requestId);
     try {
       const res = await respondToPageAccessRequestFn({
         data: { requestId, action, role: 'editor' },
@@ -116,7 +126,6 @@ export const ShareModal: React.FC<ShareModalProps> = ({
         setPendingRequests((prev) => prev.filter((r) => r.id !== requestId));
         if (action === 'approve') {
           setInvitedSuccess(res.message || 'Access request approved!');
-          // Refresh shares list
           const sharesRes = await getPageShares({ data: page.id });
           if (sharesRes?.shares) {
             setPeople(
@@ -139,13 +148,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       }
     } catch (err) {
       console.error('Failed to respond to access request:', err);
+    } finally {
+      setPendingRespondId(null);
     }
   };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanEmail = inviteEmail.trim().toLowerCase();
-    if (!cleanEmail || !page?.id) return;
+    if (!cleanEmail || !page?.id || isInviting) return;
 
     if (owner && cleanEmail === owner.email.toLowerCase()) {
       setInvitedSuccess('User is already the page owner.');
@@ -154,6 +165,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       return;
     }
 
+    setIsInviting(true);
     try {
       const newShare: any = await inviteUserToPage({
         data: {
@@ -185,14 +197,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       }
     } catch (err) {
       console.error('Failed to invite user:', err);
+    } finally {
+      setIsInviting(false);
+      setInviteEmail('');
     }
-    setInviteEmail('');
   };
 
   const handleQuickInvite = async (email: string, role: 'editor' | 'viewer') => {
     const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !page?.id) return;
+    if (!cleanEmail || !page?.id || pendingQuickInviteEmail) return;
 
+    setPendingQuickInviteEmail(cleanEmail);
     try {
       const newShare: any = await inviteUserToPage({
         data: {
@@ -232,10 +247,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       }
     } catch (err) {
       console.error('Failed to quick invite user:', err);
+    } finally {
+      setPendingQuickInviteEmail(null);
     }
   };
 
   const handleRoleChange = async (shareId: string, newRole: 'editor' | 'viewer') => {
+    if (pendingRoleChangeShareId) return;
+    setPendingRoleChangeShareId(shareId);
     try {
       await updatePageShareRole({
         data: {
@@ -250,10 +269,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['page', page.id] });
     } catch (err) {
       console.error('Failed to update share role:', err);
+    } finally {
+      setPendingRoleChangeShareId(null);
     }
   };
 
   const handleRemovePerson = async (shareId: string) => {
+    if (pendingRemoveShareId) return;
+    setPendingRemoveShareId(shareId);
     try {
       await removePageShare({ data: shareId });
       setPeople((prev) => prev.filter((p) => p.id !== shareId));
@@ -261,6 +284,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['page', page.id] });
     } catch (err) {
       console.error('Failed to remove share:', err);
+    } finally {
+      setPendingRemoveShareId(null);
+    }
+  };
+
+  const handleSelectVisibility = async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
+    if (newVisibility === visibility || pendingVisibility) return;
+    setPendingVisibility(newVisibility);
+    try {
+      await onUpdateVisibility(newVisibility);
+    } catch (err) {
+      console.error('Failed to update visibility:', err);
+    } finally {
+      setPendingVisibility(null);
     }
   };
 
@@ -331,17 +368,29 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                       <button
                         type="button"
+                        disabled={pendingRespondId === req.id}
                         onClick={() => handleRespondToRequest(req.id, 'approve')}
-                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
                       >
-                        Approve Edit Access
+                        {pendingRespondId === req.id ? (
+                          <>
+                            <div className="w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                            <span>Approving...</span>
+                          </>
+                        ) : (
+                          <span>Approve Edit Access</span>
+                        )}
                       </button>
                       <button
                         type="button"
+                        disabled={pendingRespondId === req.id}
                         onClick={() => handleRespondToRequest(req.id, 'reject')}
-                        className="px-2.5 py-1.5 rounded-lg bg-stone-200 dark:bg-stone-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-stone-700 hover:text-rose-700 dark:text-stone-300 dark:hover:text-rose-300 text-xs font-medium transition-colors cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-lg bg-stone-200 dark:bg-stone-800 hover:bg-rose-100 dark:hover:bg-rose-950 text-stone-700 hover:text-rose-700 dark:text-stone-300 dark:hover:text-rose-300 text-xs font-medium transition-colors cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
                       >
-                        Decline
+                        {pendingRespondId === req.id ? (
+                          <div className="w-3 h-3 rounded-full border-2 border-stone-600 dark:border-stone-300 border-t-transparent animate-spin" />
+                        ) : null}
+                        <span>Decline</span>
                       </button>
                     </div>
                   </div>
@@ -356,6 +405,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               <HugeiconsIcon icon={UserAdd01Icon} size={15} className="text-stone-400 dark:text-stone-500 shrink-0" />
               <input
                 type="email"
+                disabled={isInviting}
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="Enter email address..."
@@ -365,13 +415,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
             <button
               type="submit"
-              disabled={!inviteEmail.trim()}
-              className={`h-10 px-4 rounded-lg text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center justify-center cursor-pointer active:scale-95 ${inviteEmail.trim()
+              disabled={!inviteEmail.trim() || isInviting}
+              className={`h-10 px-4 rounded-lg text-xs font-semibold tracking-tight transition-all shrink-0 flex items-center justify-center gap-2 cursor-pointer active:scale-95 ${inviteEmail.trim() && !isInviting
                 ? 'bg-brand-bg hover:bg-brand-hover text-brand-fg shadow-xs'
                 : 'bg-stone-100 dark:bg-stone-800 text-stone-400 dark:text-stone-600 border border-stone-200/80 dark:border-stone-700 cursor-not-allowed shadow-none'
                 }`}
             >
-              Invite
+              {isInviting ? (
+                <>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-brand-fg border-t-transparent animate-spin" />
+                  <span>Inviting...</span>
+                </>
+              ) : (
+                <span>Invite</span>
+              )}
             </button>
           </form>
 
@@ -409,13 +466,20 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-
                       <button
                         type="button"
+                        disabled={pendingQuickInviteEmail === v.email.toLowerCase()}
                         onClick={() => handleQuickInvite(v.email, 'editor')}
-                        className="px-2 py-1 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[11px] font-medium transition-colors hover:bg-stone-300 dark:hover:bg-stone-700 cursor-pointer"
+                        className="px-2.5 py-1 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-700 dark:text-stone-300 text-[11px] font-medium transition-colors hover:bg-stone-300 dark:hover:bg-stone-700 cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
                       >
-                        Invite as Editor
+                        {pendingQuickInviteEmail === v.email.toLowerCase() ? (
+                          <>
+                            <div className="w-3 h-3 rounded-full border-2 border-stone-600 dark:border-stone-300 border-t-transparent animate-spin" />
+                            <span>Inviting...</span>
+                          </>
+                        ) : (
+                          <span>Invite as Editor</span>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -487,17 +551,29 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {pendingRoleChangeShareId === person.id && (
+                          <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-500 dark:border-stone-400 border-t-transparent animate-spin shrink-0" />
+                        )}
                         <Select
                           value={person.role}
                           options={ROLE_OPTIONS}
+                          disabled={pendingRoleChangeShareId === person.id}
                           onChange={(newRole) => handleRoleChange(person.id, newRole)}
                         />
                         <button
                           type="button"
+                          disabled={pendingRemoveShareId === person.id}
                           onClick={() => handleRemovePerson(person.id)}
-                          className="text-[11px] text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 font-medium cursor-pointer px-1.5 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          className="text-[11px] text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 font-medium cursor-pointer px-1.5 py-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors flex items-center gap-1 disabled:opacity-50"
                         >
-                          Remove
+                          {pendingRemoveShareId === person.id ? (
+                            <>
+                              <div className="w-3 h-3 rounded-full border-2 border-rose-500 border-t-transparent animate-spin" />
+                              <span>Removing...</span>
+                            </>
+                          ) : (
+                            <span>Remove</span>
+                          )}
                         </button>
                       </div>
                     </div>
@@ -518,17 +594,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             {/* Restricted Option */}
             <button
               type="button"
-              onClick={() => onUpdateVisibility('private')}
+              disabled={!!pendingVisibility}
+              onClick={() => handleSelectVisibility('private')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'private'
                 ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 ring-1 ring-amber-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
-              <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
-                  <HugeiconsIcon icon={LockIcon} size={12} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                    <HugeiconsIcon icon={LockIcon} size={12} />
+                  </div>
+                  <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Private Access</span>
                 </div>
-                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Private Access</span>
+                {pendingVisibility === 'private' && (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-amber-600 border-t-transparent animate-spin shrink-0" />
+                )}
               </div>
               <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Only invited people can access this page.</p>
             </button>
@@ -536,17 +618,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             {/* Workspace Option */}
             <button
               type="button"
-              onClick={() => onUpdateVisibility('workspace')}
+              disabled={!!pendingVisibility}
+              onClick={() => handleSelectVisibility('workspace')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'workspace'
                 ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
-              <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
-                  <HugeiconsIcon icon={Building01Icon} size={12} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                    <HugeiconsIcon icon={Building01Icon} size={12} />
+                  </div>
+                  <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Workspace Members</span>
                 </div>
-                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Workspace Members</span>
+                {pendingVisibility === 'workspace' && (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-emerald-600 border-t-transparent animate-spin shrink-0" />
+                )}
               </div>
               <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Everyone in {workspaceName} can view and edit.</p>
             </button>
@@ -554,17 +642,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             {/* Public (View) Option */}
             <button
               type="button"
-              onClick={() => onUpdateVisibility('public')}
+              disabled={!!pendingVisibility}
+              onClick={() => handleSelectVisibility('public')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public'
                 ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700 ring-1 ring-blue-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
-              <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
-                  <HugeiconsIcon icon={Globe02Icon} size={12} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                    <HugeiconsIcon icon={Globe02Icon} size={12} />
+                  </div>
+                  <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link</span>
                 </div>
-                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link</span>
+                {pendingVisibility === 'public' && (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-blue-600 border-t-transparent animate-spin shrink-0" />
+                )}
               </div>
               <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Anyone on the web with the link can view.</p>
             </button>
@@ -572,17 +666,23 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             {/* Public (Edit) Option */}
             <button
               type="button"
-              onClick={() => onUpdateVisibility('public_edit')}
+              disabled={!!pendingVisibility}
+              onClick={() => handleSelectVisibility('public_edit')}
               className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public_edit'
                 ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
-              <div className="flex items-center gap-1.5">
-                <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
-                  <HugeiconsIcon icon={Globe02Icon} size={12} />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                    <HugeiconsIcon icon={Globe02Icon} size={12} />
+                  </div>
+                  <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link can edit</span>
                 </div>
-                <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link can edit</span>
+                {pendingVisibility === 'public_edit' && (
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-indigo-600 border-t-transparent animate-spin shrink-0" />
+                )}
               </div>
               <p className="text-[10.5px] text-stone-500 dark:text-stone-400 leading-snug">Anyone on the web with the link can view & edit.</p>
             </button>
