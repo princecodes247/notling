@@ -62,6 +62,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const isActive = activePageId === node.id;
   const hasChildren = node.children && node.children.length > 0;
   const canEdit = node.canEdit !== false;
+  const canDelete = node.canDelete === true;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(displayTitle);
@@ -474,7 +475,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
                     Export Page
                   </button>
-                  {canEdit && (
+                  {canDelete && (
                     <button
                       type="button"
                       disabled={!!isProcessingAction}

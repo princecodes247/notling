@@ -15,6 +15,7 @@ export interface PageTreeNode {
   isShared?: boolean;
   isPinned?: boolean;
   canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 // TanStack Start Server Functions

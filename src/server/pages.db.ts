@@ -105,20 +105,22 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
         : Promise.resolve([]),
     ]);
 
+    const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
+
     // Single-pass tree construction
     const pageMap = new Map<string, PageTreeNode>();
     const rootNodes: PageTreeNode[] = [];
 
     // Combine workspace pages
     for (const p of workspacePages) {
-      pageMap.set(p.id, { ...p, children: [], canEdit: true });
+      pageMap.set(p.id, { ...p, children: [], canEdit: true, canDelete: isOwner });
     }
 
     // Combine explicit shares
     for (const sp of sharedPages) {
       if (!pageMap.has(sp.id)) {
         const canEdit = (sp as any).role === 'editor';
-        const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit };
+        const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit, canDelete: isOwner };
         pageMap.set(sp.id, node);
         rootNodes.push(node);
       }
@@ -297,10 +299,13 @@ export async function fetchPage(pageId: string) {
       });
     }
 
+    const isOwner = await checkIsWorkspaceOwner(page.workspaceId, session);
+
     return {
       ...page,
       accessLevel: access,
       canEdit: access === 'editor',
+      canDelete: isOwner,
     };
   } catch (err) {
     console.error('Error fetching page:', err);
@@ -670,6 +675,74 @@ export async function checkCanUserEditPage(pageId: string, includeDeleted = fals
     return access === 'editor';
   } catch (err) {
     console.error('Error checking edit permissions:', err);
+    return false;
+  }
+}
+
+export async function checkIsWorkspaceOwner(
+  workspaceId: string,
+  session: UserSession | null
+): Promise<boolean> {
+  if (!session || !session.userId) return false;
+
+  const userEmail = session.email ? session.email.trim().toLowerCase() : null;
+
+  // 1. Check if user is ownerId on the workspace record
+  const ws = await db
+    .select({ ownerId: workspaces.ownerId })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  if (ws.length > 0 && ws[0].ownerId === session.userId) {
+    return true;
+  }
+
+  // 2. Check if user is a member with role 'owner'
+  if (userEmail) {
+    const member = await db
+      .select({ role: workspaceMembers.role })
+      .from(workspaceMembers)
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, workspaceId),
+          or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, userEmail))
+        )
+      )
+      .limit(1);
+
+    if (member.length > 0 && member[0].role === 'owner') {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function checkCanUserDeletePage(pageId: string, includeDeleted = false): Promise<boolean> {
+  try {
+    const pageList = await db
+      .select({ workspaceId: pages.workspaceId })
+      .from(pages)
+      .where(
+        and(
+          eq(pages.id, pageId),
+          includeDeleted ? undefined : eq(pages.isDeleted, false)
+        )
+      )
+      .limit(1);
+
+    if (pageList.length === 0) return false;
+    const page = pageList[0];
+
+    let session = null;
+    try {
+      session = await getSessionImpl();
+    } catch {}
+
+    return await checkIsWorkspaceOwner(page.workspaceId, session);
+  } catch (err) {
+    console.error('Error checking delete permissions:', err);
     return false;
   }
 }
@@ -1129,9 +1202,9 @@ export async function reorderPageInDb(input: {
 
 export async function performSoftDelete(pageId: string) {
   try {
-    const canEdit = await checkCanUserEditPage(pageId);
-    if (!canEdit) {
-      console.warn(`[Permission Denied] Blocked soft delete for page ${pageId}.`);
+    const canDelete = await checkCanUserDeletePage(pageId);
+    if (!canDelete) {
+      console.warn(`[Permission Denied] Blocked soft delete for page ${pageId}. Only workspace owners can delete pages.`);
       return { success: false };
     }
 
@@ -1157,9 +1230,9 @@ export async function performSoftDelete(pageId: string) {
 
 export async function performRestore(pageId: string) {
   try {
-    const canEdit = await checkCanUserEditPage(pageId, true);
-    if (!canEdit) {
-      console.warn(`[Permission Denied] Blocked restore for page ${pageId}.`);
+    const canDelete = await checkCanUserDeletePage(pageId, true);
+    if (!canDelete) {
+      console.warn(`[Permission Denied] Blocked restore for page ${pageId}. Only workspace owners can restore pages.`);
       return { success: false };
     }
 
@@ -1193,6 +1266,11 @@ export async function fetchTrashPages(workspaceId: string) {
       return [];
     }
 
+    const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
+    if (!isOwner) {
+      return [];
+    }
+
     return await db
       .select({
         id: pages.id,
@@ -1211,9 +1289,9 @@ export async function fetchTrashPages(workspaceId: string) {
 
 export async function performPermanentDelete(pageId: string) {
   try {
-    const canEdit = await checkCanUserEditPage(pageId, true);
-    if (!canEdit) {
-      console.warn(`[Permission Denied] Blocked permanent delete for page ${pageId}.`);
+    const canDelete = await checkCanUserDeletePage(pageId, true);
+    if (!canDelete) {
+      console.warn(`[Permission Denied] Blocked permanent delete for page ${pageId}. Only workspace owners can delete pages.`);
       return { success: false };
     }
 
@@ -1233,6 +1311,12 @@ export async function performEmptyTrash(workspaceId: string) {
     const session = await getSessionImpl();
     if (!session || session.workspaceId !== targetWorkspaceId) {
       console.warn(`[Permission Denied] Blocked empty trash for workspace ${workspaceId}.`);
+      return { success: false };
+    }
+
+    const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
+    if (!isOwner) {
+      console.warn(`[Permission Denied] Blocked empty trash for workspace ${workspaceId}. Only workspace owners can empty trash.`);
       return { success: false };
     }
 
