@@ -341,6 +341,25 @@
   text-decoration-color: #52525b !important;
 }
 
+/* Paintable Checkboxes Drag UX */
+body.bn-checkbox-painting {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: pointer !important;
+}
+
+body.bn-checkbox-painting .bn-block-content[data-content-type="checkListItem"] {
+  cursor: pointer !important;
+}
+
+.bn-block-content[data-content-type="checkListItem"] input[type="checkbox"] {
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, border-color 0.15s ease !important;
+}
+
+.bn-block-content[data-content-type="checkListItem"]:hover input[type="checkbox"] {
+  transform: scale(1.12);
+}
+
 
 /* Clean scrollbars */
 ::-webkit-scrollbar {
