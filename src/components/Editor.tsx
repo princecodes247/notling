@@ -32,7 +32,7 @@ import { VersionHistoryDrawer } from './VersionHistoryDrawer';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
-import { EMOJI_OPTIONS } from '#/lib/constants';
+import { EmojiPicker } from './EmojiPicker';
 import { clsx } from 'clsx';
 
 function formatRelativeTime(dateInput?: string | Date | null): string {
@@ -512,25 +512,13 @@ export const Editor: React.FC<EditorProps> = ({
             )}
 
             {showEmojiPicker && !isReadOnly && (
-              <>
-                <div
-                  className="fixed inset-0 z-20"
-                  onClick={() => setShowEmojiPicker(false)}
-                  onTouchStart={() => setShowEmojiPicker(false)}
-                />
-                <div className="absolute top-full left-0 mt-1 z-30 bg-white dark:bg-[#222226] border border-stone-200 dark:border-stone-700 rounded-xl shadow-xl p-3 grid grid-cols-6 gap-2 w-64 animate-in fade-in">
-                  {EMOJI_OPTIONS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => handleSelectIcon(emoji)}
-                      className="text-2xl p-1.5 hover:bg-stone-100 dark:hover:bg-stone-700 rounded-lg transition-colors cursor-pointer text-center"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </>
+              <EmojiPicker
+                onSelect={(selectedEmoji) => handleSelectIcon(selectedEmoji)}
+                onClose={() => setShowEmojiPicker(false)}
+                currentEmoji={icon}
+                onRemove={() => handleSelectIcon('📄')}
+                className="top-full left-0 mt-1"
+              />
             )}
           </div>
 

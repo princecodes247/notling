@@ -12,7 +12,7 @@ import { getPage } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { EMOJI_OPTIONS } from '#/lib/constants';
+import { EmojiPicker } from './EmojiPicker';
 import { exportPageToMarkdown } from '~/lib/pageExport';
 
 interface PageTreeItemProps {
@@ -277,28 +277,13 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             )}
 
             {canEdit && showEmojiPicker && (
-              <>
-                <div
-                  className="fixed inset-0 z-50"
-                  onClick={() => setShowEmojiPicker(false)}
-                  onTouchStart={() => setShowEmojiPicker(false)}
-                />
-                <div
-                  className="absolute left-0 top-6 z-50 p-2 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl flex flex-wrap gap-1 w-48"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {EMOJI_OPTIONS.map((em) => (
-                    <button
-                      key={em}
-                      type="button"
-                      onClick={() => handleSelectIcon(em)}
-                      className="text-lg p-1 rounded hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              </>
+              <EmojiPicker
+                onSelect={(selectedEmoji) => handleSelectIcon(selectedEmoji)}
+                onClose={() => setShowEmojiPicker(false)}
+                currentEmoji={displayIcon}
+                onRemove={() => handleSelectIcon('📄')}
+                className="left-0 top-6"
+              />
             )}
           </div>
 
