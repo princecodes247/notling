@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
 import { PropertyTypeIcon } from './PropertyTypeIcon';
+import { DatabasePopover } from './DatabasePopover';
 import {
   Plus,
   Trash2,
@@ -87,16 +88,11 @@ export function DatabaseTableView({
   // Bulk Row Selection State
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
-  // Cell Selection & Keyboard Navigation State
-  const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
-  const [isCellEditing, setIsCellEditing] = useState(false);
-
   // Client-Side Undo Stack (Cmd+Z)
   const [undoStack, setUndoStack] = useState<Array<{ type: string; payload: any }>>([]);
 
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
-  const allProps = titleProp ? [titleProp, ...nonTitleProps] : nonTitleProps;
 
   // Handle Cmd+Z Undo
   useEffect(() => {
@@ -117,7 +113,7 @@ export function DatabaseTableView({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undoStack, onUpdateItem]);
 
-  // Handle Column Creation (One-click Persistent + Button)
+  // Handle Column Creation
   const handleCommitAddColumn = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!newColName.trim()) return;
@@ -160,7 +156,6 @@ export function DatabaseTableView({
     // Evaluate lossy conversion statistics
     let convertible = 0;
     let lossy = 0;
-    const total = items.length;
 
     items.forEach((item) => {
       const v = item.properties?.[prop.id];
@@ -179,7 +174,7 @@ export function DatabaseTableView({
         propId: prop.id,
         propName: prop.name,
         targetType,
-        total,
+        total: items.length,
         convertible,
         lossy,
       });
@@ -214,7 +209,7 @@ export function DatabaseTableView({
 
   return (
     <div className="w-full space-y-3 font-sans">
-      {/* Top Action Bar for Bulk Selection & Undo indicator */}
+      {/* Top Action Bar for Bulk Selection */}
       {selectedItemIds.length > 0 && (
         <div className="flex items-center justify-between p-2.5 px-4 bg-stone-100 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xs text-xs animate-in fade-in duration-150">
           <span className="font-semibold text-stone-800 dark:text-zinc-200">
@@ -295,168 +290,39 @@ export function DatabaseTableView({
 
               {/* Dynamic Property Column Headers */}
               {nonTitleProps.map((prop) => (
-                <th
+                <ColumnHeaderCell
                   key={prop.id}
-                  className="py-2.5 px-3 min-w-[150px] border-r border-stone-200/70 dark:border-zinc-800/70 font-medium relative group"
-                >
-                  <div className="flex items-center justify-between">
-                    {editingHeaderId === prop.id ? (
-                      <input
-                        type="text"
-                        value={headerTitle}
-                        onChange={(e) => setHeaderTitle(e.target.value)}
-                        onBlur={() => {
-                          if (onUpdateProperty) onUpdateProperty(prop.id, { name: headerTitle });
-                          setEditingHeaderId(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && onUpdateProperty) {
-                            onUpdateProperty(prop.id, { name: headerTitle });
-                            setEditingHeaderId(null);
-                          }
-                        }}
-                        className="w-full px-1 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-medium"
-                        autoFocus
-                      />
-                    ) : (
-                      <div
-                        onClick={() => {
-                          if (!readOnly) {
-                            setEditingHeaderId(prop.id);
-                            setHeaderTitle(prop.name);
-                          }
-                        }}
-                        className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 cursor-pointer hover:text-stone-950 dark:hover:text-white"
-                      >
-                        <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
-                        <span>{prop.name}</span>
-                      </div>
-                    )}
-
-                    {!readOnly && (
-                      <button
-                        onClick={() => {
-                          const menuId = `col-${prop.id}`;
-                          setActiveOpenMenuId(activeOpenMenuId === menuId ? null : menuId);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 transition-opacity cursor-pointer"
-                      >
-                        <MoreHorizontal className="w-3.5 h-3.5 text-stone-400" />
-                      </button>
-                    )}
-
-                    {/* Column Dropdown Menu */}
-                    {activeOpenMenuId === `col-${prop.id}` && (
-                      <div className="absolute right-2 top-8 z-40 bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xl py-1.5 min-w-[160px] animate-in fade-in duration-100">
-                        <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
-                          Property Options
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            setEditingHeaderId(prop.id);
-                            setHeaderTitle(prop.name);
-                            setActiveOpenMenuId(null);
-                          }}
-                          className="w-full text-left px-3 py-1.5 text-xs text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60 flex items-center gap-2"
-                        >
-                          <Edit2 className="w-3.5 h-3.5 text-stone-400" />
-                          <span>Rename Column</span>
-                        </button>
-
-                        {/* Convert Type Submenu */}
-                        <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
-                          Change Type
-                        </div>
-                        {PROPERTY_TYPES.map((pt) => (
-                          <button
-                            key={pt.type}
-                            onClick={() => handleRequestConvertType(prop, pt.type)}
-                            className={`w-full text-left px-3 py-1 text-xs flex items-center gap-2 ${prop.type === pt.type ? 'bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] font-semibold' : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
-                          >
-                            <PropertyTypeIcon type={pt.type} className="w-3 h-3 text-stone-400" />
-                            <span>{pt.label}</span>
-                          </button>
-                        ))}
-
-                        <div className="border-t border-stone-100 dark:border-zinc-700/60 my-1" />
-
-                        <button
-                          onClick={() => handleRequestDeleteProperty(prop)}
-                          className="w-full text-left px-3 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Delete Column</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </th>
+                  prop={prop}
+                  readOnly={readOnly}
+                  editingHeaderId={editingHeaderId}
+                  headerTitle={headerTitle}
+                  setHeaderTitle={setHeaderTitle}
+                  setEditingHeaderId={setEditingHeaderId}
+                  onUpdateProperty={onUpdateProperty}
+                  activeOpenMenuId={activeOpenMenuId}
+                  setActiveOpenMenuId={setActiveOpenMenuId}
+                  handleRequestConvertType={handleRequestConvertType}
+                  handleRequestDeleteProperty={handleRequestDeleteProperty}
+                />
               ))}
 
               {/* Persistent + Button at Right Edge of Header */}
               {!readOnly && (
-                <th className="py-2.5 px-3 w-12 text-center font-normal relative">
-                  <button
-                    onClick={() => {
-                      setNewColName('Property');
-                      setNewColType('text');
-                      setActiveOpenMenuId(activeOpenMenuId === 'add-column' ? null : 'add-column');
-                    }}
-                    className="p-1 hover:bg-stone-200/80 dark:hover:bg-zinc-800 rounded-md text-stone-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                    title="Add property column"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-
-                  {activeOpenMenuId === 'add-column' && (
-                    <div className="absolute right-0 top-10 z-50 bg-white dark:bg-zinc-900 border border-stone-200/90 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 w-64 text-left font-sans animate-in fade-in duration-100 space-y-2">
-                      <div className="text-[10px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider px-1">
-                        Property Name
-                      </div>
-
-                      <input
-                        type="text"
-                        placeholder="Property name..."
-                        value={newColName}
-                        onChange={(e) => setNewColName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleCommitAddColumn();
-                          if (e.key === 'Escape') setActiveOpenMenuId(null);
-                        }}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800/80 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
-                        autoFocus
-                      />
-
-                      <div className="text-[10px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider px-1 pt-1">
-                        Select Type
-                      </div>
-
-                      <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
-                        {PROPERTY_TYPES.map((pt) => (
-                          <button
-                            key={pt.type}
-                            type="button"
-                            onClick={() => {
-                              onAddProperty(newColName.trim() || pt.label, pt.type);
-                              setActiveOpenMenuId(null);
-                            }}
-                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                          >
-                            <PropertyTypeIcon type={pt.type} className="w-3.5 h-3.5 text-stone-400" />
-                            <span>{pt.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </th>
+                <AddPropertyHeaderCell
+                  activeOpenMenuId={activeOpenMenuId}
+                  setActiveOpenMenuId={setActiveOpenMenuId}
+                  newColName={newColName}
+                  setNewColName={setNewColName}
+                  newColType={newColType}
+                  setNewColType={setNewColType}
+                  onAddProperty={onAddProperty}
+                />
               )}
             </tr>
           </thead>
 
           <tbody className="divide-y divide-stone-200/70 dark:divide-zinc-800/70">
-            {items.map((item, rowIndex) => (
+            {items.map((item) => (
               <tr key={item.id} className="group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors">
                 {/* Row Checkbox */}
                 <td className="py-2 px-3 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
@@ -491,7 +357,6 @@ export function DatabaseTableView({
                     />
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      {/* Open row as page button (Req #10) */}
                       {onOpenRowDrawer && (
                         <button
                           onClick={() => onOpenRowDrawer(item)}
@@ -505,7 +370,7 @@ export function DatabaseTableView({
                       {!readOnly && (
                         <button
                           onClick={() => onDeleteItem(item.id)}
-                          className="p-1 text-stone-400 hover:text-rose-500 transition-colors"
+                          className="p-1 text-stone-400 hover:text-rose-500 transition-colors cursor-pointer"
                           title="Delete Row"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -570,7 +435,7 @@ export function DatabaseTableView({
           </tbody>
         </table>
 
-        {/* Persistent + New Row Button (Req #8) */}
+        {/* Persistent + New Row Button */}
         {!readOnly && (
           <div className="p-2 border-t border-stone-200/70 dark:border-zinc-800/70 bg-stone-50/40 dark:bg-zinc-900/40">
             <button
@@ -584,7 +449,7 @@ export function DatabaseTableView({
         )}
       </div>
 
-      {/* Confirmation Dialog for Column Deletion (Req #3) */}
+      {/* Confirmation Dialog for Column Deletion */}
       {deleteConfirmProp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
@@ -600,7 +465,7 @@ export function DatabaseTableView({
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setDeleteConfirmProp(null)}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800"
+                className="px-4 py-2 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800 cursor-pointer"
               >
                 Cancel
               </button>
@@ -618,7 +483,7 @@ export function DatabaseTableView({
         </div>
       )}
 
-      {/* Property Conversion Preview Modal (Req #4) */}
+      {/* Property Conversion Preview Modal */}
       {conversionPreview && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
           <div className="bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
@@ -647,7 +512,7 @@ export function DatabaseTableView({
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
                 onClick={() => setConversionPreview(null)}
-                className="px-4 py-2 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800"
+                className="px-4 py-2 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800 cursor-pointer"
               >
                 Cancel
               </button>
@@ -667,6 +532,228 @@ export function DatabaseTableView({
         </div>
       )}
     </div>
+  );
+}
+
+function ColumnHeaderCell({
+  prop,
+  readOnly,
+  editingHeaderId,
+  headerTitle,
+  setHeaderTitle,
+  setEditingHeaderId,
+  onUpdateProperty,
+  activeOpenMenuId,
+  setActiveOpenMenuId,
+  handleRequestConvertType,
+  handleRequestDeleteProperty,
+}: {
+  prop: DatabaseProperty;
+  readOnly: boolean;
+  editingHeaderId: string | null;
+  headerTitle: string;
+  setHeaderTitle: (title: string) => void;
+  setEditingHeaderId: (id: string | null) => void;
+  onUpdateProperty?: (id: string, updates: Partial<DatabaseProperty>) => void;
+  activeOpenMenuId: string | null;
+  setActiveOpenMenuId: (id: string | null) => void;
+  handleRequestConvertType: (prop: DatabaseProperty, targetType: string) => void;
+  handleRequestDeleteProperty: (prop: DatabaseProperty) => void;
+}) {
+  const moreBtnRef = useRef<HTMLButtonElement>(null);
+  const isOpen = activeOpenMenuId === `col-${prop.id}`;
+
+  return (
+    <th className="py-2.5 px-3 min-w-[150px] border-r border-stone-200/70 dark:border-zinc-800/70 font-medium relative group">
+      <div className="flex items-center justify-between">
+        {editingHeaderId === prop.id ? (
+          <input
+            type="text"
+            value={headerTitle}
+            onChange={(e) => setHeaderTitle(e.target.value)}
+            onBlur={() => {
+              if (onUpdateProperty) onUpdateProperty(prop.id, { name: headerTitle });
+              setEditingHeaderId(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && onUpdateProperty) {
+                onUpdateProperty(prop.id, { name: headerTitle });
+                setEditingHeaderId(null);
+              }
+            }}
+            className="w-full px-1 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-medium"
+            autoFocus
+          />
+        ) : (
+          <div
+            onClick={() => {
+              if (!readOnly) {
+                setEditingHeaderId(prop.id);
+                setHeaderTitle(prop.name);
+              }
+            }}
+            className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 cursor-pointer hover:text-stone-950 dark:hover:text-white"
+          >
+            <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
+            <span>{prop.name}</span>
+          </div>
+        )}
+
+        {!readOnly && (
+          <button
+            ref={moreBtnRef}
+            onClick={() => {
+              setActiveOpenMenuId(isOpen ? null : `col-${prop.id}`);
+            }}
+            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 transition-opacity cursor-pointer"
+          >
+            <MoreHorizontal className="w-3.5 h-3.5 text-stone-400" />
+          </button>
+        )}
+
+        <DatabasePopover
+          isOpen={isOpen}
+          onClose={() => setActiveOpenMenuId(null)}
+          triggerRef={moreBtnRef}
+          align="right"
+          width={180}
+        >
+          <div className="py-1 min-w-[160px] text-left">
+            <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
+              Property Options
+            </div>
+
+            <button
+              onClick={() => {
+                setEditingHeaderId(prop.id);
+                setHeaderTitle(prop.name);
+                setActiveOpenMenuId(null);
+              }}
+              className="w-full text-left px-3 py-1.5 text-xs text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60 flex items-center gap-2 cursor-pointer"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-stone-400" />
+              <span>Rename Column</span>
+            </button>
+
+            <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
+              Change Type
+            </div>
+            {PROPERTY_TYPES.map((pt) => (
+              <button
+                key={pt.type}
+                onClick={() => handleRequestConvertType(prop, pt.type)}
+                className={`w-full text-left px-3 py-1 text-xs flex items-center gap-2 cursor-pointer ${prop.type === pt.type ? 'bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] font-semibold' : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
+              >
+                <PropertyTypeIcon type={pt.type} className="w-3 h-3 text-stone-400" />
+                <span>{pt.label}</span>
+              </button>
+            ))}
+
+            <div className="border-t border-stone-100 dark:border-zinc-700/60 my-1" />
+
+            <button
+              onClick={() => handleRequestDeleteProperty(prop)}
+              className="w-full text-left px-3 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Column</span>
+            </button>
+          </div>
+        </DatabasePopover>
+      </div>
+    </th>
+  );
+}
+
+function AddPropertyHeaderCell({
+  activeOpenMenuId,
+  setActiveOpenMenuId,
+  newColName,
+  setNewColName,
+  newColType,
+  setNewColType,
+  onAddProperty,
+}: {
+  activeOpenMenuId: string | null;
+  setActiveOpenMenuId: (id: string | null) => void;
+  newColName: string;
+  setNewColName: (name: string) => void;
+  newColType: string;
+  setNewColType: (type: string) => void;
+  onAddProperty: (name: string, type: string) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const isOpen = activeOpenMenuId === 'add-column';
+
+  return (
+    <th className="py-2.5 px-3 w-12 text-center font-normal relative">
+      <button
+        ref={buttonRef}
+        onClick={() => {
+          setNewColName('Property');
+          setNewColType('text');
+          setActiveOpenMenuId(isOpen ? null : 'add-column');
+        }}
+        className="p-1 hover:bg-stone-200/80 dark:hover:bg-zinc-800 rounded-md text-stone-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+        title="Add property column"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
+
+      <DatabasePopover
+        isOpen={isOpen}
+        onClose={() => setActiveOpenMenuId(null)}
+        triggerRef={buttonRef}
+        align="right"
+        width={250}
+      >
+        <div className="space-y-2 p-1 font-sans text-left">
+          <div className="text-[10px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider px-1">
+            Property Name
+          </div>
+
+          <input
+            type="text"
+            placeholder="Property name..."
+            value={newColName}
+            onChange={(e) => setNewColName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (newColName.trim()) {
+                  onAddProperty(newColName.trim(), newColType);
+                  setActiveOpenMenuId(null);
+                }
+              }
+              if (e.key === 'Escape') setActiveOpenMenuId(null);
+            }}
+            className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800/80 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
+            autoFocus
+          />
+
+          <div className="text-[10px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider px-1 pt-1">
+            Select Type
+          </div>
+
+          <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
+            {PROPERTY_TYPES.map((pt) => (
+              <button
+                key={pt.type}
+                type="button"
+                onClick={() => {
+                  onAddProperty(newColName.trim() || pt.label, pt.type);
+                  setActiveOpenMenuId(null);
+                }}
+                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                <PropertyTypeIcon type={pt.type} className="w-3.5 h-3.5 text-stone-400" />
+                <span>{pt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </DatabasePopover>
+    </th>
   );
 }
 
@@ -693,6 +780,7 @@ function InteractiveCell({
 }: InteractiveCellProps) {
   const [localIsOpen, setLocalIsOpen] = useState(false);
   const [newOptionInput, setNewOptionInput] = useState('');
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   const isPopoverOpen = isPopoverOpenProp !== undefined ? isPopoverOpenProp : localIsOpen;
 
@@ -771,11 +859,11 @@ function InteractiveCell({
         if (!newOptionInput.trim()) return;
         onAddOption(newOptionInput.trim());
         setNewOptionInput('');
-        closePopover(); // REQUIREMENT 1: Close menu when a new option is created
+        closePopover();
       };
 
       return (
-        <div className="relative">
+        <div className="relative" ref={triggerRef}>
           <div
             onClick={() => !readOnly && togglePopover()}
             className="flex flex-wrap gap-1 items-center px-1.5 py-1 min-h-[26px] cursor-pointer hover:bg-stone-100/60 dark:hover:bg-zinc-800/60 rounded-md transition-colors"
@@ -799,9 +887,13 @@ function InteractiveCell({
             )}
           </div>
 
-          {/* Option Creation & Selection Popover */}
-          {isPopoverOpen && (
-            <div className="absolute left-0 top-8 z-40 bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xl p-2 w-52 space-y-2 animate-in fade-in duration-100 font-sans">
+          <DatabasePopover
+            isOpen={isPopoverOpen}
+            onClose={closePopover}
+            triggerRef={triggerRef}
+            width={220}
+          >
+            <div className="p-1 space-y-2 font-sans text-left">
               <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider px-1">
                 Select or create option
               </div>
@@ -818,10 +910,10 @@ function InteractiveCell({
                           onChange(next);
                         } else {
                           onChange(opt.id);
-                          closePopover(); // REQUIREMENT 1: Close menu when option selected
+                          closePopover();
                         }
                       }}
-                      className={`w-full text-left px-2 py-1 rounded-md text-xs flex items-center justify-between font-medium ${isChecked ? 'bg-stone-100 dark:bg-zinc-700' : 'hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
+                      className={`w-full text-left px-2 py-1 rounded-md text-xs flex items-center justify-between font-medium cursor-pointer ${isChecked ? 'bg-stone-100 dark:bg-zinc-700' : 'hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
                       style={{ color: opt.color }}
                     >
                       <span>{opt.name}</span>
@@ -857,7 +949,7 @@ function InteractiveCell({
                 )}
               </div>
             </div>
-          )}
+          </DatabasePopover>
         </div>
       );
     }
