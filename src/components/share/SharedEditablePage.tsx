@@ -49,7 +49,8 @@ export function SharedEditablePage({ page }: SharedEditablePageProps) {
     }
     saveTimeoutRef.current = setTimeout(() => {
       flushSave(newTitle);
-    }, 500);
+    }, 1200);
+
   };
 
   const handleTitleBlur = () => {

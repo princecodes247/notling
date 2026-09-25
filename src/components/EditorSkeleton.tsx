@@ -4,7 +4,7 @@ export const EditorSkeleton: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] overflow-hidden select-none font-sans">
       {/* Header Bar Skeleton */}
-      <header className="h-12 border-b border-stone-200/80 dark:border-zinc-800/80 px-4 sm:px-6 md:px-12 flex items-center justify-between bg-[#fdfcf9]/80 dark:bg-[#18181b]/80 shrink-0">
+      <header className="h-12 border-b border-stone-200/80 dark:border-zinc-800/80 px-4 sm:px-6 md:px-4 flex items-center justify-between bg-[#fdfcf9]/80 dark:bg-[#18181b]/80 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded bg-stone-200/70 dark:bg-zinc-800 animate-pulse" />
           <div className="w-36 h-4 rounded bg-stone-200/80 dark:bg-zinc-800 animate-pulse" />

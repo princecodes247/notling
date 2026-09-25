@@ -541,7 +541,7 @@ function DashboardLayout() {
           />
 
           {/* Main Content Outlet */}
-          <main className="flex-1 pt-4 sm:pt-8 overflow-hidden relative flex flex-col min-h-0 bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-stone-800/80 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
+          <main className="flex-1 overflow-hidden relative flex flex-col min-h-0 bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-stone-800/80 rounded-xl max-sm:rounded-none mt-1 max-sm:mt-0 shadow-xs pb-0">
             <Outlet />
           </main>
         </div>

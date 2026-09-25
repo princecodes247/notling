@@ -14,6 +14,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { EmojiPicker } from './EmojiPicker';
 import { exportPageToMarkdown } from '~/lib/pageExport';
+import { inferEmojiFromTitle, isDefaultOrInferredIcon } from '~/lib/emojiUtils';
+import { updateClientPageMeta } from '~/lib/pageMetaSync';
+
 
 interface PageTreeItemProps {
   node: PageTreeNode;
@@ -114,14 +117,32 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
 
   const isDraggingCurrent = draggedPageId === node.id;
 
+  const pendingTreeSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleTitleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (pendingTreeSaveTimeoutRef.current) {
+      clearTimeout(pendingTreeSaveTimeoutRef.current);
+      pendingTreeSaveTimeoutRef.current = null;
+    }
     const trimmed = editTitle.trim();
-    if (trimmed && trimmed !== displayTitle) {
-      onUpdateMeta(node.id, trimmed, displayIcon);
+    if (trimmed && (trimmed !== node.title || displayIcon !== (node.icon || '📄'))) {
+      const isFolderNode = rawIcon === '📁' || rawIcon === '📂';
+      let targetIcon = displayIcon;
+      if (isDefaultOrInferredIcon(rawIcon, displayTitle, { isFolder: isFolderNode })) {
+        targetIcon = inferEmojiFromTitle(trimmed, { isFolder: isFolderNode });
+      }
+      updateClientPageMeta(queryClient, {
+        pageId: node.id,
+        title: trimmed,
+        icon: targetIcon,
+      });
+      onUpdateMeta(node.id, trimmed, targetIcon);
     }
     setIsEditing(false);
   };
+
+
 
   const handleSelectIcon = (selectedIcon: string) => {
     setShowEmojiPicker(false);
@@ -292,7 +313,30 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               <input
                 type="text"
                 value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setEditTitle(val);
+                  const isFolderNode = rawIcon === '📁' || rawIcon === '📂';
+                  let inferred = displayIcon;
+                  if (isDefaultOrInferredIcon(rawIcon, displayTitle, { isFolder: isFolderNode })) {
+                    inferred = inferEmojiFromTitle(val, { isFolder: isFolderNode });
+                  }
+                  // 1. Instant client-side UI update (Zustand + query cache) — NO DB API call!
+                  updateClientPageMeta(queryClient, {
+                    pageId: node.id,
+                    title: val,
+                    icon: inferred,
+                  });
+                  // 2. Debounce DB API call (1200ms after typing stops)
+                  if (pendingTreeSaveTimeoutRef.current) {
+                    clearTimeout(pendingTreeSaveTimeoutRef.current);
+                  }
+                  pendingTreeSaveTimeoutRef.current = setTimeout(() => {
+                    onUpdateMeta(node.id, val.trim() || displayTitle, inferred);
+                  }, 1200);
+                }}
+
+
                 onBlur={() => handleTitleSubmit()}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {

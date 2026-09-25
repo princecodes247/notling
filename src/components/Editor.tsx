@@ -33,6 +33,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
 import { EmojiPicker } from './EmojiPicker';
+import { inferEmojiFromTitle, isDefaultOrInferredIcon } from '~/lib/emojiUtils';
 import { clsx } from 'clsx';
 
 function formatRelativeTime(dateInput?: string | Date | null): string {
@@ -66,6 +67,7 @@ export const Editor: React.FC<EditorProps> = ({
   const { saveStatus, setSaveStatus, setActivePageId } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || '📄');
+  const [isCustomIcon, setIsCustomIcon] = useState(() => !isDefaultOrInferredIcon(page.icon, page.title, { isFolder: page.icon === '📁' || page.icon === '📂' }));
   const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
   const [isPinned, setIsPinned] = useState(!!(page as any).isPinned);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -80,7 +82,9 @@ export const Editor: React.FC<EditorProps> = ({
 
   useEffect(() => {
     setTitle(page.title);
-    setIcon(page.icon || '📄');
+    const initialIcon = page.icon || '📄';
+    setIcon(initialIcon);
+    setIsCustomIcon(!isDefaultOrInferredIcon(initialIcon, page.title, { isFolder: initialIcon === '📁' || initialIcon === '📂' }));
     setVisibility((page as any).visibility || 'workspace');
     setIsPinned(!!(page as any).isPinned);
   }, [page.id, page.title, page.icon, (page as any).visibility, (page as any).isPinned]);
@@ -120,10 +124,13 @@ export const Editor: React.FC<EditorProps> = ({
     if (document.activeElement !== titleInputRef.current) {
       setTitle(page.title);
     }
-    setIcon(page.icon || '📄');
+    const currentIcon = page.icon || '📄';
+    setIcon(currentIcon);
+    setIsCustomIcon(!isDefaultOrInferredIcon(currentIcon, page.title, { isFolder: currentIcon === '📁' || currentIcon === '📂' }));
     setVisibility((page as any).visibility || 'workspace');
     setIsPinned(!!(page as any).isPinned);
   }, [page.id, page.title, page.icon, (page as any).visibility, (page as any).isPinned]);
+
 
   // Query active collaborators
   const { data: activeUsers = [] } = useQuery({
@@ -280,20 +287,32 @@ export const Editor: React.FC<EditorProps> = ({
     setTitle(newTitle);
     latestMetaRef.current.title = newTitle;
 
+    let targetIcon = latestMetaRef.current.icon;
+    const isFolderCurrent = targetIcon === '📁' || targetIcon === '📂';
+    if (!isCustomIcon || isDefaultOrInferredIcon(targetIcon, newTitle, { isFolder: isFolderCurrent })) {
+      const inferred = inferEmojiFromTitle(newTitle, { isFolder: isFolderCurrent });
+      if (inferred && inferred !== targetIcon) {
+        targetIcon = inferred;
+        setIcon(targetIcon);
+        latestMetaRef.current.icon = targetIcon;
+      }
+    }
+
     updateClientPageMeta(queryClient, {
       pageId: page.id,
       title: newTitle,
-      icon: latestMetaRef.current.icon,
+      icon: targetIcon,
     });
-    onTitleOrIconChange?.(newTitle, latestMetaRef.current.icon);
+    onTitleOrIconChange?.(newTitle, targetIcon);
 
     setSaveStatus('saving');
     if (pendingSaveTimeoutRef.current) {
       clearTimeout(pendingSaveTimeoutRef.current);
     }
     pendingSaveTimeoutRef.current = setTimeout(() => {
-      flushSaveMeta(newTitle, latestMetaRef.current.icon);
-    }, 500);
+      flushSaveMeta(newTitle, targetIcon);
+    }, 1200);
+
   };
 
   const handleTitleBlur = () => {
@@ -305,6 +324,7 @@ export const Editor: React.FC<EditorProps> = ({
     if (isReadOnly) return;
     setIcon(selectedIcon);
     latestMetaRef.current.icon = selectedIcon;
+    setIsCustomIcon(!isDefaultOrInferredIcon(selectedIcon, latestMetaRef.current.title, { isFolder: selectedIcon === '📁' || selectedIcon === '📂' }));
     setShowEmojiPicker(false);
 
     updateClientPageMeta(queryClient, {
@@ -317,8 +337,9 @@ export const Editor: React.FC<EditorProps> = ({
     flushSaveMeta(latestMetaRef.current.title, selectedIcon);
   };
 
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-stone-100 overflow-hidden relative -mt-4 sm:-mt-8">
+    <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-stone-100 overflow-hidden relative">
       {/* 2. Top Header Strip (Updated to match DashboardMockup 1:1) */}
       <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
         {/* Left: Breadcrumb Trail */}

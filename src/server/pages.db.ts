@@ -5,6 +5,7 @@ import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
 import { sanitizeServerError } from './errors';
+import { inferEmojiFromTitle } from '~/lib/emojiUtils';
 
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -542,20 +543,27 @@ export async function createNewPage(input: {
       .limit(1);
 
     const nextOrder = existingInParent.length > 0 ? existingInParent[0].order + 1 : 0;
+    const pageTitle = input.title || 'Untitled';
+    const isFolderInput = input.icon === '📁' || input.icon === '📂';
+    const defaultIcon = isFolderInput ? '📁' : '📄';
+    const finalIcon = input.icon && input.icon !== '📄' && input.icon !== '📁'
+      ? input.icon
+      : (inferEmojiFromTitle(pageTitle, { isFolder: isFolderInput }) || defaultIcon);
 
     const [newPage] = await db
       .insert(pages)
       .values({
         workspaceId: targetWorkspaceId,
         parentId: input.parentId || null,
-        title: input.title || 'Untitled',
-        icon: input.icon || '📄',
+        title: pageTitle,
+        icon: finalIcon,
         visibility: input.visibility || 'workspace',
         order: nextOrder,
         content: [],
         contentText: '',
       })
       .returning();
+
 
     return newPage;
   } catch (err) {
