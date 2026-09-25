@@ -9,6 +9,7 @@ import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
+import { createDatabase } from '~/server/databases';
 import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
@@ -322,6 +323,21 @@ function DashboardLayout() {
     },
   });
 
+  // Create Database Mutation
+  const createDatabaseMutation = useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) return null;
+      return await createDatabase({ data: { workspaceId, title: 'Projects & Tasks Database' } });
+    },
+    onSuccess: (newDb) => {
+      if (newDb) {
+        queryClient.invalidateQueries({ queryKey: ['databases'] });
+        navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+        closeSidebarOnMobile();
+      }
+    },
+  });
+
   // Fetch Trash Pages
   const { data: trashPages = [] } = useQuery({
     queryKey: ['trashPages', workspaceId],
@@ -498,6 +514,11 @@ function DashboardLayout() {
                 onCreatePage={(parentId) => {
                   if (createPageMutation.isPending) return;
                   createPageMutation.mutate(parentId);
+                  closeSidebarOnMobile();
+                }}
+                onCreateDatabase={() => {
+                  if (createDatabaseMutation.isPending) return;
+                  createDatabaseMutation.mutate();
                   closeSidebarOnMobile();
                 }}
                 onSelectPage={(id) => {

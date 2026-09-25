@@ -25,6 +25,7 @@ import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
 import { useIsMobile } from '~/hooks/useIsMobile';
+import { createDatabase } from '~/server/databases';
 import {
   Search,
   ChevronRight,
@@ -49,6 +50,8 @@ import {
   FileText as FileTextIcon,
   Camera as CameraIcon,
   Sparkles as SparklesIcon,
+  Table as TableIcon,
+  Kanban as KanbanIcon,
 } from 'lucide-react';
 import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
 
@@ -1060,11 +1063,68 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         },
       ];
 
+      const customDatabaseItems: any[] = [
+        {
+          title: 'Database Table',
+          subtext: 'Create a full interactive database with table, board, and form views',
+          aliases: ['database', 'db', 'table', 'grid', 'data'],
+          group: 'Databases & Forms',
+          icon: <TableIcon className="w-4 h-4 text-blue-500" />,
+          onItemClick: async () => {
+            if (!page.workspaceId) return;
+            const newDb = await createDatabase({
+              data: {
+                workspaceId: page.workspaceId,
+                pageId: page.id,
+                title: `${page.title || 'Page'} Database`,
+              },
+            });
+            navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+          },
+        },
+        {
+          title: 'Kanban Board',
+          subtext: 'Create a Kanban board view grouped by status or custom tags',
+          aliases: ['board', 'kanban', 'cards', 'status', 'project'],
+          group: 'Databases & Forms',
+          icon: <KanbanIcon className="w-4 h-4 text-purple-500" />,
+          onItemClick: async () => {
+            if (!page.workspaceId) return;
+            const newDb = await createDatabase({
+              data: {
+                workspaceId: page.workspaceId,
+                pageId: page.id,
+                title: `${page.title || 'Page'} Board`,
+              },
+            });
+            navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+          },
+        },
+        {
+          title: 'Database Form',
+          subtext: 'Create a shareable public form to collect submissions into database',
+          aliases: ['form', 'survey', 'submit', 'response', 'feedback'],
+          group: 'Databases & Forms',
+          icon: <FileTextIcon className="w-4 h-4 text-emerald-500" />,
+          onItemClick: async () => {
+            if (!page.workspaceId) return;
+            const newDb = await createDatabase({
+              data: {
+                workspaceId: page.workspaceId,
+                pageId: page.id,
+                title: `${page.title || 'Page'} Form Database`,
+              },
+            });
+            navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+          },
+        },
+      ];
+
       const filteredDefaults = defaultItems.filter(
         (item) => !['Image', 'Video', 'File', 'Audio'].includes(item.title)
       );
 
-      return filterSuggestionItems([...filteredDefaults, ...customMediaItems], query);
+      return filterSuggestionItems([...filteredDefaults, ...customMediaItems, ...customDatabaseItems], query);
     },
     [editor]
   );
