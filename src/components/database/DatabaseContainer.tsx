@@ -1,28 +1,29 @@
 import React, { useState, useMemo } from 'react';
-import type { FullDatabase, DatabaseProperty, DatabaseItem, DatabaseView, DatabaseForm } from '~/db/schema';
+import type { FullDatabase, DatabaseItem, DatabaseProperty } from '~/db/schema';
 import { DatabaseTableView } from './DatabaseTableView';
 import { DatabaseBoardView } from './DatabaseBoardView';
 import { DatabaseFormView } from './DatabaseFormView';
+import { DatabaseRowDrawer } from './DatabaseRowDrawer';
 import {
   Table,
   Kanban,
   FileText,
   Plus,
   Search,
-  Filter,
-  ArrowUpDown,
-  MoreHorizontal,
-  Sparkles,
+  SlidersHorizontal,
   Trash2,
-  Share2,
+  Sparkles,
 } from 'lucide-react';
 import {
   updateDatabase,
   createDatabaseProperty,
+  updateDatabaseProperty,
   deleteDatabaseProperty,
+  convertDatabasePropertyType,
   createDatabaseItem,
   updateDatabaseItem,
   deleteDatabaseItem,
+  deleteDatabaseItemsBulk,
   createDatabaseView,
   updateDatabaseView,
   deleteDatabaseView,
@@ -44,6 +45,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
   const [addingView, setAddingView] = useState(false);
   const [newViewName, setNewViewName] = useState('');
   const [newViewType, setNewViewType] = useState<'table' | 'board' | 'form'>('table');
+  const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
 
   const activeView = useMemo(
     () => dbData.views.find((v) => v.id === activeViewId) || dbData.views[0],
@@ -52,7 +54,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
 
   const activeForm = useMemo(() => dbData.forms[0], [dbData.forms]);
 
-  // Search filtering
+  // Filter items based on search query
   const filteredItems = useMemo(() => {
     if (!searchQuery.trim()) return dbData.items;
     const q = searchQuery.toLowerCase();
@@ -64,31 +66,49 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
     });
   }, [dbData.items, searchQuery]);
 
-  // Handlers for Items
+  // Handlers for Items (100% Optimistic)
   const handleAddItem = async (initialProps: Record<string, any> = {}) => {
+    const tempId = crypto.randomUUID();
     const titleProp = dbData.properties.find((p) => p.type === 'title');
-    const defaultTitle = 'New Item';
+    const defaultTitle = 'Untitled';
     const mergedProps = {
       ...(titleProp ? { [titleProp.id]: defaultTitle } : {}),
       ...initialProps,
     };
 
-    const newItem = await createDatabaseItem({
-      data: {
-        databaseId: dbData.database.id,
-        title: defaultTitle,
-        properties: mergedProps,
-      },
-    });
+    const optimisticItem: DatabaseItem = {
+      id: tempId,
+      databaseId: dbData.database.id,
+      pageId: null,
+      title: defaultTitle,
+      properties: mergedProps,
+      content: [],
+      order: dbData.items.length,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
 
+    // Immediately update client state (0ms latency!)
     setDbData((prev) => ({
       ...prev,
-      items: [...prev.items, newItem],
+      items: [...prev.items, optimisticItem],
     }));
+
+    try {
+      await createDatabaseItem({
+        data: {
+          id: tempId,
+          databaseId: dbData.database.id,
+          title: defaultTitle,
+          properties: mergedProps,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to save row to server:', err);
+    }
   };
 
   const handleUpdateItem = async (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => {
-    // Optimistic UI update
     setDbData((prev) => ({
       ...prev,
       items: prev.items.map((i) =>
@@ -119,19 +139,72 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
     await deleteDatabaseItem({ data: itemId });
   };
 
-  // Handlers for Properties
+  const handleDeleteItemsBulk = async (itemIds: string[]) => {
+    setDbData((prev) => ({
+      ...prev,
+      items: prev.items.filter((i) => !itemIds.includes(i.id)),
+    }));
+
+    await deleteDatabaseItemsBulk({ data: itemIds });
+  };
+
+  // Handlers for Properties (100% Optimistic)
   const handleAddProperty = async (name: string, type: string) => {
-    const newProp = await createDatabaseProperty({
+    const tempPropId = crypto.randomUUID();
+    const optimisticProp: DatabaseProperty = {
+      id: tempPropId,
+      databaseId: dbData.database.id,
+      name,
+      type: type as any,
+      options: [],
+      order: dbData.properties.length,
+    };
+
+    // Immediately update client state (0ms latency!)
+    setDbData((prev) => ({
+      ...prev,
+      properties: [...prev.properties, optimisticProp],
+    }));
+
+    try {
+      await createDatabaseProperty({
+        data: {
+          id: tempPropId,
+          databaseId: dbData.database.id,
+          name,
+          type,
+        },
+      });
+    } catch (err) {
+      console.error('Failed to save property to server:', err);
+    }
+  };
+
+  const handleUpdateProperty = async (propertyId: string, updates: Partial<DatabaseProperty>) => {
+    setDbData((prev) => ({
+      ...prev,
+      properties: prev.properties.map((p) => (p.id === propertyId ? { ...p, ...updates } : p)),
+    }));
+
+    await updateDatabaseProperty({
       data: {
-        databaseId: dbData.database.id,
-        name,
-        type,
+        propertyId,
+        updates,
+      },
+    });
+  };
+
+  const handleConvertPropertyType = async (propertyId: string, targetType: string) => {
+    const updatedProp = await convertDatabasePropertyType({
+      data: {
+        propertyId,
+        targetType,
       },
     });
 
     setDbData((prev) => ({
       ...prev,
-      properties: [...prev.properties, newProp],
+      properties: prev.properties.map((p) => (p.id === propertyId ? { ...p, type: updatedProp.type } : p)),
     }));
   };
 
@@ -213,40 +286,40 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
   };
 
   return (
-    <div className="w-full space-y-4 my-4 font-sans text-neutral-900 dark:text-neutral-100">
-      {/* Database Title & Info Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-3">
-        <div className="flex items-center gap-2">
+    <div className="w-full space-y-4 font-sans text-stone-900 dark:text-zinc-100">
+      {/* Database Title Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 dark:border-zinc-800/80 pb-3">
+        <div className="flex items-center gap-2.5">
           <span className="text-2xl">{dbData.database.icon || '📊'}</span>
           <div>
-            <h2 className="text-lg font-bold tracking-tight leading-none">
+            <h1 className="text-xl font-bold tracking-tight text-stone-950 dark:text-white">
               {dbData.database.title}
-            </h2>
+            </h1>
             {dbData.database.description && (
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1">
+              <p className="text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
                 {dbData.database.description}
               </p>
             )}
           </div>
         </div>
 
-        {/* Search bar */}
+        {/* Toolbar Controls */}
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
             <input
               type="text"
-              placeholder="Filter database..."
+              placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:outline-none focus:ring-1 focus:ring-blue-500 w-44 md:w-56"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200/80 dark:border-zinc-800 bg-stone-50/60 dark:bg-zinc-900/60 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d] w-40 sm:w-52"
             />
           </div>
 
           {!readOnly && (
             <button
               onClick={() => handleAddItem()}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-xs"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New</span>
@@ -255,8 +328,8 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
         </div>
       </div>
 
-      {/* View Tabs Bar */}
-      <div className="flex items-center justify-between border-b border-neutral-200 dark:border-neutral-800 pb-1 overflow-x-auto">
+      {/* View Switcher Tabs Bar */}
+      <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 pb-1 overflow-x-auto select-none">
         <div className="flex items-center gap-1">
           {dbData.views.map((view) => {
             const isActive = view.id === activeView?.id;
@@ -264,7 +337,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
               <div key={view.id} className="relative group flex items-center">
                 <button
                   onClick={() => setActiveViewId(view.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${isActive ? 'bg-neutral-200/70 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 font-semibold' : 'text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800/50'}`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-stone-200/80 dark:bg-zinc-800 text-stone-950 dark:text-white font-semibold' : 'text-stone-600 dark:text-zinc-400 hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'}`}
                 >
                   {view.type === 'table' && <Table className="w-3.5 h-3.5 text-blue-500" />}
                   {view.type === 'board' && <Kanban className="w-3.5 h-3.5 text-purple-500" />}
@@ -275,7 +348,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
                 {!readOnly && dbData.views.length > 1 && (
                   <button
                     onClick={() => handleDeleteView(view.id)}
-                    className="opacity-0 group-hover:opacity-100 ml-0.5 p-1 text-neutral-400 hover:text-red-500 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 ml-0.5 p-1 text-stone-400 hover:text-rose-500 transition-opacity"
                     title="Delete View"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -289,19 +362,19 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
           {!readOnly && (
             <div>
               {addingView ? (
-                <form onSubmit={handleAddViewSubmit} className="flex items-center gap-1">
+                <form onSubmit={handleAddViewSubmit} className="flex items-center gap-1 pl-2">
                   <input
                     type="text"
                     placeholder="View name..."
                     value={newViewName}
                     onChange={(e) => setNewViewName(e.target.value)}
-                    className="px-2 py-1 text-xs border rounded bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
+                    className="px-2 py-1 text-xs border rounded-md bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100"
                     autoFocus
                   />
                   <select
                     value={newViewType}
                     onChange={(e) => setNewViewType(e.target.value as any)}
-                    className="px-1.5 py-1 text-xs border rounded bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700"
+                    className="px-1.5 py-1 text-xs border rounded-md bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-800 dark:text-zinc-200"
                   >
                     <option value="table">Table</option>
                     <option value="board">Board</option>
@@ -309,7 +382,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
                   </select>
                   <button
                     type="submit"
-                    className="px-2 py-1 text-xs bg-blue-600 text-white rounded font-medium"
+                    className="px-2.5 py-1 text-xs bg-[#1f4d3d] text-white rounded-md font-medium"
                   >
                     Add
                   </button>
@@ -317,7 +390,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
               ) : (
                 <button
                   onClick={() => setAddingView(true)}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-200 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Add View</span>
@@ -336,9 +409,13 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
             items={filteredItems}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
+            onDeleteItemsBulk={handleDeleteItemsBulk}
             onAddItem={handleAddItem}
             onAddProperty={handleAddProperty}
             onDeleteProperty={handleDeleteProperty}
+            onConvertPropertyType={handleConvertPropertyType}
+            onUpdateProperty={handleUpdateProperty}
+            onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             readOnly={readOnly}
           />
         )}
@@ -365,6 +442,18 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
           />
         )}
       </div>
+
+      {/* Row Page Drawer Modal (Req #10) */}
+      {selectedDrawerItem && (
+        <DatabaseRowDrawer
+          item={selectedDrawerItem}
+          properties={dbData.properties}
+          onClose={() => setSelectedDrawerItem(null)}
+          onUpdateItem={handleUpdateItem}
+          onDeleteItem={handleDeleteItem}
+          readOnly={readOnly}
+        />
+      )}
     </div>
   );
 }

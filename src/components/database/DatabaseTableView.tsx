@@ -1,235 +1,717 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
 import { PropertyTypeIcon } from './PropertyTypeIcon';
-import { Plus, Trash2, ChevronDown, Check, ExternalLink, MoreVertical } from 'lucide-react';
+import {
+  Plus,
+  Trash2,
+  MoreHorizontal,
+  ExternalLink,
+  Check,
+  Calendar,
+  Tag as TagIcon,
+  Maximize2,
+  ChevronDown,
+  Edit2,
+  RefreshCw,
+  AlertTriangle,
+  Undo2,
+} from 'lucide-react';
 
 interface DatabaseTableViewProps {
   properties: DatabaseProperty[];
   items: DatabaseItem[];
   onUpdateItem: (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => void;
   onDeleteItem: (itemId: string) => void;
+  onDeleteItemsBulk?: (itemIds: string[]) => void;
   onAddItem: () => void;
   onAddProperty: (name: string, type: string) => void;
   onDeleteProperty: (propertyId: string) => void;
+  onConvertPropertyType?: (propertyId: string, newType: string) => void;
+  onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
+  onOpenRowDrawer?: (item: DatabaseItem) => void;
   readOnly?: boolean;
 }
+
+const PROPERTY_TYPES = [
+  { type: 'text', label: 'Text' },
+  { type: 'number', label: 'Number' },
+  { type: 'status', label: 'Status' },
+  { type: 'select', label: 'Select' },
+  { type: 'multi_select', label: 'Multi-select' },
+  { type: 'date', label: 'Date' },
+  { type: 'checkbox', label: 'Checkbox' },
+  { type: 'url', label: 'URL' },
+  { type: 'email', label: 'Email' },
+];
+
+const AUTO_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#64748b'];
 
 export function DatabaseTableView({
   properties,
   items,
   onUpdateItem,
   onDeleteItem,
+  onDeleteItemsBulk,
   onAddItem,
   onAddProperty,
   onDeleteProperty,
+  onConvertPropertyType,
+  onUpdateProperty,
+  onOpenRowDrawer,
   readOnly = false,
 }: DatabaseTableViewProps) {
-  const [addingProperty, setAddingProperty] = useState(false);
-  const [newPropName, setNewPropName] = useState('');
-  const [newPropType, setNewPropType] = useState('text');
-  const [activeMenuPropId, setActiveMenuPropId] = useState<string | null>(null);
+  // Add Column Inline State
+  const [newColName, setNewColName] = useState('New Column');
+  const [newColType, setNewColType] = useState('text');
+
+  // Unified State-Aware Menu ID (no overlapping dropdowns ever!)
+  const [activeOpenMenuId, setActiveOpenMenuId] = useState<string | null>(null);
+
+  // Column Header Rename State
+  const [editingHeaderId, setEditingHeaderId] = useState<string | null>(null);
+  const [headerTitle, setHeaderTitle] = useState('');
+
+  // Column Delete Confirmation Dialog
+  const [deleteConfirmProp, setDeleteConfirmProp] = useState<{ id: string; name: string; count: number } | null>(null);
+
+  // Property Type Conversion Preview Dialog
+  const [conversionPreview, setConversionPreview] = useState<{
+    propId: string;
+    propName: string;
+    targetType: string;
+    total: number;
+    convertible: number;
+    lossy: number;
+  } | null>(null);
+
+  // Bulk Row Selection State
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+
+  // Cell Selection & Keyboard Navigation State
+  const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
+  const [isCellEditing, setIsCellEditing] = useState(false);
+
+  // Client-Side Undo Stack (Cmd+Z)
+  const [undoStack, setUndoStack] = useState<Array<{ type: string; payload: any }>>([]);
 
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
+  const allProps = titleProp ? [titleProp, ...nonTitleProps] : nonTitleProps;
 
-  const handleAddPropertySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPropName.trim()) return;
-    onAddProperty(newPropName.trim(), newPropType);
-    setNewPropName('');
-    setAddingProperty(false);
+  // Handle Cmd+Z Undo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+        if (undoStack.length > 0) {
+          e.preventDefault();
+          const lastAction = undoStack[undoStack.length - 1];
+          setUndoStack((prev) => prev.slice(0, -1));
+
+          if (lastAction.type === 'UPDATE_ITEM') {
+            onUpdateItem(lastAction.payload.itemId, lastAction.payload.previousState);
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoStack, onUpdateItem]);
+
+  // Handle Column Creation (One-click Persistent + Button)
+  const handleCommitAddColumn = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newColName.trim()) return;
+    onAddProperty(newColName.trim(), newColType);
+    setActiveOpenMenuId(null);
+  };
+
+  // Handle Column Deletion with smart data detection
+  const handleRequestDeleteProperty = (prop: DatabaseProperty) => {
+    const nonCount = items.filter((item) => {
+      const v = item.properties?.[prop.id];
+      return v !== undefined && v !== null && v !== '' && (!Array.isArray(v) || v.length > 0);
+    }).length;
+
+    if (nonCount > 0) {
+      setDeleteConfirmProp({ id: prop.id, name: prop.name, count: nonCount });
+    } else {
+      onDeleteProperty(prop.id);
+    }
+    setActiveOpenMenuId(null);
+  };
+
+  // Handle Property Type Conversion Preview
+  const handleRequestConvertType = (prop: DatabaseProperty, targetType: string) => {
+    setActiveOpenMenuId(null);
+    if (prop.type === targetType) return;
+
+    // Lossless conversions
+    const isLossless =
+      (prop.type === 'text' && targetType === 'select') ||
+      (prop.type === 'select' && targetType === 'text') ||
+      (prop.type === 'text' && targetType === 'multi_select') ||
+      (prop.type === 'number' && targetType === 'text');
+
+    if (isLossless) {
+      if (onConvertPropertyType) onConvertPropertyType(prop.id, targetType);
+      return;
+    }
+
+    // Evaluate lossy conversion statistics
+    let convertible = 0;
+    let lossy = 0;
+    const total = items.length;
+
+    items.forEach((item) => {
+      const v = item.properties?.[prop.id];
+      if (v === undefined || v === null || v === '') return;
+
+      if (targetType === 'number') {
+        if (!isNaN(Number(v))) convertible++;
+        else lossy++;
+      } else {
+        convertible++;
+      }
+    });
+
+    if (lossy > 0) {
+      setConversionPreview({
+        propId: prop.id,
+        propName: prop.name,
+        targetType,
+        total,
+        convertible,
+        lossy,
+      });
+    } else {
+      if (onConvertPropertyType) onConvertPropertyType(prop.id, targetType);
+    }
+  };
+
+  // Select all rows checkbox toggle
+  const handleToggleSelectAll = () => {
+    if (selectedItemIds.length === items.length) {
+      setSelectedItemIds([]);
+    } else {
+      setSelectedItemIds(items.map((i) => i.id));
+    }
+  };
+
+  const handleToggleSelectItem = (id: string) => {
+    if (selectedItemIds.includes(id)) {
+      setSelectedItemIds(selectedItemIds.filter((i) => i !== id));
+    } else {
+      setSelectedItemIds([...selectedItemIds, id]);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (onDeleteItemsBulk && selectedItemIds.length > 0) {
+      onDeleteItemsBulk(selectedItemIds);
+      setSelectedItemIds([]);
+    }
   };
 
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 shadow-sm text-sm">
-      <table className="w-full text-left border-collapse min-w-[700px]">
-        <thead>
-          <tr className="bg-neutral-50 dark:bg-neutral-800/50 border-b border-neutral-200 dark:border-neutral-800 text-xs font-medium text-neutral-500 dark:text-neutral-400">
-            {/* Title column header */}
-            <th className="py-2.5 px-3 w-64 border-r border-neutral-200 dark:border-neutral-800/60 font-semibold">
-              <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
-                <PropertyTypeIcon type={titleProp?.type || 'title'} className="w-3.5 h-3.5 text-neutral-400" />
-                <span>{titleProp?.name || 'Name'}</span>
-              </div>
-            </th>
+    <div className="w-full space-y-3 font-sans">
+      {/* Top Action Bar for Bulk Selection & Undo indicator */}
+      {selectedItemIds.length > 0 && (
+        <div className="flex items-center justify-between p-2.5 px-4 bg-stone-100 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xs text-xs animate-in fade-in duration-150">
+          <span className="font-semibold text-stone-800 dark:text-zinc-200">
+            {selectedItemIds.length} row{selectedItemIds.length > 1 ? 's' : ''} selected
+          </span>
 
-            {/* Dynamic property column headers */}
-            {nonTitleProps.map((prop) => (
-              <th
-                key={prop.id}
-                className="py-2.5 px-3 min-w-[140px] border-r border-neutral-200 dark:border-neutral-800/60 font-medium relative group"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-neutral-700 dark:text-neutral-300">
-                    <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-neutral-400" />
-                    <span>{prop.name}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedItemIds([])}
+              className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 dark:hover:text-zinc-100"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Grid Table */}
+      <div className="w-full overflow-x-auto rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-white dark:bg-[#18181b] shadow-2xs text-xs">
+        <table className="w-full text-left border-collapse min-w-[760px]">
+          <thead>
+            <tr className="bg-stone-50/90 dark:bg-zinc-900/80 border-b border-stone-200/80 dark:border-zinc-800/80 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
+              {/* Checkbox Column */}
+              <th className="py-2.5 px-3 w-10 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
+                <input
+                  type="checkbox"
+                  checked={items.length > 0 && selectedItemIds.length === items.length}
+                  onChange={handleToggleSelectAll}
+                  className="w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] focus:ring-[#1f4d3d] cursor-pointer"
+                />
+              </th>
+
+              {/* Title Column Header */}
+              <th className="py-2.5 px-3 w-64 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium">
+                {editingHeaderId === titleProp?.id ? (
+                  <input
+                    type="text"
+                    value={headerTitle}
+                    onChange={(e) => setHeaderTitle(e.target.value)}
+                    onBlur={() => {
+                      if (titleProp && onUpdateProperty) {
+                        onUpdateProperty(titleProp.id, { name: headerTitle });
+                      }
+                      setEditingHeaderId(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && titleProp && onUpdateProperty) {
+                        onUpdateProperty(titleProp.id, { name: headerTitle });
+                        setEditingHeaderId(null);
+                      }
+                    }}
+                    className="w-full px-1.5 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-semibold"
+                    autoFocus
+                  />
+                ) : (
+                  <div
+                    onClick={() => {
+                      if (!readOnly && titleProp) {
+                        setEditingHeaderId(titleProp.id);
+                        setHeaderTitle(titleProp.name);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-stone-800 dark:text-zinc-200 cursor-pointer hover:text-[#1f4d3d] font-semibold"
+                  >
+                    <PropertyTypeIcon type={titleProp?.type || 'title'} className="w-3.5 h-3.5 text-stone-400" />
+                    <span>{titleProp?.name || 'Name'}</span>
                   </div>
+                )}
+              </th>
 
-                  {!readOnly && (
-                    <button
-                      onClick={() => setActiveMenuPropId(activeMenuPropId === prop.id ? null : prop.id)}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-opacity"
-                    >
-                      <MoreVertical className="w-3.5 h-3.5 text-neutral-400" />
-                    </button>
-                  )}
+              {/* Dynamic Property Column Headers */}
+              {nonTitleProps.map((prop) => (
+                <th
+                  key={prop.id}
+                  className="py-2.5 px-3 min-w-[150px] border-r border-stone-200/70 dark:border-zinc-800/70 font-medium relative group"
+                >
+                  <div className="flex items-center justify-between">
+                    {editingHeaderId === prop.id ? (
+                      <input
+                        type="text"
+                        value={headerTitle}
+                        onChange={(e) => setHeaderTitle(e.target.value)}
+                        onBlur={() => {
+                          if (onUpdateProperty) onUpdateProperty(prop.id, { name: headerTitle });
+                          setEditingHeaderId(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && onUpdateProperty) {
+                            onUpdateProperty(prop.id, { name: headerTitle });
+                            setEditingHeaderId(null);
+                          }
+                        }}
+                        className="w-full px-1 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-medium"
+                        autoFocus
+                      />
+                    ) : (
+                      <div
+                        onClick={() => {
+                          if (!readOnly) {
+                            setEditingHeaderId(prop.id);
+                            setHeaderTitle(prop.name);
+                          }
+                        }}
+                        className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 cursor-pointer hover:text-stone-950 dark:hover:text-white"
+                      >
+                        <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
+                        <span>{prop.name}</span>
+                      </div>
+                    )}
 
-                  {activeMenuPropId === prop.id && (
-                    <div className="absolute right-2 top-8 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-md shadow-lg py-1 min-w-[120px]">
+                    {!readOnly && (
                       <button
                         onClick={() => {
-                          onDeleteProperty(prop.id);
-                          setActiveMenuPropId(null);
+                          const menuId = `col-${prop.id}`;
+                          setActiveOpenMenuId(activeOpenMenuId === menuId ? null : menuId);
                         }}
-                        className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center gap-1.5"
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 transition-opacity cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete Column
+                        <MoreHorizontal className="w-3.5 h-3.5 text-stone-400" />
                       </button>
-                    </div>
-                  )}
-                </div>
-              </th>
-            ))}
+                    )}
 
-            {/* Add property column button */}
-            {!readOnly && (
-              <th className="py-2.5 px-3 w-12 font-normal">
-                {addingProperty ? (
-                  <form onSubmit={handleAddPropertySubmit} className="flex items-center gap-1 min-w-[180px]">
-                    <input
-                      type="text"
-                      placeholder="Column name..."
-                      value={newPropName}
-                      onChange={(e) => setNewPropName(e.target.value)}
-                      className="px-2 py-1 text-xs border rounded bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      autoFocus
-                    />
-                    <select
-                      value={newPropType}
-                      onChange={(e) => setNewPropType(e.target.value)}
-                      className="px-1 py-1 text-xs border rounded bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-700"
-                    >
-                      <option value="text">Text</option>
-                      <option value="number">Number</option>
-                      <option value="status">Status</option>
-                      <option value="select">Select</option>
-                      <option value="multi_select">Tags</option>
-                      <option value="date">Date</option>
-                      <option value="checkbox">Checkbox</option>
-                      <option value="url">URL</option>
-                      <option value="email">Email</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="p-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-xs"
-                    >
-                      <Check className="w-3 h-3" />
-                    </button>
-                  </form>
-                ) : (
+                    {/* Column Dropdown Menu */}
+                    {activeOpenMenuId === `col-${prop.id}` && (
+                      <div className="absolute right-2 top-8 z-40 bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xl py-1.5 min-w-[160px] animate-in fade-in duration-100">
+                        <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
+                          Property Options
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setEditingHeaderId(prop.id);
+                            setHeaderTitle(prop.name);
+                            setActiveOpenMenuId(null);
+                          }}
+                          className="w-full text-left px-3 py-1.5 text-xs text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60 flex items-center gap-2"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-stone-400" />
+                          <span>Rename Column</span>
+                        </button>
+
+                        {/* Convert Type Submenu */}
+                        <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
+                          Change Type
+                        </div>
+                        {PROPERTY_TYPES.map((pt) => (
+                          <button
+                            key={pt.type}
+                            onClick={() => handleRequestConvertType(prop, pt.type)}
+                            className={`w-full text-left px-3 py-1 text-xs flex items-center gap-2 ${prop.type === pt.type ? 'bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] font-semibold' : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
+                          >
+                            <PropertyTypeIcon type={pt.type} className="w-3 h-3 text-stone-400" />
+                            <span>{pt.label}</span>
+                          </button>
+                        ))}
+
+                        <div className="border-t border-stone-100 dark:border-zinc-700/60 my-1" />
+
+                        <button
+                          onClick={() => handleRequestDeleteProperty(prop)}
+                          className="w-full text-left px-3 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete Column</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </th>
+              ))}
+
+              {/* Persistent + Button at Right Edge of Header */}
+              {!readOnly && (
+                <th className="py-2.5 px-3 w-12 text-center font-normal relative">
                   <button
-                    onClick={() => setAddingProperty(true)}
-                    className="p-1 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors"
-                    title="Add Property Column"
+                    onClick={() => {
+                      setNewColName('Property');
+                      setNewColType('text');
+                      setActiveOpenMenuId(activeOpenMenuId === 'add-column' ? null : 'add-column');
+                    }}
+                    className="p-1 hover:bg-stone-200/80 dark:hover:bg-zinc-800 rounded-md text-stone-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                    title="Add property column"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
-                )}
-              </th>
-            )}
-          </tr>
-        </thead>
 
-        <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800/80">
-          {items.map((item) => (
-            <tr key={item.id} className="group hover:bg-neutral-50/70 dark:hover:bg-neutral-800/40 transition-colors">
-              {/* Title Cell */}
-              <td className="py-2 px-3 border-r border-neutral-200 dark:border-neutral-800/60 font-medium text-neutral-900 dark:text-neutral-100">
-                <div className="flex items-center justify-between gap-2">
-                  <input
-                    type="text"
-                    defaultValue={item.title}
-                    disabled={readOnly}
-                    onBlur={(e) => {
-                      if (e.target.value !== item.title) {
-                        onUpdateItem(item.id, {
-                          title: e.target.value,
-                          properties: {
-                            ...item.properties,
-                            ...(titleProp ? { [titleProp.id]: e.target.value } : {}),
-                          },
-                        });
-                      }
-                    }}
-                    className="w-full bg-transparent border-none focus:outline-none focus:bg-white dark:focus:bg-neutral-800 px-1 py-0.5 rounded text-neutral-900 dark:text-neutral-100"
-                  />
+                  {activeOpenMenuId === 'add-column' && (
+                    <div className="absolute right-0 top-10 z-50 bg-white dark:bg-zinc-900 border border-stone-200/90 dark:border-zinc-800 rounded-2xl shadow-2xl p-3 w-64 text-left font-sans animate-in fade-in duration-100 space-y-2">
+                      <div className="text-[10px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider px-1">
+                        Property Name
+                      </div>
 
-                  {!readOnly && (
-                    <button
-                      onClick={() => onDeleteItem(item.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-red-500 transition-opacity"
-                      title="Delete row"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      <input
+                        type="text"
+                        placeholder="Property name..."
+                        value={newColName}
+                        onChange={(e) => setNewColName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleCommitAddColumn();
+                          if (e.key === 'Escape') setActiveOpenMenuId(null);
+                        }}
+                        className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 dark:border-zinc-700 bg-stone-50 dark:bg-zinc-800/80 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
+                        autoFocus
+                      />
+
+                      <div className="text-[10px] font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider px-1 pt-1">
+                        Select Type
+                      </div>
+
+                      <div className="max-h-48 overflow-y-auto space-y-0.5 no-scrollbar">
+                        {PROPERTY_TYPES.map((pt) => (
+                          <button
+                            key={pt.type}
+                            type="button"
+                            onClick={() => {
+                              onAddProperty(newColName.trim() || pt.label, pt.type);
+                              setActiveOpenMenuId(null);
+                            }}
+                            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                          >
+                            <PropertyTypeIcon type={pt.type} className="w-3.5 h-3.5 text-stone-400" />
+                            <span>{pt.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-              </td>
-
-              {/* Dynamic Property Cells */}
-              {nonTitleProps.map((prop) => {
-                const val = item.properties?.[prop.id];
-
-                return (
-                  <td key={prop.id} className="py-2 px-3 border-r border-neutral-200 dark:border-neutral-800/60">
-                    <TableCellContent
-                      prop={prop}
-                      value={val}
-                      readOnly={readOnly}
-                      onChange={(newVal) => {
-                        onUpdateItem(item.id, {
-                          properties: {
-                            ...item.properties,
-                            [prop.id]: newVal,
-                          },
-                        });
-                      }}
-                    />
-                  </td>
-                );
-              })}
-
-              {!readOnly && <td className="py-2 px-3"></td>}
+                </th>
+              )}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
 
-      {/* Add Row Button at bottom of table */}
-      {!readOnly && (
-        <div className="p-2 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900">
-          <button
-            onClick={onAddItem}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-200/60 dark:hover:bg-neutral-800 transition-colors"
-          >
-            <Plus className="w-4 h-4 text-neutral-400" />
-            <span>New Row</span>
-          </button>
+          <tbody className="divide-y divide-stone-200/70 dark:divide-zinc-800/70">
+            {items.map((item, rowIndex) => (
+              <tr key={item.id} className="group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors">
+                {/* Row Checkbox */}
+                <td className="py-2 px-3 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
+                  <input
+                    type="checkbox"
+                    checked={selectedItemIds.includes(item.id)}
+                    onChange={() => handleToggleSelectItem(item.id)}
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] focus:ring-[#1f4d3d] cursor-pointer"
+                  />
+                </td>
+
+                {/* Title Cell + Open Page Button */}
+                <td className="py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium text-stone-900 dark:text-zinc-100">
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      defaultValue={item.title}
+                      disabled={readOnly}
+                      onBlur={(e) => {
+                        if (e.target.value !== item.title) {
+                          onUpdateItem(item.id, {
+                            title: e.target.value,
+                            properties: {
+                              ...item.properties,
+                              ...(titleProp ? { [titleProp.id]: e.target.value } : {}),
+                            },
+                          });
+                        }
+                      }}
+                      className="w-full bg-transparent border-none focus:bg-stone-100 dark:focus:bg-zinc-800 focus:outline-none px-1.5 py-0.5 rounded text-stone-900 dark:text-zinc-100 font-medium"
+                      placeholder="Untitled"
+                    />
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      {/* Open row as page button (Req #10) */}
+                      {onOpenRowDrawer && (
+                        <button
+                          onClick={() => onOpenRowDrawer(item)}
+                          className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
+                        >
+                          <Maximize2 className="w-3 h-3" />
+                          <span>Open</span>
+                        </button>
+                      )}
+
+                      {!readOnly && (
+                        <button
+                          onClick={() => onDeleteItem(item.id)}
+                          className="p-1 text-stone-400 hover:text-rose-500 transition-colors"
+                          title="Delete Row"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </td>
+
+                {/* Dynamic Property Cells */}
+                {nonTitleProps.map((prop) => {
+                  const val = item.properties?.[prop.id];
+                  const cellMenuId = `cell-${item.id}-${prop.id}`;
+
+                  return (
+                    <td key={prop.id} className="py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70">
+                      <InteractiveCell
+                        prop={prop}
+                        value={val}
+                        readOnly={readOnly}
+                        isPopoverOpen={activeOpenMenuId === cellMenuId}
+                        onTogglePopover={() => setActiveOpenMenuId(activeOpenMenuId === cellMenuId ? null : cellMenuId)}
+                        onClosePopover={() => setActiveOpenMenuId(null)}
+                        onChange={(newVal) => {
+                          const prevProps = { ...item.properties };
+                          setUndoStack((prev) => [
+                            ...prev,
+                            {
+                              type: 'UPDATE_ITEM',
+                              payload: { itemId: item.id, previousState: { properties: prevProps } },
+                            },
+                          ]);
+
+                          onUpdateItem(item.id, {
+                            properties: {
+                              ...item.properties,
+                              [prop.id]: newVal,
+                            },
+                          });
+                        }}
+                        onAddOption={(newOptName) => {
+                          if (!onUpdateProperty) return;
+                          const newOptId = newOptName.toLowerCase().replace(/\s+/g, '_');
+                          const color = AUTO_COLORS[(prop.options?.length || 0) % AUTO_COLORS.length];
+                          const updatedOptions = [...(prop.options || []), { id: newOptId, name: newOptName, color }];
+                          onUpdateProperty(prop.id, { options: updatedOptions });
+                          onUpdateItem(item.id, {
+                            properties: {
+                              ...item.properties,
+                              [prop.id]: prop.type === 'multi_select' ? [...(Array.isArray(val) ? val : []), newOptId] : newOptId,
+                            },
+                          });
+                        }}
+                      />
+                    </td>
+                  );
+                })}
+
+                {!readOnly && <td className="py-2 px-2"></td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Persistent + New Row Button (Req #8) */}
+        {!readOnly && (
+          <div className="p-2 border-t border-stone-200/70 dark:border-zinc-800/70 bg-stone-50/40 dark:bg-zinc-900/40">
+            <button
+              onClick={onAddItem}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5 text-stone-400" />
+              <span>New row</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Confirmation Dialog for Column Deletion (Req #3) */}
+      {deleteConfirmProp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-600 dark:text-amber-400">
+              <div className="p-2.5 bg-amber-50 dark:bg-amber-950/50 rounded-xl">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-stone-900 dark:text-white">Delete Column?</h3>
+            </div>
+            <p className="text-xs text-stone-600 dark:text-zinc-300 leading-relaxed">
+              Delete column <strong className="text-stone-900 dark:text-white">"{deleteConfirmProp.name}"</strong>? This will permanently remove data from <strong className="text-stone-900 dark:text-white">{deleteConfirmProp.count}</strong> row{deleteConfirmProp.count > 1 ? 's' : ''}.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setDeleteConfirmProp(null)}
+                className="px-4 py-2 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onDeleteProperty(deleteConfirmProp.id);
+                  setDeleteConfirmProp(null);
+                }}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer"
+              >
+                Delete Column
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Property Conversion Preview Modal (Req #4) */}
+      {conversionPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-800 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <div className="flex items-center gap-3 text-indigo-600 dark:text-indigo-400">
+              <div className="p-2.5 bg-indigo-50 dark:bg-indigo-950/50 rounded-xl">
+                <RefreshCw className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-stone-900 dark:text-white">Property Type Conversion Preview</h3>
+            </div>
+
+            <p className="text-xs text-stone-600 dark:text-zinc-300 leading-relaxed">
+              Converting <strong className="text-stone-900 dark:text-white">"{conversionPreview.propName}"</strong> to <strong className="text-indigo-600 dark:text-indigo-400">{conversionPreview.targetType}</strong>:
+            </p>
+
+            <div className="bg-stone-50 dark:bg-zinc-800/60 p-3 rounded-xl space-y-1.5 text-xs">
+              <div className="flex justify-between text-stone-700 dark:text-zinc-300">
+                <span>Cleanly convertible values:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">{conversionPreview.convertible} / {conversionPreview.total}</span>
+              </div>
+              <div className="flex justify-between text-stone-700 dark:text-zinc-300">
+                <span>Values that will be cleared:</span>
+                <span className="font-semibold text-rose-600 dark:text-rose-400">{conversionPreview.lossy}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setConversionPreview(null)}
+                className="px-4 py-2 rounded-lg text-xs font-medium text-stone-600 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (onConvertPropertyType) {
+                    onConvertPropertyType(conversionPreview.propId, conversionPreview.targetType);
+                  }
+                  setConversionPreview(null);
+                }}
+                className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#1f4d3d] hover:bg-[#183e31] text-white transition-colors cursor-pointer"
+              >
+                Apply Conversion
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-interface TableCellContentProps {
+interface InteractiveCellProps {
   prop: DatabaseProperty;
   value: any;
   onChange: (val: any) => void;
+  onAddOption: (name: string) => void;
   readOnly?: boolean;
+  isPopoverOpen?: boolean;
+  onTogglePopover?: () => void;
+  onClosePopover?: () => void;
 }
 
-function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentProps) {
+function InteractiveCell({
+  prop,
+  value,
+  onChange,
+  onAddOption,
+  readOnly,
+  isPopoverOpen: isPopoverOpenProp,
+  onTogglePopover,
+  onClosePopover,
+}: InteractiveCellProps) {
+  const [localIsOpen, setLocalIsOpen] = useState(false);
+  const [newOptionInput, setNewOptionInput] = useState('');
+
+  const isPopoverOpen = isPopoverOpenProp !== undefined ? isPopoverOpenProp : localIsOpen;
+
+  const togglePopover = () => {
+    if (onTogglePopover) {
+      onTogglePopover();
+    } else {
+      setLocalIsOpen(!localIsOpen);
+    }
+  };
+
+  const closePopover = () => {
+    if (onClosePopover) {
+      onClosePopover();
+    } else {
+      setLocalIsOpen(false);
+    }
+  };
+
   switch (prop.type) {
     case 'text':
       return (
@@ -238,7 +720,7 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent focus:bg-white dark:focus:bg-neutral-800 border-none focus:outline-none px-1 py-0.5 rounded text-neutral-800 dark:text-neutral-200"
+          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 placeholder-stone-400"
           placeholder="Empty"
         />
       );
@@ -250,7 +732,7 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
           defaultValue={value ?? ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : null)}
-          className="w-full bg-transparent focus:bg-white dark:focus:bg-neutral-800 border-none focus:outline-none px-1 py-0.5 rounded text-neutral-800 dark:text-neutral-200"
+          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono"
           placeholder="0"
         />
       );
@@ -263,7 +745,7 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
             checked={Boolean(value)}
             disabled={readOnly}
             onChange={(e) => onChange(e.target.checked)}
-            className="w-4 h-4 rounded border-neutral-300 dark:border-neutral-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
+            className="w-4 h-4 rounded border-stone-300 dark:border-zinc-700 text-[#1f4d3d] focus:ring-[#1f4d3d] cursor-pointer"
           />
         </div>
       );
@@ -275,77 +757,106 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
           defaultValue={value || ''}
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
-          className="bg-transparent focus:bg-white dark:focus:bg-neutral-800 border-none focus:outline-none px-1 py-0.5 rounded text-xs text-neutral-800 dark:text-neutral-200"
+          className="bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200"
         />
       );
 
     case 'select':
-    case 'status': {
-      const selectedOption = prop.options?.find((o) => o.id === value);
-
-      return (
-        <div className="relative inline-block w-full">
-          <select
-            value={value || ''}
-            disabled={readOnly}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-full appearance-none bg-transparent hover:bg-neutral-100 dark:hover:bg-neutral-800 border-none focus:outline-none px-2 py-1 rounded text-xs cursor-pointer font-medium"
-            style={{
-              color: selectedOption?.color || undefined,
-            }}
-          >
-            <option value="" className="bg-white dark:bg-neutral-900 text-neutral-500">
-              Select...
-            </option>
-            {prop.options?.map((opt) => (
-              <option key={opt.id} value={opt.id} className="bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-200">
-                {opt.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      );
-    }
-
+    case 'status':
     case 'multi_select': {
-      const selectedIds: string[] = Array.isArray(value) ? value : [];
+      const selectedIds: string[] = Array.isArray(value) ? value : value ? [value] : [];
       const selectedOpts = prop.options?.filter((o) => selectedIds.includes(o.id)) || [];
 
-      return (
-        <div className="flex flex-wrap gap-1 items-center px-1 py-0.5 min-h-[26px]">
-          {selectedOpts.map((opt) => (
-            <span
-              key={opt.id}
-              className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium"
-              style={{
-                backgroundColor: `${opt.color}20`,
-                color: opt.color,
-                border: `1px solid ${opt.color}40`,
-              }}
-            >
-              {opt.name}
-            </span>
-          ))}
+      const handleCreateOption = () => {
+        if (!newOptionInput.trim()) return;
+        onAddOption(newOptionInput.trim());
+        setNewOptionInput('');
+        closePopover(); // REQUIREMENT 1: Close menu when a new option is created
+      };
 
-          {!readOnly && prop.options && prop.options.length > 0 && (
-            <select
-              value=""
-              onChange={(e) => {
-                if (!e.target.value) return;
-                const newIds = selectedIds.includes(e.target.value)
-                  ? selectedIds.filter((id) => id !== e.target.value)
-                  : [...selectedIds, e.target.value];
-                onChange(newIds);
-              }}
-              className="bg-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 text-xs border-none focus:outline-none cursor-pointer"
-            >
-              <option value="">+ tag</option>
-              {prop.options.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {selectedIds.includes(opt.id) ? `✓ ${opt.name}` : opt.name}
-                </option>
-              ))}
-            </select>
+      return (
+        <div className="relative">
+          <div
+            onClick={() => !readOnly && togglePopover()}
+            className="flex flex-wrap gap-1 items-center px-1.5 py-1 min-h-[26px] cursor-pointer hover:bg-stone-100/60 dark:hover:bg-zinc-800/60 rounded-md transition-colors"
+          >
+            {selectedOpts.length > 0 ? (
+              selectedOpts.map((opt) => (
+                <span
+                  key={opt.id}
+                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
+                  style={{
+                    backgroundColor: `${opt.color}20`,
+                    color: opt.color,
+                    border: `1px solid ${opt.color}40`,
+                  }}
+                >
+                  {opt.name}
+                </span>
+              ))
+            ) : (
+              <span className="text-stone-400 text-xs">Select...</span>
+            )}
+          </div>
+
+          {/* Option Creation & Selection Popover */}
+          {isPopoverOpen && (
+            <div className="absolute left-0 top-8 z-40 bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xl p-2 w-52 space-y-2 animate-in fade-in duration-100 font-sans">
+              <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider px-1">
+                Select or create option
+              </div>
+
+              <div className="max-h-36 overflow-y-auto space-y-1">
+                {prop.options?.map((opt) => {
+                  const isChecked = selectedIds.includes(opt.id);
+                  return (
+                    <button
+                      key={opt.id}
+                      onClick={() => {
+                        if (prop.type === 'multi_select') {
+                          const next = isChecked ? selectedIds.filter((id) => id !== opt.id) : [...selectedIds, opt.id];
+                          onChange(next);
+                        } else {
+                          onChange(opt.id);
+                          closePopover(); // REQUIREMENT 1: Close menu when option selected
+                        }
+                      }}
+                      className={`w-full text-left px-2 py-1 rounded-md text-xs flex items-center justify-between font-medium ${isChecked ? 'bg-stone-100 dark:bg-zinc-700' : 'hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
+                      style={{ color: opt.color }}
+                    >
+                      <span>{opt.name}</span>
+                      {isChecked && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Inline Option Creator */}
+              <div className="pt-2 border-t border-stone-100 dark:border-zinc-700 space-y-1.5">
+                <input
+                  type="text"
+                  placeholder="New option name..."
+                  value={newOptionInput}
+                  onChange={(e) => setNewOptionInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCreateOption();
+                    }
+                  }}
+                  className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d]"
+                />
+                {newOptionInput.trim() && (
+                  <button
+                    onClick={handleCreateOption}
+                    className="w-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold bg-[#1f4d3d] text-white rounded-md hover:bg-[#183e31] transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Create "{newOptionInput.trim()}"</span>
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </div>
       );
@@ -359,7 +870,7 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
-            className="w-full bg-transparent focus:bg-white dark:focus:bg-neutral-800 border-none focus:outline-none px-1 py-0.5 rounded text-neutral-800 dark:text-neutral-200"
+            className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200"
             placeholder="https://..."
           />
           {value && (
@@ -367,7 +878,7 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
               href={value}
               target="_blank"
               rel="noreferrer"
-              className="p-1 text-blue-500 hover:text-blue-600 shrink-0"
+              className="p-1 text-[#1f4d3d] dark:text-emerald-400 hover:opacity-80 shrink-0"
               title="Open Link"
             >
               <ExternalLink className="w-3.5 h-3.5" />
@@ -383,7 +894,7 @@ function TableCellContent({ prop, value, onChange, readOnly }: TableCellContentP
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent focus:bg-white dark:focus:bg-neutral-800 border-none focus:outline-none px-1 py-0.5 rounded text-neutral-800 dark:text-neutral-200"
+          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200"
         />
       );
   }

@@ -276,13 +276,14 @@ export async function removeDatabase(databaseId: string) {
   return { success: true };
 }
 
-export async function addDatabaseProperty(databaseId: string, prop: { name: string; type: any; options?: any[] }) {
+export async function addDatabaseProperty(databaseId: string, prop: { id?: string; name: string; type: any; options?: any[] }) {
   const existingProps = await db.select().from(databaseProperties).where(eq(databaseProperties.databaseId, databaseId));
   const maxOrder = existingProps.reduce((max, p) => Math.max(max, p.order), -1);
 
   const [newProp] = await db
     .insert(databaseProperties)
     .values({
+      ...(prop.id ? { id: prop.id } : {}),
       databaseId,
       name: prop.name || 'New Field',
       type: prop.type || 'text',
@@ -308,13 +309,14 @@ export async function deleteDatabaseProperty(propertyId: string) {
   return { success: true };
 }
 
-export async function addDatabaseItem(databaseId: string, item: { title?: string; properties?: Record<string, any> }) {
+export async function addDatabaseItem(databaseId: string, item: { id?: string; title?: string; properties?: Record<string, any> }) {
   const existingItems = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, databaseId));
   const maxOrder = existingItems.reduce((max, i) => Math.max(max, i.order), -1);
 
   const [newItem] = await db
     .insert(databaseItems)
     .values({
+      ...(item.id ? { id: item.id } : {}),
       databaseId,
       title: item.title || 'Untitled',
       properties: item.properties || {},
@@ -409,3 +411,66 @@ export async function submitFormResponse(shareToken: string, properties: Record<
 
   return newItem;
 }
+
+export async function saveDatabaseItemContent(itemId: string, content: any[]) {
+  const [updated] = await db
+    .update(databaseItems)
+    .set({ content, updatedAt: new Date() })
+    .where(eq(databaseItems.id, itemId))
+    .returning();
+  return updated;
+}
+
+export async function deleteDatabaseItemsBulk(itemIds: string[]) {
+  if (!itemIds.length) return { success: true, count: 0 };
+  for (const id of itemIds) {
+    await db.delete(databaseItems).where(eq(databaseItems.id, id));
+  }
+  return { success: true, count: itemIds.length };
+}
+
+export async function convertPropertyType(propertyId: string, newType: string) {
+  const [prop] = await db.select().from(databaseProperties).where(eq(databaseProperties.id, propertyId)).limit(1);
+  if (!prop) throw new Error('Property not found');
+
+  const items = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, prop.databaseId));
+
+  // Perform type conversion on existing row property values
+  for (const item of items) {
+    const rawVal = item.properties?.[propertyId];
+    if (rawVal === undefined || rawVal === null) continue;
+
+    let convertedVal: any = rawVal;
+    if (newType === 'number') {
+      const num = Number(rawVal);
+      convertedVal = !isNaN(num) ? num : null;
+    } else if (newType === 'text' || newType === 'url' || newType === 'email') {
+      convertedVal = String(rawVal);
+    } else if (newType === 'checkbox') {
+      convertedVal = Boolean(rawVal);
+    } else if (newType === 'multi_select') {
+      convertedVal = Array.isArray(rawVal) ? rawVal : [String(rawVal)];
+    } else if (newType === 'select' || newType === 'status') {
+      convertedVal = Array.isArray(rawVal) ? rawVal[0] : String(rawVal);
+    }
+
+    await db
+      .update(databaseItems)
+      .set({
+        properties: {
+          ...item.properties,
+          [propertyId]: convertedVal,
+        },
+      })
+      .where(eq(databaseItems.id, item.id));
+  }
+
+  const [updatedProp] = await db
+    .update(databaseProperties)
+    .set({ type: newType as any })
+    .where(eq(databaseProperties.id, propertyId))
+    .returning();
+
+  return updatedProp;
+}
+

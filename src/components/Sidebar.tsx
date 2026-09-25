@@ -308,32 +308,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <kbd className="text-[10px] font-mono text-stone-400 dark:text-zinc-500 bg-stone-200/70 dark:bg-zinc-800 px-1.5 py-0.5 rounded">⌘K</kbd>
         </button>
 
-        <div className="flex gap-1.5">
-          <button
-            type="button"
-            disabled={isCreatingPage}
-            onClick={() => !isCreatingPage && onCreatePage()}
-            className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[#1f4d3d] dark:text-emerald-400 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 hover:bg-[#1f4d3d]/20 dark:hover:bg-emerald-900/50 font-medium text-xs transition-colors text-left cursor-pointer disabled:opacity-50"
-          >
-            {isCreatingPage ? (
-              <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin text-[#1f4d3d] dark:text-emerald-400" />
-            ) : (
-              <Plus className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400" />
-            )}
-            <span className="truncate">Doc</span>
-          </button>
-
-          {onCreateDatabase && (
-            <button
-              type="button"
-              onClick={onCreateDatabase}
-              className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 font-medium text-xs transition-colors text-left cursor-pointer"
-            >
-              <Database className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-              <span className="truncate">Database</span>
-            </button>
+        <button
+          type="button"
+          disabled={isCreatingPage}
+          onClick={() => !isCreatingPage && onCreatePage()}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[#1f4d3d] dark:text-emerald-400 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 hover:bg-[#1f4d3d]/20 dark:hover:bg-emerald-900/50 font-medium text-xs transition-colors w-full text-left cursor-pointer disabled:opacity-50"
+        >
+          {isCreatingPage ? (
+            <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin text-[#1f4d3d] dark:text-emerald-400" />
+          ) : (
+            <Plus className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400" />
           )}
-        </div>
+          <span>New Document</span>
+        </button>
       </div>
 
       {/* 3. Main Navigation Links (Home, Folders, Import, Settings, Trash) */}
@@ -356,6 +343,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           }
         />
+
+        {onCreateDatabase && (
+          <SidebarNavItem
+            icon={Database}
+            isLucide
+            label="New Database & Form"
+            isActive={false}
+            onClick={onCreateDatabase}
+          />
+        )}
 
         <SidebarNavItem
           icon={Upload}

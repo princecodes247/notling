@@ -206,8 +206,10 @@ export type NewDatabaseProperty = typeof databaseProperties.$inferInsert;
 export const databaseItems = pgTable('database_items', {
   id: uuid('id').primaryKey().defaultRandom(),
   databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }),
   title: text('title').notNull().default('Untitled'),
   properties: jsonb('properties').$type<Record<string, any>>().notNull().default({}),
+  content: jsonb('content').$type<any[]>().notNull().default([]),
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

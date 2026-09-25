@@ -43,8 +43,8 @@ export const deleteDatabase = createServerFn({ method: 'POST' })
   });
 
 export const createDatabaseProperty = createServerFn({ method: 'POST' })
-  .validator((input: { databaseId: string; name: string; type: string; options?: any[] }) => input)
-  .handler(async ({ data }: { data: { databaseId: string; name: string; type: string; options?: any[] } }) => {
+  .validator((input: { id?: string; databaseId: string; name: string; type: string; options?: any[] }) => input)
+  .handler(async ({ data }: { data: { id?: string; databaseId: string; name: string; type: string; options?: any[] } }) => {
     const { addDatabaseProperty } = await import('./databases.db');
     return addDatabaseProperty(data.databaseId, data);
   });
@@ -64,8 +64,8 @@ export const deleteDatabaseProperty = createServerFn({ method: 'POST' })
   });
 
 export const createDatabaseItem = createServerFn({ method: 'POST' })
-  .validator((input: { databaseId: string; title?: string; properties?: Record<string, any> }) => input)
-  .handler(async ({ data }: { data: { databaseId: string; title?: string; properties?: Record<string, any> } }) => {
+  .validator((input: { id?: string; databaseId: string; title?: string; properties?: Record<string, any> }) => input)
+  .handler(async ({ data }: { data: { id?: string; databaseId: string; title?: string; properties?: Record<string, any> } }) => {
     const { addDatabaseItem } = await import('./databases.db');
     return addDatabaseItem(data.databaseId, data);
   });
@@ -118,3 +118,18 @@ export const submitPublicForm = createServerFn({ method: 'POST' })
     const { submitFormResponse } = await import('./databases.db');
     return submitFormResponse(data.shareToken, data.properties, data.title);
   });
+
+export const deleteDatabaseItemsBulk = createServerFn({ method: 'POST' })
+  .validator((itemIds: string[]) => itemIds)
+  .handler(async ({ data }: { data: string[] }) => {
+    const { deleteDatabaseItemsBulk } = await import('./databases.db');
+    return deleteDatabaseItemsBulk(data);
+  });
+
+export const convertDatabasePropertyType = createServerFn({ method: 'POST' })
+  .validator((input: { propertyId: string; targetType: string }) => input)
+  .handler(async ({ data }: { data: { propertyId: string; targetType: string } }) => {
+    const { convertPropertyType } = await import('./databases.db');
+    return convertPropertyType(data.propertyId, data.targetType);
+  });
+
