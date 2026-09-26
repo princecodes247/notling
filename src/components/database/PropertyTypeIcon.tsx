@@ -15,10 +15,15 @@ import {
 
 interface PropertyTypeIconProps {
   type: string;
+  icon?: string | null;
   className?: string;
 }
 
-export function PropertyTypeIcon({ type, className = 'w-4 h-4' }: PropertyTypeIconProps) {
+export function PropertyTypeIcon({ type, icon, className = 'w-4 h-4' }: PropertyTypeIconProps) {
+  if (icon) {
+    return <span className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}>{icon}</span>;
+  }
+
   switch (type) {
     case 'title':
       return <Heading className={className} />;

@@ -12,6 +12,10 @@ import {
   Tag as TagIcon,
   Maximize2,
   ChevronDown,
+  ChevronUp,
+  GripVertical,
+  Palette,
+  Search,
   Edit2,
   RefreshCw,
   AlertTriangle,
@@ -47,6 +51,19 @@ const PROPERTY_TYPES = [
 
 const AUTO_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#64748b'];
 
+const APPLE_COLORS = [
+  { name: 'Blue', hex: '#007aff' },
+  { name: 'Purple', hex: '#af52de' },
+  { name: 'Pink', hex: '#ff2d55' },
+  { name: 'Red', hex: '#ff3b30' },
+  { name: 'Orange', hex: '#ff9500' },
+  { name: 'Yellow', hex: '#eab308' },
+  { name: 'Green', hex: '#34c759' },
+  { name: 'Teal', hex: '#30b0c7' },
+  { name: 'Indigo', hex: '#5856d6' },
+  { name: 'Slate', hex: '#64748b' },
+];
+
 export function DatabaseTableView({
   properties,
   items,
@@ -65,7 +82,7 @@ export function DatabaseTableView({
   const [newColName, setNewColName] = useState('New Column');
   const [newColType, setNewColType] = useState('text');
 
-  // Unified State-Aware Menu ID (no overlapping dropdowns ever!)
+  // Unified State-Aware Menu ID
   const [activeOpenMenuId, setActiveOpenMenuId] = useState<string | null>(null);
 
   // Column Header Rename State
@@ -88,11 +105,63 @@ export function DatabaseTableView({
   // Bulk Row Selection State
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
+  // Apple Grid Keyboard Focus State ({ rowIndex, colIndex })
+  const [focusedCell, setFocusedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
+
   // Client-Side Undo Stack (Cmd+Z)
   const [undoStack, setUndoStack] = useState<Array<{ type: string; payload: any }>>([]);
 
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
+
+  // Handle Apple Grid Keyboard Navigation (Arrow Keys, Tab, Enter, Escape)
+  useEffect(() => {
+    const handleTableKeyDown = (e: KeyboardEvent) => {
+      if (activeOpenMenuId || editingHeaderId) return;
+
+      const activeTag = (e.target as HTMLElement)?.tagName;
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag);
+
+      if (!focusedCell) return;
+
+      const numRows = items.length;
+      const numCols = nonTitleProps.length + 1;
+
+      if (e.key === 'ArrowDown' && !isInput) {
+        e.preventDefault();
+        setFocusedCell({ ...focusedCell, rowIndex: Math.min(numRows - 1, focusedCell.rowIndex + 1) });
+      } else if (e.key === 'ArrowUp' && !isInput) {
+        e.preventDefault();
+        setFocusedCell({ ...focusedCell, rowIndex: Math.max(0, focusedCell.rowIndex - 1) });
+      } else if (e.key === 'ArrowRight' && !isInput) {
+        e.preventDefault();
+        setFocusedCell({ ...focusedCell, colIndex: Math.min(numCols - 1, focusedCell.colIndex + 1) });
+      } else if (e.key === 'ArrowLeft' && !isInput) {
+        e.preventDefault();
+        setFocusedCell({ ...focusedCell, colIndex: Math.max(0, focusedCell.colIndex - 1) });
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          if (focusedCell.colIndex > 0) {
+            setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex - 1 });
+          } else if (focusedCell.rowIndex > 0) {
+            setFocusedCell({ rowIndex: focusedCell.rowIndex - 1, colIndex: numCols - 1 });
+          }
+        } else {
+          if (focusedCell.colIndex < numCols - 1) {
+            setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex + 1 });
+          } else if (focusedCell.rowIndex < numRows - 1) {
+            setFocusedCell({ rowIndex: focusedCell.rowIndex + 1, colIndex: 0 });
+          }
+        }
+      } else if (e.key === 'Escape') {
+        setFocusedCell(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleTableKeyDown);
+    return () => window.removeEventListener('keydown', handleTableKeyDown);
+  }, [focusedCell, items.length, nonTitleProps.length, activeOpenMenuId, editingHeaderId]);
 
   // Handle Cmd+Z Undo
   useEffect(() => {
@@ -211,7 +280,7 @@ export function DatabaseTableView({
     <div className="w-full space-y-3 font-sans">
       {/* Top Action Bar for Bulk Selection */}
       {selectedItemIds.length > 0 && (
-        <div className="flex items-center justify-between p-2.5 px-4 bg-stone-100 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-xs text-xs animate-in fade-in duration-150">
+        <div className="flex items-center justify-between p-2.5 px-4 text-xs animate-in fade-in duration-150">
           <span className="font-semibold text-stone-800 dark:text-zinc-200">
             {selectedItemIds.length} row{selectedItemIds.length > 1 ? 's' : ''} selected
           </span>
@@ -227,7 +296,7 @@ export function DatabaseTableView({
 
             <button
               onClick={() => setSelectedItemIds([])}
-              className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 dark:hover:text-zinc-100"
+              className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 dark:hover:text-zinc-100 cursor-pointer"
             >
               Cancel
             </button>
@@ -236,10 +305,10 @@ export function DatabaseTableView({
       )}
 
       {/* Grid Table */}
-      <div className="w-full overflow-x-auto rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-white dark:bg-[#18181b] shadow-2xs text-xs">
+      <div className="w-full overflow-x-auto border-stone-200/80 dark:border-zinc-800/80 shadow-2xs text-xs">
         <table className="w-full text-left border-collapse min-w-[760px]">
           <thead>
-            <tr className="bg-stone-50/90 dark:bg-zinc-900/80 border-b border-stone-200/80 dark:border-zinc-800/80 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
+            <tr className="border-b border-stone-200/80 dark:border-zinc-800/80 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
               <th className="py-2.5 px-3 w-10 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
                 <input
@@ -322,7 +391,7 @@ export function DatabaseTableView({
           </thead>
 
           <tbody className="divide-y divide-stone-200/70 dark:divide-zinc-800/70">
-            {items.map((item) => (
+            {items.map((item, rowIndex) => (
               <tr key={item.id} className="group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors">
                 {/* Row Checkbox */}
                 <td className="py-2 px-3 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
@@ -330,17 +399,24 @@ export function DatabaseTableView({
                     type="checkbox"
                     checked={selectedItemIds.includes(item.id)}
                     onChange={() => handleToggleSelectItem(item.id)}
-                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] focus:ring-[#1f4d3d] cursor-pointer"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-brand-600 cursor-pointer"
                   />
                 </td>
 
                 {/* Title Cell + Open Page Button */}
-                <td className="py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium text-stone-900 dark:text-zinc-100">
+                <td
+                  onClick={() => setFocusedCell({ rowIndex, colIndex: 0 })}
+                  className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium text-stone-900 dark:text-zinc-100 transition-colors ${focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0
+                    ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
+                    : ''
+                    }`}
+                >
                   <div className="flex items-center justify-between gap-2">
                     <input
                       type="text"
                       defaultValue={item.title}
                       disabled={readOnly}
+                      onFocus={() => setFocusedCell({ rowIndex, colIndex: 0 })}
                       onBlur={(e) => {
                         if (e.target.value !== item.title) {
                           onUpdateItem(item.id, {
@@ -366,27 +442,22 @@ export function DatabaseTableView({
                           <span>Open</span>
                         </button>
                       )}
-
-                      {!readOnly && (
-                        <button
-                          onClick={() => onDeleteItem(item.id)}
-                          className="p-1 text-stone-400 hover:text-rose-500 transition-colors cursor-pointer"
-                          title="Delete Row"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
                     </div>
                   </div>
                 </td>
 
                 {/* Dynamic Property Cells */}
-                {nonTitleProps.map((prop) => {
+                {nonTitleProps.map((prop, colIndex) => {
                   const val = item.properties?.[prop.id];
                   const cellMenuId = `cell-${item.id}-${prop.id}`;
+                  const isFocused = focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === colIndex + 1;
 
                   return (
-                    <td key={prop.id} className="py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70">
+                    <td
+                      key={prop.id}
+                      onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
+                      className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors`}
+                    >
                       <InteractiveCell
                         prop={prop}
                         value={val}
@@ -394,6 +465,7 @@ export function DatabaseTableView({
                         isPopoverOpen={activeOpenMenuId === cellMenuId}
                         onTogglePopover={() => setActiveOpenMenuId(activeOpenMenuId === cellMenuId ? null : cellMenuId)}
                         onClosePopover={() => setActiveOpenMenuId(null)}
+                        onUpdateProperty={onUpdateProperty}
                         onChange={(newVal) => {
                           const prevProps = { ...item.properties };
                           setUndoStack((prev) => [
@@ -440,7 +512,7 @@ export function DatabaseTableView({
           <div className="p-2 border-t border-stone-200/70 dark:border-zinc-800/70 bg-stone-50/40 dark:bg-zinc-900/40">
             <button
               onClick={onAddItem}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800 active:scale-[0.96] transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-stone-400" />
               <span>New row</span>
@@ -592,9 +664,9 @@ function ColumnHeaderCell({
                 setHeaderTitle(prop.name);
               }
             }}
-            className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 cursor-pointer hover:text-stone-950 dark:hover:text-white"
+            className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 cursor-pointer hover:text-stone-950 dark:hover:text-white transition-colors"
           >
-            <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
+            <PropertyTypeIcon type={prop.type} icon={prop.icon} className="w-3.5 h-3.5 text-stone-400" />
             <span>{prop.name}</span>
           </div>
         )}
@@ -605,7 +677,7 @@ function ColumnHeaderCell({
             onClick={() => {
               setActiveOpenMenuId(isOpen ? null : `col-${prop.id}`);
             }}
-            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 transition-opacity cursor-pointer"
+            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 active:scale-95 transition-all cursor-pointer"
           >
             <MoreHorizontal className="w-3.5 h-3.5 text-stone-400" />
           </button>
@@ -616,9 +688,9 @@ function ColumnHeaderCell({
           onClose={() => setActiveOpenMenuId(null)}
           triggerRef={moreBtnRef}
           align="right"
-          width={180}
+          width={220}
         >
-          <div className="py-1 min-w-[160px] text-left">
+          <div className="py-1 min-w-[200px] text-left">
             <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
               Property Options
             </div>
@@ -629,11 +701,49 @@ function ColumnHeaderCell({
                 setHeaderTitle(prop.name);
                 setActiveOpenMenuId(null);
               }}
-              className="w-full text-left px-3 py-1.5 text-xs text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60 flex items-center gap-2 cursor-pointer"
+              className="w-full text-left px-3 py-1.5 text-xs text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
             >
               <Edit2 className="w-3.5 h-3.5 text-stone-400" />
               <span>Rename Column</span>
             </button>
+
+            {/* Change Column Icon Picker */}
+            <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
+              Column Icon
+            </div>
+            <div className="px-3 py-1.5 flex flex-wrap gap-1 items-center">
+              {['📊', '🚀', '📝', '🏷️', '📅', '⚡', '📌', '🎯', '💰', '👤', '🔗', '💼', '💡', '🎨', '🔍'].map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateProperty) {
+                      onUpdateProperty(prop.id, { icon: emoji });
+                    }
+                    setActiveOpenMenuId(null);
+                  }}
+                  className={`w-6 h-6 rounded-md flex items-center justify-center text-xs hover:bg-stone-200 dark:hover:bg-zinc-700 active:scale-90 transition-transform cursor-pointer ${prop.icon === emoji ? 'bg-stone-200 dark:bg-zinc-700 ring-1 ring-[#1f4d3d]' : ''
+                    }`}
+                  title={`Set icon ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+              {prop.icon && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onUpdateProperty) {
+                      onUpdateProperty(prop.id, { icon: null as any });
+                    }
+                    setActiveOpenMenuId(null);
+                  }}
+                  className="text-[10px] text-stone-400 hover:text-stone-700 dark:hover:text-zinc-300 ml-1 underline cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
 
             <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
               Change Type
@@ -642,7 +752,8 @@ function ColumnHeaderCell({
               <button
                 key={pt.type}
                 onClick={() => handleRequestConvertType(prop, pt.type)}
-                className={`w-full text-left px-3 py-1 text-xs flex items-center gap-2 cursor-pointer ${prop.type === pt.type ? 'bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] font-semibold' : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
+                className={`w-full text-left px-3 py-1 text-xs flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all ${prop.type === pt.type ? 'bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] font-semibold' : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700/60'
+                  }`}
               >
                 <PropertyTypeIcon type={pt.type} className="w-3 h-3 text-stone-400" />
                 <span>{pt.label}</span>
@@ -653,7 +764,7 @@ function ColumnHeaderCell({
 
             <button
               onClick={() => handleRequestDeleteProperty(prop)}
-              className="w-full text-left px-3 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 cursor-pointer"
+              className="w-full text-left px-3 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Delete Column</span>
@@ -757,11 +868,183 @@ function AddPropertyHeaderCell({
   );
 }
 
+function OptionRowItem({
+  opt,
+  index,
+  total,
+  isChecked,
+  onSelect,
+  onMove,
+  onColorChange,
+  draggedIndex,
+  setDraggedIndex,
+}: {
+  opt: { id: string; name: string; color: string };
+  index: number;
+  total: number;
+  isChecked: boolean;
+  onSelect: () => void;
+  onMove: (from: number, to: number) => void;
+  onColorChange: (newColor: string) => void;
+  draggedIndex: number | null;
+  setDraggedIndex: (idx: number | null) => void;
+}) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        setDraggedIndex(index);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', opt.id);
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (draggedIndex !== null && draggedIndex !== index) {
+          onMove(draggedIndex, index);
+          setDraggedIndex(index);
+        }
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        if (draggedIndex !== null && draggedIndex !== index) {
+          onMove(draggedIndex, index);
+          setDraggedIndex(index);
+        }
+      }}
+      onDragEnd={() => {
+        setDraggedIndex(null);
+        setDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDraggedIndex(null);
+        setDragOver(false);
+      }}
+      className={`group/opt flex flex-col p-1.5 rounded-lg border transition-transform transition-opacity transition-colors duration-150 select-none ${draggedIndex === index
+        ? 'opacity-40 border-emerald-500/80 bg-emerald-50/40 dark:bg-emerald-950/30 scale-[0.99] shadow-inner'
+        : dragOver
+          ? 'border-[#1f4d3d] bg-emerald-50/50 dark:bg-emerald-950/20'
+          : isChecked
+            ? 'bg-stone-100/90 dark:bg-zinc-800/80 border-stone-200 dark:border-zinc-700/80'
+            : 'bg-stone-50/40 dark:bg-zinc-900/40 border-stone-100 dark:border-zinc-800/60 hover:bg-stone-100 dark:hover:bg-zinc-800/60'
+        }`}
+    >
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          {/* Drag Handle */}
+          <span
+            className="cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 transition-colors p-0.5 shrink-0"
+            title="Drag to reorder option"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </span>
+
+          {/* Color Indicator Dot / Trigger */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowColorPicker(!showColorPicker);
+            }}
+            className="w-3.5 h-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/20 transition-transform hover:scale-110 cursor-pointer shadow-2xs"
+            style={{ backgroundColor: opt.color || '#007aff' }}
+            title="Change option color"
+          />
+
+          {/* Option Name / Selection Action */}
+          <span
+            onClick={onSelect}
+            className="text-xs font-semibold truncate cursor-pointer flex-1 tracking-tight"
+            style={{ color: opt.color || 'inherit' }}
+          >
+            {opt.name}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Reorder Buttons */}
+          <div className="flex items-center opacity-0 group-hover/opt:opacity-100 transition-opacity">
+            <button
+              disabled={index === 0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(index, index - 1);
+              }}
+              className="p-0.5 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 disabled:opacity-20 cursor-pointer"
+              title="Move Up"
+            >
+              <ChevronUp className="w-3 h-3" />
+            </button>
+            <button
+              disabled={index === total - 1}
+              onClick={(e) => {
+                e.stopPropagation();
+                onMove(index, index + 1);
+              }}
+              className="p-0.5 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 disabled:opacity-20 cursor-pointer"
+              title="Move Down"
+            >
+              <ChevronDown className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Color Palette Toggle */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowColorPicker(!showColorPicker);
+            }}
+            className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 opacity-0 group-hover/opt:opacity-100 transition-opacity cursor-pointer"
+            title="Pick color"
+          >
+            <Palette className="w-3 h-3" />
+          </button>
+
+          {/* Checkmark */}
+          {isChecked && <Check className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400 shrink-0 stroke-[2.5]" />}
+        </div>
+      </div>
+
+      {/* Color Palette Swatches */}
+      {showColorPicker && (
+        <div className="mt-2 pt-2 border-t border-stone-200/60 dark:border-zinc-700/60 flex flex-wrap gap-1.5 items-center justify-center animate-in fade-in duration-100">
+          {APPLE_COLORS.map((color) => {
+            const isSelectedColor = opt.color === color.hex;
+            return (
+              <button
+                key={color.hex}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onColorChange(color.hex);
+                  setShowColorPicker(false);
+                }}
+                className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 cursor-pointer flex items-center justify-center shadow-2xs ${isSelectedColor ? 'ring-2 ring-offset-1 ring-stone-900 dark:ring-white scale-110' : 'border-black/10 dark:border-white/20'
+                  }`}
+                style={{ backgroundColor: color.hex }}
+                title={color.name}
+              >
+                {isSelectedColor && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface InteractiveCellProps {
   prop: DatabaseProperty;
   value: any;
   onChange: (val: any) => void;
   onAddOption: (name: string) => void;
+  onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
   readOnly?: boolean;
   isPopoverOpen?: boolean;
   onTogglePopover?: () => void;
@@ -773,13 +1056,15 @@ function InteractiveCell({
   value,
   onChange,
   onAddOption,
+  onUpdateProperty,
   readOnly,
   isPopoverOpen: isPopoverOpenProp,
   onTogglePopover,
   onClosePopover,
 }: InteractiveCellProps) {
   const [localIsOpen, setLocalIsOpen] = useState(false);
-  const [newOptionInput, setNewOptionInput] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
 
   const isPopoverOpen = isPopoverOpenProp !== undefined ? isPopoverOpenProp : localIsOpen;
@@ -798,6 +1083,23 @@ function InteractiveCell({
     } else {
       setLocalIsOpen(false);
     }
+  };
+
+  const handleOptionColorChange = (optId: string, newHex: string) => {
+    if (!onUpdateProperty) return;
+    const updatedOptions = (prop.options || []).map((o) =>
+      o.id === optId ? { ...o, color: newHex } : o
+    );
+    onUpdateProperty(prop.id, { options: updatedOptions });
+  };
+
+  const handleMoveOption = (fromIndex: number, toIndex: number) => {
+    if (!onUpdateProperty) return;
+    const currentOptions = [...(prop.options || [])];
+    if (toIndex < 0 || toIndex >= currentOptions.length) return;
+    const [moved] = currentOptions.splice(fromIndex, 1);
+    currentOptions.splice(toIndex, 0, moved);
+    onUpdateProperty(prop.id, { options: currentOptions });
   };
 
   switch (prop.type) {
@@ -820,7 +1122,7 @@ function InteractiveCell({
           defaultValue={value ?? ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : null)}
-          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono"
+          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono tabular-nums"
           placeholder="0"
         />
       );
@@ -855,11 +1157,38 @@ function InteractiveCell({
       const selectedIds: string[] = Array.isArray(value) ? value : value ? [value] : [];
       const selectedOpts = prop.options?.filter((o) => selectedIds.includes(o.id)) || [];
 
-      const handleCreateOption = () => {
-        if (!newOptionInput.trim()) return;
-        onAddOption(newOptionInput.trim());
-        setNewOptionInput('');
-        closePopover();
+      const filteredOptions = (prop.options || []).filter((opt) =>
+        opt.name.toLowerCase().includes(searchInput.toLowerCase().trim())
+      );
+
+      const exactMatchExists = (prop.options || []).some(
+        (opt) => opt.name.toLowerCase() === searchInput.toLowerCase().trim()
+      );
+
+      const handleEnterKeyPress = () => {
+        const query = searchInput.trim();
+        if (!query) return;
+
+        // Requirement 3: On Enter key, auto-select top remaining matching option
+        if (filteredOptions.length > 0) {
+          const topMatch = filteredOptions[0];
+          if (prop.type === 'multi_select') {
+            const isChecked = selectedIds.includes(topMatch.id);
+            const next = isChecked
+              ? selectedIds.filter((id) => id !== topMatch.id)
+              : [...selectedIds, topMatch.id];
+            onChange(next);
+          } else {
+            onChange(topMatch.id);
+            closePopover();
+          }
+          setSearchInput('');
+        } else {
+          // If no matching options exist, create new option from input
+          onAddOption(query);
+          setSearchInput('');
+          closePopover();
+        }
       };
 
       return (
@@ -891,63 +1220,84 @@ function InteractiveCell({
             isOpen={isPopoverOpen}
             onClose={closePopover}
             triggerRef={triggerRef}
-            width={220}
+            width={240}
           >
-            <div className="p-1 space-y-2 font-sans text-left">
-              <div className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider px-1">
-                Select or create option
+            <div className="p-1.5 space-y-2 font-sans text-left">
+              {/* Requirement 3: Top Search & Create Input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search or create option..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleEnterKeyPress();
+                    }
+                    if (e.key === 'Escape') closePopover();
+                  }}
+                  className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
+                  autoFocus
+                />
               </div>
 
-              <div className="max-h-36 overflow-y-auto space-y-1">
-                {prop.options?.map((opt) => {
+              {/* Requirement 1: Options List with Drag & Reorder + Single Color Palette */}
+              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5 no-scrollbar">
+                {filteredOptions.map((opt) => {
                   const isChecked = selectedIds.includes(opt.id);
+                  const realIndex = (prop.options || []).findIndex((o) => o.id === opt.id);
+
                   return (
-                    <button
+                    <OptionRowItem
                       key={opt.id}
-                      onClick={() => {
+                      opt={opt}
+                      index={realIndex}
+                      total={prop.options?.length || 0}
+                      isChecked={isChecked}
+                      onSelect={() => {
                         if (prop.type === 'multi_select') {
-                          const next = isChecked ? selectedIds.filter((id) => id !== opt.id) : [...selectedIds, opt.id];
+                          const next = isChecked
+                            ? selectedIds.filter((id) => id !== opt.id)
+                            : [...selectedIds, opt.id];
                           onChange(next);
                         } else {
                           onChange(opt.id);
                           closePopover();
                         }
                       }}
-                      className={`w-full text-left px-2 py-1 rounded-md text-xs flex items-center justify-between font-medium cursor-pointer ${isChecked ? 'bg-stone-100 dark:bg-zinc-700' : 'hover:bg-stone-100 dark:hover:bg-zinc-700/60'}`}
-                      style={{ color: opt.color }}
-                    >
-                      <span>{opt.name}</span>
-                      {isChecked && <Check className="w-3.5 h-3.5" />}
-                    </button>
+                      onMove={handleMoveOption}
+                      onColorChange={(newHex) => handleOptionColorChange(opt.id, newHex)}
+                      draggedIndex={draggedIndex}
+                      setDraggedIndex={setDraggedIndex}
+                    />
                   );
                 })}
-              </div>
 
-              {/* Inline Option Creator */}
-              <div className="pt-2 border-t border-stone-100 dark:border-zinc-700 space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="New option name..."
-                  value={newOptionInput}
-                  onChange={(e) => setNewOptionInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleCreateOption();
-                    }
-                  }}
-                  className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d]"
-                />
-                {newOptionInput.trim() && (
-                  <button
-                    onClick={handleCreateOption}
-                    className="w-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold bg-[#1f4d3d] text-white rounded-md hover:bg-[#183e31] transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>Create "{newOptionInput.trim()}"</span>
-                  </button>
+                {filteredOptions.length === 0 && !searchInput.trim() && (
+                  <div className="text-[11px] text-stone-400 text-center py-2 italic">
+                    No options created yet
+                  </div>
                 )}
               </div>
+
+              {/* Explicit "+ Create '[searchInput]'" button if no exact match */}
+              {searchInput.trim() && !exactMatchExists && (
+                <div className="pt-2 border-t border-stone-200/80 dark:border-zinc-800/80">
+                  <button
+                    onClick={() => {
+                      onAddOption(searchInput.trim());
+                      setSearchInput('');
+                      closePopover();
+                    }}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#1f4d3d] text-white rounded-lg hover:bg-[#183e31] active:scale-[0.96] transition-transform cursor-pointer shadow-xs"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Create "{searchInput.trim()}"</span>
+                  </button>
+                </div>
+              )}
             </div>
           </DatabasePopover>
         </div>

@@ -131,7 +131,7 @@ export function DatabasePopover({
         zIndex: 99999,
         transition: 'none', // Strictly disable position transitions
       }}
-      className={`rounded-2xl bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800/90 shadow-2xl p-2 font-sans select-none ${className}`}
+      className={`rounded-2xl bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800/90 shadow-2xl p-2 font-sans antialiased select-none ${className}`}
     >
       {children}
     </div>,

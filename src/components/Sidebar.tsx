@@ -36,6 +36,7 @@ interface SidebarProps {
   session: UserSession | null;
   treeNodes: PageTreeNode[];
   userWorkspaces?: UserWorkspaceItem[];
+  databases?: Array<any>;
   isCreatingPage?: boolean;
   isLoading?: boolean;
   onSwitchWorkspace?: (workspaceId: string) => void;
@@ -46,6 +47,7 @@ interface SidebarProps {
   onCreateFolder?: () => void;
   onCreatePage: (parentId?: string) => void;
   onCreateDatabase?: () => void;
+  onSelectDatabase?: (databaseId: string) => void;
   onSelectPage: (pageId: string) => void;
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
@@ -148,6 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   session,
   treeNodes,
   userWorkspaces = [],
+  databases = [],
   isCreatingPage = false,
   isLoading = false,
   onSwitchWorkspace,
@@ -164,6 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTogglePin,
   onDuplicatePage,
   onCreateDatabase,
+  onSelectDatabase,
   onLogout: _onLogout,
 }) => {
   const { toggleSearch, toggleSidebar, setImportOpen } = useUIStore();
@@ -416,6 +420,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       setDraggedPageId={setDraggedPageId}
                     />
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Databases Section */}
+            {databases.length > 0 && (
+              <div>
+                <div className="px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 tracking-wider uppercase flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Database className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span>Databases</span>
+                  </div>
+                  {onCreateDatabase && (
+                    <button
+                      type="button"
+                      onClick={onCreateDatabase}
+                      className="p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                      title="Create new database"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <div className="mt-1 space-y-0.5">
+                  {databases.map((dbItem: any) => {
+                    const db = dbItem?.database || dbItem;
+                    if (!db || !db.id) return null;
+                    const isActive = activeNav === `db-${db.id}`;
+                    return (
+                      <button
+                        key={db.id}
+                        type="button"
+                        onClick={() => (onSelectDatabase ? onSelectDatabase(db.id) : onSelectPage(db.id))}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer group",
+                          isActive
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-300 font-semibold border-l-2 border-emerald-600'
+                            : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50 hover:text-stone-900 dark:hover:text-white'
+                        )}
+                      >
+                        <span className="text-xs shrink-0">{db.icon || '📊'}</span>
+                        <span className="truncate flex-1 text-left">{db.title || 'Untitled Database'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -21,27 +21,35 @@ export function DatabaseRowDrawer({
   readOnly = false,
 }: DatabaseRowDrawerProps) {
   const [title, setTitle] = useState(item.title);
+  const [notes, setNotes] = useState<string>(item.properties?._notes || '');
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-stone-900/30 dark:bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl bg-white dark:bg-[#18181b] h-full shadow-2xl border-l border-stone-200/80 dark:border-zinc-800/80 flex flex-col font-sans">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex justify-end bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-white dark:bg-[#18181b] h-full shadow-2xl border-l border-stone-200/80 dark:border-zinc-800/80 flex flex-col font-sans cursor-default"
+      >
         {/* Drawer Header */}
         <div className="p-4 border-b border-stone-200/80 dark:border-zinc-800/80 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-zinc-400">
-            <FileText className="w-4 h-4 text-stone-400" />
-            <span>Row Page</span>
+          <div className="flex items-center gap-2 text-xs font-semibold text-stone-500 dark:text-zinc-400">
+            <FileText className="w-4 h-4 text-[#1f4d3d] dark:text-emerald-400" />
+            <span>Row Page Details</span>
           </div>
 
           <div className="flex items-center gap-2">
             {!readOnly && (
               <button
+                type="button"
                 onClick={() => {
                   onDeleteItem(item.id);
                   onClose();
                 }}
-                className="p-1.5 text-stone-400 hover:text-rose-600 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                className="p-1.5 text-stone-400 hover:text-rose-600 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 active:scale-95 transition-all cursor-pointer"
                 title="Delete Row"
               >
                 <Trash2 className="w-4 h-4" />
@@ -49,8 +57,10 @@ export function DatabaseRowDrawer({
             )}
 
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95 transition-all cursor-pointer"
+              title="Close Drawer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -94,7 +104,7 @@ export function DatabaseRowDrawer({
               return (
                 <div key={prop.id} className="grid grid-cols-3 gap-2 items-center text-xs py-1">
                   <div className="flex items-center gap-1.5 text-stone-500 dark:text-zinc-400">
-                    <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
+                    <PropertyTypeIcon type={prop.type} icon={prop.icon} className="w-3.5 h-3.5 text-stone-400" />
                     <span className="font-medium">{prop.name}</span>
                   </div>
 
@@ -118,14 +128,29 @@ export function DatabaseRowDrawer({
             })}
           </div>
 
-          {/* Body Note Section */}
+          {/* Body Note Section (Interactive Content Editor) */}
           <div className="space-y-2 pt-2">
-            <div className="text-xs font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider">
-              Notes & Content
+            <div className="text-xs font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
+              <span>Notes & Content</span>
+              <span className="text-[10px] text-stone-400 font-normal">Auto-saved</span>
             </div>
-            <div className="p-4 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-stone-50/50 dark:bg-zinc-900/30 text-xs text-stone-600 dark:text-zinc-400">
-              {item.title ? `Add notes and description for "${item.title}"...` : 'Add row notes...'}
-            </div>
+            <textarea
+              value={notes}
+              disabled={readOnly}
+              onChange={(e) => setNotes(e.target.value)}
+              onBlur={() => {
+                if (notes !== (item.properties?._notes || '')) {
+                  onUpdateItem(item.id, {
+                    properties: {
+                      ...item.properties,
+                      _notes: notes,
+                    },
+                  });
+                }
+              }}
+              placeholder={`Add detailed notes, specifications, or description for "${title || 'this row'}"...`}
+              className="w-full min-h-[220px] p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-stone-50/50 dark:bg-zinc-900/30 text-xs text-stone-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-all resize-y font-mono leading-relaxed"
+            />
           </div>
         </div>
       </div>

@@ -349,6 +349,17 @@ function DashboardLayout() {
     enabled: !!workspaceId,
   });
 
+  // Fetch Databases in Workspace
+  const { data: databases = [] } = useQuery({
+    queryKey: ['databases', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const { getDatabasesInWorkspace } = await import('~/server/databases');
+      return await getDatabasesInWorkspace({ data: workspaceId });
+    },
+    enabled: !!workspaceId,
+  });
+
   // Soft Delete Page Mutation
   const softDeleteMutation = useMutation({
     mutationFn: async (pageId: string) => {
@@ -482,6 +493,15 @@ function DashboardLayout() {
               className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] dark:bg-[#121214] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
             >
               <Sidebar
+                databases={databases}
+                onSelectDatabase={(dbId) => {
+                  navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
+                  closeSidebarOnMobile();
+                }}
+                onCreateDatabase={() => {
+                  if (createDatabaseMutation.isPending) return;
+                  createDatabaseMutation.mutate();
+                }}
                 workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
                 session={session}
                 treeNodes={treeNodes}
