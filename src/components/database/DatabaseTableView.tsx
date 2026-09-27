@@ -369,7 +369,7 @@ export function DatabaseTableView({
       {/* Floating Action Bar for Bulk Selection (Overlayed to avoid table jumping) */}
       <AnimatePresence>
         {selectedItemIds.length > 0 && (
-          <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-full bg-stone-900/90 dark:bg-zinc-800/95 text-white backdrop-blur-md shadow-xl border border-stone-700/50 dark:border-zinc-700/50 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none">
+          <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-sm bg-stone-900/90 dark:bg-zinc-800/95 text-white backdrop-blur-md shadow-xl border border-stone-700/50 dark:border-zinc-700/50 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none">
             <span className="font-medium text-stone-200">
               <strong className="text-white font-semibold">{selectedItemIds.length}</strong> row{selectedItemIds.length > 1 ? 's' : ''} selected
             </span>
@@ -378,7 +378,7 @@ export function DatabaseTableView({
 
             <button
               onClick={handleBulkDelete}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-2xs transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-sm bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-2xs transition-colors cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Delete</span>

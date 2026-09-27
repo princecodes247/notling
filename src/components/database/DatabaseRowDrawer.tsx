@@ -6,6 +6,10 @@ import { CustomDatePicker } from './CustomDatePicker';
 import { validatePropertyValue, parseDateInput } from '~/lib/databaseValidation';
 import { DatabasePopover } from './DatabasePopover';
 import { X, Trash2, FileText, AlertCircle, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
+import { getOrCreateDatabaseItemPage } from '~/server/databases';
+import { BlockEditorInner } from '../BlockEditorInner';
 
 interface DatabaseRowDrawerProps {
   item: DatabaseItem;
@@ -24,10 +28,19 @@ export function DatabaseRowDrawer({
   onDeleteItem,
   readOnly = false,
 }: DatabaseRowDrawerProps) {
+  const navigate = useNavigate();
   const [title, setTitle] = useState(item.title);
   const [notes, setNotes] = useState<string>(item.properties?._notes || '');
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
+
+  const { data: pageData, isLoading: isPageLoading } = useQuery({
+    queryKey: ['databaseItemPage', item.id],
+    queryFn: async () => {
+      return await getOrCreateDatabaseItemPage({ data: item.id });
+    },
+    enabled: !!item.id,
+  });
 
   return (
     <motion.div
@@ -44,16 +57,29 @@ export function DatabaseRowDrawer({
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl bg-white dark:bg-[#18181b] h-full shadow-2xl border-l border-stone-200/80 dark:border-zinc-800/80 flex flex-col font-sans cursor-default"
+        className="w-full max-w-3xl bg-white dark:bg-[#18181b] h-full shadow-2xl border-l border-stone-200/80 dark:border-zinc-800/80 flex flex-col font-sans cursor-default"
       >
         {/* Drawer Header */}
-        <div className="p-4 border-b border-stone-200/80 dark:border-zinc-800/80 flex items-center justify-between">
+        <div className="p-4 pb-0 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-stone-500 dark:text-zinc-400">
-            <FileText className="w-4 h-4 text-[#1f4d3d] dark:text-emerald-400" />
-            <span>Row Page Details</span>
           </div>
 
           <div className="flex items-center gap-2">
+            {pageData?.id && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  navigate({ to: '/dashboard/p/$pageId', params: { pageId: pageData.id } });
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-stone-700 dark:text-zinc-200 bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 rounded-md transition-all cursor-pointer mr-2"
+                title="Open as full page"
+              >
+                <ExternalLink className="w-3.5 h-3.5 text-stone-500" />
+                <span>Open full page</span>
+              </button>
+            )}
+
             {!readOnly && (
               <button
                 type="button"
@@ -80,7 +106,7 @@ export function DatabaseRowDrawer({
         </div>
 
         {/* Drawer Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 pl-14 overflow-y-auto pt-2 p-6 space-y-6">
           {/* Row Title */}
           <div className="space-y-1">
             <input
@@ -100,7 +126,7 @@ export function DatabaseRowDrawer({
                   });
                 }
               }}
-              className="w-full text-2xl font-bold bg-transparent border-none focus:outline-none focus:bg-stone-50 dark:focus:bg-zinc-900/60 px-1 py-1 rounded-lg text-stone-950 dark:text-white placeholder:text-stone-300 dark:placeholder:text-zinc-600 placeholder:italic"
+              className="w-full text-2xl font-bold bg-transparent border-none focus:outline-none focus:bg-stone-50 dark:focus:bg-zinc-900/60 px-1 py-1 rounded-lg text-stone-950 dark:text-white placeholder:text-stone-300 dark:placeholder:text-zinc-600"
               placeholder="Untitled Row"
             />
           </div>
@@ -141,29 +167,39 @@ export function DatabaseRowDrawer({
             })}
           </div>
 
-          {/* Body Note Section (Interactive Content Editor) */}
-          <div className="space-y-2 pt-2">
+          {/* Subpage Block Editor Section */}
+          <div className="space-y-2 pt-2 flex-1 flex flex-col min-h-[300px]">
             <div className="text-xs font-semibold text-stone-400 dark:text-zinc-500 uppercase tracking-wider flex items-center justify-between">
-              <span>Notes & Content</span>
+              <span>Page Content & Blocks</span>
               <span className="text-[10px] text-stone-400 font-normal">Auto-saved</span>
             </div>
-            <textarea
-              value={notes}
-              disabled={readOnly}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => {
-                if (notes !== (item.properties?._notes || '')) {
-                  onUpdateItem(item.id, {
-                    properties: {
-                      ...item.properties,
-                      _notes: notes,
-                    },
-                  });
-                }
-              }}
-              placeholder={`Add detailed notes, specifications, or description for "${title || 'this row'}"...`}
-              className="w-full min-h-[220px] p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-stone-50/50 dark:bg-zinc-900/30 text-xs text-stone-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-all resize-y font-mono leading-relaxed"
-            />
+            {isPageLoading ? (
+              <div className="flex-1 min-h-[260px] flex items-center justify-center text-xs text-stone-400">
+
+              </div>
+            ) : pageData ? (
+              <div className="flex-1 min-h-[260px] overflow-hidden p-2">
+                <BlockEditorInner page={pageData} readOnly={readOnly} />
+              </div>
+            ) : (
+              <textarea
+                value={notes}
+                disabled={readOnly}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={() => {
+                  if (notes !== (item.properties?._notes || '')) {
+                    onUpdateItem(item.id, {
+                      properties: {
+                        ...item.properties,
+                        _notes: notes,
+                      },
+                    });
+                  }
+                }}
+                placeholder={`Add detailed notes, specifications, or description for "${title || 'this row'}"...`}
+                className="w-full min-h-[220px] p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-stone-50/50 dark:bg-zinc-900/30 text-xs text-stone-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-all resize-y font-mono leading-relaxed"
+              />
+            )}
           </div>
         </div>
       </motion.div>
@@ -205,9 +241,8 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
               const numVal = inputVal !== '' ? Number(inputVal) : null;
               onChange(numVal);
             }}
-            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 font-mono placeholder:text-stone-300 dark:placeholder:text-zinc-600 ${
-              isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
-            }`}
+            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 font-mono placeholder:text-stone-300 dark:placeholder:text-zinc-600 ${isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+              }`}
             placeholder="0"
           />
           {isInvalid && (
@@ -231,9 +266,8 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
               disabled={readOnly}
               onChange={(e) => setInputVal(e.target.value)}
               onBlur={() => onChange(inputVal)}
-              className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${
-                isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
-              }`}
+              className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+                }`}
               placeholder="https://..."
             />
             {value && !isInvalid && (
@@ -267,9 +301,8 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
             disabled={readOnly}
             onChange={(e) => setInputVal(e.target.value)}
             onBlur={() => onChange(inputVal)}
-            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${
-              isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
-            }`}
+            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+              }`}
             placeholder="name@domain.com"
           />
           {isInvalid && (
@@ -323,9 +356,8 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
                   }
                 }
               }}
-              className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${
-                isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
-              }`}
+              className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+                }`}
               placeholder="YYYY-MM-DD or today..."
             />
             <button

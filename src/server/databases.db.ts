@@ -5,6 +5,7 @@ import {
   databaseItems,
   databaseViews,
   databaseForms,
+  pages,
   type Database,
   type DatabaseProperty,
   type DatabaseItem,
@@ -13,6 +14,7 @@ import {
 } from '~/db/schema';
 import { eq, asc, desc, and, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { fetchPage } from './pages.db';
 
 export interface FullDatabase {
   database: Database;
@@ -280,15 +282,62 @@ export async function deleteDatabaseProperty(propertyId: string) {
   return { success: true };
 }
 
-export async function addDatabaseItem(databaseId: string, item: { id?: string; title?: string; properties?: Record<string, any> }) {
+export async function getOrCreateDatabaseItemPage(itemId: string) {
+  const [item] = await db.select().from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
+  if (!item) return null;
+
+  let pageId = item.pageId;
+  if (!pageId) {
+    const [database] = await db.select().from(databases).where(eq(databases.id, item.databaseId)).limit(1);
+    if (database) {
+      const [newPage] = await db
+        .insert(pages)
+        .values({
+          workspaceId: database.workspaceId,
+          parentId: database.pageId || null,
+          title: item.title || 'Untitled',
+          icon: '📄',
+          visibility: 'workspace',
+          order: item.order || 0,
+        })
+        .returning();
+      pageId = newPage.id;
+      await db.update(databaseItems).set({ pageId: newPage.id }).where(eq(databaseItems.id, itemId));
+    }
+  }
+
+  if (!pageId) return null;
+  return fetchPage(pageId);
+}
+
+export async function addDatabaseItem(databaseId: string, item: { id?: string; title?: string; properties?: Record<string, any>; pageId?: string }) {
   const existingItems = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, databaseId));
   const maxOrder = existingItems.reduce((max, i) => Math.max(max, i.order), -1);
+
+  const [dbInfo] = await db.select({ workspaceId: databases.workspaceId, pageId: databases.pageId }).from(databases).where(eq(databases.id, databaseId)).limit(1);
+
+  let targetPageId = item.pageId || null;
+  if (!targetPageId && dbInfo) {
+    const [createdPage] = await db
+      .insert(pages)
+      .values({
+        workspaceId: dbInfo.workspaceId,
+        parentId: dbInfo.pageId || null,
+        title: item.title !== undefined && item.title !== '' ? item.title : 'Untitled',
+        icon: '📄',
+        visibility: 'workspace',
+        order: maxOrder + 1,
+      })
+      .returning();
+    targetPageId = createdPage.id;
+  }
 
   const [newItem] = await db
     .insert(databaseItems)
     .values({
       ...(item.id ? { id: item.id } : {}),
       databaseId,
+      pageId: targetPageId,
       title: item.title !== undefined ? item.title : '',
       properties: item.properties || {},
       order: maxOrder + 1,
@@ -304,10 +353,18 @@ export async function updateDatabaseItem(itemId: string, updates: Partial<{ titl
     .set({ ...updates, updatedAt: new Date() })
     .where(eq(databaseItems.id, itemId))
     .returning();
+
+  if (updated && updated.pageId && updates.title !== undefined) {
+    await db.update(pages).set({ title: updates.title || 'Untitled', updatedAt: new Date() }).where(eq(pages.id, updated.pageId));
+  }
   return updated;
 }
 
 export async function deleteDatabaseItem(itemId: string) {
+  const [item] = await db.select({ pageId: databaseItems.pageId }).from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
+  if (item?.pageId) {
+    await db.update(pages).set({ isDeleted: true, updatedAt: new Date() }).where(eq(pages.id, item.pageId));
+  }
   await db.delete(databaseItems).where(eq(databaseItems.id, itemId));
   return { success: true };
 }

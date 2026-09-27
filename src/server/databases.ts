@@ -63,6 +63,13 @@ export const deleteDatabaseProperty = createServerFn({ method: 'POST' })
     return deleteDatabaseProperty(data);
   });
 
+export const getOrCreateDatabaseItemPage = createServerFn({ method: 'POST' })
+  .validator((itemId: string) => itemId)
+  .handler(async ({ data }: { data: string }) => {
+    const { getOrCreateDatabaseItemPage: getOrCreate } = await import('./databases.db');
+    return getOrCreate(data);
+  });
+
 export const createDatabaseItem = createServerFn({ method: 'POST' })
   .validator((input: { id?: string; databaseId: string; title?: string; properties?: Record<string, any> }) => input)
   .handler(async ({ data }: { data: { id?: string; databaseId: string; title?: string; properties?: Record<string, any> } }) => {
