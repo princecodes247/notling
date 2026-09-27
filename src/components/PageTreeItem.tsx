@@ -259,7 +259,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             type="button"
             className={clsx(
               'pl-0.5 pr-0 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 transition-transform shrink-0',
-              !hasChildren && 'hidden opacity-0 max-w-0 pointer-events-none'
+              (!hasChildren || node.databaseId) && 'hidden opacity-0 max-w-0 pointer-events-none'
             )}
             onClick={(e) => {
               e.stopPropagation();

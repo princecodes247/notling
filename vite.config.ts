@@ -50,13 +50,17 @@ const devTailwindDarkModeFix = () => ({
 })
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    // dedupe: ['react', 'react-dom'],
+  },
   server: {
     hmr: {
       overlay: false,
     },
   },
   optimizeDeps: {
+    // include: ['react', 'react-dom', '@tanstack/react-router', '@tanstack/react-start'],
     exclude: ['pg', 'drizzle-orm'],
   },
   plugins: [
