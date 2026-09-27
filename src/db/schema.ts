@@ -179,7 +179,7 @@ export const databases = pgTable('databases', {
   pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }),
   title: text('title').notNull().default('Untitled Database'),
   description: text('description'),
-  icon: text('icon').default('📊'),
+  icon: text('icon').default(''),
   coverUrl: text('cover_url'),
   inline: boolean('inline').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),

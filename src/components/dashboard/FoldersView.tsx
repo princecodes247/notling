@@ -15,6 +15,7 @@ import type { PageTreeNode } from '~/server/pages';
 import type { Database } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
 import { motion } from 'motion/react';
+import { Star, Copy, Trash2 } from 'lucide-react';
 
 export interface FlatItem {
   id: string;
@@ -80,10 +81,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         const icon = live?.icon ?? node.icon;
 
         let type: 'folder' | 'database' | 'page' = 'page';
-        if (node.databaseId || icon === '📊') {
+        if (node.databaseId) {
           type = 'database';
           if (node.databaseId) dbPageIds.add(node.databaseId);
-        } else if (icon === '📁' || icon === '📂' || (node.children && node.children.length > 0)) {
+        } else if (node.children && node.children.length > 0) {
           type = 'folder';
         }
 
@@ -115,7 +116,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         result.push({
           id: db.id,
           title: db.title || 'Untitled Database',
-          icon: db.icon || '📊',
+          icon: db.icon || '',
           type: 'database',
           databaseId: db.id,
           createdAt: db.createdAt,
@@ -199,17 +200,17 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   return (
     <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-12 pt-10">
       <div className="max-w-6xl mx-auto w-full flex flex-col gap-8">
-        
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100 dark:border-zinc-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-200/80 dark:border-zinc-800/80">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-2xl">📂</span>
-              <h1 className="text-2xl font-bold text-neutral-950 dark:text-white tracking-tight">
+              <span className="text-xl">📂</span>
+              <h1 className="text-2xl font-semibold text-stone-950 dark:text-white tracking-tight">
                 All Pages & Databases
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-neutral-500 dark:text-zinc-400 mt-1">
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
               Browse, filter, and manage all documents, databases, and collections in your workspace.
             </p>
           </div>
@@ -218,9 +219,9 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
             <button
               type="button"
               onClick={() => onCreateDocument()}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-neutral-200 dark:border-zinc-700/80 hover:bg-neutral-50 dark:hover:bg-zinc-800 text-neutral-800 dark:text-zinc-200 text-xs font-medium transition-all active:scale-[0.97] cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-all active:scale-[0.98] cursor-pointer"
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={15} />
+              <HugeiconsIcon icon={PlusSignIcon} size={14} />
               <span>New Document</span>
             </button>
 
@@ -228,9 +229,9 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               <button
                 type="button"
                 onClick={onCreateDatabase}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium transition-all active:scale-[0.97] shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium transition-all active:scale-[0.98] shadow-2xs cursor-pointer"
               >
-                <HugeiconsIcon icon={DatabaseIcon} size={15} />
+                <HugeiconsIcon icon={DatabaseIcon} size={14} />
                 <span>New Database</span>
               </button>
             )}
@@ -238,9 +239,9 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
             <button
               type="button"
               onClick={onCreateFolder}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-neutral-950 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 text-xs font-medium transition-all active:scale-[0.97] shadow-2xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-medium transition-all active:scale-[0.98] shadow-2xs cursor-pointer"
             >
-              <HugeiconsIcon icon={FolderAddIcon} size={15} />
+              <HugeiconsIcon icon={FolderAddIcon} size={14} />
               <span>New Folder</span>
             </button>
           </div>
@@ -248,7 +249,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
 
         {/* Toolbar: Search, Filters, Sort & View Mode */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          
+
           {/* Search Input */}
           <div className="relative flex-1 max-w-md">
             <HugeiconsIcon
@@ -277,11 +278,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                 <button
                   key={tab.key}
                   onClick={() => setFilterType(tab.key as any)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-                    filterType === tab.key
-                      ? 'bg-white dark:bg-zinc-900 text-neutral-950 dark:text-white shadow-2xs'
-                      : 'text-neutral-500 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200'
-                  }`}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${filterType === tab.key
+                    ? 'bg-white dark:bg-zinc-900 text-neutral-950 dark:text-white shadow-2xs'
+                    : 'text-neutral-500 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200'
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -308,22 +308,20 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               <div className="flex items-center p-1 rounded-xl bg-neutral-100/80 dark:bg-zinc-800/60 border border-neutral-200/60 dark:border-zinc-700/50">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
-                    viewMode === 'grid'
-                      ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
-                      : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
-                  }`}
+                  className={`p-1.5 rounded-lg cursor-pointer transition-colors ${viewMode === 'grid'
+                    ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
+                    : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
+                    }`}
                   title="Grid View"
                 >
                   <HugeiconsIcon icon={GridIcon} size={14} />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
-                    viewMode === 'list'
-                      ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
-                      : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
-                  }`}
+                  className={`p-1.5 rounded-lg cursor-pointer transition-colors ${viewMode === 'list'
+                    ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
+                    : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
+                    }`}
                   title="List View"
                 >
                   <HugeiconsIcon icon={Menu01Icon} size={14} />
@@ -367,22 +365,21 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.15 }}
                 onClick={() => handleItemClick(item)}
-                className="group rounded-2xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 hover:border-neutral-300 dark:hover:border-zinc-700 p-4 flex flex-col justify-between gap-4 cursor-pointer transition-all hover:shadow-md active:scale-[0.98]"
+                className="group rounded-lg border border-stone-200/90 dark:border-zinc-800/90 bg-white dark:bg-[#1f1f23] hover:border-stone-300 dark:hover:border-zinc-700 p-4 flex flex-col justify-between gap-4 cursor-pointer transition-all hover:shadow-xs active:scale-[0.99]"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="w-10 h-10 rounded-xl bg-neutral-50 dark:bg-zinc-800 border border-neutral-200/80 dark:border-zinc-700 flex items-center justify-center text-xl shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                    {item.icon || (item.type === 'database' ? '📊' : item.type === 'folder' ? '📁' : '📄')}
+                  <div className="w-9 h-9 rounded-lg bg-stone-50 dark:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-700/80 flex items-center justify-center text-lg shrink-0 group-hover:scale-105 transition-transform">
+                    {item.icon || (item.type === 'database' ? null : item.type === 'folder' ? '📁' : '📄')}
                   </div>
 
                   <div className="flex items-center gap-1">
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                        item.type === 'database'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40'
-                          : item.type === 'folder'
-                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40'
-                          : 'bg-neutral-100 dark:bg-zinc-800 text-neutral-600 dark:text-zinc-400 border border-neutral-200 dark:border-zinc-700'
-                      }`}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase tracking-wider ${item.type === 'database'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50'
+                        : item.type === 'folder'
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50'
+                          : 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
+                        }`}
                     >
                       {item.type}
                     </span>
@@ -390,25 +387,25 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                 </div>
 
                 <div className="space-y-1 min-w-0">
-                  <h3 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
+                  <h3 className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
                     {item.title}
                   </h3>
 
                   {item.parentTitle && (
-                    <p className="text-[11px] text-neutral-400 dark:text-zinc-500 truncate flex items-center gap-1">
+                    <p className="text-[11px] text-stone-400 dark:text-zinc-500 truncate flex items-center gap-1">
                       <span>in</span>
-                      <span className="font-medium text-neutral-600 dark:text-zinc-400">{item.parentTitle}</span>
+                      <span className="font-medium text-stone-600 dark:text-zinc-400">{item.parentTitle}</span>
                     </p>
                   )}
                 </div>
 
-                <div className="pt-3 border-t border-neutral-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-neutral-400 dark:text-zinc-500">
+                <div className="pt-3 border-t border-stone-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500">
                   <span>
                     {item.type === 'folder'
                       ? `${item.childrenCount} item${item.childrenCount === 1 ? '' : 's'}`
                       : item.createdAt
-                      ? new Date(item.createdAt).toLocaleDateString()
-                      : 'Item'}
+                        ? new Date(item.createdAt).toLocaleDateString()
+                        : 'Item'}
                   </span>
 
                   <div className="flex items-center gap-1">
@@ -419,10 +416,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                           e.stopPropagation();
                           onTogglePin(item.id);
                         }}
-                        className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-400 hover:text-amber-500 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 transition-colors cursor-pointer"
                         title="Favorite Item"
                       >
-                        ⭐
+                        <Star className="w-3.5 h-3.5" />
                       </button>
                     )}
                     {onDuplicate && item.type !== 'folder' && (
@@ -432,10 +429,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                           e.stopPropagation();
                           onDuplicate(item.id);
                         }}
-                        className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-200 transition-colors cursor-pointer text-xs"
+                        className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
                         title="Duplicate Item"
                       >
-                        📄
+                        <Copy className="w-3.5 h-3.5" />
                       </button>
                     )}
                     {onDelete && (
@@ -445,16 +442,16 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                           e.stopPropagation();
                           onDelete({ id: item.id, databaseId: item.databaseId });
                         }}
-                        className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-neutral-400 hover:text-rose-500 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-500 transition-colors cursor-pointer"
                         title="Delete Item"
                       >
-                        🗑️
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                     <HugeiconsIcon
                       icon={ArrowRight01Icon}
                       size={14}
-                      className="group-hover:translate-x-0.5 text-neutral-300 dark:text-zinc-600 group-hover:text-neutral-700 dark:group-hover:text-zinc-200 transition-all"
+                      className="group-hover:translate-x-0.5 text-stone-300 dark:text-zinc-600 group-hover:text-stone-700 dark:group-hover:text-zinc-200 transition-all ml-0.5"
                     />
                   </div>
                 </div>
@@ -463,45 +460,44 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
           </div>
         ) : (
           /* List Layout */
-          <div className="rounded-2xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 divide-y divide-neutral-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
+          <div className="rounded-lg border border-stone-200 dark:border-zinc-800 bg-white dark:bg-[#1f1f23] divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
             {displayedItems.map((item) => (
               <div
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                className="p-3.5 px-4 flex items-center justify-between hover:bg-neutral-50/80 dark:hover:bg-zinc-800/50 cursor-pointer group transition-colors"
+                className="p-3 px-4 flex items-center justify-between hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 cursor-pointer group transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-8 h-8 rounded-lg bg-neutral-100 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0">
-                    {item.icon || (item.type === 'database' ? '📊' : item.type === 'folder' ? '📁' : '📄')}
+                  <div className="w-8 h-8 rounded-md bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0">
+                    {item.icon || (item.type === 'database' ? '' : item.type === 'folder' ? '📁' : '📄')}
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xs font-semibold text-neutral-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
+                      <h3 className="text-xs font-semibold text-stone-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
                         {item.title}
                       </h3>
                       <span
-                        className={`px-1.5 py-0.2 rounded text-[9px] font-semibold uppercase ${
-                          item.type === 'database'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400'
-                            : item.type === 'folder'
-                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400'
-                            : 'bg-neutral-100 dark:bg-zinc-800 text-neutral-500'
-                        }`}
+                        className={`px-1.5 py-0.2 rounded-md text-[9px] font-mono uppercase ${item.type === 'database'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+                          : item.type === 'folder'
+                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+                            : 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
+                          }`}
                       >
                         {item.type}
                       </span>
                     </div>
 
                     {item.parentTitle && (
-                      <span className="text-[10px] text-neutral-400 dark:text-zinc-500">
+                      <span className="text-[10px] text-stone-400 dark:text-zinc-500">
                         In {item.parentTitle}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-neutral-400 shrink-0">
+                <div className="flex items-center gap-3 text-xs text-stone-400 shrink-0">
                   <span className="hidden sm:inline text-[11px]">
                     {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
                   </span>
@@ -512,10 +508,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         e.stopPropagation();
                         onTogglePin(item.id);
                       }}
-                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-400 hover:text-amber-500 cursor-pointer"
+                      className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 cursor-pointer"
                       title="Favorite Item"
                     >
-                      ⭐
+                      <Star className="w-3.5 h-3.5" />
                     </button>
                   )}
                   {onDuplicate && item.type !== 'folder' && (
@@ -525,10 +521,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         e.stopPropagation();
                         onDuplicate(item.id);
                       }}
-                      className="p-1 rounded hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-200 cursor-pointer text-xs"
+                      className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 cursor-pointer"
                       title="Duplicate Item"
                     >
-                      📄
+                      <Copy className="w-3.5 h-3.5" />
                     </button>
                   )}
                   {onDelete && (
@@ -538,16 +534,16 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         e.stopPropagation();
                         onDelete({ id: item.id, databaseId: item.databaseId });
                       }}
-                      className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 text-neutral-400 hover:text-rose-500 cursor-pointer"
+                      className="p-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-500 cursor-pointer"
                       title="Delete Item"
                     >
-                      🗑️
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
                   <HugeiconsIcon
                     icon={ArrowRight01Icon}
                     size={14}
-                    className="group-hover:translate-x-0.5 text-neutral-300 dark:text-zinc-600 group-hover:text-neutral-700 dark:group-hover:text-zinc-200 transition-all"
+                    className="group-hover:translate-x-0.5 text-stone-300 dark:text-zinc-600 group-hover:text-stone-700 dark:group-hover:text-zinc-200 transition-all"
                   />
                 </div>
               </div>

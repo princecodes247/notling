@@ -87,8 +87,8 @@ function DashboardDatabaseRoute() {
       const dbId = dbData.database.id;
       const live = pageMeta[dbId] || (dbData.database.pageId ? pageMeta[dbData.database.pageId] : undefined);
       const existing = openTabs.find((t) => t.id === dbId || t.id === dbData.database.pageId);
-      const title = live?.title ?? dbData.database.title ?? 'Projects & Tasks Database';
-      const icon = live?.icon ?? dbData.database.icon ?? '📊';
+      const title = live?.title ?? dbData.database.title ?? '';
+      const icon = live?.icon ?? dbData.database.icon ?? '';
 
       if (existing) {
         updateTabMeta(existing.id, title, icon);

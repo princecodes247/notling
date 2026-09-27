@@ -212,8 +212,8 @@ function DashboardLayout() {
         const resolvedTitle =
           liveMeta?.title ??
           node?.title ??
-          (existingTab?.title && existingTab.title !== 'Projects & Tasks Database' ? existingTab.title : 'Projects & Tasks Database');
-        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? '📊';
+          (existingTab?.title ? existingTab.title : 'Untitled Database');
+        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? null;
 
         doOpenTab({
           id: dbId,

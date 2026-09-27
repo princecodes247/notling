@@ -12,7 +12,7 @@ import {
   type DatabaseView,
   type DatabaseForm,
 } from '~/db/schema';
-import { eq, asc, desc, and, or } from 'drizzle-orm';
+import { eq, asc, desc, and, or, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { fetchPage } from './pages.db';
 
@@ -25,12 +25,18 @@ export interface FullDatabase {
 }
 
 export async function fetchDatabase(databaseId: string): Promise<FullDatabase | null> {
-  const [database] = await db
-    .select()
+  const [row] = await db
+    .select({
+      database: databases,
+      isDeleted: pages.isDeleted,
+    })
     .from(databases)
+    .leftJoin(pages, eq(databases.pageId, pages.id))
     .where(or(eq(databases.id, databaseId), eq(databases.pageId, databaseId)))
     .limit(1);
-  if (!database) return null;
+
+  if (!row || !row.database || row.isDeleted === true) return null;
+  const database = row.database;
 
   const properties = await db
     .select()
@@ -65,7 +71,18 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
 }
 
 export async function fetchDatabasesInWorkspace(workspaceId: string): Promise<Database[]> {
-  return db.select().from(databases).where(eq(databases.workspaceId, workspaceId)).orderBy(desc(databases.createdAt));
+  const rows = await db
+    .select({ database: databases })
+    .from(databases)
+    .leftJoin(pages, eq(databases.pageId, pages.id))
+    .where(
+      and(
+        eq(databases.workspaceId, workspaceId),
+        or(isNull(pages.isDeleted), eq(pages.isDeleted, false))
+      )
+    )
+    .orderBy(desc(databases.createdAt));
+  return rows.map((r) => r.database);
 }
 
 export async function fetchPublicFormByToken(shareToken: string) {
@@ -110,7 +127,7 @@ export async function createNewDatabase(input: {
       .values({
         workspaceId: input.workspaceId,
         title: input.title || 'Untitled Database',
-        icon: '📊',
+        icon: '',
       })
       .returning();
     targetPageId = newPage.id;
@@ -122,7 +139,7 @@ export async function createNewDatabase(input: {
       workspaceId: input.workspaceId,
       pageId: targetPageId,
       title: input.title || 'Untitled Database',
-      icon: '📊',
+      icon: '',
       inline: input.inline ?? false,
     })
     .returning();

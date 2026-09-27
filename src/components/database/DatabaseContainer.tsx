@@ -78,9 +78,9 @@ export function DatabaseContainer({
 
     try {
       const { updateTabMeta } = useUIStore.getState();
-      updateTabMeta(dbData.database.id, finalTitle, dbData.database.icon || '📊');
+      updateTabMeta(dbData.database.id, finalTitle, dbData.database.icon || '');
       if (dbData.database.pageId) {
-        updateTabMeta(dbData.database.pageId, finalTitle, dbData.database.icon || '📊');
+        updateTabMeta(dbData.database.pageId, finalTitle, dbData.database.icon || '');
       }
 
       await updateDatabase({
@@ -148,7 +148,7 @@ export function DatabaseContainer({
     }));
 
     try {
-      await createDatabaseItem({
+      const res = await createDatabaseItem({
         data: {
           id: tempId,
           databaseId: dbData.database.id,
@@ -156,6 +156,15 @@ export function DatabaseContainer({
           properties: mergedProps,
         },
       });
+
+      if (res?.pageId) {
+        setDbData((prev: FullDatabase) => ({
+          ...prev,
+          items: prev.items.map((item: DatabaseItem) =>
+            item.id === tempId ? { ...item, pageId: res.pageId } : item
+          ),
+        }));
+      }
     } catch (err) {
       console.error('Failed to save row to server:', err);
     }
@@ -298,7 +307,7 @@ export function DatabaseContainer({
   };
 
   const handleUpdateIcon = async (newIcon: string | null) => {
-    const iconValue = newIcon || '📊';
+    const iconValue = newIcon || '';
     setDbData((prev: FullDatabase) => ({
       ...prev,
       database: {
@@ -331,7 +340,7 @@ export function DatabaseContainer({
   return (
     <div className="w-full font-sans text-stone-900 dark:text-zinc-100 min-h-screen">
       <EditorHeader
-        icon={dbData.database.icon || '📊'}
+        icon={dbData.database.icon || ''}
         title={dbTitle}
         isReadOnly={readOnly}
         isPinned={isPinned}

@@ -5,7 +5,7 @@ import { PropertyTypeIcon } from './PropertyTypeIcon';
 import { CustomDatePicker } from './CustomDatePicker';
 import { validatePropertyValue, parseDateInput } from '~/lib/databaseValidation';
 import { DatabasePopover } from './DatabasePopover';
-import { X, Trash2, FileText, AlertCircle, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
+import { X, Trash2, AlertCircle, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getOrCreateDatabaseItemPage } from '~/server/databases';
@@ -174,9 +174,7 @@ export function DatabaseRowDrawer({
               <span className="text-[10px] text-stone-400 font-normal">Auto-saved</span>
             </div>
             {isPageLoading ? (
-              <div className="flex-1 min-h-[260px] flex items-center justify-center text-xs text-stone-400">
-
-              </div>
+              <RowEditorSkeleton />
             ) : pageData ? (
               <div className="flex-1 min-h-[260px] overflow-hidden p-2">
                 <BlockEditorInner page={pageData} readOnly={readOnly} />
@@ -204,6 +202,40 @@ export function DatabaseRowDrawer({
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function RowEditorSkeleton() {
+  return (
+    <div className="flex-1 min-h-[260px] p-4 space-y-4 animate-pulse rounded-xl border border-stone-200/60 dark:border-zinc-800 bg-stone-50/40 dark:bg-zinc-900/20">
+      {/* Heading Skeleton */}
+      <div className="h-5 bg-stone-200/80 dark:bg-zinc-800 rounded-md w-1/2" />
+
+      {/* Paragraph 1 */}
+      <div className="space-y-2 pt-1">
+        <div className="h-3.5 bg-stone-200/70 dark:bg-zinc-800/70 rounded w-full" />
+        <div className="h-3.5 bg-stone-200/70 dark:bg-zinc-800/70 rounded w-5/6" />
+        <div className="h-3.5 bg-stone-200/70 dark:bg-zinc-800/70 rounded w-4/6" />
+      </div>
+
+      {/* Callout Skeleton */}
+      <div className="p-3.5 rounded-lg border border-stone-200/60 dark:border-zinc-800 bg-stone-100/50 dark:bg-zinc-800/30 space-y-2">
+        <div className="h-3.5 bg-stone-200 dark:bg-zinc-700 rounded w-1/3" />
+        <div className="h-3 bg-stone-200/60 dark:bg-zinc-800/60 rounded w-4/5" />
+      </div>
+
+      {/* Bullet Items Skeleton */}
+      <div className="space-y-2.5 pt-1">
+        <div className="flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-zinc-700 shrink-0" />
+          <div className="h-3.5 bg-stone-200/70 dark:bg-zinc-800/70 rounded w-1/2" />
+        </div>
+        <div className="flex items-center gap-2.5">
+          <div className="w-2 h-2 rounded-full bg-stone-300 dark:bg-zinc-700 shrink-0" />
+          <div className="h-3.5 bg-stone-200/70 dark:bg-zinc-800/70 rounded w-2/3" />
+        </div>
+      </div>
+    </div>
   );
 }
 

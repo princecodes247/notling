@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests, databases } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests, databases, databaseItems } from '~/db/schema';
 import { eq, and, or, desc, asc, isNull, lt, ne, sql, inArray } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
@@ -114,17 +114,26 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
 
+    // Query DB row item subpages to exclude them from sidebar page tree
+    const dbItemRows = await db
+      .select({ pageId: databaseItems.pageId })
+      .from(databaseItems)
+      .where(sql`${databaseItems.pageId} IS NOT NULL`);
+    const dbItemPageIdSet = new Set(dbItemRows.map((r) => r.pageId).filter(Boolean));
+
     // Single-pass tree construction
     const pageMap = new Map<string, PageTreeNode>();
     const rootNodes: PageTreeNode[] = [];
 
-    // Combine workspace pages
+    // Combine workspace pages (excluding database row subpages)
     for (const p of workspacePages) {
+      if (dbItemPageIdSet.has(p.id)) continue;
       pageMap.set(p.id, { ...p, children: [], canEdit: true, canDelete: isOwner });
     }
 
-    // Combine explicit shares
+    // Combine explicit shares (excluding database row subpages)
     for (const sp of sharedPages) {
+      if (dbItemPageIdSet.has(sp.id)) continue;
       if (!pageMap.has(sp.id)) {
         const canEdit = (sp as any).role === 'editor';
         const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit, canDelete: isOwner };
@@ -135,6 +144,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     // Merge recently viewed (update viewedAt & add external public pages)
     for (const rv of recentViews) {
+      if (dbItemPageIdSet.has(rv.pageId)) continue;
       if (pageMap.has(rv.pageId)) {
         const node = pageMap.get(rv.pageId)!;
         if (new Date(rv.viewedAt) > new Date(node.updatedAt)) {
@@ -166,6 +176,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     // Link workspace hierarchy
     for (const p of workspacePages) {
+      if (dbItemPageIdSet.has(p.id)) continue;
       const node = pageMap.get(p.id)!;
       if (p.parentId && pageMap.has(p.parentId)) {
         pageMap.get(p.parentId)!.children.push(node);

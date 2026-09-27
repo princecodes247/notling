@@ -65,7 +65,7 @@ export const TrashView: React.FC<TrashViewProps> = ({
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 pt-10 font-sans">
+    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 select-text overflow-y-auto p-4 sm:p-10 pb-6 sm:pb-10 pt-10 font-sans">
       <div className="max-w-5xl mx-auto flex flex-col gap-8">
         {/* Header Strip */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-200/70 dark:border-zinc-800/80">
@@ -160,7 +160,7 @@ export const TrashView: React.FC<TrashViewProps> = ({
                     <span className="text-xl shrink-0 p-1.5 bg-stone-100 dark:bg-zinc-800 rounded-lg">{item.icon || '📄'}</span>
                     <div className="flex flex-col min-w-0">
                       <span className="text-sm font-semibold text-stone-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white truncate">
-                        {item.title || 'Untitled Document'}
+                        {item.title || 'Untitled Document'} {item.id}
                       </span>
                       {item.deletedAt && (
                         <div className="flex items-center gap-1.5 text-[11px] text-stone-400 dark:text-zinc-500 font-mono mt-0.5">

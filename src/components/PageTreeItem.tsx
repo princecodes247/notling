@@ -6,6 +6,7 @@ import {
   Edit02Icon,
   MoreHorizontalIcon,
   Download01Icon,
+  File01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { getPage } from '~/server/pages';
@@ -284,7 +285,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 {hasCustomEmoji ? (
                   <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
                 ) : (
-                  <FileText className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+                  <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
                 )}
               </button>
             ) : (
@@ -292,7 +293,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 {hasCustomEmoji ? (
                   <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
                 ) : (
-                  <FileText className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+                  <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
                 )}
               </span>
             )}

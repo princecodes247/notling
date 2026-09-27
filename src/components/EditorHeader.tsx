@@ -6,8 +6,6 @@ import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search, Plus } from 'lu
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
 
-import { EmojiPicker } from './EmojiPicker';
-
 interface EditorHeaderProps {
   icon: React.ReactNode;
   title: string;
@@ -40,10 +38,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   togglePinMutation,
   duplicateMutation,
   onDelete,
-  onTitleChange,
-  onSaveTitle,
-  onRevertTitle,
-  onIconChange,
   searchQuery,
   onSearchChange,
   onAddItem,
@@ -56,7 +50,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
     setRequestAccessOpen,
     showHeaderMenu,
     setShowHeaderMenu,
-    showEmojiPicker,
     setShowEmojiPicker,
   } = useUIStore();
 
@@ -86,81 +79,19 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   };
 
   const isDuplicating = Boolean(duplicateMutation?.isPending);
-  const [isTitleFocused, setIsTitleFocused] = React.useState(false);
-  const isUntitled = !title || title === 'Untitled Database' || title === 'Untitled Document' || title.trim() === '';
-  const isGhosted = !isTitleFocused && isUntitled;
 
   return (
     <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
       {/* Left: Breadcrumb Trail & Title */}
-      <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden flex-1 min-w-0 mr-2">
-        <div className="relative flex items-center shrink-0">
-          <span
-            onClick={() => !isReadOnly && onIconChange && setShowEmojiPicker(!showEmojiPicker)}
-            className={clsx(
-              "flex items-center gap-1 shrink-0 p-0.5 rounded transition-colors",
-              onIconChange && !isReadOnly ? "hover:bg-stone-100 dark:hover:bg-zinc-800 cursor-pointer" : ""
-            )}
-            title={onIconChange ? "Change icon" : undefined}
-          >
-            <span>{icon}</span>
-            <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Database'}</span>
-          </span>
-
-          {showEmojiPicker && onIconChange && (
-            <EmojiPicker
-              onSelect={(selectedEmoji) => {
-                setShowEmojiPicker(false);
-                onIconChange(selectedEmoji);
-              }}
-              onClose={() => setShowEmojiPicker(false)}
-              currentEmoji={typeof icon === 'string' ? icon : '📊'}
-              onRemove={() => {
-                setShowEmojiPicker(false);
-                onIconChange(null);
-              }}
-              className="left-0 top-7 z-50"
-            />
-          )}
-        </div>
-        <span className="shrink-0">/</span>
-        {onTitleChange ? (
-          <input
-            type="text"
-            value={title}
-            disabled={isReadOnly}
-            onFocus={() => setIsTitleFocused(true)}
-            onChange={(e) => onTitleChange(e.target.value)}
-            onBlur={() => {
-              setIsTitleFocused(false);
-              onSaveTitle?.();
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                onSaveTitle?.();
-                e.currentTarget.blur();
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                onRevertTitle?.();
-                e.currentTarget.blur();
-              }
-            }}
-            className={clsx(
-              "bg-transparent border border-transparent hover:border-stone-200 dark:hover:border-zinc-800 focus:border-stone-300 dark:focus:border-zinc-700 px-1.5 py-0.5 rounded text-xs transition-colors truncate max-w-xs sm:max-w-md focus:outline-none focus:text-stone-900 dark:focus:text-white focus:opacity-100 focus:font-medium",
-              isGhosted
-                ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
-                : "font-semibold text-stone-900 dark:text-zinc-100 opacity-100"
-            )}
-            placeholder="Untitled Database"
-          />
-        ) : (
-          <span className={clsx(
-            "truncate max-w-40 sm:max-w-75 font-medium text-stone-900 dark:text-zinc-100"
-          )}>
-            {title || 'Untitled Document'}
-          </span>
-        )}
+      <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden">
+        <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1">
+          <span>{icon}</span>
+          <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Document'}</span>
+        </span>
+        <span>/</span>
+        <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">
+          {title || 'Untitled Document'}
+        </span>
       </div>
 
       {/* Right: Actions, Search/New & Collaborators */}
