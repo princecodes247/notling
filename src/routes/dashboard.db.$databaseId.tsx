@@ -78,7 +78,8 @@ function DashboardDatabaseRoute() {
   React.useEffect(() => {
     if (databaseId) {
       const { setActivePageId, setActiveTabId } = useUIStore.getState();
-      setActivePageId(databaseId);
+      const activeId = dbData?.database?.pageId || databaseId;
+      setActivePageId(activeId);
       setActiveTabId(databaseId);
     }
     if (dbData?.database) {
@@ -105,13 +106,7 @@ function DashboardDatabaseRoute() {
   }, [databaseId, dbData?.database?.id, dbData?.database?.title, dbData?.database?.icon]);
 
   if (isLoading) {
-    return (
-      <div className="flex-1 p-8 space-y-4 max-w-6xl mx-auto animate-pulse">
-        <div className="h-8 bg-neutral-200 dark:bg-neutral-800 rounded-lg w-64" />
-        <div className="h-4 bg-neutral-200 dark:bg-neutral-800 rounded-lg w-96" />
-        <div className="h-64 bg-neutral-200 dark:bg-neutral-800 rounded-xl w-full" />
-      </div>
-    );
+    return <DatabaseSkeleton />;
   }
 
   if (error || !dbData) {
@@ -142,5 +137,50 @@ function DashboardDatabaseRoute() {
       onDuplicate={() => duplicateMutation.mutate()}
       onDelete={() => deleteMutation.mutate()}
     />
+  );
+}
+
+function DatabaseSkeleton() {
+  return (
+    <div className="w-full font-sans text-stone-900 dark:text-zinc-100 min-h-screen animate-pulse">
+      {/* Top Header Bar Skeleton */}
+      <div className="h-12 border-b border-stone-200/60 dark:border-zinc-800/60 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-4 h-4 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+          <div className="w-3 h-3 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+          <div className="w-32 sm:w-48 h-4 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-32 sm:w-40 h-7 bg-stone-100 dark:bg-zinc-800/60 rounded-md" />
+          <div className="w-16 h-7 bg-stone-200 dark:bg-zinc-800 rounded-md" />
+        </div>
+      </div>
+
+      {/* Table Skeletons */}
+      <div className="py-2 px-4 sm:px-8">
+        <div className="w-full overflow-x-auto text-xs">
+          {/* Header Row Skeleton */}
+          <div className="border-b border-stone-200/60 dark:border-zinc-800/60 py-2.5 px-3 flex items-center gap-8">
+            <div className="w-4 h-4 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+            <div className="w-40 h-3.5 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+            <div className="w-28 h-3.5 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+            <div className="w-28 h-3.5 bg-stone-200 dark:bg-zinc-800 rounded shrink-0" />
+            <div className="w-24 h-3.5 bg-stone-100 dark:bg-zinc-800/60 rounded shrink-0" />
+          </div>
+
+          {/* Row Items Skeletons */}
+          <div className="divide-y divide-stone-200/35 dark:divide-zinc-800/35">
+            {[1, 2, 3, 4, 5, 6].map((idx) => (
+              <div key={idx} className="py-2.5 px-3 flex items-center gap-8">
+                <div className="w-4 h-4 bg-stone-100 dark:bg-zinc-800/50 rounded shrink-0" />
+                <div className="w-44 h-3.5 bg-stone-200/70 dark:bg-zinc-800/70 rounded shrink-0" />
+                <div className="w-24 h-5 bg-stone-100 dark:bg-zinc-800/50 rounded-md shrink-0" />
+                <div className="w-20 h-5 bg-stone-100 dark:bg-zinc-800/50 rounded-md shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

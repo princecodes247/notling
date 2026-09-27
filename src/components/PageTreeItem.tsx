@@ -62,7 +62,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const displayIcon = hasCustomEmoji ? rawIcon : '📄';
 
   const isExpanded = !!expandedNodeIds[node.id];
-  const isActive = activePageId === node.id;
+  const isActive = activePageId === node.id || (Boolean(node.databaseId) && activePageId === node.databaseId);
   const hasChildren = node.children && node.children.length > 0;
   const canEdit = node.canEdit !== false;
   const canDelete = node.canDelete === true;

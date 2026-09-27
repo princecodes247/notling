@@ -352,7 +352,7 @@ function DashboardLayout() {
   const createDatabaseMutation = useMutation({
     mutationFn: async () => {
       if (!workspaceId) return null;
-      return await createDatabase({ data: { workspaceId, title: 'Projects & Tasks Database' } });
+      return await createDatabase({ data: { workspaceId, title: 'Untitled Database' } });
     },
     onSuccess: (newDb) => {
       if (newDb) {

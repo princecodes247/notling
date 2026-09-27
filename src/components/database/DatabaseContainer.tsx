@@ -1,23 +1,9 @@
 import React, { useState, useMemo, useRef } from 'react';
-import type { DatabaseItem, DatabaseProperty, DatabaseView, DatabaseForm } from '~/db/schema';
+import { useQueryClient } from '@tanstack/react-query';
+import type { DatabaseItem, DatabaseProperty } from '~/db/schema';
 import type { FullDatabase } from '~/server/databases.db';
 import { DatabaseTableView } from './DatabaseTableView';
-import { DatabaseBoardView } from './DatabaseBoardView';
-import { DatabaseFormView } from './DatabaseFormView';
-import { DatabaseGalleryView } from './DatabaseGalleryView';
-import { DatabaseListView } from './DatabaseListView';
-import { DatabaseChartView } from './DatabaseChartView';
 import { DatabaseRowDrawer } from './DatabaseRowDrawer';
-import { NewViewPopover, VIEW_LAYOUT_OPTIONS } from './NewViewPopover';
-import { ViewConfigDrawer } from './ViewConfigDrawer';
-import {
-  Table,
-  Plus,
-  Search,
-  X,
-  Settings2,
-} from 'lucide-react';
-import clsx from 'clsx';
 import {
   createDatabaseProperty,
   updateDatabaseProperty,
@@ -27,12 +13,10 @@ import {
   updateDatabaseItem,
   deleteDatabaseItem,
   deleteDatabaseItemsBulk,
-  createDatabaseView,
-  updateDatabaseView,
-  deleteDatabaseView,
-  updateFormSettings,
-  submitPublicForm,
+  updateDatabase,
 } from '~/server/databases';
+import { useUIStore } from '~/store/uiStore';
+import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { EditorHeader } from '../EditorHeader';
 
 import { AnimatePresence } from 'motion/react';
@@ -54,30 +38,67 @@ export function DatabaseContainer({
   onDuplicate,
   onDelete,
 }: DatabaseContainerProps) {
+  const queryClient = useQueryClient();
   const [dbData, setDbData] = useState<FullDatabase>(initialData);
-  const [activeViewId, setActiveViewId] = useState<string>(
-    initialData.views[0]?.id || ''
-  );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isViewPopoverOpen, setIsViewPopoverOpen] = useState(false);
-  const [isConfigDrawerOpen, setIsConfigDrawerOpen] = useState(false);
-  const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
+  const [dbTitle, setDbTitle] = useState(initialData.database.title || 'Untitled Database');
+  const savedTitleRef = useRef(initialData.database.title || 'Untitled Database');
+  const isEditingTitleRef = useRef(false);
 
-  const addViewBtnRef = useRef<HTMLButtonElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
 
   React.useEffect(() => {
     setDbData(initialData);
-    setActiveViewId(initialData.views[0]?.id || '');
-    setSearchQuery('');
-    setSelectedDrawerItem(null);
-  }, [initialData]);
+    if (!isEditingTitleRef.current) {
+      setDbTitle(initialData.database.title || 'Untitled Database');
+      savedTitleRef.current = initialData.database.title || 'Untitled Database';
+    }
+  }, [initialData.database.id, initialData.database.title]);
 
-  const activeView = useMemo(
-    () => dbData.views.find((v: DatabaseView) => v.id === activeViewId) || dbData.views[0],
-    [dbData.views, activeViewId]
-  );
+  const handleSaveTitle = async () => {
+    isEditingTitleRef.current = false;
+    const trimmed = dbTitle.trim();
+    const finalTitle = trimmed || savedTitleRef.current || 'Untitled Database';
 
-  const activeForm = useMemo(() => dbData.forms[0], [dbData.forms]);
+    if (finalTitle === savedTitleRef.current) {
+      setDbTitle(finalTitle);
+      return;
+    }
+
+    savedTitleRef.current = finalTitle;
+    setDbTitle(finalTitle);
+
+    setDbData((prev: FullDatabase) => ({
+      ...prev,
+      database: {
+        ...prev.database,
+        title: finalTitle,
+      },
+    }));
+
+    try {
+      const { updateTabMeta } = useUIStore.getState();
+      updateTabMeta(dbData.database.id, finalTitle, dbData.database.icon || '📊');
+      if (dbData.database.pageId) {
+        updateTabMeta(dbData.database.pageId, finalTitle, dbData.database.icon || '📊');
+      }
+
+      await updateDatabase({
+        data: {
+          databaseId: dbData.database.id,
+          updates: { title: finalTitle },
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+    } catch (err) {
+      console.error('Failed to update database title:', err);
+    }
+  };
+
+  const handleRevertTitle = () => {
+    isEditingTitleRef.current = false;
+    setDbTitle(savedTitleRef.current);
+  };
 
   // Filter items based on search query
   const filteredItems = useMemo(() => {
@@ -95,15 +116,15 @@ export function DatabaseContainer({
   const handleAddItem = async (initialProps?: Record<string, any>) => {
     const safeProps =
       initialProps &&
-      typeof initialProps === 'object' &&
-      !('nativeEvent' in initialProps) &&
-      !(initialProps instanceof Event)
+        typeof initialProps === 'object' &&
+        !('nativeEvent' in initialProps) &&
+        !(initialProps instanceof Event)
         ? initialProps
         : {};
 
     const tempId = crypto.randomUUID();
     const titleProp = dbData.properties.find((p: DatabaseProperty) => p.type === 'title');
-    const defaultTitle = 'Untitled';
+    const defaultTitle = '';
     const mergedProps = {
       ...(titleProp ? { [titleProp.id]: defaultTitle } : {}),
       ...safeProps,
@@ -181,8 +202,34 @@ export function DatabaseContainer({
     await deleteDatabaseItemsBulk({ data: itemIds });
   };
 
+  const handleReorderItems = (fromIndex: number, toIndex: number) => {
+    setDbData((prev: FullDatabase) => {
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.items.length || toIndex >= prev.items.length) return prev;
+      const newItems = [...prev.items];
+      const [moved] = newItems.splice(fromIndex, 1);
+      newItems.splice(toIndex, 0, moved);
+      return {
+        ...prev,
+        items: newItems,
+      };
+    });
+  };
+
+  const getUniquePropertyName = (existingProps: DatabaseProperty[], baseName: string = 'Property'): string => {
+    const existingNames = new Set(existingProps.map((p) => (p.name || '').trim().toLowerCase()));
+    if (!existingNames.has(baseName.toLowerCase())) {
+      return baseName;
+    }
+    let index = 1;
+    while (existingNames.has(`${baseName.toLowerCase()} ${index}`)) {
+      index++;
+    }
+    return `${baseName} ${index}`;
+  };
+
   // Handlers for Properties (100% Optimistic)
-  const handleAddProperty = async (name: string, type: string) => {
+  const handleAddProperty = async (rawName: string, type: string) => {
+    const name = getUniquePropertyName(dbData.properties, rawName.trim() || 'Property');
     const tempPropId = crypto.randomUUID();
     const optimisticProp: DatabaseProperty = {
       id: tempPropId,
@@ -250,342 +297,77 @@ export function DatabaseContainer({
     await deleteDatabaseProperty({ data: propertyId });
   };
 
-  // Notion-Style Handlers for Views (Instant Optimistic + Auto Name)
-  const handleCreateView = async (type: string, defaultName: string) => {
-    const finalName = defaultName.trim() || 'View';
-    const tempId = crypto.randomUUID();
-    const optimisticView: DatabaseView = {
-      id: tempId,
-      databaseId: dbData.database.id,
-      name: finalName,
-      type,
-      config: {},
-      order: dbData.views.length,
-      createdAt: new Date(),
-    };
-
-    // 0ms Latency Optimistic Update
+  const handleUpdateIcon = async (newIcon: string | null) => {
+    const iconValue = newIcon || '📊';
     setDbData((prev: FullDatabase) => ({
       ...prev,
-      views: [...prev.views, optimisticView],
+      database: {
+        ...prev.database,
+        icon: iconValue,
+      },
     }));
-    setActiveViewId(tempId);
-    setIsConfigDrawerOpen(true);
 
     try {
-      const createdView = await createDatabaseView({
+      const { updateTabMeta } = useUIStore.getState();
+      updateTabMeta(dbData.database.id, dbTitle, iconValue);
+      if (dbData.database.pageId) {
+        updateTabMeta(dbData.database.pageId, dbTitle, iconValue);
+        updateClientPageMeta(queryClient, { pageId: dbData.database.pageId, title: dbTitle, icon: iconValue });
+      }
+
+      await updateDatabase({
         data: {
           databaseId: dbData.database.id,
-          name: finalName,
-          type,
+          updates: { icon: iconValue },
         },
       });
-      setDbData((prev: FullDatabase) => ({
-        ...prev,
-        views: prev.views.map((v: DatabaseView) => (v.id === tempId ? createdView : v)),
-      }));
-      setActiveViewId(createdView.id);
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['database', dbData.database.id] });
     } catch (err) {
-      console.error('Failed to create view on server:', err);
+      console.error('Failed to update database icon:', err);
     }
   };
 
-  const handleUpdateView = async (viewId: string, updates: Partial<DatabaseView>) => {
-    setDbData((prev: FullDatabase) => ({
-      ...prev,
-      views: prev.views.map((v: DatabaseView) => (v.id === viewId ? { ...v, ...updates } : v)),
-    }));
-
-    await updateDatabaseView({
-      data: {
-        viewId,
-        updates,
-      },
-    });
-  };
-
-  const handleDeleteView = async (viewId: string) => {
-    if (dbData.views.length <= 1) return;
-
-    setDbData((prev: FullDatabase) => ({
-      ...prev,
-      views: prev.views.filter((v: DatabaseView) => v.id !== viewId),
-    }));
-
-    const remaining = dbData.views.filter((v: DatabaseView) => v.id !== viewId);
-    setActiveViewId(remaining[0]?.id || '');
-
-    await deleteDatabaseView({ data: viewId });
-  };
-
-  // Handlers for Form Settings
-  const handleUpdateFormSettings = async (formId: string, updates: any) => {
-    const updated = await updateFormSettings({
-      data: {
-        formId,
-        updates,
-      },
-    });
-
-    setDbData((prev: FullDatabase) => ({
-      ...prev,
-      forms: prev.forms.map((f: DatabaseForm) => (f.id === formId ? { ...f, ...updated } : f)),
-    }));
-  };
-
-  const handleSubmitTestForm = async (properties: Record<string, any>, title?: string) => {
-    if (!activeForm) return;
-    const newItem = await submitPublicForm({
-      data: {
-        shareToken: activeForm.shareToken,
-        properties,
-        title,
-      },
-    });
-
-    setDbData((prev: FullDatabase) => ({
-      ...prev,
-      items: [newItem, ...prev.items],
-    }));
-  };
-
-  const getViewIcon = (type: string) => {
-    const match = VIEW_LAYOUT_OPTIONS.find((opt) => opt.type === type);
-    const Icon = match ? match.icon : Table;
-    return <Icon className="w-3.5 h-3.5 shrink-0" />;
-  };
-
   return (
-    <div className="w-full font-sans text-stone-900 dark:text-zinc-100">
+    <div className="w-full font-sans text-stone-900 dark:text-zinc-100 min-h-screen">
       <EditorHeader
         icon={dbData.database.icon || '📊'}
-        title={dbData.database.title || 'Untitled Database'}
+        title={dbTitle}
         isReadOnly={readOnly}
         isPinned={isPinned}
         togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}
         duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: false } : undefined}
         onDelete={onDelete}
+        onTitleChange={(newTitle) => {
+          isEditingTitleRef.current = true;
+          setDbTitle(newTitle);
+        }}
+        onSaveTitle={handleSaveTitle}
+        onRevertTitle={handleRevertTitle}
+        onIconChange={handleUpdateIcon}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onAddItem={() => handleAddItem()}
       />
-      <div className="p-4 space-y-4">
 
-        {/* Database Title Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200/80 dark:border-zinc-800/80 pb-3">
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl">{dbData.database.icon || '📊'}</span>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-stone-950 dark:text-white">
-                {dbData.database.title}
-              </h1>
-              {dbData.database.description && (
-                <p className="text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
-                  {dbData.database.description}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Toolbar Controls */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Search items..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-stone-200/80 dark:border-zinc-800 bg-stone-50/60 dark:bg-zinc-900/60 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d] w-40 sm:w-52"
-              />
-            </div>
-
-            {!readOnly && (
-              <button
-                onClick={() => handleAddItem()}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white transition-colors shadow-2xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Notion-Style Pill View Switcher Tabs Bar */}
-        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 px-1 pt-1 pb-2 overflow-x-auto select-none no-scrollbar">
-          <div className="flex items-center gap-1.5 relative">
-            {dbData.views.map((view: DatabaseView) => {
-              const isActive = view.id === activeView?.id;
-              return (
-                <div key={view.id} className="relative group flex items-center">
-                  <button
-                    type="button"
-                    onClick={() => setActiveViewId(view.id)}
-                    className={clsx(
-                      "flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer relative",
-                      isActive
-                        ? "bg-stone-200/80 dark:bg-zinc-800 text-stone-950 dark:text-white shadow-2xs"
-                        : "text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800/50"
-                    )}
-                  >
-                    {getViewIcon(view.type)}
-                    <span>{view.name}</span>
-
-                    {isActive && !readOnly && (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsConfigDrawerOpen(!isConfigDrawerOpen);
-                        }}
-                        className="p-0.5 rounded hover:bg-stone-300/60 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors ml-1"
-                        title="View Options"
-                      >
-                        <Settings2 className="w-3 h-3" />
-                      </span>
-                    )}
-
-                    {!readOnly && dbData.views.length > 1 && (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteView(view.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-rose-100 dark:hover:bg-rose-950/60 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer ml-0.5"
-                        title="Delete View"
-                      >
-                        <X className="w-3 h-3" />
-                      </span>
-                    )}
-                  </button>
-                </div>
-              );
-            })}
-
-            {/* Notion + Add View Trigger Button with Tooltip */}
-            {!readOnly && (
-              <div className="relative">
-                <button
-                  ref={addViewBtnRef}
-                  type="button"
-                  onClick={() => setIsViewPopoverOpen(!isViewPopoverOpen)}
-                  className="flex items-center justify-center w-7 h-7 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/80 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
-                  title="Add a new view"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-
-                {/* Notion "Add a new view" Grid Popover Menu */}
-                <AnimatePresence>
-                  {isViewPopoverOpen && (
-                    <NewViewPopover
-                      isOpen={isViewPopoverOpen}
-                      onClose={() => setIsViewPopoverOpen(false)}
-                      onSelectLayout={handleCreateView}
-                    />
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Main View Display Area */}
-        <div className="pt-2">
-          {activeView?.type === 'table' && (
-            <DatabaseTableView
-              properties={dbData.properties}
-              items={filteredItems}
-              onUpdateItem={handleUpdateItem}
-              onDeleteItem={handleDeleteItem}
-              onDeleteItemsBulk={handleDeleteItemsBulk}
-              onAddItem={handleAddItem}
-              onAddProperty={handleAddProperty}
-              onDeleteProperty={handleDeleteProperty}
-              onConvertPropertyType={handleConvertPropertyType}
-              onUpdateProperty={handleUpdateProperty}
-              onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
-              readOnly={readOnly}
-            />
-          )}
-
-          {activeView?.type === 'board' && (
-            <DatabaseBoardView
-              properties={dbData.properties}
-              items={filteredItems}
-              groupByPropertyId={activeView.config?.groupByPropertyId}
-              onUpdateItem={handleUpdateItem}
-              onDeleteItem={handleDeleteItem}
-              onAddItem={handleAddItem}
-              readOnly={readOnly}
-            />
-          )}
-
-          {activeView?.type === 'gallery' && (
-            <DatabaseGalleryView
-              properties={dbData.properties}
-              items={filteredItems}
-              onUpdateItem={handleUpdateItem}
-              onDeleteItem={handleDeleteItem}
-              onAddItem={handleAddItem}
-              onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
-              readOnly={readOnly}
-            />
-          )}
-
-          {activeView?.type === 'list' && (
-            <DatabaseListView
-              properties={dbData.properties}
-              items={filteredItems}
-              onUpdateItem={handleUpdateItem}
-              onDeleteItem={handleDeleteItem}
-              onAddItem={handleAddItem}
-              onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
-              readOnly={readOnly}
-            />
-          )}
-
-          {activeView?.type === 'chart' && (
-            <DatabaseChartView
-              properties={dbData.properties}
-              items={filteredItems}
-            />
-          )}
-
-          {activeView?.type === 'form' && (
-            <DatabaseFormView
-              form={activeForm}
-              properties={dbData.properties}
-              onUpdateFormSettings={handleUpdateFormSettings}
-              onSubmitTestForm={handleSubmitTestForm}
-              readOnly={readOnly}
-            />
-          )}
-
-          {!['table', 'board', 'gallery', 'list', 'chart', 'form'].includes(activeView?.type || '') && (
-            <DatabaseBoardView
-              properties={dbData.properties}
-              items={filteredItems}
-              groupByPropertyId={activeView?.config?.groupByPropertyId}
-              onUpdateItem={handleUpdateItem}
-              onDeleteItem={handleDeleteItem}
-              onAddItem={handleAddItem}
-              readOnly={readOnly}
-            />
-          )}
-        </div>
-
+      {/* Direct Table Content (Borderless, sitting directly on page background) */}
+      <div className="py-2 px-4 sm:px-8">
+        <DatabaseTableView
+          properties={dbData.properties}
+          items={filteredItems}
+          onUpdateItem={handleUpdateItem}
+          onDeleteItem={handleDeleteItem}
+          onDeleteItemsBulk={handleDeleteItemsBulk}
+          onReorderItems={handleReorderItems}
+          onAddItem={handleAddItem}
+          onAddProperty={handleAddProperty}
+          onDeleteProperty={handleDeleteProperty}
+          onConvertPropertyType={handleConvertPropertyType}
+          onUpdateProperty={handleUpdateProperty}
+          onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
+          readOnly={readOnly}
+        />
       </div>
-
-      {/* Notion View Configuration Right Drawer */}
-      <AnimatePresence>
-        {isConfigDrawerOpen && activeView && (
-          <ViewConfigDrawer
-            isOpen={isConfigDrawerOpen}
-            view={activeView}
-            properties={dbData.properties}
-            onClose={() => setIsConfigDrawerOpen(false)}
-            onUpdateView={handleUpdateView}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Row Page Drawer Modal */}
       <AnimatePresence>

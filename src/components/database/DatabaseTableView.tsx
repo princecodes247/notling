@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { useDragPaint } from '~/hooks/useDragPaint';
+import { AnimatePresence } from 'motion/react';
 
 interface DatabaseTableViewProps {
   properties: DatabaseProperty[];
@@ -29,6 +30,7 @@ interface DatabaseTableViewProps {
   onUpdateItem: (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => void;
   onDeleteItem: (itemId: string) => void;
   onDeleteItemsBulk?: (itemIds: string[]) => void;
+  onReorderItems?: (fromIndex: number, toIndex: number) => void;
   onAddItem: () => void;
   onAddProperty: (name: string, type: string) => void;
   onDeleteProperty: (propertyId: string) => void;
@@ -71,6 +73,7 @@ export function DatabaseTableView({
   onUpdateItem,
   onDeleteItem: _onDeleteItem,
   onDeleteItemsBulk,
+  onReorderItems,
   onAddItem,
   onAddProperty,
   onDeleteProperty,
@@ -197,14 +200,6 @@ export function DatabaseTableView({
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  const handleMoveRow = (fromIndex: number, toIndex: number) => {
-    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) return;
-    const targetItem = items[fromIndex];
-    if (targetItem && onUpdateItem) {
-      onUpdateItem(targetItem.id, { order: toIndex } as any);
-    }
-  };
-
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
 
@@ -256,6 +251,18 @@ export function DatabaseTableView({
     window.addEventListener('keydown', handleTableKeyDown);
     return () => window.removeEventListener('keydown', handleTableKeyDown);
   }, [focusedCell, items.length, nonTitleProps.length, activeOpenMenuId, editingHeaderId]);
+
+  // Click Outside Table Cells to Deselect
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('td') && !target.closest('th') && !target.closest('[data-popover]')) {
+        setFocusedCell(null);
+      }
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Handle Cmd+Z Undo
   useEffect(() => {
@@ -354,55 +361,65 @@ export function DatabaseTableView({
     }
   };
 
+  // Active Row Title Editing State
+  const [editingRowTitleId, setEditingRowTitleId] = useState<string | null>(null);
+
   return (
-    <div className="w-full space-y-3 font-sans">
-      {/* Top Action Bar for Bulk Selection */}
-      <div className={cn("flex items-center justify-between p-2.5 px-4 text-xs animate-in fade-in duration-150",
-        selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
-      )}>
-        <span className="font-semibold text-stone-800 dark:text-zinc-200">
-          {selectedItemIds.length} row{selectedItemIds.length > 1 ? 's' : ''} selected
-        </span>
+    <div className="w-full font-sans relative">
+      {/* Floating Action Bar for Bulk Selection (Overlayed to avoid table jumping) */}
+      <AnimatePresence>
+        {selectedItemIds.length > 0 && (
+          <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-full bg-stone-900/90 dark:bg-zinc-800/95 text-white backdrop-blur-md shadow-xl border border-stone-700/50 dark:border-zinc-700/50 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none">
+            <span className="font-medium text-stone-200">
+              <strong className="text-white font-semibold">{selectedItemIds.length}</strong> row{selectedItemIds.length > 1 ? 's' : ''} selected
+            </span>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleBulkDelete}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Delete Selected</span>
-          </button>
+            <div className="h-3.5 w-px bg-stone-700 dark:bg-zinc-700" />
 
-          <button
-            onClick={() => setSelectedItemIds([])}
-            className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-900 dark:hover:text-zinc-100 cursor-pointer"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-2xs transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+
+            <button
+              onClick={() => setSelectedItemIds([])}
+              className="text-xs text-stone-400 hover:text-white transition-colors cursor-pointer px-1"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Grid Table */}
-      <div className="w-full overflow-x-auto border-stone-200/80 dark:border-zinc-800/80 shadow-2xs text-xs">
-        <table className="w-full text-left border-collapse min-w-[760px]">
+      <div className="w-full overflow-x-auto text-xs">
+        <table className="w-full text-left border-collapse min-w-full">
           <thead>
-            <tr className="border-b border-stone-200/80 dark:border-zinc-800/80 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
+            <tr className="border-b border-stone-200/60 dark:border-zinc-800/60 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
-              <th className="py-2.5 px-3 w-10 text-right pr-9 border-r border-stone-200/70 dark:border-zinc-800/70">
-                <input
-                  type="checkbox"
-                  checked={items.length > 0 && selectedItemIds.length === items.length}
-                  onChange={handleToggleSelectAll}
-                  className={cn("bn-checkbox w-3.5 h-3.5 cursor-pointer",
-                    selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
-                  )}
-                />
+              <th
+                style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
+                className="py-2.5 px-3 text-center select-none shrink-0"
+              >
+                <div className='flex mx-auto w-fit'>
+                  <input
+                    type="checkbox"
+                    checked={items.length > 0 && selectedItemIds.length === items.length}
+                    onChange={handleToggleSelectAll}
+                    className={cn("bn-checkbox w-3.5 h-3.5 cursor-pointer",
+                      selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
+                    )}
+                  />
+                </div>
               </th>
 
               {/* Title Column Header */}
               <th
-                style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px` } : { width: '240px', minWidth: '180px' }}
-                className="py-2.5 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-semibold relative group select-none"
+                style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` } : { width: '220px', minWidth: '160px', maxWidth: '300px' }}
+                className="py-2.5 px-3 font-semibold relative group select-none"
               >
                 <div className="flex items-center gap-1.5 text-stone-800 dark:text-zinc-200 flex-1 min-w-0">
                   <PropertyTypeIcon type={titleProp?.type || 'title'} icon={titleProp?.icon} className="w-3.5 h-3.5 text-stone-400 shrink-0" />
@@ -467,7 +484,7 @@ export function DatabaseTableView({
                 />
               ))}
 
-              {/* Persistent + Button at Right Edge of Header */}
+              {/* Persistent + Add property Button at Right Edge of Header */}
               {!readOnly && (
                 <AddPropertyHeaderCell
                   activeOpenMenuId={activeOpenMenuId}
@@ -478,194 +495,214 @@ export function DatabaseTableView({
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-stone-200/70 dark:divide-zinc-800/70">
-            {items.map((item, rowIndex) => (
-              <tr key={item.id} className="group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors">
-                {/* Checkbox & Row Drag Handle Column */}
-                <td
-                  className="py-2 px-2 text-center border-r border-stone-200/70 dark:border-zinc-800/70 w-12 select-none"
-                  {...rowPaint.getItemProps(item.id, selectedItemIds.includes(item.id))}
+          <tbody className="divide-y divide-stone-200/35 dark:divide-zinc-800/35">
+            {items.map((item, rowIndex) => {
+              const isUntitledRow = !item.title || item.title === 'Untitled' || item.title.trim() === '';
+              const isEditingRowTitle = editingRowTitleId === item.id;
+              const isGhostedRow = !isEditingRowTitle && isUntitledRow;
+
+              return (
+                <tr
+                  key={item.id}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    if (draggedRowIndex !== null && draggedRowIndex !== rowIndex) {
+                      if (onReorderItems) {
+                        onReorderItems(draggedRowIndex, rowIndex);
+                      }
+                      setDraggedRowIndex(rowIndex);
+                    }
+                  }}
+                  className={cn(
+                    "group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors",
+                    draggedRowIndex === rowIndex ? "opacity-50 bg-stone-100 dark:bg-zinc-800" : ""
+                  )}
                 >
-                  <div className="flex items-center justify-center gap-0.5 cursor-pointer">
-                    {/* Row Drag Handle (Page Editor style GripVertical) */}
-                    <span
-                      draggable
-                      onDragStart={(e) => {
-                        setDraggedRowIndex(rowIndex);
-                        e.dataTransfer.effectAllowed = 'move';
-                      }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        if (draggedRowIndex !== null && draggedRowIndex !== rowIndex) {
-                          handleMoveRow(draggedRowIndex, rowIndex);
+                  {/* Checkbox & Row Drag Handle Column */}
+                  <td
+                    style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
+                    className="py-2 px-3 text-center select-none shrink-0"
+                    {...rowPaint.getItemProps(item.id, selectedItemIds.includes(item.id))}
+                  >
+                    <div className="flex items-center justify-center gap-1 cursor-pointer">
+                      {/* Row Drag Handle (Page Editor style GripVertical) */}
+                      <span
+                        draggable
+                        onDragStart={(e) => {
                           setDraggedRowIndex(rowIndex);
-                        }
-                      }}
-                      onDragEnd={() => setDraggedRowIndex(null)}
-                      className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
-                      title="Drag to reorder row"
-                    >
-                      <GripVertical className="w-3.5 h-3.5" />
-                    </span>
-
-                    {/* Row Checkbox (Visible on hover, or when selected) */}
-                    <input
-                      type="checkbox"
-                      checked={selectedItemIds.includes(item.id)}
-                      onChange={() => { }}
-                      className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                    />
-                  </div>
-                </td>
-
-                {/* Title Cell + Open Page Button */}
-                <td
-                  onClick={() => setFocusedCell({ rowIndex, colIndex: 0 })}
-                  style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px` } : { width: '240px', minWidth: '180px' }}
-                  className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium text-stone-900 dark:text-zinc-100 transition-colors ${focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0
-                    ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
-                    : ''
-                    }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <input
-                      ref={(el) => {
-                        if (el && focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0) {
-                          if (document.activeElement !== el) {
-                            el.focus();
-                            if (el.value === 'Untitled') {
-                              el.select();
-                            }
-                          }
-                        }
-                      }}
-                      type="text"
-                      defaultValue={item.title}
-                      disabled={readOnly}
-                      onFocus={() => setFocusedCell({ rowIndex, colIndex: 0 })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          (e.target as HTMLInputElement).blur();
-                          handleAddNewRow();
-                        } else if (e.key === 'Tab') {
-                          e.preventDefault();
-                          handleNavigateCell(rowIndex, 1, e.shiftKey);
-                        }
-                      }}
-                      onBlur={(e) => {
-                        if (e.target.value !== item.title) {
-                          onUpdateItem(item.id, {
-                            title: e.target.value,
-                            properties: {
-                              ...item.properties,
-                              ...(titleProp ? { [titleProp.id]: e.target.value } : {}),
-                            },
-                          });
-                        }
-                      }}
-                      className="w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-900 dark:text-zinc-100 font-medium placeholder:text-stone-300 dark:placeholder:text-zinc-600 placeholder:italic"
-                      placeholder="Untitled"
-                    />
-
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      {onOpenRowDrawer && (
-                        <button
-                          onClick={() => onOpenRowDrawer(item)}
-                          className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
-                        >
-                          <Maximize2 className="w-3 h-3" />
-                          <span>Open</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </td>
-
-                {/* Dynamic Property Cells */}
-                {nonTitleProps.map((prop, colIndex) => {
-                  const val = item.properties?.[prop.id];
-                  const cellMenuId = `cell-${item.id}-${prop.id}`;
-                  const isFocused = focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === colIndex + 1;
-                  const colWidth = columnWidths[prop.id];
-
-                  return (
-                    <td
-                      key={prop.id}
-                      onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
-                      style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px` } : { minWidth: '150px' }}
-                      className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors ${isFocused
-                        ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500'
-                        : ''
-                        }`}
-                    >
-                      <InteractiveCell
-                        prop={prop}
-                        value={val}
-                        readOnly={readOnly}
-                        isFocused={isFocused}
-                        onNavigate={(shift) => handleNavigateCell(rowIndex, colIndex + 1 + (shift ? -1 : 1), shift)}
-                        onAddNewRow={handleAddNewRow}
-                        onMouseDownCheckbox={(e) => handlePropertyCheckboxMouseDown(item.id, prop.id, Boolean(val), e)}
-                        onMouseEnterCheckbox={() => handlePropertyCheckboxMouseEnter(item.id, prop.id)}
-                        isPopoverOpen={activeOpenMenuId === cellMenuId}
-                        onTogglePopover={() => setActiveOpenMenuId(activeOpenMenuId === cellMenuId ? null : cellMenuId)}
-                        onClosePopover={() => setActiveOpenMenuId(null)}
-                        onUpdateProperty={onUpdateProperty}
-                        onChange={(newVal) => {
-                          const prevProps = { ...item.properties };
-                          setUndoStack((prev) => [
-                            ...prev,
-                            {
-                              type: 'UPDATE_ITEM',
-                              payload: { itemId: item.id, previousState: { properties: prevProps } },
-                            },
-                          ]);
-
-                          onUpdateItem(item.id, {
-                            properties: {
-                              ...item.properties,
-                              [prop.id]: newVal,
-                            },
-                          });
+                          e.dataTransfer.effectAllowed = 'move';
+                          e.dataTransfer.setData('text/plain', item.id);
                         }}
-                        onAddOption={(newOptName) => {
-                          if (!onUpdateProperty) return;
-                          const newOptId = newOptName.toLowerCase().replace(/\s+/g, '_');
-                          const color = AUTO_COLORS[(prop.options?.length || 0) % AUTO_COLORS.length];
-                          const updatedOptions = [...(prop.options || []), { id: newOptId, name: newOptName, color }];
-                          onUpdateProperty(prop.id, { options: updatedOptions });
-                          onUpdateItem(item.id, {
-                            properties: {
-                              ...item.properties,
-                              [prop.id]: prop.type === 'multi_select' ? [...(Array.isArray(val) ? val : []), newOptId] : newOptId,
-                            },
-                          });
-                        }}
+                        onDragEnd={() => setDraggedRowIndex(null)}
+                        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
+                        title="Drag to reorder row"
+                      >
+                        <GripVertical className="w-3.5 h-3.5" />
+                      </span>
+
+                      {/* Row Checkbox (Visible on hover, or when selected) */}
+                      <input
+                        type="checkbox"
+                        checked={selectedItemIds.includes(item.id)}
+                        onChange={() => { }}
+                        className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                          }`}
                       />
-                    </td>
-                  );
-                })}
+                    </div>
+                  </td>
 
-                {!readOnly && <td className="py-2 px-2"></td>}
+                  {/* Title Cell + Open Page Button */}
+                  <td
+                    onClick={() => setFocusedCell({ rowIndex, colIndex: 0 })}
+                    style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` } : { width: '220px', minWidth: '160px', maxWidth: '300px' }}
+                    className={`py-2 px-3 font-medium transition-colors ${focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0
+                      ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
+                      : ''
+                      }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <input
+                        type="text"
+                        defaultValue={item.title}
+                        disabled={readOnly}
+                        onFocus={() => {
+                          setEditingRowTitleId(item.id);
+                          setFocusedCell({ rowIndex, colIndex: 0 });
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            (e.target as HTMLInputElement).blur();
+                            handleAddNewRow();
+                          } else if (e.key === 'Tab') {
+                            e.preventDefault();
+                            handleNavigateCell(rowIndex, 1, e.shiftKey);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          setEditingRowTitleId(null);
+                          if (e.target.value !== item.title) {
+                            onUpdateItem(item.id, {
+                              title: e.target.value,
+                              properties: {
+                                ...item.properties,
+                                ...(titleProp ? { [titleProp.id]: e.target.value } : {}),
+                              },
+                            });
+                          }
+                        }}
+                        className={cn(
+                          "w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-xs transition-colors focus:text-stone-900 dark:focus:text-zinc-100 focus:opacity-100 focus:font-medium",
+                          isGhostedRow
+                            ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
+                            : "text-stone-900 dark:text-zinc-100 font-medium opacity-100"
+                        )}
+                        placeholder="Untitled"
+                      />
+
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        {onOpenRowDrawer && (
+                          <button
+                            onClick={() => onOpenRowDrawer(item)}
+                            className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Maximize2 className="w-3 h-3" />
+                            <span>Open</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Dynamic Property Cells */}
+                  {nonTitleProps.map((prop, colIndex) => {
+                    const val = item.properties?.[prop.id];
+                    const cellMenuId = `cell-${item.id}-${prop.id}`;
+                    const isFocused = focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === colIndex + 1;
+                    const colWidth = columnWidths[prop.id];
+
+                    return (
+                      <td
+                        key={prop.id}
+                        onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
+                        style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` } : { width: '160px', minWidth: '120px', maxWidth: '200px' }}
+                        className={`py-2 px-3 transition-colors ${isFocused
+                          ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500'
+                          : ''
+                          }`}
+                      >
+                        <InteractiveCell
+                          prop={prop}
+                          value={val}
+                          readOnly={readOnly}
+                          isFocused={isFocused}
+                          onNavigate={(shift) => handleNavigateCell(rowIndex, colIndex + 1 + (shift ? -1 : 1), shift)}
+                          onAddNewRow={handleAddNewRow}
+                          onMouseDownCheckbox={(e) => handlePropertyCheckboxMouseDown(item.id, prop.id, Boolean(val), e)}
+                          onMouseEnterCheckbox={() => handlePropertyCheckboxMouseEnter(item.id, prop.id)}
+                          isPopoverOpen={activeOpenMenuId === cellMenuId}
+                          onTogglePopover={() => setActiveOpenMenuId(activeOpenMenuId === cellMenuId ? null : cellMenuId)}
+                          onClosePopover={() => setActiveOpenMenuId(null)}
+                          onUpdateProperty={onUpdateProperty}
+                          onChange={(newVal) => {
+                            const prevProps = { ...item.properties };
+                            setUndoStack((prev) => [
+                              ...prev,
+                              {
+                                type: 'UPDATE_ITEM',
+                                payload: { itemId: item.id, previousState: { properties: prevProps } },
+                              },
+                            ]);
+
+                            onUpdateItem(item.id, {
+                              properties: {
+                                ...item.properties,
+                                [prop.id]: newVal,
+                              },
+                            });
+                          }}
+                          onAddOption={(newOptName) => {
+                            if (!onUpdateProperty) return;
+                            const newOptId = newOptName.toLowerCase().replace(/\s+/g, '_');
+                            const color = AUTO_COLORS[(prop.options?.length || 0) % AUTO_COLORS.length];
+                            const updatedOptions = [...(prop.options || []), { id: newOptId, name: newOptName, color }];
+                            onUpdateProperty(prop.id, { options: updatedOptions });
+                            onUpdateItem(item.id, {
+                              properties: {
+                                ...item.properties,
+                                [prop.id]: prop.type === 'multi_select' ? [...(Array.isArray(val) ? val : []), newOptId] : newOptId,
+                              },
+                            });
+                          }}
+                        />
+                      </td>
+                    );
+                  })}
+
+                  {!readOnly && <td className="py-2 px-2"></td>}
+                </tr>
+              );
+            })}
+
+            {/* Full-width + New row Table Row */}
+            {!readOnly && (
+              <tr
+                onClick={handleAddNewRow}
+                className="group hover:bg-stone-100/70 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer border-b border-stone-200/40 dark:border-zinc-800/40 select-none"
+              >
+                <td className="py-2 px-2 text-center text-stone-400 dark:text-zinc-500">
+                  <Plus className="w-3.5 h-3.5 mx-auto text-stone-400 dark:text-zinc-500 group-hover:text-stone-700 dark:group-hover:text-zinc-300 transition-colors" />
+                </td>
+                <td
+                  colSpan={nonTitleProps.length + 2}
+                  className="py-2 px-3 text-xs text-stone-400 dark:text-zinc-500 group-hover:text-stone-700 dark:group-hover:text-zinc-300 transition-colors font-normal"
+                >
+                  New row
+                </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
-
-        {/* Persistent + New Row Button */}
-        {!readOnly && (
-          <div className="p-2 border-t border-stone-200/70 dark:border-zinc-800/70 bg-stone-50/40 dark:bg-zinc-900/40">
-            <button
-              onClick={handleAddNewRow}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800 active:scale-[0.96] transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5 text-stone-400" />
-              <span>New row</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Confirmation Dialog for Column Deletion */}
@@ -788,8 +825,8 @@ function ColumnHeaderCell({
 
   return (
     <th
-      style={width ? { width: `${width}px`, minWidth: `${width}px` } : { width: '180px', minWidth: '150px' }}
-      className="py-2.5 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium relative group select-none"
+      style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : { width: '160px', minWidth: '120px', maxWidth: '200px' }}
+      className="py-2.5 px-3 font-medium relative group select-none"
     >
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 flex-1 min-w-0">
@@ -975,16 +1012,17 @@ function AddPropertyHeaderCell({
   };
 
   return (
-    <th className="py-2.5 px-3 w-12 text-center font-normal relative select-none">
+    <th className="py-2.5 px-3 text-left font-normal relative select-none shrink-0">
       <button
         ref={buttonRef}
         onClick={() => {
           setActiveOpenMenuId(isOpen ? null : 'add-column');
         }}
-        className="p-1 hover:bg-stone-200/80 dark:hover:bg-zinc-800 rounded-md text-stone-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+        className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-normal text-stone-400 hover:text-stone-700 dark:hover:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer whitespace-nowrap"
         title="Add property column"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="w-3.5 h-3.5" />
+        <span>Add property</span>
       </button>
 
       <DatabasePopover
@@ -1314,16 +1352,19 @@ function InteractiveCell({
 
   const validation = validatePropertyValue(prop.type, value);
   const isInvalid = !validation.isValid;
+  const cellInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isFocused && cellInputRef.current && document.activeElement !== cellInputRef.current) {
+      cellInputRef.current.focus();
+    }
+  }, [isFocused]);
 
   switch (prop.type) {
     case 'text':
       return (
         <input
-          ref={(el) => {
-            if (el && isFocused && document.activeElement !== el) {
-              el.focus();
-            }
-          }}
+          ref={cellInputRef}
           type="text"
           defaultValue={value || ''}
           disabled={readOnly}
@@ -1338,11 +1379,7 @@ function InteractiveCell({
       return (
         <div className="relative flex items-center">
           <input
-            ref={(el) => {
-              if (el && isFocused && document.activeElement !== el) {
-                el.focus();
-              }
-            }}
+            ref={cellInputRef}
             type="number"
             defaultValue={value ?? ''}
             disabled={readOnly}
@@ -1373,11 +1410,7 @@ function InteractiveCell({
           className="flex items-center h-full px-1 cursor-pointer select-none"
         >
           <input
-            ref={(el) => {
-              if (el && isFocused && document.activeElement !== el) {
-                el.focus();
-              }
-            }}
+            ref={cellInputRef}
             type="checkbox"
             checked={Boolean(value)}
             disabled={readOnly}
@@ -1627,6 +1660,7 @@ function InteractiveCell({
       return (
         <div className="flex items-center gap-1">
           <input
+            ref={cellInputRef}
             type="url"
             defaultValue={value || ''}
             disabled={readOnly}
@@ -1658,6 +1692,7 @@ function InteractiveCell({
       return (
         <div className="flex items-center gap-1">
           <input
+            ref={cellInputRef}
             type="email"
             defaultValue={value || ''}
             disabled={readOnly}
@@ -1677,6 +1712,7 @@ function InteractiveCell({
     default:
       return (
         <input
+          ref={cellInputRef}
           type="text"
           defaultValue={value || ''}
           disabled={readOnly}

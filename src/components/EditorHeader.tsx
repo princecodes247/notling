@@ -2,9 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Download01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
-import { Star, Share2, MoreHorizontal, Undo, Redo, Copy } from 'lucide-react';
+import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search, Plus } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
+
+import { EmojiPicker } from './EmojiPicker';
 
 interface EditorHeaderProps {
   icon: React.ReactNode;
@@ -17,6 +19,14 @@ interface EditorHeaderProps {
   togglePinMutation?: any;
   duplicateMutation?: any;
   onDelete?: () => void;
+  // Editable title and toolbar additions for database integration
+  onTitleChange?: (newTitle: string) => void;
+  onSaveTitle?: () => void;
+  onRevertTitle?: () => void;
+  onIconChange?: (newIcon: string | null) => void;
+  searchQuery?: string;
+  onSearchChange?: (q: string) => void;
+  onAddItem?: () => void;
 }
 
 export const EditorHeader: React.FC<EditorHeaderProps> = ({
@@ -30,6 +40,13 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   togglePinMutation,
   duplicateMutation,
   onDelete,
+  onTitleChange,
+  onSaveTitle,
+  onRevertTitle,
+  onIconChange,
+  searchQuery,
+  onSearchChange,
+  onAddItem,
 }) => {
   const {
     canUndo,
@@ -39,6 +56,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
     setRequestAccessOpen,
     showHeaderMenu,
     setShowHeaderMenu,
+    showEmojiPicker,
     setShowEmojiPicker,
   } = useUIStore();
 
@@ -68,23 +86,110 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   };
 
   const isDuplicating = Boolean(duplicateMutation?.isPending);
+  const [isTitleFocused, setIsTitleFocused] = React.useState(false);
+  const isUntitled = !title || title === 'Untitled Database' || title === 'Untitled Document' || title.trim() === '';
+  const isGhosted = !isTitleFocused && isUntitled;
 
   return (
     <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
-      {/* Left: Breadcrumb Trail */}
-      <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden">
-        <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1">
-          <span>{icon}</span>
-          <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Document'}</span>
-        </span>
-        <span>/</span>
-        <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">
-          {title || 'Untitled Document'}
-        </span>
+      {/* Left: Breadcrumb Trail & Title */}
+      <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden flex-1 min-w-0 mr-2">
+        <div className="relative flex items-center shrink-0">
+          <span
+            onClick={() => !isReadOnly && onIconChange && setShowEmojiPicker(!showEmojiPicker)}
+            className={clsx(
+              "flex items-center gap-1 shrink-0 p-0.5 rounded transition-colors",
+              onIconChange && !isReadOnly ? "hover:bg-stone-100 dark:hover:bg-zinc-800 cursor-pointer" : ""
+            )}
+            title={onIconChange ? "Change icon" : undefined}
+          >
+            <span>{icon}</span>
+            <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Database'}</span>
+          </span>
+
+          {showEmojiPicker && onIconChange && (
+            <EmojiPicker
+              onSelect={(selectedEmoji) => {
+                setShowEmojiPicker(false);
+                onIconChange(selectedEmoji);
+              }}
+              onClose={() => setShowEmojiPicker(false)}
+              currentEmoji={typeof icon === 'string' ? icon : '📊'}
+              onRemove={() => {
+                setShowEmojiPicker(false);
+                onIconChange(null);
+              }}
+              className="left-0 top-7 z-50"
+            />
+          )}
+        </div>
+        <span className="shrink-0">/</span>
+        {onTitleChange ? (
+          <input
+            type="text"
+            value={title}
+            disabled={isReadOnly}
+            onFocus={() => setIsTitleFocused(true)}
+            onChange={(e) => onTitleChange(e.target.value)}
+            onBlur={() => {
+              setIsTitleFocused(false);
+              onSaveTitle?.();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onSaveTitle?.();
+                e.currentTarget.blur();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                onRevertTitle?.();
+                e.currentTarget.blur();
+              }
+            }}
+            className={clsx(
+              "bg-transparent border border-transparent hover:border-stone-200 dark:hover:border-zinc-800 focus:border-stone-300 dark:focus:border-zinc-700 px-1.5 py-0.5 rounded text-xs transition-colors truncate max-w-xs sm:max-w-md focus:outline-none focus:text-stone-900 dark:focus:text-white focus:opacity-100 focus:font-medium",
+              isGhosted
+                ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
+                : "font-semibold text-stone-900 dark:text-zinc-100 opacity-100"
+            )}
+            placeholder="Untitled Database"
+          />
+        ) : (
+          <span className={clsx(
+            "truncate max-w-40 sm:max-w-75 font-medium text-stone-900 dark:text-zinc-100"
+          )}>
+            {title || 'Untitled Document'}
+          </span>
+        )}
       </div>
 
-      {/* Right: Actions & Collaborator Avatars */}
-      <div className="flex items-center gap-3 shrink-0">
+      {/* Right: Actions, Search/New & Collaborators */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {onSearchChange !== undefined && (
+          <div className="flex items-center gap-2 mr-1">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
+              <input
+                type="text"
+                placeholder="Search items..."
+                value={searchQuery || ''}
+                onChange={(e) => onSearchChange(e.target.value)}
+                className="pl-7 pr-2.5 py-1 text-xs rounded-md border border-stone-200/80 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d] w-28 sm:w-44 transition-all"
+              />
+            </div>
+
+            {!isReadOnly && onAddItem && (
+              <button
+                type="button"
+                onClick={onAddItem}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-2xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New</span>
+              </button>
+            )}
+          </div>
+        )}
         <CollaboratorAvatars
           activeUsers={activeUsers}
           currentClientId={getClientId()}

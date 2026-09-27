@@ -207,12 +207,35 @@ export async function createNewDatabase(input: {
   };
 }
 
-export async function saveDatabase(databaseId: string, updates: Partial<{ title: string; description: string; icon: string; coverUrl: string }>) {
+export async function saveDatabase(databaseId: string, updates: Partial<{ title: string; description: string; icon: string | null; coverUrl: string }>) {
   const [updated] = await db
     .update(databases)
     .set({ ...updates, updatedAt: new Date() })
-    .where(eq(databases.id, databaseId))
+    .where(or(eq(databases.id, databaseId), eq(databases.pageId, databaseId)))
     .returning();
+
+  if (updated?.pageId) {
+    const { pages } = await import('~/db/schema');
+    await db
+      .update(pages)
+      .set({
+        ...(updates.title !== undefined ? { title: updates.title } : {}),
+        ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(pages.id, updated.pageId));
+  } else {
+    const { pages } = await import('~/db/schema');
+    await db
+      .update(pages)
+      .set({
+        ...(updates.title !== undefined ? { title: updates.title } : {}),
+        ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(pages.id, databaseId));
+  }
+
   return updated;
 }
 
@@ -266,7 +289,7 @@ export async function addDatabaseItem(databaseId: string, item: { id?: string; t
     .values({
       ...(item.id ? { id: item.id } : {}),
       databaseId,
-      title: item.title || 'Untitled',
+      title: item.title !== undefined ? item.title : '',
       properties: item.properties || {},
       order: maxOrder + 1,
     })
