@@ -91,8 +91,8 @@ export const useUIStore = create<UIState>((set, get) => ({
           : prevMeta?.title || 'Untitled Document';
       const nextIcon =
         meta.icon !== undefined
-          ? (meta.icon || '📄')
-          : prevMeta?.icon || '📄';
+          ? (meta.icon || '')
+          : prevMeta?.icon || '';
 
       const updatedPageMeta = {
         ...state.pageMeta,
@@ -105,10 +105,10 @@ export const useUIStore = create<UIState>((set, get) => ({
       const updatedTabs = state.openTabs.map((t) =>
         t.id === pageId
           ? {
-              ...t,
-              title: nextTitle,
-              icon: nextIcon,
-            }
+            ...t,
+            title: nextTitle,
+            icon: nextIcon,
+          }
           : t
       );
 
@@ -225,7 +225,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   updateTabMeta: (id, title, icon) =>
     set((state) => {
       const resolvedTitle = title || 'Untitled Document';
-      const resolvedIcon = icon !== undefined ? icon : (state.pageMeta[id]?.icon || '📄');
+      const resolvedIcon = icon !== undefined ? icon : (state.pageMeta[id]?.icon || '');
 
       const updatedPageMeta = {
         ...state.pageMeta,

@@ -142,30 +142,84 @@ export function DatabaseTableView({
     propertyPaint.paintItem({ itemId, propId });
   };
 
-  // Apple Grid Keyboard Focus State ({ rowIndex, colIndex })
   const [focusedCell, setFocusedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
+  const [isEditingCell, setIsEditingCell] = useState(false);
+
+  const titleInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const shouldFocusNewRowRef = useRef<boolean>(false);
+  const prevItemsLengthRef = useRef<number>(items.length);
 
   const handleAddNewRow = () => {
+    shouldFocusNewRowRef.current = true;
     const newRowIndex = items.length;
     setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
+    setIsEditingCell(true);
     onAddItem();
   };
+
+  const handleEnterCell = (rIndex: number, cIndex: number) => {
+    if (rIndex === items.length - 1) {
+      handleAddNewRow();
+    } else {
+      setFocusedCell({ rowIndex: rIndex + 1, colIndex: cIndex });
+      setIsEditingCell(true);
+    }
+  };
+
+  useEffect(() => {
+    if (focusedCell && focusedCell.colIndex === 0 && (isEditingCell || shouldFocusNewRowRef.current)) {
+      const targetItem = items[focusedCell.rowIndex];
+      if (targetItem) {
+        const el = titleInputRefs.current.get(targetItem.id);
+        if (el && document.activeElement !== el) {
+          el.focus();
+          if ('select' in el && typeof el.select === 'function') {
+            el.select();
+          }
+        }
+      }
+    }
+  }, [focusedCell, isEditingCell, items]);
+
+  useEffect(() => {
+    if (!readOnly && (items.length > prevItemsLengthRef.current || shouldFocusNewRowRef.current)) {
+      const newRowIndex = items.length - 1;
+      if (newRowIndex >= 0) {
+        setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
+        setIsEditingCell(true);
+        const lastItem = items[newRowIndex];
+        if (lastItem) {
+          const el = titleInputRefs.current.get(lastItem.id);
+          if (el) {
+            el.focus();
+            el.select();
+          }
+        }
+      }
+      shouldFocusNewRowRef.current = false;
+    }
+    prevItemsLengthRef.current = items.length;
+  }, [items, readOnly]);
 
   const handleNavigateCell = (rIndex: number, cIndex: number, shift: boolean = false) => {
     const totalCols = nonTitleProps.length + 1;
     if (!shift) {
       if (cIndex < totalCols) {
         setFocusedCell({ rowIndex: rIndex, colIndex: cIndex });
+        setIsEditingCell(false);
       } else if (rIndex < items.length - 1) {
         setFocusedCell({ rowIndex: rIndex + 1, colIndex: 0 });
+        setIsEditingCell(false);
       } else {
         handleAddNewRow();
       }
     } else {
       if (cIndex > 0) {
         setFocusedCell({ rowIndex: rIndex, colIndex: cIndex - 1 });
+        setIsEditingCell(false);
       } else if (rIndex > 0) {
         setFocusedCell({ rowIndex: rIndex - 1, colIndex: totalCols - 1 });
+        setIsEditingCell(false);
       }
     }
   };
@@ -209,7 +263,7 @@ export function DatabaseTableView({
       if (activeOpenMenuId || editingHeaderId) return;
 
       const activeTag = (e.target as HTMLElement)?.tagName;
-      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag);
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) && document.activeElement === e.target;
 
       if (!focusedCell) return;
 
@@ -219,32 +273,53 @@ export function DatabaseTableView({
       if (e.key === 'ArrowDown' && !isInput) {
         e.preventDefault();
         setFocusedCell({ ...focusedCell, rowIndex: Math.min(numRows - 1, focusedCell.rowIndex + 1) });
+        setIsEditingCell(false);
       } else if (e.key === 'ArrowUp' && !isInput) {
         e.preventDefault();
         setFocusedCell({ ...focusedCell, rowIndex: Math.max(0, focusedCell.rowIndex - 1) });
+        setIsEditingCell(false);
       } else if (e.key === 'ArrowRight' && !isInput) {
         e.preventDefault();
         setFocusedCell({ ...focusedCell, colIndex: Math.min(numCols - 1, focusedCell.colIndex + 1) });
+        setIsEditingCell(false);
       } else if (e.key === 'ArrowLeft' && !isInput) {
         e.preventDefault();
         setFocusedCell({ ...focusedCell, colIndex: Math.max(0, focusedCell.colIndex - 1) });
+        setIsEditingCell(false);
+      } else if (e.key === 'Enter' && !isInput) {
+        e.preventDefault();
+        setIsEditingCell(true);
+        const focusedProp = nonTitleProps[focusedCell.colIndex - 1];
+        if (focusedProp && (focusedProp.type === 'select' || focusedProp.type === 'status' || focusedProp.type === 'multi_select' || focusedProp.type === 'date')) {
+          const item = items[focusedCell.rowIndex];
+          if (item) {
+            const cellMenuId = `cell-${item.id}-${focusedProp.id}`;
+            setActiveOpenMenuId(cellMenuId);
+          }
+        }
       } else if (e.key === 'Tab') {
         e.preventDefault();
         if (e.shiftKey) {
           if (focusedCell.colIndex > 0) {
             setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex - 1 });
+            setIsEditingCell(false);
           } else if (focusedCell.rowIndex > 0) {
             setFocusedCell({ rowIndex: focusedCell.rowIndex - 1, colIndex: numCols - 1 });
+            setIsEditingCell(false);
           }
         } else {
           if (focusedCell.colIndex < numCols - 1) {
             setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex + 1 });
+            setIsEditingCell(false);
           } else if (focusedCell.rowIndex < numRows - 1) {
             setFocusedCell({ rowIndex: focusedCell.rowIndex + 1, colIndex: 0 });
+            setIsEditingCell(false);
           }
         }
-      } else if (e.key === 'Escape') {
+      } else if (e.key === 'Escape' && !isInput && !isEditingCell) {
+        e.preventDefault();
         setFocusedCell(null);
+        setIsEditingCell(false);
       }
     };
 
@@ -451,7 +526,7 @@ export function DatabaseTableView({
                           setHeaderTitle(titleProp.name);
                         }
                       }}
-                      className="cursor-pointer hover:text-brand-600 w-full font-semibold truncate text-xs"
+                      className="cursor-pointer w-full font-semibold truncate text-xs"
                     >
                       {titleProp?.name || 'Name'}
                     </span>
@@ -553,7 +628,10 @@ export function DatabaseTableView({
 
                   {/* Title Cell + Open Page Button */}
                   <td
-                    onClick={() => setFocusedCell({ rowIndex, colIndex: 0 })}
+                    onClick={() => {
+                      setFocusedCell({ rowIndex, colIndex: 0 });
+                      setIsEditingCell(false);
+                    }}
                     style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` } : { width: '220px', minWidth: '160px', maxWidth: '300px' }}
                     className={`py-2 px-3 font-medium transition-colors ${focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0
                       ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
@@ -562,21 +640,37 @@ export function DatabaseTableView({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <input
+                        ref={(el) => {
+                          if (el) {
+                            titleInputRefs.current.set(item.id, el);
+                          } else {
+                            titleInputRefs.current.delete(item.id);
+                          }
+                        }}
                         type="text"
                         defaultValue={item.title}
                         disabled={readOnly}
                         onFocus={() => {
                           setEditingRowTitleId(item.id);
                           setFocusedCell({ rowIndex, colIndex: 0 });
+                          setIsEditingCell(true);
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
+                            e.stopPropagation();
                             (e.target as HTMLInputElement).blur();
-                            handleAddNewRow();
+                            handleEnterCell(rowIndex, 0);
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            (e.target as HTMLInputElement).blur();
+                            setIsEditingCell(false);
                           } else if (e.key === 'Tab') {
                             e.preventDefault();
-                            handleNavigateCell(rowIndex, 1, e.shiftKey);
+                            e.stopPropagation();
+                            (e.target as HTMLInputElement).blur();
+                            handleNavigateCell(rowIndex, 0, e.shiftKey);
                           }
                         }}
                         onBlur={(e) => {
@@ -624,7 +718,10 @@ export function DatabaseTableView({
                     return (
                       <td
                         key={prop.id}
-                        onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
+                        onClick={() => {
+                          setFocusedCell({ rowIndex, colIndex: colIndex + 1 });
+                          setIsEditingCell(false);
+                        }}
                         style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` } : { width: '160px', minWidth: '120px', maxWidth: '200px' }}
                         className={`py-2 px-3 transition-colors ${isFocused
                           ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500'
@@ -636,8 +733,14 @@ export function DatabaseTableView({
                           value={val}
                           readOnly={readOnly}
                           isFocused={isFocused}
-                          onNavigate={(shift) => handleNavigateCell(rowIndex, colIndex + 1 + (shift ? -1 : 1), shift)}
-                          onAddNewRow={handleAddNewRow}
+                          isEditing={isEditingCell && isFocused}
+                          onNavigate={(shift) => handleNavigateCell(rowIndex, colIndex + 1, shift)}
+                          onEnterRow={() => handleEnterCell(rowIndex, colIndex + 1)}
+                          onExitEditing={() => setIsEditingCell(false)}
+                          onSelectCell={() => {
+                            setFocusedCell({ rowIndex, colIndex: colIndex + 1 });
+                            setIsEditingCell(true);
+                          }}
                           onMouseDownCheckbox={(e) => handlePropertyCheckboxMouseDown(item.id, prop.id, Boolean(val), e)}
                           onMouseEnterCheckbox={() => handlePropertyCheckboxMouseEnter(item.id, prop.id)}
                           isPopoverOpen={activeOpenMenuId === cellMenuId}
@@ -1263,8 +1366,11 @@ interface InteractiveCellProps {
   onTogglePopover?: () => void;
   onClosePopover?: () => void;
   isFocused?: boolean;
+  isEditing?: boolean;
   onNavigate?: (shift: boolean) => void;
-  onAddNewRow?: () => void;
+  onEnterRow?: () => void;
+  onExitEditing?: () => void;
+  onSelectCell?: () => void;
   onMouseDownCheckbox?: (e: React.MouseEvent) => void;
   onMouseEnterCheckbox?: () => void;
 }
@@ -1279,9 +1385,12 @@ function InteractiveCell({
   isPopoverOpen: isPopoverOpenProp,
   onTogglePopover,
   onClosePopover,
-  isFocused = false,
+  isFocused: _isFocused = false,
+  isEditing = false,
   onNavigate,
-  onAddNewRow,
+  onEnterRow,
+  onExitEditing,
+  onSelectCell,
   onMouseDownCheckbox,
   onMouseEnterCheckbox,
 }: InteractiveCellProps) {
@@ -1311,11 +1420,18 @@ function InteractiveCell({
   const handleKeyDownCell = (e: React.KeyboardEvent) => {
     if (e.key === 'Tab') {
       e.preventDefault();
+      e.stopPropagation();
       if (onNavigate) onNavigate(e.shiftKey);
     } else if (e.key === 'Enter' && !isPopoverOpen) {
       e.preventDefault();
+      e.stopPropagation();
       (e.target as HTMLElement).blur();
-      if (onAddNewRow) onAddNewRow();
+      if (onEnterRow) onEnterRow();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.target as HTMLElement).blur();
+      if (onExitEditing) onExitEditing();
     }
   };
 
@@ -1355,10 +1471,13 @@ function InteractiveCell({
   const cellInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isFocused && cellInputRef.current && document.activeElement !== cellInputRef.current) {
+    if (isEditing && cellInputRef.current && document.activeElement !== cellInputRef.current) {
       cellInputRef.current.focus();
+      if ('select' in cellInputRef.current && typeof cellInputRef.current.select === 'function') {
+        cellInputRef.current.select();
+      }
     }
-  }, [isFocused]);
+  }, [isEditing]);
 
   switch (prop.type) {
     case 'text':
@@ -1426,7 +1545,7 @@ function InteractiveCell({
         <div className="relative flex items-center gap-1" ref={triggerRef}>
           <input
             ref={(el) => {
-              if (el && isFocused && document.activeElement !== el) {
+              if (el && isEditing && document.activeElement !== el) {
                 el.focus();
               }
             }}
@@ -1442,14 +1561,22 @@ function InteractiveCell({
             onKeyDown={(e) => {
               if (e.key === 'Tab') {
                 e.preventDefault();
+                e.stopPropagation();
                 if (onNavigate) onNavigate(e.shiftKey);
               } else if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
                 const val = (e.target as HTMLInputElement).value;
                 const parsed = parseDateInput(val);
                 if (parsed !== null) onChange(parsed);
                 else onChange(val);
                 (e.target as HTMLInputElement).blur();
-                if (onAddNewRow) onAddNewRow();
+                if (onEnterRow) onEnterRow();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                (e.target as HTMLInputElement).blur();
+                if (onExitEditing) onExitEditing();
               }
             }}
             className={`w-full bg-transparent border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200 placeholder:text-stone-300 dark:placeholder:text-zinc-600 placeholder:italic placeholder:font-normal ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
@@ -1530,22 +1657,34 @@ function InteractiveCell({
           <div
             tabIndex={0}
             ref={(el) => {
-              if (el && isFocused && document.activeElement !== el && !isPopoverOpen) {
+              if (el && isEditing && document.activeElement !== el && !isPopoverOpen) {
                 el.focus();
               }
             }}
             onKeyDown={(e) => {
-              if (!isPopoverOpen) {
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                closePopover();
+                if (onExitEditing) onExitEditing();
+              } else if (!isPopoverOpen) {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
+                  e.stopPropagation();
                   togglePopover();
                 } else if (e.key === 'Tab') {
                   e.preventDefault();
+                  e.stopPropagation();
                   if (onNavigate) onNavigate(e.shiftKey);
                 }
               }
             }}
-            onClick={() => !readOnly && togglePopover()}
+            onClick={(e) => {
+              if (readOnly) return;
+              e.stopPropagation();
+              if (onSelectCell) onSelectCell();
+              togglePopover();
+            }}
             className="flex flex-wrap gap-1 items-center px-1.5 py-1 min-h-6.5 cursor-pointer rounded-md transition-colors focus:outline-none"
           >
             {selectedOpts.length > 0 ? (
@@ -1587,9 +1726,14 @@ function InteractiveCell({
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
+                      e.stopPropagation();
                       handleEnterKeyPress();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      closePopover();
+                      if (onExitEditing) onExitEditing();
                     }
-                    if (e.key === 'Escape') closePopover();
                   }}
                   className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
                   autoFocus
@@ -1665,6 +1809,7 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDownCell}
             className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
               }`}
             placeholder="https://..."
@@ -1697,6 +1842,7 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDownCell}
             className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
               }`}
             placeholder="name@domain.com"
@@ -1717,6 +1863,7 @@ function InteractiveCell({
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDownCell}
           className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200"
         />
       );

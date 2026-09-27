@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, RotateCcw, Search, Clock } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { File01Icon } from '@hugeicons/core-free-icons';
 import { ConfirmModal } from '~/components/ConfirmModal';
 
 interface TrashedPageItem {
@@ -157,7 +159,9 @@ export const TrashView: React.FC<TrashViewProps> = ({
                   className="p-4 hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors group"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <span className="text-xl shrink-0 p-1.5 bg-stone-100 dark:bg-zinc-800 rounded-lg">{item.icon || '📄'}</span>
+                    <span className="text-xl shrink-0 p-1.5 bg-stone-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                      {item.icon ? item.icon : <HugeiconsIcon icon={File01Icon} size={18} className="text-stone-400 dark:text-zinc-500" />}
+                    </span>
                     <div className="flex flex-col min-w-0">
                       <span className="text-sm font-semibold text-stone-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white truncate">
                         {item.title || 'Untitled Document'}

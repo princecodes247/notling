@@ -56,7 +56,7 @@ function DocumentPageRoute() {
       const live = pageMeta[page.id];
       const existing = openTabs.find((t) => t.id === page.id);
       const title = live?.title ?? page.title ?? 'Untitled Document';
-      const icon = live?.icon ?? page.icon ?? '📄';
+      const icon = live?.icon ?? page.icon ?? '';
 
       if (existing) {
         updateTabMeta(page.id, title, icon);

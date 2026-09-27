@@ -1,15 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Download01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
+import { Download01Icon, Edit02Icon, TableIcon } from '@hugeicons/core-free-icons';
 import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search, Plus } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
 
 interface EditorHeaderProps {
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   title: string;
   isFolder?: boolean;
+  isDatabase?: boolean;
   activeUsers?: Array<any>;
   getClientId?: () => string;
   isReadOnly?: boolean;
@@ -31,6 +32,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   icon,
   title,
   isFolder = false,
+  isDatabase = false,
   activeUsers = [],
   getClientId = () => 'default',
   isReadOnly = false,
@@ -85,8 +87,12 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
       {/* Left: Breadcrumb Trail & Title */}
       <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden">
         <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1">
-          <span>{icon}</span>
-          <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Document'}</span>
+          {icon ? (
+            <span>{icon}</span>
+          ) : isDatabase ? (
+            <HugeiconsIcon icon={TableIcon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+          ) : null}
+          <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : isDatabase ? 'Database' : 'Document'}</span>
         </span>
         <span>/</span>
         <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">

@@ -66,7 +66,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectP
             workspaceId,
             parentId,
             title: doc.title,
-            icon: doc.icon || '📄',
+            icon: doc.icon || undefined,
           },
         });
 
@@ -151,7 +151,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectP
             const blocks = parseMarkdownToBlocks(bodyMarkdown);
             docs.push({
               title,
-              icon: '📄',
+              icon: undefined,
               contentBlocks: blocks,
               relativePath: name,
             });
@@ -230,11 +230,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectP
             onDragLeave={() => setIsDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all ${
-              isDragOver
-                ? 'border-stone-800 dark:border-zinc-400 bg-stone-100/80 dark:bg-zinc-800/80 ring-2 ring-stone-400 dark:ring-zinc-500'
-                : 'border-stone-300 dark:border-zinc-700 hover:border-stone-400 dark:hover:border-zinc-600 bg-stone-50/50 dark:bg-zinc-900/40 hover:bg-stone-100/50 dark:hover:bg-zinc-800/40'
-            }`}
+            className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all ${isDragOver
+              ? 'border-stone-800 dark:border-zinc-400 bg-stone-100/80 dark:bg-zinc-800/80 ring-2 ring-stone-400 dark:ring-zinc-500'
+              : 'border-stone-300 dark:border-zinc-700 hover:border-stone-400 dark:hover:border-zinc-600 bg-stone-50/50 dark:bg-zinc-900/40 hover:bg-stone-100/50 dark:hover:bg-zinc-800/40'
+              }`}
           >
             <input
               ref={fileInputRef}

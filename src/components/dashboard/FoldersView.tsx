@@ -10,6 +10,7 @@ import {
   Sorting01Icon,
   DatabaseIcon,
   File01Icon,
+  TableIcon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import type { Database } from '~/db/schema';
@@ -62,7 +63,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'page' | 'database' | 'folder'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   // Infinite Scroll state
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -369,7 +370,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="w-9 h-9 rounded-lg bg-stone-50 dark:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-700/80 flex items-center justify-center text-lg shrink-0 group-hover:scale-105 transition-transform">
-                    {item.icon || (item.type === 'database' ? null : item.type === 'folder' ? '📁' : '📄')}
+                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : item.type === 'folder' ? '📁' : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
                   </div>
 
                   <div className="flex items-center gap-1">
@@ -469,7 +470,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-8 h-8 rounded-md bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0">
-                    {item.icon || (item.type === 'database' ? '' : item.type === 'folder' ? '📁' : '📄')}
+                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : item.type === 'folder' ? '📁' : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
                   </div>
 
                   <div className="min-w-0 flex-1">

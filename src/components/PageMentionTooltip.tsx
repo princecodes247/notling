@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { FileText, AtSign, User, Users } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { File01Icon } from '@hugeicons/core-free-icons';
 import { useQuery } from '@tanstack/react-query';
 import { getPageTree, getWorkspaceUsers, getPageVisitors, type PageTreeNode } from '~/server/pages';
 import { getSession } from '~/server/auth';
@@ -344,7 +346,9 @@ export const PageMentionTooltip: React.FC<PageMentionTooltipProps> = ({
                         }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm shrink-0">{page.icon || '📄'}</span>
+                        <span className="text-sm shrink-0 flex items-center justify-center">
+                          {page.icon ? page.icon : <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 dark:text-zinc-500" />}
+                        </span>
                         <span className={`text-xs truncate ${isSelected ? 'font-semibold text-amber-900 dark:text-amber-300' : 'text-stone-800 dark:text-zinc-200'}`}>
                           {page.title}
                         </span>

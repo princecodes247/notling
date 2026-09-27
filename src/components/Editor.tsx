@@ -5,8 +5,9 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   PlusSignIcon,
   Folder01Icon,
-  Loading02Icon,
+  LoaderCircleIcon,
   LockIcon,
+  File01Icon,
 } from '@hugeicons/core-free-icons';
 import { Clock } from 'lucide-react';
 import {
@@ -78,7 +79,7 @@ export const Editor: React.FC<EditorProps> = ({
     setHistoryState,
   } = useUIStore();
   const [title, setTitle] = useState(page.title);
-  const [icon, setIcon] = useState(page.icon || '📄');
+  const [icon, setIcon] = useState(page.icon || undefined);
   const [isCustomIcon, setIsCustomIcon] = useState(() => !isDefaultOrInferredIcon(page.icon, page.title, { isFolder: page.icon === '📁' || page.icon === '📂' }));
   const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
   const [isPinned, setIsPinned] = useState(!!(page as any).isPinned);
@@ -86,7 +87,7 @@ export const Editor: React.FC<EditorProps> = ({
 
   useEffect(() => {
     setTitle(page.title);
-    const initialIcon = page.icon || '📄';
+    const initialIcon = page.icon || undefined;
     setIcon(initialIcon);
     setIsCustomIcon(!isDefaultOrInferredIcon(initialIcon, page.title, { isFolder: initialIcon === '📁' || initialIcon === '📂' }));
     setVisibility((page as any).visibility || 'workspace');
@@ -119,7 +120,7 @@ export const Editor: React.FC<EditorProps> = ({
     if (document.activeElement !== titleInputRef.current) {
       setTitle(page.title);
     }
-    const currentIcon = page.icon || '📄';
+    const currentIcon = page.icon || undefined;
     setIcon(currentIcon);
     setIsCustomIcon(!isDefaultOrInferredIcon(currentIcon, page.title, { isFolder: currentIcon === '📁' || currentIcon === '📂' }));
     setVisibility((page as any).visibility || 'workspace');
@@ -251,7 +252,7 @@ export const Editor: React.FC<EditorProps> = ({
       const t = overrideTitle !== undefined ? overrideTitle : latestMetaRef.current.title;
       const i = overrideIcon !== undefined ? overrideIcon : latestMetaRef.current.icon;
 
-      if (t !== page.title || i !== (page.icon || '📄')) {
+      if (t !== page.title || i !== (page.icon || null)) {
         updateClientPageMeta(queryClient, { pageId: page.id, title: t, icon: i });
         setSaveStatus('saving');
         try {
@@ -298,7 +299,7 @@ export const Editor: React.FC<EditorProps> = ({
       title: newTitle,
       icon: targetIcon,
     });
-    onTitleOrIconChange?.(newTitle, targetIcon);
+    onTitleOrIconChange?.(newTitle, targetIcon || null);
 
     setSaveStatus('saving');
     if (pendingSaveTimeoutRef.current) {
@@ -315,8 +316,9 @@ export const Editor: React.FC<EditorProps> = ({
     flushSaveMeta();
   };
 
-  const handleSelectIcon = async (selectedIcon: string) => {
+  const handleSelectIcon = async (selectedIcon: string | undefined) => {
     if (isReadOnly) return;
+
     setIcon(selectedIcon);
     latestMetaRef.current.icon = selectedIcon;
     setIsCustomIcon(!isDefaultOrInferredIcon(selectedIcon, latestMetaRef.current.title, { isFolder: selectedIcon === '📁' || selectedIcon === '📂' }));
@@ -325,13 +327,12 @@ export const Editor: React.FC<EditorProps> = ({
     updateClientPageMeta(queryClient, {
       pageId: page.id,
       title: latestMetaRef.current.title,
-      icon: selectedIcon,
+      icon: selectedIcon || null,
     });
-    onTitleOrIconChange?.(latestMetaRef.current.title, selectedIcon);
+    onTitleOrIconChange?.(latestMetaRef.current.title, selectedIcon || null);
 
     flushSaveMeta(latestMetaRef.current.title, selectedIcon);
   };
-
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-stone-100 overflow-hidden relative">
@@ -354,17 +355,17 @@ export const Editor: React.FC<EditorProps> = ({
           {/* Page/Folder Icon */}
           <div className="relative mb-3 group">
             {isReadOnly ? (
-              <span className="text-4xl sm:text-5xl rounded-xl p-1 -ml-1 inline-block select-none">
-                {icon}
+              <span className="text-4xl sm:text-5xl rounded-xl p-1 -ml-1 inline-flex items-center justify-center select-none">
+                {icon ? icon : <HugeiconsIcon icon={File01Icon} size={36} className="text-stone-400 dark:text-zinc-500" />}
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform hover:bg-stone-100 dark:hover:bg-stone-800 hover:scale-105 cursor-pointer"
+                className="text-4xl sm:text-5xl rounded-xl p-1 -ml-1 transition-transform hover:bg-stone-100 dark:hover:bg-stone-800 hover:scale-105 cursor-pointer inline-flex items-center justify-center"
                 title="Change icon"
               >
-                {icon}
+                {icon ? icon : <HugeiconsIcon icon={File01Icon} size={36} className="text-stone-400 dark:text-zinc-500" />}
               </button>
             )}
 
@@ -373,7 +374,7 @@ export const Editor: React.FC<EditorProps> = ({
                 onSelect={(selectedEmoji) => handleSelectIcon(selectedEmoji)}
                 onClose={() => setShowEmojiPicker(false)}
                 currentEmoji={icon}
-                onRemove={() => handleSelectIcon('📄')}
+                onRemove={() => handleSelectIcon(undefined)}
                 className="top-full left-0 mt-1"
               />
             )}
@@ -419,7 +420,7 @@ export const Editor: React.FC<EditorProps> = ({
               <span>&bull;</span>
               {saveStatus === 'saving' ? (
                 <span className="flex items-center gap-1 text-stone-500 font-medium">
-                  <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin text-stone-600" />
+                  <HugeiconsIcon icon={LoaderCircleIcon} size={12} className="animate-spin text-stone-600" />
                   <span>Saving...</span>
                 </span>
               ) : saveStatus === 'saved' ? (
@@ -519,7 +520,7 @@ export const Editor: React.FC<EditorProps> = ({
                       className="p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 hover:border-stone-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900/60 hover:bg-stone-50/60 dark:hover:bg-zinc-800/60 transition-all text-left flex items-center justify-between group cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-lg">{child.icon || '📄'}</span>
+                        <span className="text-lg">{child.icon || null}</span>
                         <span className="text-xs font-medium text-stone-800 dark:text-zinc-200 truncate group-hover:text-stone-900 dark:group-hover:text-white">
                           {child.title || 'Untitled Document'}
                         </span>

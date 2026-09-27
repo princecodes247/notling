@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useId } from 'react';
 import { Link } from '@tanstack/react-router';
 import { NotlingLogoIcon } from './Icons';
 import { Github, ArrowUp } from 'lucide-react';
@@ -20,7 +20,8 @@ export function Footer() {
   const feImageRef = useRef<SVGFEImageElement>(null);
 
   // Unique filter ID to avoid conflicts
-  const [filterId] = useState(() => `water-ripple-${Math.random().toString(36).substring(2, 9)}`);
+  const reactId = useId();
+  const filterId = `water-ripple-${reactId.replace(/:/g, '')}`;
 
   const wavesRef = useRef<WavePulse[]>([]);
   const animationFrameRef = useRef<number | null>(null);
@@ -164,7 +165,7 @@ export function Footer() {
             {/* 2. Localized Cursor Wave Displacement Map */}
             <feImage
               ref={feImageRef}
-              href=""
+              href={undefined}
               result="localMap"
             />
             <feDisplacementMap

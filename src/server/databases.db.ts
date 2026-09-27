@@ -313,7 +313,7 @@ export async function getOrCreateDatabaseItemPage(itemId: string) {
           workspaceId: database.workspaceId,
           parentId: database.pageId || null,
           title: item.title || 'Untitled',
-          icon: '📄',
+          icon: null,
           visibility: 'workspace',
           order: item.order || 0,
         })
@@ -341,7 +341,7 @@ export async function addDatabaseItem(databaseId: string, item: { id?: string; t
         workspaceId: dbInfo.workspaceId,
         parentId: dbInfo.pageId || null,
         title: item.title !== undefined && item.title !== '' ? item.title : 'Untitled',
-        icon: '📄',
+        icon: null,
         visibility: 'workspace',
         order: maxOrder + 1,
       })
