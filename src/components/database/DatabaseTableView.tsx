@@ -451,7 +451,7 @@ export function DatabaseTableView({
                           setHeaderTitle(titleProp.name);
                         }
                       }}
-                      className="cursor-pointer hover:text-brand-600 w-full font-semibold truncate text-xs"
+                      className="cursor-pointer w-full font-semibold truncate text-xs"
                     >
                       {titleProp?.name || 'Name'}
                     </span>

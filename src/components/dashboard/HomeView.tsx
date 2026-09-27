@@ -4,6 +4,7 @@ import {
   FolderAddIcon,
   PlusSignIcon,
   ArrowRight01Icon,
+  File01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
@@ -120,9 +121,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
     return applyMeta(treeNodes);
   }, [treeNodes, pageMeta]);
 
-  // Only actual folders
+  // Only actual folders (excluding databases)
   const folders = useMemo(
-    () => mergedNodes.filter((n) => n.icon === '📁' || n.icon === '📂' || (n.children && n.children.length > 0)),
+    () => mergedNodes.filter((n) => !n.databaseId && (n.icon === '📁' || n.icon === '📂' || (n.children && n.children.length > 0))),
     [mergedNodes]
   );
 
@@ -274,7 +275,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
                         className="p-3.5 hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 flex items-center justify-between transition-colors cursor-pointer group"
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className="text-base shrink-0">{node.icon || '📄'}</span>
+                          <span className="text-base shrink-0 flex items-center justify-center">
+                            {node.icon ? node.icon : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
+                          </span>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-medium text-stone-900 dark:text-zinc-100 group-hover:text-black dark:group-hover:text-white truncate block">

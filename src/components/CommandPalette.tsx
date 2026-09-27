@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, X, FileText, ArrowRight, Sparkles } from 'lucide-react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { File01Icon } from '@hugeicons/core-free-icons';
 import { motion, AnimatePresence } from 'motion/react';
 import { useUIStore } from '~/store/uiStore';
 import { useQuery } from '@tanstack/react-query';
@@ -146,8 +148,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                     : 'hover:bg-neutral-50 dark:hover:bg-zinc-800/40 border-transparent'
                 }`}
               >
-                <span className="text-xl leading-none mt-0.5 shrink-0">
-                  {res.icon || '📄'}
+                <span className="text-xl leading-none mt-0.5 shrink-0 flex items-center justify-center">
+                  {res.icon ? res.icon : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">

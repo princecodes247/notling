@@ -188,7 +188,7 @@ function DashboardLayout() {
           liveMeta?.title ??
           node?.title ??
           (existingTab?.title && existingTab.title !== 'Untitled Document' ? existingTab.title : 'Untitled Document');
-        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? '📄';
+        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? '';
 
         doOpenTab({
           id: pageId,

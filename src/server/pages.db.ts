@@ -563,7 +563,7 @@ export async function createNewPage(input: {
     const nextOrder = existingInParent.length > 0 ? existingInParent[0].order + 1 : 0;
     const pageTitle = input.title || 'Untitled';
     const isFolderInput = input.icon === '📁' || input.icon === '📂';
-    const defaultIcon = isFolderInput ? '📁' : '📄';
+    const defaultIcon = isFolderInput ? '📁' : null;
     const finalIcon = input.icon && input.icon !== '📄' && input.icon !== '📁'
       ? input.icon
       : (inferEmojiFromTitle(pageTitle, { isFolder: isFolderInput }) || defaultIcon);

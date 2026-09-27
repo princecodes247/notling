@@ -342,6 +342,7 @@ export function DatabaseContainer({
       <EditorHeader
         icon={dbData.database.icon || ''}
         title={dbTitle}
+        isDatabase={true}
         isReadOnly={readOnly}
         isPinned={isPinned}
         togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}

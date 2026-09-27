@@ -7,6 +7,7 @@ import {
   MoreHorizontalIcon,
   Download01Icon,
   File01Icon,
+  TableIcon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { getPage } from '~/server/pages';
@@ -223,6 +224,16 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
     setDraggedPageId?.(null);
   };
 
+  const NodeIcon = () => {
+    return hasCustomEmoji ? (
+      <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
+    ) : node.databaseId ? (
+      <HugeiconsIcon icon={TableIcon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+    ) : (
+      <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+    )
+  }
+
   return (
     <div className="select-none text-xs">
       <div
@@ -282,19 +293,11 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 title="Change icon"
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               >
-                {hasCustomEmoji ? (
-                  <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
-                ) : (
-                  <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
-                )}
+                <NodeIcon />
               </button>
             ) : (
               <span className="leading-none shrink-0 p-0.5 select-none flex items-center justify-center">
-                {hasCustomEmoji ? (
-                  <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
-                ) : (
-                  <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
-                )}
+                <NodeIcon />
               </span>
             )}
 
