@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
 import { PropertyTypeIcon } from './PropertyTypeIcon';
 import { DatabasePopover } from './DatabasePopover';
+import { CustomDatePicker } from './CustomDatePicker';
+import { validatePropertyValue, parseDateInput } from '~/lib/databaseValidation';
 import {
   Plus,
   Trash2,
@@ -9,7 +11,6 @@ import {
   ExternalLink,
   Check,
   Calendar,
-  Tag as TagIcon,
   Maximize2,
   ChevronDown,
   ChevronUp,
@@ -19,7 +20,7 @@ import {
   Edit2,
   RefreshCw,
   AlertTriangle,
-  Undo2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface DatabaseTableViewProps {
@@ -68,7 +69,7 @@ export function DatabaseTableView({
   properties,
   items,
   onUpdateItem,
-  onDeleteItem,
+  onDeleteItem: _onDeleteItem,
   onDeleteItemsBulk,
   onAddItem,
   onAddProperty,
@@ -216,14 +217,6 @@ export function DatabaseTableView({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undoStack, onUpdateItem]);
-
-  // Handle Column Creation
-  const handleCommitAddColumn = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!newColName.trim()) return;
-    onAddProperty(newColName.trim(), newColType);
-    setActiveOpenMenuId(null);
-  };
 
   // Handle Column Deletion with smart data detection
   const handleRequestDeleteProperty = (prop: DatabaseProperty) => {
@@ -533,7 +526,11 @@ export function DatabaseTableView({
                       key={prop.id}
                       onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
                       style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px` } : { minWidth: '150px' }}
-                      className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors`}
+                      className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors ${
+                        isFocused
+                          ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
+                          : ''
+                      }`}
                     >
                       <InteractiveCell
                         prop={prop}
@@ -1194,6 +1191,9 @@ function InteractiveCell({
     onUpdateProperty(prop.id, { options: currentOptions });
   };
 
+  const validation = validatePropertyValue(prop.type, value);
+  const isInvalid = !validation.isValid;
+
   switch (prop.type) {
     case 'text':
       return (
@@ -1209,14 +1209,23 @@ function InteractiveCell({
 
     case 'number':
       return (
-        <input
-          type="number"
-          defaultValue={value ?? ''}
-          disabled={readOnly}
-          onBlur={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : null)}
-          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono tabular-nums"
-          placeholder="0"
-        />
+        <div className="relative flex items-center">
+          <input
+            type="number"
+            defaultValue={value ?? ''}
+            disabled={readOnly}
+            onBlur={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : null)}
+            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono tabular-nums ${
+              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+            }`}
+            placeholder="0"
+          />
+          {isInvalid && (
+            <span className="text-rose-500 px-1 shrink-0" title={validation.errorMessage}>
+              <AlertCircle className="w-3.5 h-3.5" />
+            </span>
+          )}
+        </div>
       );
 
     case 'checkbox':
@@ -1234,13 +1243,57 @@ function InteractiveCell({
 
     case 'date':
       return (
-        <input
-          type="date"
-          defaultValue={value || ''}
-          disabled={readOnly}
-          onChange={(e) => onChange(e.target.value)}
-          className="bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200"
-        />
+        <div className="relative flex items-center gap-1" ref={triggerRef}>
+          <input
+            type="text"
+            defaultValue={value || ''}
+            disabled={readOnly}
+            onBlur={(e) => {
+              const val = e.target.value;
+              const parsed = parseDateInput(val);
+              if (parsed !== null) onChange(parsed);
+              else onChange(val);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const val = (e.target as HTMLInputElement).value;
+                const parsed = parseDateInput(val);
+                if (parsed !== null) onChange(parsed);
+                else onChange(val);
+              }
+            }}
+            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200 ${
+              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+            }`}
+            placeholder="YYYY-MM-DD or today"
+          />
+          <button
+            type="button"
+            disabled={readOnly}
+            onClick={() => !readOnly && togglePopover()}
+            className="p-1 rounded text-[#1f4d3d] dark:text-emerald-400 hover:bg-stone-200/60 dark:hover:bg-zinc-800 cursor-pointer shrink-0"
+            title="Open Calendar Picker"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+          </button>
+
+          <DatabasePopover
+            isOpen={isPopoverOpen}
+            onClose={closePopover}
+            triggerRef={triggerRef}
+            width={270}
+          >
+            <CustomDatePicker
+              value={value}
+              onChange={(d) => {
+                onChange(d);
+                closePopover();
+              }}
+              onClose={closePopover}
+              readOnly={readOnly}
+            />
+          </DatabasePopover>
+        </div>
       );
 
     case 'select':
@@ -1404,10 +1457,12 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
-            className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200"
+            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${
+              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+            }`}
             placeholder="https://..."
           />
-          {value && (
+          {value && !isInvalid && (
             <a
               href={value}
               target="_blank"
@@ -1417,6 +1472,32 @@ function InteractiveCell({
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+          )}
+          {isInvalid && (
+            <span className="text-rose-500 px-1 shrink-0" title={validation.errorMessage}>
+              <AlertCircle className="w-3.5 h-3.5" />
+            </span>
+          )}
+        </div>
+      );
+
+    case 'email':
+      return (
+        <div className="flex items-center gap-1">
+          <input
+            type="email"
+            defaultValue={value || ''}
+            disabled={readOnly}
+            onBlur={(e) => onChange(e.target.value)}
+            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${
+              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+            }`}
+            placeholder="name@domain.com"
+          />
+          {isInvalid && (
+            <span className="text-rose-500 px-1 shrink-0" title={validation.errorMessage}>
+              <AlertCircle className="w-3.5 h-3.5" />
+            </span>
           )}
         </div>
       );

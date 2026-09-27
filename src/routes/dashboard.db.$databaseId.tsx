@@ -1,11 +1,11 @@
 import React from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getDatabase } from '~/server/databases';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getDatabase, deleteDatabase } from '~/server/databases';
+import { togglePinPage, duplicatePage, softDeletePage } from '~/server/pages';
 import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as dashboardRoute } from './dashboard';
 import { Database as DatabaseIcon, ArrowLeft } from 'lucide-react';
-
 import { useUIStore } from '~/store/uiStore';
 
 export const Route = createRoute({
@@ -18,6 +18,7 @@ export const Route = createRoute({
 function DashboardDatabaseRoute() {
   const { databaseId } = Route.useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: dbData, isLoading, error } = useQuery({
     queryKey: ['database', databaseId],
@@ -26,6 +27,52 @@ function DashboardDatabaseRoute() {
       return await getDatabase({ data: databaseId });
     },
     enabled: !!databaseId,
+  });
+
+  const targetPageId = dbData?.database?.pageId || dbData?.database?.id;
+
+  // Toggle Pin Mutation
+  const togglePinMutation = useMutation({
+    mutationFn: async () => {
+      if (!targetPageId) return;
+      return await togglePinPage({ data: { pageId: targetPageId } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
+    },
+  });
+
+  // Duplicate Database Mutation
+  const duplicateMutation = useMutation({
+    mutationFn: async () => {
+      if (!targetPageId) return;
+      return await duplicatePage({ data: targetPageId });
+    },
+    onSuccess: (newClonedPage) => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
+      if (newClonedPage?.id) {
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId: newClonedPage.id } });
+      }
+    },
+  });
+
+  // Delete Database Mutation
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!databaseId) return;
+      if (targetPageId) {
+        await softDeletePage({ data: targetPageId });
+      } else {
+        await deleteDatabase({ data: databaseId });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
+      navigate({ to: '/dashboard/folders' });
+    },
   });
 
   React.useEffect(() => {
@@ -88,6 +135,12 @@ function DashboardDatabaseRoute() {
   }
 
   return (
-    <DatabaseContainer key={dbData.database.id} initialData={dbData} />
+    <DatabaseContainer
+      key={dbData.database.id}
+      initialData={dbData}
+      onTogglePin={() => togglePinMutation.mutate()}
+      onDuplicate={() => duplicateMutation.mutate()}
+      onDelete={() => deleteMutation.mutate()}
+    />
   );
 }

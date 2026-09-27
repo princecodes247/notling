@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   session,
   treeNodes,
   userWorkspaces = [],
-  databases = [],
+  databases: _databases = [],
   isCreatingPage = false,
   isLoading = false,
   onSwitchWorkspace,
@@ -167,7 +167,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onTogglePin,
   onDuplicatePage,
   onCreateDatabase,
-  onSelectDatabase,
+  onSelectDatabase: _onSelectDatabase,
   onLogout: _onLogout,
 }) => {
   const { toggleSearch, toggleSidebar, setImportOpen } = useUIStore();

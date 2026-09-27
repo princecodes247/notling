@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'motion/react';
 
 export interface DatabasePopoverProps {
   isOpen: boolean;
@@ -112,29 +113,35 @@ export function DatabasePopover({
     };
   }, [isOpen, triggerRef, onClose]);
 
-  if (!isOpen || typeof document === 'undefined' || !triggerRef.current) return null;
+  if (typeof document === 'undefined') return null;
 
-  // Compute position synchronously during render! (0ms delay, 0 sliding)
-  const pos = computePosition();
-  if (!pos) return null;
+  const pos = isOpen && triggerRef.current ? computePosition() : null;
 
   return createPortal(
-    <div
-      ref={popoverRef}
-      style={{
-        position: 'fixed',
-        top: `${pos.top}px`,
-        left: `${pos.left}px`,
-        width: typeof width === 'number' ? `${width}px` : width || 'auto',
-        minWidth: `${minWidth}px`,
-        maxWidth: `${pos.maxWidth}px`,
-        zIndex: 99999,
-        transition: 'none', // Strictly disable position transitions
-      }}
-      className={`rounded-2xl bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800/90 shadow-2xl p-2 font-sans antialiased select-none ${className}`}
-    >
-      {children}
-    </div>,
+    <AnimatePresence>
+      {isOpen && pos && (
+        <motion.div
+          key="database-popover-panel"
+          ref={popoverRef}
+          initial={{ opacity: 0, scale: 0.95, y: -4 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -4 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+          style={{
+            position: 'fixed',
+            top: `${pos.top}px`,
+            left: `${pos.left}px`,
+            width: typeof width === 'number' ? `${width}px` : width || 'auto',
+            minWidth: `${minWidth}px`,
+            maxWidth: `${pos.maxWidth}px`,
+            zIndex: 99999,
+          }}
+          className={`rounded-2xl bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800/90 shadow-2xl p-2 font-sans antialiased select-none ${className}`}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 }

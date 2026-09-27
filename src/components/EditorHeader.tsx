@@ -16,6 +16,7 @@ interface EditorHeaderProps {
   isPinned?: boolean;
   togglePinMutation?: any;
   duplicateMutation?: any;
+  onDelete?: () => void;
 }
 
 export const EditorHeader: React.FC<EditorHeaderProps> = ({
@@ -28,6 +29,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   isPinned = false,
   togglePinMutation,
   duplicateMutation,
+  onDelete,
 }) => {
   const {
     canUndo,
@@ -47,6 +49,8 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   const handleTriggerRedo = () => {
     window.dispatchEvent(new CustomEvent('editor-redo'));
   };
+
+  const isDuplicating = Boolean(duplicateMutation?.isPending);
 
   return (
     <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
@@ -161,32 +165,34 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                     <span>Export Document</span>
                   </button>
 
-                  {/* Bookmark Option */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowHeaderMenu(false);
-                      togglePinMutation.mutate();
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                  >
-                    <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
-                    <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
-                  </button>
-
-                  {/* Duplicate Page Option */}
-                  {!isReadOnly && (
+                  {/* Bookmark / Favorite Option */}
+                  {togglePinMutation && (
                     <button
                       type="button"
                       onClick={() => {
                         setShowHeaderMenu(false);
-                        duplicateMutation.mutate();
+                        togglePinMutation?.mutate?.();
                       }}
-                      disabled={duplicateMutation.isPending}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
+                      <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
+                    </button>
+                  )}
+
+                  {/* Duplicate Option */}
+                  {duplicateMutation && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        duplicateMutation?.mutate?.();
+                      }}
+                      disabled={isDuplicating}
                       className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
                     >
                       <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
-                      <span>{duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate Page'}</span>
+                      <span>{isDuplicating ? 'Duplicating...' : 'Duplicate Page'}</span>
                     </button>
                   )}
 
@@ -202,6 +208,20 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                     >
                       <span className="text-xs">✨</span>
                       <span>Change Icon</span>
+                    </button>
+                  )}
+
+                  {/* Delete Option */}
+                  {onDelete && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        onDelete();
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium cursor-pointer border-t border-stone-100 dark:border-zinc-800/80 mt-1 pt-1.5"
+                    >
+                      <span>Delete Page/DB</span>
                     </button>
                   )}
                 </div>

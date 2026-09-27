@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import { useState, useRef } from 'react';
+import { motion } from 'motion/react';
 import type { DatabaseItem, DatabaseProperty } from '~/db/schema';
 import { PropertyTypeIcon } from './PropertyTypeIcon';
-import { X, Maximize2, Minimize2, Trash2, Calendar, FileText, ChevronRight } from 'lucide-react';
+import { CustomDatePicker } from './CustomDatePicker';
+import { validatePropertyValue, parseDateInput } from '~/lib/databaseValidation';
+import { DatabasePopover } from './DatabasePopover';
+import { X, Trash2, FileText, AlertCircle, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 
 interface DatabaseRowDrawerProps {
   item: DatabaseItem;
@@ -26,11 +30,19 @@ export function DatabaseRowDrawer({
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex justify-end bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs animate-in fade-in duration-150 cursor-pointer"
+      className="fixed inset-0 z-50 flex justify-end bg-stone-900/40 dark:bg-black/60 backdrop-blur-xs cursor-pointer"
     >
-      <div
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-2xl bg-white dark:bg-[#18181b] h-full shadow-2xl border-l border-stone-200/80 dark:border-zinc-800/80 flex flex-col font-sans cursor-default"
       >
@@ -153,12 +165,19 @@ export function DatabaseRowDrawer({
             />
           </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
 function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: DatabaseProperty; value: any; onChange: (val: any) => void; readOnly?: boolean }) {
+  const [isDateOpen, setIsDateOpen] = useState(false);
+  const dateTriggerRef = useRef<HTMLButtonElement>(null);
+  const [inputVal, setInputVal] = useState(value !== undefined && value !== null ? String(value) : '');
+
+  // Validation
+  const validation = validatePropertyValue(prop.type, value);
+
   switch (prop.type) {
     case 'text':
       return (
@@ -167,22 +186,100 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
-          className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100"
+          className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100 focus:ring-1 focus:ring-[#1f4d3d]"
           placeholder="Empty"
         />
       );
 
-    case 'number':
+    case 'number': {
+      const isInvalid = !validation.isValid;
       return (
-        <input
-          type="number"
-          defaultValue={value ?? ''}
-          disabled={readOnly}
-          onBlur={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : null)}
-          className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100"
-          placeholder="0"
-        />
+        <div className="space-y-1">
+          <input
+            type="number"
+            value={inputVal}
+            disabled={readOnly}
+            onChange={(e) => setInputVal(e.target.value)}
+            onBlur={() => {
+              const numVal = inputVal !== '' ? Number(inputVal) : null;
+              onChange(numVal);
+            }}
+            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 font-mono ${
+              isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+            }`}
+            placeholder="0"
+          />
+          {isInvalid && (
+            <div className="flex items-center gap-1 text-[10px] text-rose-500 font-medium">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span>{validation.errorMessage}</span>
+            </div>
+          )}
+        </div>
       );
+    }
+
+    case 'url': {
+      const isInvalid = !validation.isValid;
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1">
+            <input
+              type="url"
+              value={inputVal}
+              disabled={readOnly}
+              onChange={(e) => setInputVal(e.target.value)}
+              onBlur={() => onChange(inputVal)}
+              className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${
+                isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+              }`}
+              placeholder="https://..."
+            />
+            {value && !isInvalid && (
+              <a
+                href={value}
+                target="_blank"
+                rel="noreferrer"
+                className="p-1 text-[#1f4d3d] dark:text-emerald-400 hover:opacity-80 shrink-0"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+          </div>
+          {isInvalid && (
+            <div className="flex items-center gap-1 text-[10px] text-rose-500 font-medium">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span>{validation.errorMessage}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    case 'email': {
+      const isInvalid = !validation.isValid;
+      return (
+        <div className="space-y-1">
+          <input
+            type="email"
+            value={inputVal}
+            disabled={readOnly}
+            onChange={(e) => setInputVal(e.target.value)}
+            onBlur={() => onChange(inputVal)}
+            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${
+              isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+            }`}
+            placeholder="name@domain.com"
+          />
+          {isInvalid && (
+            <div className="flex items-center gap-1 text-[10px] text-rose-500 font-medium">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span>{validation.errorMessage}</span>
+            </div>
+          )}
+        </div>
+      );
+    }
 
     case 'checkbox':
       return (
@@ -195,16 +292,80 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
         />
       );
 
-    case 'date':
+    case 'date': {
+      const isInvalid = !validation.isValid;
       return (
-        <input
-          type="date"
-          defaultValue={value || ''}
-          disabled={readOnly}
-          onChange={(e) => onChange(e.target.value)}
-          className="px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100"
-        />
+        <div className="relative space-y-1">
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={inputVal}
+              disabled={readOnly}
+              onChange={(e) => setInputVal(e.target.value)}
+              onBlur={() => {
+                const parsed = parseDateInput(inputVal);
+                if (parsed !== null) {
+                  setInputVal(parsed);
+                  onChange(parsed);
+                } else {
+                  onChange(inputVal);
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const parsed = parseDateInput(inputVal);
+                  if (parsed !== null) {
+                    setInputVal(parsed);
+                    onChange(parsed);
+                  } else {
+                    onChange(inputVal);
+                  }
+                }
+              }}
+              className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 ${
+                isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
+              }`}
+              placeholder="YYYY-MM-DD or today..."
+            />
+            <button
+              ref={dateTriggerRef}
+              type="button"
+              disabled={readOnly}
+              onClick={() => setIsDateOpen(!isDateOpen)}
+              className="p-1.5 rounded-md border border-stone-200 dark:border-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-800 text-[#1f4d3d] dark:text-emerald-400 cursor-pointer shrink-0"
+              title="Open Calendar Picker"
+            >
+              <CalendarIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {isInvalid && (
+            <div className="flex items-center gap-1 text-[10px] text-rose-500 font-medium">
+              <AlertCircle className="w-3 h-3 shrink-0" />
+              <span>{validation.errorMessage}</span>
+            </div>
+          )}
+
+          <DatabasePopover
+            isOpen={isDateOpen}
+            onClose={() => setIsDateOpen(false)}
+            triggerRef={dateTriggerRef}
+            width={270}
+          >
+            <CustomDatePicker
+              value={value}
+              onChange={(d) => {
+                setInputVal(d);
+                onChange(d);
+                setIsDateOpen(false);
+              }}
+              onClose={() => setIsDateOpen(false)}
+              readOnly={readOnly}
+            />
+          </DatabasePopover>
+        </div>
       );
+    }
 
     case 'select':
     case 'status':

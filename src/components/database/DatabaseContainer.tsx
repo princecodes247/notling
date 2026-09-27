@@ -29,12 +29,25 @@ import {
 } from '~/server/databases';
 import { EditorHeader } from '../EditorHeader';
 
+import { AnimatePresence } from 'motion/react';
+
 interface DatabaseContainerProps {
   initialData: FullDatabase;
   readOnly?: boolean;
+  isPinned?: boolean;
+  onTogglePin?: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
 }
 
-export function DatabaseContainer({ initialData, readOnly = false }: DatabaseContainerProps) {
+export function DatabaseContainer({
+  initialData,
+  readOnly = false,
+  isPinned = false,
+  onTogglePin,
+  onDuplicate,
+  onDelete,
+}: DatabaseContainerProps) {
   const [dbData, setDbData] = useState<FullDatabase>(initialData);
   const [activeViewId, setActiveViewId] = useState<string>(
     initialData.views[0]?.id || ''
@@ -297,6 +310,10 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
         icon={dbData.database.icon || '📊'}
         title={dbData.database.title || 'Untitled Database'}
         isReadOnly={readOnly}
+        isPinned={isPinned}
+        togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}
+        duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: false } : undefined}
+        onDelete={onDelete}
       />
       <div className="p-4 space-y-4">
 
@@ -375,12 +392,26 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
             {!readOnly && (
               <div>
                 {addingView ? (
-                  <form onSubmit={handleAddViewSubmit} className="flex items-center gap-1 pl-2">
+                  <form
+                    onSubmit={handleAddViewSubmit}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') {
+                        setNewViewName('');
+                        setAddingView(false);
+                      }
+                    }}
+                    className="flex items-center gap-1 pl-2"
+                  >
                     <input
                       type="text"
                       placeholder="View name..."
                       value={newViewName}
                       onChange={(e) => setNewViewName(e.target.value)}
+                      onBlur={() => {
+                        if (!newViewName.trim()) {
+                          setAddingView(false);
+                        }
+                      }}
                       className="px-2 py-1 text-xs border rounded-md bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100"
                       autoFocus
                     />
@@ -395,7 +426,7 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
                     </select>
                     <button
                       type="submit"
-                      className="px-2.5 py-1 text-xs bg-[#1f4d3d] text-white rounded-md font-medium"
+                      className="px-2.5 py-1 text-xs bg-[#1f4d3d] text-white rounded-md font-medium cursor-pointer"
                     >
                       Add
                     </button>
@@ -458,16 +489,19 @@ export function DatabaseContainer({ initialData, readOnly = false }: DatabaseCon
 
       </div>
       {/* Row Page Drawer Modal */}
-      {selectedDrawerItem && (
-        <DatabaseRowDrawer
-          item={selectedDrawerItem}
-          properties={dbData.properties}
-          onClose={() => setSelectedDrawerItem(null)}
-          onUpdateItem={handleUpdateItem}
-          onDeleteItem={handleDeleteItem}
-          readOnly={readOnly}
-        />
-      )}
+      <AnimatePresence>
+        {selectedDrawerItem && (
+          <DatabaseRowDrawer
+            key={selectedDrawerItem.id}
+            item={selectedDrawerItem}
+            properties={dbData.properties}
+            onClose={() => setSelectedDrawerItem(null)}
+            onUpdateItem={handleUpdateItem}
+            onDeleteItem={handleDeleteItem}
+            readOnly={readOnly}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

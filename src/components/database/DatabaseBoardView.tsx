@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
-import { Plus, Trash2, Calendar, Tag as TagIcon, MoreHorizontal } from 'lucide-react';
+import { Plus, Trash2, Calendar } from 'lucide-react';
 
 interface DatabaseBoardViewProps {
   properties: DatabaseProperty[];

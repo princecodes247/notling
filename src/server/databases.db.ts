@@ -100,14 +100,14 @@ export async function createNewDatabase(input: {
 }): Promise<FullDatabase> {
   let targetPageId = input.pageId || null;
 
-  // Requirement 2: Treat databases as pages everywhere (auto-create page row for standalone database)
+  // Treat databases as pages everywhere (auto-create page row for standalone database)
   if (!targetPageId && !input.inline) {
     const { pages } = await import('~/db/schema');
     const [newPage] = await db
       .insert(pages)
       .values({
         workspaceId: input.workspaceId,
-        title: input.title || 'Projects & Tasks Database',
+        title: input.title || 'Untitled Database',
         icon: '📊',
       })
       .returning();
@@ -119,68 +119,29 @@ export async function createNewDatabase(input: {
     .values({
       workspaceId: input.workspaceId,
       pageId: targetPageId,
-      title: input.title || 'Projects & Tasks Database',
+      title: input.title || 'Untitled Database',
       icon: '📊',
       inline: input.inline ?? false,
     })
     .returning();
 
-  // Create default properties
+  // Blank slate: create only single mandatory title property
   const titlePropId = randomUUID();
-  const statusPropId = randomUUID();
-  const priorityPropId = randomUUID();
-  const tagsPropId = randomUUID();
 
   const propsToInsert = [
     {
       id: titlePropId,
       databaseId: database.id,
-      name: 'Task Name',
+      name: 'Name',
       type: 'title' as const,
       options: [],
       order: 0,
-    },
-    {
-      id: statusPropId,
-      databaseId: database.id,
-      name: 'Status',
-      type: 'status' as const,
-      options: [
-        { id: 'todo', name: 'To Do', color: '#94a3b8' },
-        { id: 'in_progress', name: 'In Progress', color: '#3b82f6' },
-        { id: 'done', name: 'Done', color: '#22c55e' },
-      ],
-      order: 1,
-    },
-    {
-      id: priorityPropId,
-      databaseId: database.id,
-      name: 'Priority',
-      type: 'select' as const,
-      options: [
-        { id: 'low', name: 'Low', color: '#94a3b8' },
-        { id: 'medium', name: 'Medium', color: '#eab308' },
-        { id: 'high', name: 'High', color: '#ef4444' },
-      ],
-      order: 2,
-    },
-    {
-      id: tagsPropId,
-      databaseId: database.id,
-      name: 'Tags',
-      type: 'multi_select' as const,
-      options: [
-        { id: 'feature', name: 'Feature', color: '#8b5cf6' },
-        { id: 'bug', name: 'Bug Fix', color: '#f43f5e' },
-        { id: 'design', name: 'Design UI', color: '#06b6d4' },
-      ],
-      order: 3,
     },
   ];
 
   const insertedProperties = await db.insert(databaseProperties).values(propsToInsert).returning();
 
-  // Requirement 4: On creation of a database, it should be empty (0 initial rows)
+  // Blank slate: 0 initial items
   const insertedItems: DatabaseItem[] = [];
 
   // Create default views
@@ -190,7 +151,7 @@ export async function createNewDatabase(input: {
       name: 'Table View',
       type: 'table' as const,
       config: {
-        visiblePropertyIds: [titlePropId, statusPropId, priorityPropId, tagsPropId],
+        visiblePropertyIds: [titlePropId],
       },
       order: 0,
     },
@@ -199,8 +160,8 @@ export async function createNewDatabase(input: {
       name: 'Kanban Board',
       type: 'board' as const,
       config: {
-        groupByPropertyId: statusPropId,
-        visiblePropertyIds: [titlePropId, priorityPropId, tagsPropId],
+        groupByPropertyId: null,
+        visiblePropertyIds: [titlePropId],
       },
       order: 1,
     },
