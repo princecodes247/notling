@@ -289,7 +289,7 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
           checked={Boolean(value)}
           disabled={readOnly}
           onChange={(e) => onChange(e.target.checked)}
-          className="w-4 h-4 rounded border-stone-300 text-[#1f4d3d]"
+          className="bn-checkbox w-4 h-4 cursor-pointer"
         />
       );
 

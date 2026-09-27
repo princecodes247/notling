@@ -15,7 +15,7 @@ import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
-import { updatePageContent, syncPageUpdate } from '~/server/pages';
+import { updatePageContent, syncPageUpdate, type PageTreeNode, type WorkspaceUserItem } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
@@ -55,6 +55,7 @@ import {
   Kanban as KanbanIcon,
 } from 'lucide-react';
 import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
+import type { SessionData } from '#/lib/types';
 
 interface BlockEditorInnerProps {
   page: Page;
@@ -903,8 +904,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       sel.anchorNode.nodeType === Node.TEXT_NODE
         ? sel.anchorNode
         : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
-        ? sel.anchorNode.lastChild
-        : null;
+          ? sel.anchorNode.lastChild
+          : null;
 
     if (!textNode || !textNode.textContent) {
       return;
@@ -1316,7 +1317,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         const canUndo = !!(editor._tiptapEditor as any)?.can().undo();
         const canRedo = !!(editor._tiptapEditor as any)?.can().redo();
         window.dispatchEvent(new CustomEvent('editor-history-state', { detail: { canUndo, canRedo } }));
-      } catch {}
+      } catch { }
     };
 
     const handleUndo = () => {
@@ -1353,7 +1354,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     try {
       unsubUpdate = editor._tiptapEditor?.on('update', emitHistoryState);
       unsubSelection = editor._tiptapEditor?.on('selectionUpdate', emitHistoryState);
-    } catch {}
+    } catch { }
 
     return () => {
       window.removeEventListener('editor-undo', handleUndo);
@@ -1361,7 +1362,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       try {
         if (typeof unsubUpdate === 'function') unsubUpdate();
         if (typeof unsubSelection === 'function') unsubSelection();
-      } catch {}
+      } catch { }
     };
   }, [editor]);
 
@@ -1427,8 +1428,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             sel.anchorNode.nodeType === Node.TEXT_NODE
               ? sel.anchorNode
               : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
-              ? sel.anchorNode.lastChild
-              : null;
+                ? sel.anchorNode.lastChild
+                : null;
 
           if (textNode && textNode.textContent) {
             const txt = textNode.textContent;
@@ -1466,8 +1467,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           styles: {},
         };
 
-        if (editor && typeof (editor as any).insertInlineContent === 'function') {
-          (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+        if (editor && typeof editor.insertInlineContent === 'function') {
+          editor.insertInlineContent([inlineLinkObj, trailingSpaceObj]);
         } else if (editor) {
           const currentBlock =
             editor.getTextCursorPosition()?.block || editor.document[editor.document.length - 1];
@@ -1537,8 +1538,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       sel.anchorNode.nodeType === Node.TEXT_NODE
         ? sel.anchorNode
         : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
-        ? sel.anchorNode.lastChild
-        : null;
+          ? sel.anchorNode.lastChild
+          : null;
 
     if (!textNode || !textNode.textContent) return;
 
@@ -1580,8 +1581,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           styles: {},
         };
 
-        if (editor && typeof (editor as any).insertInlineContent === 'function') {
-          (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+        if (editor && typeof editor.insertInlineContent === 'function') {
+          editor.insertInlineContent([inlineLinkObj, trailingSpaceObj]);
           hasUserEditedRef.current = true;
           handleContentChange();
         }
@@ -1634,12 +1635,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           e.preventDefault();
           e.stopPropagation();
           // Find matching member or page by index
-          const sessionData = queryClient.getQueryData(['session']) as any;
+          const sessionData = queryClient.getQueryData(['session']) as SessionData;
           const wsId = sessionData?.workspaceId || '';
-          const workspaceUsers = (queryClient.getQueryData(['workspaceUsers']) || []) as any[];
-          const tree = (queryClient.getQueryData(['pageTree', wsId]) || []) as any[];
+          const workspaceUsers: WorkspaceUserItem[] = queryClient.getQueryData(['workspaceUsers']) || [];
+          const tree: PageTreeNode[] = queryClient.getQueryData(['pageTree', wsId]) || [];
 
-          const userItems: MentionSuggestionItem[] = workspaceUsers.map((u: any) => ({
+          const userItems: MentionSuggestionItem[] = workspaceUsers.map((u) => ({
             type: 'user',
             id: u.id,
             title: u.name || u.email.split('@')[0],
@@ -1718,7 +1719,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             linkEl.remove();
             hasUserEditedRef.current = true;
             handleContentChange();
-    
+
             return;
           }
         }
@@ -1885,18 +1886,24 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
   // Shared Paint Hook for Editor Checklist Items
   const editorPaint = useDragPaint<string>({
-    onPaintItem: (blockId, targetState) => {
+    mode: 'invert',
+    getItemState: (blockId) => {
+      if (!editor) return false;
+      const block = editor.getBlock(blockId);
+      return Boolean((block?.props as any)?.checked);
+    },
+    onPaintItem: (blockId, nextState) => {
       if (!editor) return;
       const block = editor.getBlock(blockId);
       if (block) {
         try {
-          editor.updateBlock(block, { props: { checked: targetState } });
+          editor.updateBlock(block, { props: { checked: nextState } });
         } catch { }
       }
     },
   });
 
-  // Drag-to-paint checklist items functionality (boundary-based high performance)
+  // Drag-to-paint checklist items functionality (boundary-based high performance, state-aware inversion)
   useEffect(() => {
     if (readOnly || !editor) return;
 
@@ -1934,9 +1941,11 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       if (!editorPaint.isPainting) return;
       const target = e.target as HTMLElement;
       if (!target) return;
-      const { blockId } = getCheckListItemInfo(target);
+      const { blockId, checkbox } = getCheckListItemInfo(target);
       if (blockId) {
-        editorPaint.paintItem(blockId);
+        const block = editor.getBlock(blockId);
+        const currentChecked = block?.type === "checkListItem" ? block?.props.checked ?? checkbox?.checked ?? false : checkbox?.checked;
+        editorPaint.paintItem(blockId, currentChecked);
       }
     };
 

@@ -104,6 +104,7 @@ export function DatabaseTableView({
 
   // Shared Paint Hook for Row Selection Checkboxes
   const rowPaint = useDragPaint<string>({
+    mode: 'invert',
     onPaintItem: (id, targetState) => {
       setSelectedItemIds((prev) =>
         targetState ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((item) => item !== id)
@@ -114,6 +115,7 @@ export function DatabaseTableView({
 
   // Shared Paint Hook for Property Checkbox Cells
   const propertyPaint = useDragPaint<{ itemId: string; propId: string }>({
+    mode: 'invert',
     onPaintItem: ({ itemId, propId }, targetState) => {
       const targetItem = items.find((i) => i.id === itemId);
       onUpdateItem(itemId, {
@@ -122,6 +124,10 @@ export function DatabaseTableView({
           [propId]: targetState,
         },
       });
+    },
+    getItemState: ({ itemId, propId }) => {
+      const targetItem = items.find((i) => i.id === itemId);
+      return Boolean(targetItem?.properties?.[propId]);
     },
   });
 
@@ -387,7 +393,7 @@ export function DatabaseTableView({
                   type="checkbox"
                   checked={items.length > 0 && selectedItemIds.length === items.length}
                   onChange={handleToggleSelectAll}
-                  className={cn("w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] focus:ring-[#1f4d3d] cursor-pointer",
+                  className={cn("bn-checkbox w-3.5 h-3.5 cursor-pointer",
                     selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
                   )}
                 />
@@ -507,7 +513,7 @@ export function DatabaseTableView({
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
                       onChange={() => { }}
-                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) || rowPaint.isPainting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) || rowPaint.isPainting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                         }`}
                     />
                   </div>
@@ -1377,7 +1383,7 @@ function InteractiveCell({
             disabled={readOnly}
             onChange={() => { }}
             onKeyDown={handleKeyDownCell}
-            className="w-4 h-4 rounded border-stone-300 dark:border-zinc-700 text-[#1f4d3d] focus:ring-[#1f4d3d] cursor-pointer pointer-events-none"
+            className="bn-checkbox w-4 h-4 cursor-pointer pointer-events-none"
           />
         </div>
       );

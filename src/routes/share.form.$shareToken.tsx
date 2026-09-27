@@ -208,7 +208,7 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
             type="checkbox"
             checked={Boolean(value)}
             onChange={(e) => onChange(e.target.checked)}
-            className="w-4 h-4 rounded border-stone-300 text-[#1f4d3d] focus:ring-[#1f4d3d]"
+            className="bn-checkbox w-4 h-4 cursor-pointer"
           />
           <span className="text-xs text-stone-600 dark:text-zinc-400">Yes</span>
         </div>
