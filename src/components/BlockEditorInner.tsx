@@ -15,7 +15,7 @@ import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import type { Page } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
-import { updatePageContent, syncPageUpdate } from '~/server/pages';
+import { updatePageContent, syncPageUpdate, type PageTreeNode, type WorkspaceUserItem } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
@@ -23,8 +23,10 @@ import { getOfflineDraft, saveOfflineDraft, clearOfflineDraft, hasOfflineDraft }
 import { useNavigate } from '@tanstack/react-router';
 import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
+import { useDragPaint } from '~/hooks/useDragPaint';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
 import { useIsMobile } from '~/hooks/useIsMobile';
+import { createDatabase } from '~/server/databases';
 import {
   Search,
   ChevronRight,
@@ -49,8 +51,11 @@ import {
   FileText as FileTextIcon,
   Camera as CameraIcon,
   Sparkles as SparklesIcon,
+  Table as TableIcon,
+  Kanban as KanbanIcon,
 } from 'lucide-react';
 import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
+import type { SessionData } from '#/lib/types';
 
 interface BlockEditorInnerProps {
   page: Page;
@@ -899,8 +904,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       sel.anchorNode.nodeType === Node.TEXT_NODE
         ? sel.anchorNode
         : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
-        ? sel.anchorNode.lastChild
-        : null;
+          ? sel.anchorNode.lastChild
+          : null;
 
     if (!textNode || !textNode.textContent) {
       return;
@@ -1060,11 +1065,68 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         },
       ];
 
+      const customDatabaseItems: any[] = [
+        {
+          title: 'Database Table',
+          subtext: 'Create a full interactive database with table, board, and form views',
+          aliases: ['database', 'db', 'table', 'grid', 'data'],
+          group: 'Databases & Forms',
+          icon: <TableIcon className="w-4 h-4 text-blue-500" />,
+          onItemClick: async () => {
+            if (!page.workspaceId) return;
+            const newDb = await createDatabase({
+              data: {
+                workspaceId: page.workspaceId,
+                pageId: page.id,
+                title: `${page.title || 'Page'} Database`,
+              },
+            });
+            navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+          },
+        },
+        {
+          title: 'Kanban Board',
+          subtext: 'Create a Kanban board view grouped by status or custom tags',
+          aliases: ['board', 'kanban', 'cards', 'status', 'project'],
+          group: 'Databases & Forms',
+          icon: <KanbanIcon className="w-4 h-4 text-purple-500" />,
+          onItemClick: async () => {
+            if (!page.workspaceId) return;
+            const newDb = await createDatabase({
+              data: {
+                workspaceId: page.workspaceId,
+                pageId: page.id,
+                title: `${page.title || 'Page'} Board`,
+              },
+            });
+            navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+          },
+        },
+        {
+          title: 'Database Form',
+          subtext: 'Create a shareable public form to collect submissions into database',
+          aliases: ['form', 'survey', 'submit', 'response', 'feedback'],
+          group: 'Databases & Forms',
+          icon: <FileTextIcon className="w-4 h-4 text-emerald-500" />,
+          onItemClick: async () => {
+            if (!page.workspaceId) return;
+            const newDb = await createDatabase({
+              data: {
+                workspaceId: page.workspaceId,
+                pageId: page.id,
+                title: `${page.title || 'Page'} Form Database`,
+              },
+            });
+            navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+          },
+        },
+      ];
+
       const filteredDefaults = defaultItems.filter(
         (item) => !['Image', 'Video', 'File', 'Audio'].includes(item.title)
       );
 
-      return filterSuggestionItems([...filteredDefaults, ...customMediaItems], query);
+      return filterSuggestionItems([...filteredDefaults, ...customMediaItems, ...customDatabaseItems], query);
     },
     [editor]
   );
@@ -1255,7 +1317,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         const canUndo = !!(editor._tiptapEditor as any)?.can().undo();
         const canRedo = !!(editor._tiptapEditor as any)?.can().redo();
         window.dispatchEvent(new CustomEvent('editor-history-state', { detail: { canUndo, canRedo } }));
-      } catch {}
+      } catch { }
     };
 
     const handleUndo = () => {
@@ -1292,7 +1354,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     try {
       unsubUpdate = editor._tiptapEditor?.on('update', emitHistoryState);
       unsubSelection = editor._tiptapEditor?.on('selectionUpdate', emitHistoryState);
-    } catch {}
+    } catch { }
 
     return () => {
       window.removeEventListener('editor-undo', handleUndo);
@@ -1300,7 +1362,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       try {
         if (typeof unsubUpdate === 'function') unsubUpdate();
         if (typeof unsubSelection === 'function') unsubSelection();
-      } catch {}
+      } catch { }
     };
   }, [editor]);
 
@@ -1366,8 +1428,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             sel.anchorNode.nodeType === Node.TEXT_NODE
               ? sel.anchorNode
               : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
-              ? sel.anchorNode.lastChild
-              : null;
+                ? sel.anchorNode.lastChild
+                : null;
 
           if (textNode && textNode.textContent) {
             const txt = textNode.textContent;
@@ -1405,8 +1467,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           styles: {},
         };
 
-        if (editor && typeof (editor as any).insertInlineContent === 'function') {
-          (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+        if (editor && typeof editor.insertInlineContent === 'function') {
+          editor.insertInlineContent([inlineLinkObj, trailingSpaceObj]);
         } else if (editor) {
           const currentBlock =
             editor.getTextCursorPosition()?.block || editor.document[editor.document.length - 1];
@@ -1476,8 +1538,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       sel.anchorNode.nodeType === Node.TEXT_NODE
         ? sel.anchorNode
         : sel.anchorNode.lastChild?.nodeType === Node.TEXT_NODE
-        ? sel.anchorNode.lastChild
-        : null;
+          ? sel.anchorNode.lastChild
+          : null;
 
     if (!textNode || !textNode.textContent) return;
 
@@ -1519,8 +1581,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           styles: {},
         };
 
-        if (editor && typeof (editor as any).insertInlineContent === 'function') {
-          (editor as any).insertInlineContent([inlineLinkObj, trailingSpaceObj]);
+        if (editor && typeof editor.insertInlineContent === 'function') {
+          editor.insertInlineContent([inlineLinkObj, trailingSpaceObj]);
           hasUserEditedRef.current = true;
           handleContentChange();
         }
@@ -1573,12 +1635,12 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           e.preventDefault();
           e.stopPropagation();
           // Find matching member or page by index
-          const sessionData = queryClient.getQueryData(['session']) as any;
+          const sessionData = queryClient.getQueryData(['session']) as SessionData;
           const wsId = sessionData?.workspaceId || '';
-          const workspaceUsers = (queryClient.getQueryData(['workspaceUsers']) || []) as any[];
-          const tree = (queryClient.getQueryData(['pageTree', wsId]) || []) as any[];
+          const workspaceUsers: WorkspaceUserItem[] = queryClient.getQueryData(['workspaceUsers']) || [];
+          const tree: PageTreeNode[] = queryClient.getQueryData(['pageTree', wsId]) || [];
 
-          const userItems: MentionSuggestionItem[] = workspaceUsers.map((u: any) => ({
+          const userItems: MentionSuggestionItem[] = workspaceUsers.map((u) => ({
             type: 'user',
             id: u.id,
             title: u.name || u.email.split('@')[0],
@@ -1657,7 +1719,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             linkEl.remove();
             hasUserEditedRef.current = true;
             handleContentChange();
-    
+
             return;
           }
         }
@@ -1822,12 +1884,28 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     return () => clearTimeout(timer);
   }, [editor]);
 
-  // Drag-to-paint checklist items functionality (reverses polarity of each item as cursor slides over)
+  // Shared Paint Hook for Editor Checklist Items
+  const editorPaint = useDragPaint<string>({
+    mode: 'invert',
+    getItemState: (blockId) => {
+      if (!editor) return false;
+      const block = editor.getBlock(blockId);
+      return Boolean((block?.props as any)?.checked);
+    },
+    onPaintItem: (blockId, nextState) => {
+      if (!editor) return;
+      const block = editor.getBlock(blockId);
+      if (block) {
+        try {
+          editor.updateBlock(block, { props: { checked: nextState } });
+        } catch { }
+      }
+    },
+  });
+
+  // Drag-to-paint checklist items functionality (boundary-based high performance, state-aware inversion)
   useEffect(() => {
     if (readOnly || !editor) return;
-
-    let isPainting = false;
-    const paintedBlockIds = new Set<string>();
 
     const getCheckListItemInfo = (target: HTMLElement | null): { blockId: string | null; checkbox: HTMLInputElement | null } => {
       if (!target) return { blockId: null, checkbox: null };
@@ -1853,77 +1931,32 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       );
 
       if (isCheckboxOrItemArea && blockId) {
-        isPainting = true;
-        paintedBlockIds.clear();
-        paintedBlockIds.add(blockId);
-
         const block = editor.getBlock(blockId);
         const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
-        const reversedState = !currentChecked;
-
-        document.body.classList.add('bn-checkbox-painting');
-        document.body.style.userSelect = 'none';
-
-        if (block) {
-          try {
-            editor.updateBlock(block, { props: { checked: reversedState } });
-          } catch { }
-        }
-        if (checkbox) {
-          checkbox.checked = reversedState;
-        }
+        editorPaint.startPaint(blockId, currentChecked, e as any);
       }
     };
 
-    const handlePointerMove = (e: PointerEvent) => {
-      if (!isPainting || e.buttons !== 1) return;
-
-      const elemUnderCursor = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-      if (!elemUnderCursor) return;
-
-      const { blockId, checkbox } = getCheckListItemInfo(elemUnderCursor);
-      if (!blockId || paintedBlockIds.has(blockId)) return;
-
-      paintedBlockIds.add(blockId);
-
-      const block = editor.getBlock(blockId);
-      const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
-      const reversedState = !currentChecked;
-
-      if (block) {
-        try {
-          editor.updateBlock(block, { props: { checked: reversedState } });
-        } catch { }
-      }
-      if (checkbox) {
-        checkbox.checked = reversedState;
-      }
-
-      window.getSelection()?.removeAllRanges();
-    };
-
-    const stopPainting = () => {
-      if (isPainting) {
-        isPainting = false;
-        paintedBlockIds.clear();
-        document.body.classList.remove('bn-checkbox-painting');
-        document.body.style.userSelect = '';
+    const handlePointerOver = (e: PointerEvent) => {
+      if (!editorPaint.isPainting) return;
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const { blockId, checkbox } = getCheckListItemInfo(target);
+      if (blockId) {
+        const block = editor.getBlock(blockId);
+        const currentChecked = block?.type === "checkListItem" ? block?.props.checked ?? checkbox?.checked ?? false : checkbox?.checked;
+        editorPaint.paintItem(blockId, currentChecked);
       }
     };
 
     window.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('pointermove', handlePointerMove, true);
-    window.addEventListener('pointerup', stopPainting, true);
-    window.addEventListener('pointercancel', stopPainting, true);
+    window.addEventListener('pointerover', handlePointerOver, true);
 
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('pointermove', handlePointerMove, true);
-      window.removeEventListener('pointerup', stopPainting, true);
-      window.removeEventListener('pointercancel', stopPainting, true);
-      stopPainting();
+      window.removeEventListener('pointerover', handlePointerOver, true);
     };
-  }, [editor, readOnly]);
+  }, [editor, readOnly, editorPaint]);
 
   // Execute custom block drop
   const executeDrop = useCallback(

@@ -11,6 +11,7 @@ export interface PageTreeNode {
   createdAt: Date;
   updatedAt: Date;
   contentText?: string | null;
+  databaseId?: string | null;
   children: PageTreeNode[];
   isShared?: boolean;
   isPinned?: boolean;
@@ -227,6 +228,13 @@ export const getPageHistory = createServerFn({ method: 'GET' })
   .handler(async ({ data }: { data: string | { pageId: string; cursor?: string; limit?: number } }) => {
     const { fetchPageHistory } = await import('./pages.db');
     return fetchPageHistory(data);
+  });
+
+export const getPageHistoryDetail = createServerFn({ method: 'GET' })
+  .validator((historyId: string) => historyId)
+  .handler(async ({ data: historyId }: { data: string }) => {
+    const { fetchPageHistoryDetail } = await import('./pages.db');
+    return fetchPageHistoryDetail(historyId);
   });
 
 export const restorePageVersion = createServerFn({ method: 'POST' })

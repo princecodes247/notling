@@ -26,7 +26,9 @@ import { Route as DashboardTrashRouteImport } from './routes/dashboard.trash'
 import { Route as SharePageIdRouteImport } from './routes/share.$pageId'
 import { Route as WSlugRouteImport } from './routes/w.$slug'
 import { Route as AuthCallbackProviderRouteImport } from './routes/auth.callback.$provider'
+import { Route as DashboardDbDatabaseIdRouteImport } from './routes/dashboard.db.$databaseId'
 import { Route as DashboardPPageIdRouteImport } from './routes/dashboard.p.$pageId'
+import { Route as ShareFormShareTokenRouteImport } from './routes/share.form.$shareToken'
 import { Route as WSlugPPageIdRouteImport } from './routes/w.$slug.p.$pageId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -114,10 +116,20 @@ const AuthCallbackProviderRoute = AuthCallbackProviderRouteImport.update({
   path: '/auth/callback/$provider',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardDbDatabaseIdRoute = DashboardDbDatabaseIdRouteImport.update({
+  id: '/db/$databaseId',
+  path: '/db/$databaseId',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardPPageIdRoute = DashboardPPageIdRouteImport.update({
   id: '/p/$pageId',
   path: '/p/$pageId',
   getParentRoute: () => DashboardRoute,
+} as any)
+const ShareFormShareTokenRoute = ShareFormShareTokenRouteImport.update({
+  id: '/share/form/$shareToken',
+  path: '/share/form/$shareToken',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const WSlugPPageIdRoute = WSlugPPageIdRouteImport.update({
   id: '/p/$pageId',
@@ -143,7 +155,9 @@ export interface FileRoutesByFullPath {
   '/w/$slug': typeof WSlugRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
+  '/dashboard/db/$databaseId': typeof DashboardDbDatabaseIdRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
+  '/share/form/$shareToken': typeof ShareFormShareTokenRoute
   '/w/$slug/p/$pageId': typeof WSlugPPageIdRoute
 }
 export interface FileRoutesByTo {
@@ -163,7 +177,9 @@ export interface FileRoutesByTo {
   '/w/$slug': typeof WSlugRouteWithChildren
   '/dashboard': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
+  '/dashboard/db/$databaseId': typeof DashboardDbDatabaseIdRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
+  '/share/form/$shareToken': typeof ShareFormShareTokenRoute
   '/w/$slug/p/$pageId': typeof WSlugPPageIdRoute
 }
 export interface FileRoutesById {
@@ -185,7 +201,9 @@ export interface FileRoutesById {
   '/w/$slug': typeof WSlugRouteWithChildren
   '/dashboard/': typeof DashboardIndexRoute
   '/auth/callback/$provider': typeof AuthCallbackProviderRoute
+  '/dashboard/db/$databaseId': typeof DashboardDbDatabaseIdRoute
   '/dashboard/p/$pageId': typeof DashboardPPageIdRoute
+  '/share/form/$shareToken': typeof ShareFormShareTokenRoute
   '/w/$slug/p/$pageId': typeof WSlugPPageIdRoute
 }
 export interface FileRouteTypes {
@@ -208,7 +226,9 @@ export interface FileRouteTypes {
     | '/w/$slug'
     | '/dashboard/'
     | '/auth/callback/$provider'
+    | '/dashboard/db/$databaseId'
     | '/dashboard/p/$pageId'
+    | '/share/form/$shareToken'
     | '/w/$slug/p/$pageId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -228,7 +248,9 @@ export interface FileRouteTypes {
     | '/w/$slug'
     | '/dashboard'
     | '/auth/callback/$provider'
+    | '/dashboard/db/$databaseId'
     | '/dashboard/p/$pageId'
+    | '/share/form/$shareToken'
     | '/w/$slug/p/$pageId'
   id:
     | '__root__'
@@ -249,7 +271,9 @@ export interface FileRouteTypes {
     | '/w/$slug'
     | '/dashboard/'
     | '/auth/callback/$provider'
+    | '/dashboard/db/$databaseId'
     | '/dashboard/p/$pageId'
+    | '/share/form/$shareToken'
     | '/w/$slug/p/$pageId'
   fileRoutesById: FileRoutesById
 }
@@ -266,6 +290,7 @@ export interface RootRouteChildren {
   SharePageIdRoute: typeof SharePageIdRoute
   WSlugRoute: typeof WSlugRouteWithChildren
   AuthCallbackProviderRoute: typeof AuthCallbackProviderRoute
+  ShareFormShareTokenRoute: typeof ShareFormShareTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -389,12 +414,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackProviderRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dashboard/db/$databaseId': {
+      id: '/dashboard/db/$databaseId'
+      path: '/db/$databaseId'
+      fullPath: '/dashboard/db/$databaseId'
+      preLoaderRoute: typeof DashboardDbDatabaseIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/p/$pageId': {
       id: '/dashboard/p/$pageId'
       path: '/p/$pageId'
       fullPath: '/dashboard/p/$pageId'
       preLoaderRoute: typeof DashboardPPageIdRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/share/form/$shareToken': {
+      id: '/share/form/$shareToken'
+      path: '/share/form/$shareToken'
+      fullPath: '/share/form/$shareToken'
+      preLoaderRoute: typeof ShareFormShareTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/w/$slug/p/$pageId': {
       id: '/w/$slug/p/$pageId'
@@ -412,6 +451,7 @@ interface DashboardRouteChildren {
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardTrashRoute: typeof DashboardTrashRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
+  DashboardDbDatabaseIdRoute: typeof DashboardDbDatabaseIdRoute
   DashboardPPageIdRoute: typeof DashboardPPageIdRoute
 }
 
@@ -421,6 +461,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardTrashRoute: DashboardTrashRoute,
   DashboardIndexRoute: DashboardIndexRoute,
+  DashboardDbDatabaseIdRoute: DashboardDbDatabaseIdRoute,
   DashboardPPageIdRoute: DashboardPPageIdRoute,
 }
 
@@ -451,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   SharePageIdRoute: SharePageIdRoute,
   WSlugRoute: WSlugRouteWithChildren,
   AuthCallbackProviderRoute: AuthCallbackProviderRoute,
+  ShareFormShareTokenRoute: ShareFormShareTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

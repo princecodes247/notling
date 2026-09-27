@@ -47,13 +47,13 @@ export const pages = pgTable('pages', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  parentFk: foreignKey({ columns: [table.parentId], foreignColumns: [table.id] }).onDelete('cascade'),
-  searchIdx: index('pages_search_idx').using(
+}, (table) => ([
+  foreignKey({ columns: [table.parentId], foreignColumns: [table.id] }).onDelete('cascade'),
+  index('pages_search_idx').using(
     'gin',
     sql`to_tsvector('english', coalesce(${table.title}, '') || ' ' || coalesce(${table.contentText}, ''))`
   ),
-}));
+]));
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -172,6 +172,87 @@ export const pageAccessRequests = pgTable('page_access_requests', {
 
 export type PageAccessRequest = typeof pageAccessRequests.$inferSelect;
 export type NewPageAccessRequest = typeof pageAccessRequests.$inferInsert;
+
+export const databases = pgTable('databases', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }).notNull(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default('Untitled Database'),
+  description: text('description'),
+  icon: text('icon').default(''),
+  coverUrl: text('cover_url'),
+  inline: boolean('inline').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type Database = typeof databases.$inferSelect;
+export type NewDatabase = typeof databases.$inferInsert;
+
+export const databaseProperties = pgTable('database_properties', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull().default('New Property'),
+  type: text('type', {
+    enum: ['title', 'text', 'number', 'select', 'multi_select', 'date', 'checkbox', 'url', 'email', 'status', 'created_at']
+  }).notNull().default('text'),
+  options: jsonb('options').$type<Array<{ id: string; name: string; color: string }>>().notNull().default([]),
+  order: integer('order').notNull().default(0),
+  icon: text('icon'),
+});
+
+export type DatabaseProperty = typeof databaseProperties.$inferSelect;
+export type NewDatabaseProperty = typeof databaseProperties.$inferInsert;
+
+export const databaseItems = pgTable('database_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
+  pageId: uuid('page_id').references(() => pages.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default('Untitled'),
+  properties: jsonb('properties').$type<Record<string, any>>().notNull().default({}),
+  content: jsonb('content').$type<any[]>().notNull().default([]),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type DatabaseItem = typeof databaseItems.$inferSelect;
+export type NewDatabaseItem = typeof databaseItems.$inferInsert;
+
+export const databaseViews = pgTable('database_views', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
+  name: text('name').notNull().default('Table'),
+  type: text('type').notNull().default('table'),
+  config: jsonb('config').$type<Record<string, any>>().notNull().default({}),
+  order: integer('order').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type DatabaseView = typeof databaseViews.$inferSelect;
+export type NewDatabaseView = typeof databaseViews.$inferInsert;
+
+export const databaseForms = pgTable('database_forms', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
+  viewId: uuid('view_id').references(() => databaseViews.id, { onDelete: 'cascade' }),
+  title: text('title').notNull().default('Submit Form'),
+  description: text('description'),
+  shareToken: text('share_token').notNull().unique(),
+  isPublic: boolean('is_public').notNull().default(true),
+  settings: jsonb('settings').$type<{
+    headerColor?: string;
+    submitButtonText?: string;
+    successMessage?: string;
+    hiddenPropertyIds?: string[];
+    requiredPropertyIds?: string[];
+  }>().notNull().default({}),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type DatabaseForm = typeof databaseForms.$inferSelect;
+export type NewDatabaseForm = typeof databaseForms.$inferInsert;
+
 
 
 

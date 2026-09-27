@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests, databases, databaseItems } from '~/db/schema';
 import { eq, and, or, desc, asc, isNull, lt, ne, sql, inArray } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
@@ -50,8 +50,10 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           createdAt: pages.createdAt,
           updatedAt: pages.updatedAt,
           contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
+          databaseId: databases.id,
         })
         .from(pages)
+        .leftJoin(databases, eq(pages.id, databases.pageId))
         .where(
           and(
             eq(pages.workspaceId, targetWorkspaceId),
@@ -64,61 +66,74 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       // 2. Explicitly shared pages (for this user's email)
       cleanEmail
         ? db
-            .select({
-              id: pages.id,
-              workspaceId: pages.workspaceId,
-              parentId: pages.parentId,
-              title: pages.title,
-              icon: pages.icon,
-              visibility: pages.visibility,
-              order: pages.order,
-              isPinned: pages.isPinned,
-              role: pageShares.role,
-              createdAt: pages.createdAt,
-              updatedAt: pages.updatedAt,
-              contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
-            })
-            .from(pageShares)
-            .innerJoin(pages, eq(pageShares.pageId, pages.id))
-            .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)))
+          .select({
+            id: pages.id,
+            workspaceId: pages.workspaceId,
+            parentId: pages.parentId,
+            title: pages.title,
+            icon: pages.icon,
+            visibility: pages.visibility,
+            order: pages.order,
+            isPinned: pages.isPinned,
+            role: pageShares.role,
+            createdAt: pages.createdAt,
+            updatedAt: pages.updatedAt,
+            contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
+            databaseId: databases.id,
+          })
+          .from(pageShares)
+          .innerJoin(pages, eq(pageShares.pageId, pages.id))
+          .leftJoin(databases, eq(pages.id, databases.pageId))
+          .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)))
         : Promise.resolve([]),
 
       // 3. Recently viewed pages (combines user's recent view timestamps + external public files)
       session?.userId
         ? db
-            .select({
-              pageId: pageViews.pageId,
-              viewedAt: pageViews.viewedAt,
-              workspaceId: pages.workspaceId,
-              parentId: pages.parentId,
-              title: pages.title,
-              icon: pages.icon,
-              visibility: pages.visibility,
-              order: pages.order,
-              createdAt: pages.createdAt,
-              contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
-            })
-            .from(pageViews)
-            .innerJoin(pages, eq(pageViews.pageId, pages.id))
-            .where(and(eq(pageViews.userId, session.userId), eq(pages.isDeleted, false)))
-            .orderBy(desc(pageViews.viewedAt))
-            .limit(30)
+          .select({
+            pageId: pageViews.pageId,
+            viewedAt: pageViews.viewedAt,
+            workspaceId: pages.workspaceId,
+            parentId: pages.parentId,
+            title: pages.title,
+            icon: pages.icon,
+            visibility: pages.visibility,
+            order: pages.order,
+            createdAt: pages.createdAt,
+            contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
+            databaseId: databases.id,
+          })
+          .from(pageViews)
+          .innerJoin(pages, eq(pageViews.pageId, pages.id))
+          .leftJoin(databases, eq(pages.id, databases.pageId))
+          .where(and(eq(pageViews.userId, session.userId), eq(pages.isDeleted, false)))
+          .orderBy(desc(pageViews.viewedAt))
+          .limit(10)
         : Promise.resolve([]),
     ]);
 
     const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
 
+    // Query DB row item subpages to exclude them from sidebar page tree
+    const dbItemRows = await db
+      .select({ pageId: databaseItems.pageId })
+      .from(databaseItems)
+      .where(sql`${databaseItems.pageId} IS NOT NULL`);
+    const dbItemPageIdSet = new Set(dbItemRows.map((r) => r.pageId).filter(Boolean));
+
     // Single-pass tree construction
     const pageMap = new Map<string, PageTreeNode>();
     const rootNodes: PageTreeNode[] = [];
 
-    // Combine workspace pages
+    // Combine workspace pages (excluding database row subpages)
     for (const p of workspacePages) {
+      if (dbItemPageIdSet.has(p.id)) continue;
       pageMap.set(p.id, { ...p, children: [], canEdit: true, canDelete: isOwner });
     }
 
-    // Combine explicit shares
+    // Combine explicit shares (excluding database row subpages)
     for (const sp of sharedPages) {
+      if (dbItemPageIdSet.has(sp.id)) continue;
       if (!pageMap.has(sp.id)) {
         const canEdit = (sp as any).role === 'editor';
         const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit, canDelete: isOwner };
@@ -129,6 +144,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     // Merge recently viewed (update viewedAt & add external public pages)
     for (const rv of recentViews) {
+      if (dbItemPageIdSet.has(rv.pageId)) continue;
       if (pageMap.has(rv.pageId)) {
         const node = pageMap.get(rv.pageId)!;
         if (new Date(rv.viewedAt) > new Date(node.updatedAt)) {
@@ -149,6 +165,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           createdAt: rv.createdAt,
           updatedAt: rv.viewedAt,
           contentText: rv.contentText,
+          databaseId: rv.databaseId,
           children: [],
           isShared: true,
         };
@@ -159,6 +176,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
 
     // Link workspace hierarchy
     for (const p of workspacePages) {
+      if (dbItemPageIdSet.has(p.id)) continue;
       const node = pageMap.get(p.id)!;
       if (p.parentId && pageMap.has(p.parentId)) {
         pageMap.get(p.parentId)!.children.push(node);
@@ -286,7 +304,7 @@ export async function fetchPage(pageId: string) {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(page, session);
 
@@ -381,7 +399,7 @@ export async function removePagePresence(input: { pageId: string; clientId?: str
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const cid = input.clientId || 'default';
     const cleanEmail = session?.email
@@ -420,7 +438,7 @@ export async function recordPagePresence(input: {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const cid = input.clientId || 'default';
     const cleanEmail = session?.email
@@ -481,7 +499,7 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const accessLevel = await getPageAccessLevel(page, session);
     if (!accessLevel) {
@@ -677,7 +695,7 @@ export async function checkCanUserEditPage(pageId: string, includeDeleted = fals
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(page, session);
     return access === 'editor';
@@ -746,7 +764,7 @@ export async function checkCanUserDeletePage(pageId: string, includeDeleted = fa
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     return await checkIsWorkspaceOwner(page.workspaceId, session);
   } catch (err) {
@@ -841,7 +859,7 @@ export async function recordPageHistory(input: {
     let session: UserSession | null = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const userId = session?.userId ?? null;
     const userEmail = session?.email ?? null;
@@ -873,9 +891,9 @@ export async function recordPageHistory(input: {
 
     const summary = input.changeSummary ?? (input.title !== undefined ? `Changed title to "${finalTitle}"` : 'Updated document content');
 
-    // Throttle: if user recorded entry in last 20 sec for this page, update it instead of creating duplicate rows
-    const twentySecsAgo = new Date(Date.now() - 20000);
-    const isRecent = latestHistory && new Date(latestHistory.createdAt).getTime() > twentySecsAgo.getTime();
+    // Throttle: if user recorded entry in last 5 minutes (300,000ms) for this page, update it instead of creating duplicate rows
+    const fiveMinsAgo = new Date(Date.now() - 300000);
+    const isRecent = latestHistory && new Date(latestHistory.createdAt).getTime() > fiveMinsAgo.getTime();
 
     if (isRecent) {
       // Baseline for throttled entry is the entry BEFORE it (historyEntries[1]), or empty array if first entry
@@ -912,6 +930,23 @@ export async function recordPageHistory(input: {
         changeSummary: summary,
       })
       .returning();
+
+    // Automatic Pruning: keep at most 50 history entries per page to prevent database bloat
+    try {
+      const oldEntries = await db
+        .select({ id: pageHistory.id })
+        .from(pageHistory)
+        .where(eq(pageHistory.pageId, input.pageId))
+        .orderBy(desc(pageHistory.createdAt))
+        .offset(50);
+
+      if (oldEntries.length > 0) {
+        const idsToDelete = oldEntries.map((e) => e.id);
+        await db.delete(pageHistory).where(inArray(pageHistory.id, idsToDelete));
+      }
+    } catch (pruneErr) {
+      console.warn('Failed to prune old page history:', pruneErr);
+    }
 
     return newHistory;
   } catch (err) {
@@ -954,8 +989,20 @@ export async function fetchPageHistory(input: { pageId: string; cursor?: string;
       }
     }
 
+    // Select lightweight list columns only - omitting heavy full content JSON blobs
     const historyList = await db
-      .select()
+      .select({
+        id: pageHistory.id,
+        pageId: pageHistory.pageId,
+        userId: pageHistory.userId,
+        userEmail: pageHistory.userEmail,
+        userName: pageHistory.userName,
+        userAvatarUrl: pageHistory.userAvatarUrl,
+        title: pageHistory.title,
+        delta: pageHistory.delta,
+        changeSummary: pageHistory.changeSummary,
+        createdAt: pageHistory.createdAt,
+      })
       .from(pageHistory)
       .where(and(...conditions))
       .orderBy(desc(pageHistory.createdAt))
@@ -973,6 +1020,26 @@ export async function fetchPageHistory(input: { pageId: string; cursor?: string;
   } catch (err) {
     console.error('Error fetching page history:', err);
     return { items: [], nextCursor: null, hasMore: false };
+  }
+}
+
+export async function fetchPageHistoryDetail(historyId: string) {
+  try {
+    const [entry] = await db
+      .select()
+      .from(pageHistory)
+      .where(eq(pageHistory.id, historyId))
+      .limit(1);
+
+    if (!entry) return null;
+
+    const canRead = await checkCanUserEditPage(entry.pageId);
+    if (!canRead) return null;
+
+    return entry;
+  } catch (err) {
+    console.error('Error fetching page history detail:', err);
+    return null;
   }
 }
 
@@ -1065,7 +1132,7 @@ export async function savePageContent(input: { pageId: string; content: any; con
       .returning({ id: pages.id, updatedAt: pages.updatedAt });
 
     if (updated) {
-      db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => {});
+      db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => { });
       recordPageHistory({
         pageId: input.pageId,
         content: input.content,
@@ -1508,7 +1575,7 @@ export async function fetchChildPages(parentId: string) {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(parentPage[0], session);
     if (!access) return [];
@@ -1546,7 +1613,7 @@ export async function fetchPageShares(pageId: string) {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(pageRecord[0], session);
     if (!access) return { owner: null, shares: [] };
@@ -1801,7 +1868,7 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
 
     try {
       sessionUser = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     if (!workspaceId && sessionUser) {
       workspaceId = sessionUser.workspaceId;

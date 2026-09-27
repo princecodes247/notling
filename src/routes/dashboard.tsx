@@ -9,7 +9,8 @@ import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
-import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
+import { createDatabase } from '~/server/databases';
+import { updateClientPageMeta, deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -200,6 +201,31 @@ function DashboardLayout() {
           document.title = `${resolvedTitle} - Notling`;
         }
       }
+    } else if (currentPath.includes('/dashboard/db/')) {
+      const match = currentPath.match(/\/dashboard\/db\/([^/]+)/);
+      if (match && match[1]) {
+        const dbId = match[1];
+        doSetActivePageId(dbId);
+        const node = findNodeInTree(treeNodes, dbId);
+        const existingTab = useUIStore.getState().openTabs.find((t) => t.id === dbId);
+        const liveMeta = useUIStore.getState().pageMeta[dbId];
+        const resolvedTitle =
+          liveMeta?.title ??
+          node?.title ??
+          (existingTab?.title ? existingTab.title : 'Untitled Database');
+        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? null;
+
+        doOpenTab({
+          id: dbId,
+          title: resolvedTitle,
+          icon: resolvedIcon,
+          path: currentPath,
+        });
+
+        if (resolvedTitle) {
+          document.title = `${resolvedTitle} — Notling`;
+        }
+      }
     } else if (currentPath.includes('/dashboard/folders')) {
       doSetActivePageId(null);
       document.title = 'Folders - Notling';
@@ -322,6 +348,23 @@ function DashboardLayout() {
     },
   });
 
+  // Create Database Mutation
+  const createDatabaseMutation = useMutation({
+    mutationFn: async () => {
+      if (!workspaceId) return null;
+      return await createDatabase({ data: { workspaceId, title: 'Untitled Database' } });
+    },
+    onSuccess: (newDb) => {
+      if (newDb) {
+        queryClient.invalidateQueries({ queryKey: ['databases'] });
+        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+        refetchTree();
+        navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
+        closeSidebarOnMobile();
+      }
+    },
+  });
+
   // Fetch Trash Pages
   const { data: trashPages = [] } = useQuery({
     queryKey: ['trashPages', workspaceId],
@@ -333,18 +376,36 @@ function DashboardLayout() {
     enabled: !!workspaceId,
   });
 
+  // Fetch Databases in Workspace
+  const { data: databases = [] } = useQuery({
+    queryKey: ['databases', workspaceId],
+    queryFn: async () => {
+      if (!workspaceId) return [];
+      const { getDatabasesInWorkspace } = await import('~/server/databases');
+      return await getDatabasesInWorkspace({ data: workspaceId });
+    },
+    enabled: !!workspaceId,
+  });
+
   // Soft Delete Page Mutation
   const softDeleteMutation = useMutation({
     mutationFn: async (pageId: string) => {
       return await softDeletePage({ data: pageId });
     },
     onMutate: async (pageId: string) => {
-      const nextPath = deleteClientPage(queryClient, pageId);
+      const dbMatch = databases.find((db: any) => db.pageId === pageId || db.id === pageId);
+      let nextPath: string | null = null;
+      if (dbMatch) {
+        nextPath = deleteClientDatabase(queryClient, dbMatch.id, pageId);
+      } else {
+        nextPath = deleteClientPage(queryClient, pageId);
+      }
+
       if (nextPath) {
         navigate({ to: nextPath as any });
       } else {
         const currentActiveTab = useUIStore.getState().activeTabId;
-        if (!currentActiveTab || currentActiveTab === pageId) {
+        if (!currentActiveTab || currentActiveTab === pageId || (dbMatch && currentActiveTab === dbMatch.id)) {
           navigate({ to: '/dashboard/folders' });
         }
       }
@@ -352,6 +413,7 @@ function DashboardLayout() {
     onSuccess: () => {
       refetchTree();
       queryClient.invalidateQueries({ queryKey: ['trashPages'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     },
   });
 
@@ -466,6 +528,11 @@ function DashboardLayout() {
               className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] dark:bg-[#121214] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
             >
               <Sidebar
+                databases={databases}
+                onSelectDatabase={(dbId) => {
+                  navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
+                  closeSidebarOnMobile();
+                }}
                 workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
                 session={session}
                 treeNodes={treeNodes}
@@ -500,9 +567,18 @@ function DashboardLayout() {
                   createPageMutation.mutate(parentId);
                   closeSidebarOnMobile();
                 }}
-                onSelectPage={(id) => {
+                onCreateDatabase={() => {
+                  if (createDatabaseMutation.isPending) return;
+                  createDatabaseMutation.mutate();
+                  closeSidebarOnMobile();
+                }}
+                onSelectPage={(id, dbId) => {
                   useUIStore.getState().setActivePageId(id);
-                  navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+                  if (dbId) {
+                    navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
+                  } else {
+                    navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+                  }
                   closeSidebarOnMobile();
                 }}
                 onSoftDelete={(id) => softDeleteMutation.mutate(id)}

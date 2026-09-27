@@ -61,6 +61,23 @@ interface UIState {
   isOnline: boolean;
   isServerReachable: boolean;
   setConnectionStatus: (isOnline: boolean, isServerReachable: boolean) => void;
+
+  // Editor UI & Modals State
+  isShareModalOpen: boolean;
+  setShareModalOpen: (open: boolean) => void;
+  isExportModalOpen: boolean;
+  setExportModalOpen: (open: boolean) => void;
+  isHistoryDrawerOpen: boolean;
+  setHistoryDrawerOpen: (open: boolean) => void;
+  isRequestAccessOpen: boolean;
+  setRequestAccessOpen: (open: boolean) => void;
+  showHeaderMenu: boolean;
+  setShowHeaderMenu: (open: boolean) => void;
+  showEmojiPicker: boolean;
+  setShowEmojiPicker: (open: boolean) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -177,13 +194,17 @@ export const useUIStore = create<UIState>((set, get) => ({
     let nextPath: string | null = null;
     const state = get();
     const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
-    const index = fileTabs.findIndex((t) => t.id === tabId);
+    const index = fileTabs.findIndex(
+      (t) => t.id === tabId || t.path.endsWith(`/${tabId}`)
+    );
     if (index === -1) return null;
 
-    const remainingTabs = fileTabs.filter((t) => t.id !== tabId);
+    const matchedTab = fileTabs[index];
+    const actualTabId = matchedTab.id;
+    const remainingTabs = fileTabs.filter((t) => t.id !== actualTabId);
     let nextActiveId = state.activeTabId;
 
-    if (state.activeTabId === tabId) {
+    if (state.activeTabId === actualTabId || state.activeTabId === tabId) {
       if (remainingTabs.length > 0) {
         const nextIndex = Math.max(0, index - 1);
         nextActiveId = remainingTabs[nextIndex].id;
@@ -270,4 +291,20 @@ export const useUIStore = create<UIState>((set, get) => ({
   isServerReachable: true,
   setConnectionStatus: (isOnline, isServerReachable) =>
     set({ isOnline, isServerReachable }),
+
+  isShareModalOpen: false,
+  setShareModalOpen: (open) => set({ isShareModalOpen: open }),
+  isExportModalOpen: false,
+  setExportModalOpen: (open) => set({ isExportModalOpen: open }),
+  isHistoryDrawerOpen: false,
+  setHistoryDrawerOpen: (open) => set({ isHistoryDrawerOpen: open }),
+  isRequestAccessOpen: false,
+  setRequestAccessOpen: (open) => set({ isRequestAccessOpen: open }),
+  showHeaderMenu: false,
+  setShowHeaderMenu: (open) => set({ showHeaderMenu: open }),
+  showEmojiPicker: false,
+  setShowEmojiPicker: (open) => set({ showEmojiPicker: open }),
+  canUndo: false,
+  canRedo: false,
+  setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
 }));

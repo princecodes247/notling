@@ -84,7 +84,7 @@ export const ProfileSettingsView: React.FC<ProfileSettingsViewProps> = ({ sessio
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-safe">
+    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-10">
       <div className="max-w-4xl mx-auto w-full flex flex-col gap-8">
         {/* Header */}
         <div className="pb-5 border-b border-neutral-100 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

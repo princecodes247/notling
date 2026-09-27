@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Star, ChevronRight, ChevronDown, Plus, FileText, Copy } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus, Copy } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Delete02Icon,
   Edit02Icon,
   MoreHorizontalIcon,
   Download01Icon,
+  File01Icon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { getPage } from '~/server/pages';
@@ -22,7 +23,7 @@ interface PageTreeItemProps {
   node: PageTreeNode;
   depth?: number;
   onCreateChild: (parentId: string) => void;
-  onSelectPage: (pageId: string) => void;
+  onSelectPage: (pageId: string, databaseId?: string | null) => void;
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
@@ -62,7 +63,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const displayIcon = hasCustomEmoji ? rawIcon : '📄';
 
   const isExpanded = !!expandedNodeIds[node.id];
-  const isActive = activePageId === node.id;
+  const isActive = activePageId === node.id || (Boolean(node.databaseId) && activePageId === node.databaseId);
   const hasChildren = node.children && node.children.length > 0;
   const canEdit = node.canEdit !== false;
   const canDelete = node.canDelete === true;
@@ -241,7 +242,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 ? 'bg-stone-200/90 dark:bg-zinc-700/80 ring-1 ring-stone-400 dark:ring-zinc-500 text-stone-900 dark:text-white font-medium'
                 : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50 hover:text-stone-900 dark:hover:text-white'
         )}
-        onClick={() => onSelectPage(node.id)}
+        onClick={() => onSelectPage(node.id, node.databaseId)}
         onMouseEnter={handleMouseEnter}
       >
         {/* Drop Line Indicators */}
@@ -284,7 +285,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 {hasCustomEmoji ? (
                   <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
                 ) : (
-                  <FileText className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+                  <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
                 )}
               </button>
             ) : (
@@ -292,7 +293,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 {hasCustomEmoji ? (
                   <span className="text-sm leading-none shrink-0 select-none">{displayIcon}</span>
                 ) : (
-                  <FileText className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
+                  <HugeiconsIcon icon={File01Icon} size={14} className={clsx("w-3.5 h-3.5 shrink-0", isActive ? "text-stone-900 dark:text-white" : "text-stone-400 dark:text-zinc-500")} />
                 )}
               </span>
             )}

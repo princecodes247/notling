@@ -11,7 +11,7 @@ import { useUIStore } from '~/store/uiStore';
 interface HomeViewProps {
   userName?: string;
   treeNodes: PageTreeNode[];
-  onSelectPage: (id: string) => void;
+  onSelectPage: (id: string, databaseId?: string | null) => void;
   onCreateFolder: () => void;
   onCreatePage: () => void;
   onNavigate: (nav: string) => void;
@@ -151,7 +151,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const hasAnyContent = mergedNodes.length > 0;
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans pt-safe flex flex-col">
+    <div className="flex-1 pt-12 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans flex flex-col">
       <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-8">
         {isLoading ? (
           <HomeSkeleton />
@@ -258,11 +258,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     <h3 className="text-sm font-semibold text-stone-900 dark:text-zinc-200">Recents</h3>
                     <button
                       type="button"
-                      onClick={onCreatePage}
+                      onClick={() => onNavigate('folders')}
                       className="text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white inline-flex items-center gap-1 font-medium cursor-pointer transition-colors"
                     >
-                      <HugeiconsIcon icon={PlusSignIcon} size={13} />
-                      <span>New document</span>
+                      <span>View all</span>
+                      <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
                     </button>
                   </div>
 
@@ -270,7 +270,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     {recentDocs.slice(0, 10).map((node) => (
                       <div
                         key={node.id}
-                        onClick={() => onSelectPage(node.id)}
+                        onClick={() => onSelectPage(node.id, node.databaseId)}
                         className="p-3.5 hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 flex items-center justify-between transition-colors cursor-pointer group"
                       >
                         <div className="flex items-center gap-3 min-w-0">

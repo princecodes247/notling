@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -9,10 +9,9 @@ import {
   ViewIcon,
   CheckmarkCircle01Icon,
 } from '@hugeicons/core-free-icons';
-import { getPageHistory, restorePageVersion } from '~/server/pages';
+import { getPageHistory, getPageHistoryDetail, restorePageVersion } from '~/server/pages';
 import { UserAvatar } from '~/components/UserAvatar';
 import { Modal } from '~/components/Modal';
-import type { PageHistory } from '~/db/schema';
 
 interface VersionHistoryDrawerProps {
   isOpen: boolean;
@@ -142,9 +141,9 @@ function extractTextSummaryFromBlocks(blocks: any[]): string {
   return clean.length > 140 ? clean.slice(0, 140) + '...' : clean;
 }
 
-function extractDeltaSummaryFromHistoryItem(item: PageHistory): string {
+function extractDeltaSummaryFromHistoryItem(item: any): string {
+  if (item?.changeSummary) return item.changeSummary;
   const delta = item?.delta;
-  // return ""
   if (delta) {
     const changes: string[] = [];
 
@@ -172,7 +171,10 @@ function extractDeltaSummaryFromHistoryItem(item: PageHistory): string {
     }
   }
 
-  return extractTextSummaryFromBlocks(item.content as any[]);
+  if (Array.isArray(item?.content)) {
+    return extractTextSummaryFromBlocks(item.content);
+  }
+  return 'Updated document content';
 }
 
 export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
@@ -182,11 +184,20 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
   onVersionRestored,
 }) => {
   const queryClient = useQueryClient();
-  const [previewItem, setPreviewItem] = useState<PageHistory | null>(null);
+  const [previewHistoryId, setPreviewHistoryId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'diff' | 'full'>('diff');
   const [restoredSuccess, setRestoredSuccess] = useState<string | null>(null);
   const [pendingRestoreId, setPendingRestoreId] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const { data: previewItem, isLoading: isPreviewLoading } = useQuery({
+    queryKey: ['pageHistoryDetail', previewHistoryId],
+    queryFn: async () => {
+      if (!previewHistoryId) return null;
+      return await getPageHistoryDetail({ data: previewHistoryId });
+    },
+    enabled: !!previewHistoryId,
+  });
 
   const {
     data,
@@ -214,7 +225,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage?.nextCursor ?? undefined,
     enabled: isOpen && !!pageId,
-    refetchInterval: isOpen ? 5000 : false,
+    refetchInterval: false,
   });
 
   const historyItems = useMemo(() => {
@@ -412,7 +423,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                         <div className="flex items-center justify-end gap-2 pt-1">
                           <button
                             type="button"
-                            onClick={() => setPreviewItem(item)}
+                            onClick={() => setPreviewHistoryId(item.id)}
                             className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-stone-100 hover:bg-stone-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 text-[11px] font-medium transition-colors cursor-pointer"
                           >
                             <HugeiconsIcon icon={ViewIcon} size={12} />
@@ -458,47 +469,55 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
       )}
 
       {/* Snapshot Preview Modal */}
-      {previewItem && (
+      {previewHistoryId && (
         <Modal
-          isOpen={!!previewItem}
-          onClose={() => setPreviewItem(null)}
-          title={`Snapshot: ${previewItem.title || 'Untitled'}`}
-          subtitle={`Saved ${formatRelativeTime(previewItem.createdAt)} by ${previewItem.userName || previewItem.userEmail || 'Guest'}`}
+          isOpen={!!previewHistoryId}
+          onClose={() => setPreviewHistoryId(null)}
+          title={previewItem ? `Snapshot: ${previewItem.title || 'Untitled'}` : 'Loading snapshot...'}
+          subtitle={previewItem ? `Saved ${formatRelativeTime(previewItem.createdAt)} by ${previewItem.userName || previewItem.userEmail || 'Guest'}` : ''}
           maxWidth="lg"
           footer={
-            <div className="flex items-center justify-between w-full">
-              <span className="text-xs text-stone-400">
-                {Array.isArray(previewItem.content) ? `${previewItem.content.length} blocks` : ''}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPreviewItem(null)}
-                  className="px-3.5 py-1.5 rounded-lg border border-stone-200 dark:border-zinc-700 text-xs text-stone-700 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  disabled={pendingRestoreId === previewItem.id}
-                  onClick={() => {
-                    restoreMutation.mutate(previewItem.id);
-                  }}
-                  className="px-4 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
-                >
-                  {pendingRestoreId === previewItem.id ? (
-                    <>
-                      <div className="w-3.5 h-3.5 rounded-full border-2 border-brand-fg border-t-transparent animate-spin" />
-                      <span>Restoring version...</span>
-                    </>
-                  ) : (
-                    <span>Restore this version</span>
-                  )}
-                </button>
+            previewItem ? (
+              <div className="flex items-center justify-between w-full">
+                <span className="text-xs text-stone-400">
+                  {Array.isArray(previewItem.content) ? `${previewItem.content.length} blocks` : ''}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewHistoryId(null)}
+                    className="px-3.5 py-1.5 rounded-lg border border-stone-200 dark:border-zinc-700 text-xs text-stone-700 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pendingRestoreId === previewItem.id}
+                    onClick={() => {
+                      restoreMutation.mutate(previewItem.id);
+                    }}
+                    className="px-4 py-1.5 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-semibold shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    {pendingRestoreId === previewItem.id ? (
+                      <>
+                        <div className="w-3.5 h-3.5 rounded-full border-2 border-brand-fg border-t-transparent animate-spin" />
+                        <span>Restoring version...</span>
+                      </>
+                    ) : (
+                      <span>Restore this version</span>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : null
           }
         >
+          {isPreviewLoading || !previewItem ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-3 text-stone-400 dark:text-zinc-500">
+              <div className="w-6 h-6 rounded-full border-2 border-brand-bg border-t-transparent animate-spin" />
+              <span className="text-xs">Fetching version details...</span>
+            </div>
+          ) : (
           <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto p-1 font-sans select-text">
             <h1 className="text-2xl font-bold text-stone-900 dark:text-white">
               {previewItem.title || 'Untitled Document'}
@@ -601,6 +620,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
               );
             })()}
           </div>
+          )}
         </Modal>
       )}
     </AnimatePresence>

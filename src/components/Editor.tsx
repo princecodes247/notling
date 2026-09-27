@@ -6,11 +6,9 @@ import {
   PlusSignIcon,
   Folder01Icon,
   Loading02Icon,
-  Download01Icon,
-  Edit02Icon,
   LockIcon,
 } from '@hugeicons/core-free-icons';
-import { Star, Share2, MoreHorizontal, Clock, Undo, Redo, Copy } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import {
   updatePageMeta,
   getChildPages,
@@ -24,7 +22,6 @@ import {
 } from '~/server/pages';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
-import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
 import { RequestEditAccessModal } from './RequestEditAccessModal';
@@ -34,7 +31,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { getClientId } from '~/lib/collaboration';
 import { EmojiPicker } from './EmojiPicker';
 import { inferEmojiFromTitle, isDefaultOrInferredIcon } from '~/lib/emojiUtils';
-import { clsx } from 'clsx';
+import { EditorHeader } from './EditorHeader';
 
 function formatRelativeTime(dateInput?: string | Date | null): string {
   if (!dateInput) return 'Just now';
@@ -64,20 +61,27 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { saveStatus, setSaveStatus, setActivePageId } = useUIStore();
+  const {
+    saveStatus,
+    setSaveStatus,
+    setActivePageId,
+    isShareModalOpen,
+    setShareModalOpen,
+    isExportModalOpen,
+    setExportModalOpen,
+    isHistoryDrawerOpen,
+    setHistoryDrawerOpen,
+    isRequestAccessOpen,
+    setRequestAccessOpen,
+    showEmojiPicker,
+    setShowEmojiPicker,
+    setHistoryState,
+  } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || '📄');
   const [isCustomIcon, setIsCustomIcon] = useState(() => !isDefaultOrInferredIcon(page.icon, page.title, { isFolder: page.icon === '📁' || page.icon === '📂' }));
   const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
   const [isPinned, setIsPinned] = useState(!!(page as any).isPinned);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [showHeaderMenu, setShowHeaderMenu] = useState(false);
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
-  const [isRequestAccessOpen, setIsRequestAccessOpen] = useState(false);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
   const [, setMounted] = useState(false);
 
   useEffect(() => {
@@ -92,21 +96,12 @@ export const Editor: React.FC<EditorProps> = ({
   useEffect(() => {
     const handleHistoryState = (e: any) => {
       if (e.detail) {
-        setCanUndo(!!e.detail.canUndo);
-        setCanRedo(!!e.detail.canRedo);
+        setHistoryState(!!e.detail.canUndo, !!e.detail.canRedo);
       }
     };
     window.addEventListener('editor-history-state', handleHistoryState);
     return () => window.removeEventListener('editor-history-state', handleHistoryState);
-  }, []);
-
-  const handleTriggerUndo = () => {
-    window.dispatchEvent(new CustomEvent('editor-undo'));
-  };
-
-  const handleTriggerRedo = () => {
-    window.dispatchEvent(new CustomEvent('editor-redo'));
-  };
+  }, [setHistoryState]);
 
   const titleInputRef = React.useRef<HTMLInputElement>(null);
   const pendingSaveTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -340,177 +335,18 @@ export const Editor: React.FC<EditorProps> = ({
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-stone-100 overflow-hidden relative">
-      {/* 2. Top Header Strip (Updated to match DashboardMockup 1:1) */}
-      <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
-        {/* Left: Breadcrumb Trail */}
-        <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden">
-          <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1">
-            <span>{icon}</span>
-            <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : 'Document'}</span>
-          </span>
-          <span>/</span>
-          <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">
-            {title || 'Untitled Document'}
-          </span>
-        </div>
 
-        {/* Right: Actions & Collaborator Avatars */}
-        <div className="flex items-center gap-3 shrink-0">
-          <CollaboratorAvatars
-            activeUsers={activeUsers}
-            currentClientId={getClientId()}
-            onOpenShare={() => setIsShareModalOpen(true)}
-          />
-
-          <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800" />
-
-          <div className="flex items-center gap-1">
-            {!isReadOnly && (
-              <>
-                {/* Undo Button */}
-                <button
-                  type="button"
-                  onClick={handleTriggerUndo}
-                  disabled={!canUndo}
-                  aria-label="Undo (Cmd+Z)"
-                  className={`p-1.5 rounded-md transition-colors ${canUndo
-                    ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
-                    : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
-                    }`}
-                >
-                  <Undo className="w-3.5 h-3.5" />
-                </button>
-
-                {/* Redo Button */}
-                <button
-                  type="button"
-                  onClick={handleTriggerRedo}
-                  disabled={!canRedo}
-                  aria-label="Redo (Cmd+Shift+Z)"
-                  className={`p-1.5 rounded-md transition-colors ${canRedo
-                    ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
-                    : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
-                    }`}
-                >
-                  <Redo className="w-3.5 h-3.5" />
-                </button>
-
-                {/* History Button */}
-                {/* <button
-                  type="button"
-                  onClick={() => setIsHistoryDrawerOpen(true)}
-                  className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                  aria-label="Page history & revisions"
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                </button> */}
-                <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800 mr-2" />
-              </>
-            )}
-
-
-            {/* Share or Request Edit Access Button */}
-            {isReadOnly ? (
-              <button
-                type="button"
-                onClick={() => setIsRequestAccessOpen(true)}
-                className="px-2.5 py-1 rounded-md bg-stone-900 dark:bg-white text-white dark:text-stone-900 hover:bg-stone-800 dark:hover:bg-stone-100 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
-              >
-                <HugeiconsIcon icon={Edit02Icon} size={12} />
-                <span>Request Edit</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsShareModalOpen(true)}
-                className="px-2.5 py-1 rounded-md bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 hover:bg-neutral-800 dark:hover:bg-neutral-100 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer active-press"
-              >
-                <Share2 className="w-3 h-3" />
-                <span>Share</span>
-              </button>
-            )}
-
-            {/* 5. Kebab More Options Dropdown (includes Export option) */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setShowHeaderMenu(!showHeaderMenu)}
-                className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                title="More options"
-              >
-                <MoreHorizontal className="w-3.5 h-3.5" />
-              </button>
-
-              {showHeaderMenu && (
-                <>
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowHeaderMenu(false)}
-                  />
-                  <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
-                    {/* Export Option */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowHeaderMenu(false);
-                        setIsExportModalOpen(true);
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                    >
-                      <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
-                      <span>Export Document</span>
-                    </button>
-
-                    {/* Bookmark Option */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowHeaderMenu(false);
-                        togglePinMutation.mutate();
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                    >
-                      <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
-                      <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
-                    </button>
-
-                    {/* Duplicate Page Option */}
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowHeaderMenu(false);
-                          duplicateMutation.mutate();
-                        }}
-                        disabled={duplicateMutation.isPending}
-                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
-                        <span>{duplicateMutation.isPending ? 'Duplicating...' : 'Duplicate Page'}</span>
-                      </button>
-                    )}
-
-                    {/* Change Icon Option */}
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowHeaderMenu(false);
-                          setShowEmojiPicker(true);
-                        }}
-                        className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                      >
-                        <span className="text-xs">✨</span>
-                        <span>Change Icon</span>
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <EditorHeader
+        icon={icon}
+        title={title}
+        isFolder={isFolder}
+        activeUsers={activeUsers}
+        getClientId={getClientId}
+        isReadOnly={isReadOnly}
+        isPinned={isPinned}
+        togglePinMutation={togglePinMutation}
+        duplicateMutation={duplicateMutation}
+      />
 
       {/* Main Canvas */}
       <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-6 md:px-16 lg:px-24 pb-32 sm:pb-24 md:pb-12 bg-white dark:bg-[#18181b]">
@@ -702,7 +538,7 @@ export const Editor: React.FC<EditorProps> = ({
       {/* Share Modal */}
       <ShareModal
         isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
+        onClose={() => setShareModalOpen(false)}
         page={page}
         visibility={visibility}
         onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
@@ -711,14 +547,14 @@ export const Editor: React.FC<EditorProps> = ({
       {/* Export Modal */}
       <ExportModal
         isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
+        onClose={() => setExportModalOpen(false)}
         page={page}
       />
 
       {/* Version History Drawer */}
       <VersionHistoryDrawer
         isOpen={isHistoryDrawerOpen}
-        onClose={() => setIsHistoryDrawerOpen(false)}
+        onClose={() => setHistoryDrawerOpen(false)}
         pageId={page.id}
         onVersionRestored={() => {
           queryClient.invalidateQueries({ queryKey: ['page', page.id] });
@@ -729,7 +565,7 @@ export const Editor: React.FC<EditorProps> = ({
       {/* Request Edit Access Modal */}
       <RequestEditAccessModal
         isOpen={isRequestAccessOpen}
-        onClose={() => setIsRequestAccessOpen(false)}
+        onClose={() => setRequestAccessOpen(false)}
         pageId={page.id}
         pageTitle={page.title || 'Untitled Document'}
         isLoggedIn={true}
