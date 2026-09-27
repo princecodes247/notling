@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, Database, ChevronDown, FileText, FolderPlus } from 'lucide-react';
@@ -176,6 +177,51 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [isRootDropTarget, setIsRootDropTarget] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+
+  const wsButtonRef = useRef<HTMLButtonElement>(null);
+  const createMenuContainerRef = useRef<HTMLDivElement>(null);
+  const [wsCoords, setWsCoords] = useState<{ top: number; left: number } | null>(null);
+  const [createCoords, setCreateCoords] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  const handleToggleWorkspaceMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showWorkspaceMenu && wsButtonRef.current) {
+      const rect = wsButtonRef.current.getBoundingClientRect();
+      const width = 224;
+      const height = 240;
+
+      let top = rect.bottom + 4;
+      let left = rect.left;
+
+      if (rect.bottom + height > window.innerHeight - 10 && rect.top - height > 10) {
+        top = rect.top - height - 4;
+      }
+      if (left + width > window.innerWidth - 10) left = window.innerWidth - width - 10;
+
+      setWsCoords({ top, left });
+      setShowWorkspaceMenu(true);
+    } else {
+      setShowWorkspaceMenu(false);
+    }
+  };
+
+  const handleToggleCreateMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showCreateMenu && createMenuContainerRef.current) {
+      const rect = createMenuContainerRef.current.getBoundingClientRect();
+      const height = 210;
+
+      let top = rect.bottom + 4;
+      if (rect.bottom + height > window.innerHeight - 10 && rect.top - height > 10) {
+        top = rect.top - height - 4;
+      }
+
+      setCreateCoords({ top, left: rect.left, width: rect.width });
+      setShowCreateMenu(true);
+    } else {
+      setShowCreateMenu(false);
+    }
+  };
   const createMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -203,8 +249,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-3 border-b border-stone-200/60 dark:border-zinc-800/80 flex items-center justify-between relative">
         <div className="relative flex-1 min-w-0">
           <button
+            ref={wsButtonRef}
             type="button"
-            onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
+            onClick={handleToggleWorkspaceMenu}
             className="flex items-center gap-2 p-1 rounded-md hover:bg-stone-200/50 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer w-full text-left min-w-0 group"
           >
             <WorkspaceAvatar
@@ -220,13 +267,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* Workspace Dropdown Menu */}
-          {showWorkspaceMenu && (
+          {showWorkspaceMenu && wsCoords && typeof document !== 'undefined' && createPortal(
             <>
               <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowWorkspaceMenu(false)}
+                className="fixed inset-0 z-50 bg-transparent"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowWorkspaceMenu(false);
+                }}
               />
-              <div className="absolute left-0 top-11 w-56 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
+              <div
+                style={{ top: `${wsCoords.top}px`, left: `${wsCoords.left}px` }}
+                className="fixed w-56 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col animate-in fade-in-50 duration-100"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
                   Workspaces
                 </div>
@@ -302,7 +356,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 </div>
               </div>
-            </>
+            </>,
+            document.body
           )}
         </div>
 
@@ -331,7 +386,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         {/* Grouped Split New Button */}
-        <div className="relative z-30 w-full flex items-center rounded-lg" ref={createMenuRef}>
+        <div className="relative z-30 w-full flex items-center rounded-lg" ref={createMenuContainerRef}>
           <button
             type="button"
             disabled={isCreatingPage}
@@ -349,7 +404,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowCreateMenu((prev) => !prev)}
+            onClick={handleToggleCreateMenu}
             className="px-2 h-full rounded-r-lg text-[#1f4d3d] dark:text-emerald-400 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 hover:bg-[#1f4d3d]/20 dark:hover:bg-emerald-900/50 font-medium text-xs transition-colors cursor-pointer flex items-center justify-center shrink-0"
             title="More creation options"
           >
@@ -358,18 +413,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           {/* Creation Dropdown Menu */}
           <AnimatePresence>
-            {showCreateMenu && (
+            {showCreateMenu && createCoords && typeof document !== 'undefined' && createPortal(
               <>
                 <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowCreateMenu(false)}
+                  className="fixed inset-0 z-50 bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreateMenu(false);
+                  }}
                 />
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: -6 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -6 }}
                   transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                  className="absolute left-0 right-0 top-9 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-md shadow-xl z-50 text-xs flex flex-col font-sans overflow-hidden origin-top"
+                  style={{ top: `${createCoords.top}px`, left: `${createCoords.left}px`, width: `${createCoords.width}px` }}
+                  className="fixed bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-md shadow-xl z-50 text-xs flex flex-col font-sans overflow-hidden origin-top"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <button
                     type="button"
@@ -420,7 +480,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </button>
                   )}
                 </motion.div>
-              </>
+              </>,
+              document.body
             )}
           </AnimatePresence>
         </div>

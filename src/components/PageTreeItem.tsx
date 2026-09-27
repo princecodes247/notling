@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Star, ChevronRight, ChevronDown, Plus, Copy } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
@@ -75,6 +76,57 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [dropTargetMode, setDropTargetMode] = useState<'above' | 'below' | 'inside' | null>(null);
   const [isProcessingAction, setIsProcessingAction] = useState<'duplicating' | 'deleting' | 'creating' | null>(null);
+
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
+  const [emojiCoords, setEmojiCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const handleToggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showMenu && moreButtonRef.current) {
+      const rect = moreButtonRef.current.getBoundingClientRect();
+      const dropdownWidth = 152;
+      const dropdownHeight = 240;
+
+      let top = rect.bottom + 4;
+      let left = rect.right - dropdownWidth;
+
+      if (rect.bottom + dropdownHeight > window.innerHeight - 12 && rect.top - dropdownHeight > 12) {
+        top = rect.top - dropdownHeight - 4;
+      }
+      if (left < 10) left = 10;
+      if (left + dropdownWidth > window.innerWidth - 10) left = window.innerWidth - dropdownWidth - 10;
+
+      setMenuCoords({ top, left });
+      setShowMenu(true);
+    } else {
+      setShowMenu(false);
+    }
+  };
+
+  const handleOpenEmojiPicker = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showEmojiPicker && emojiButtonRef.current) {
+      const rect = emojiButtonRef.current.getBoundingClientRect();
+      const pickerWidth = 288;
+      const pickerHeight = 310;
+
+      let top = rect.bottom + 4;
+      let left = rect.left;
+
+      if (rect.bottom + pickerHeight > window.innerHeight - 12 && rect.top - pickerHeight > 12) {
+        top = rect.top - pickerHeight - 4;
+      }
+      if (left + pickerWidth > window.innerWidth - 10) left = window.innerWidth - pickerWidth - 10;
+      if (left < 10) left = 10;
+
+      setEmojiCoords({ top, left });
+      setShowEmojiPicker(true);
+    } else {
+      setShowEmojiPicker(false);
+    }
+  };
 
   React.useEffect(() => {
     if (!isEditing) {
@@ -288,10 +340,11 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           <div className="relative shrink-0 flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
             {canEdit ? (
               <button
+                ref={emojiButtonRef}
                 type="button"
                 className="leading-none shrink-0 p-0.5 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer flex items-center justify-center"
                 title="Change icon"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                onClick={handleOpenEmojiPicker}
               >
                 <NodeIcon />
               </button>
@@ -301,14 +354,30 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               </span>
             )}
 
-            {canEdit && showEmojiPicker && (
-              <EmojiPicker
-                onSelect={(selectedEmoji) => handleSelectIcon(selectedEmoji)}
-                onClose={() => setShowEmojiPicker(false)}
-                currentEmoji={displayIcon}
-                onRemove={() => handleSelectIcon('📄')}
-                className="left-0 top-6"
-              />
+            {canEdit && showEmojiPicker && emojiCoords && typeof document !== 'undefined' && createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-50 bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEmojiPicker(false);
+                  }}
+                />
+                <div
+                  style={{ top: `${emojiCoords.top}px`, left: `${emojiCoords.left}px` }}
+                  className="fixed z-50 animate-in fade-in-50 duration-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <EmojiPicker
+                    onSelect={(selectedEmoji) => handleSelectIcon(selectedEmoji)}
+                    onClose={() => setShowEmojiPicker(false)}
+                    currentEmoji={displayIcon}
+                    onRemove={() => handleSelectIcon('📄')}
+                    className="!static"
+                  />
+                </div>
+              </>,
+              document.body
             )}
           </div>
 
@@ -421,32 +490,34 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               </div>
             ) : (
               <button
+                ref={moreButtonRef}
                 type="button"
                 title="More options"
                 className="p-1 rounded text-stone-400 dark:text-zinc-500 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 transition-colors cursor-pointer active-press"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMenu(!showMenu);
-                }}
+                onClick={handleToggleMenu}
               >
                 <HugeiconsIcon icon={MoreHorizontalIcon} size={14} />
               </button>
             )}
 
-            {showMenu && (
+            {showMenu && menuCoords && typeof document !== 'undefined' && createPortal(
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-50 bg-transparent"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowMenu(false);
                   }}
                 />
-                <div className="absolute right-0 top-6 w-38 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 text-xs">
+                <div
+                  style={{ top: `${menuCoords.top}px`, left: `${menuCoords.left}px` }}
+                  className="fixed w-38 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl py-1 z-50 text-xs animate-in fade-in-50 duration-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {onTogglePin && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
@@ -460,11 +531,11 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   {canEdit && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
-                        setShowEmojiPicker(true);
+                        handleOpenEmojiPicker(e);
                       }}
                     >
                       <span className="text-xs">✨</span>
@@ -474,7 +545,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   {canEdit && (
                     <button
                       type="button"
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         setShowMenu(false);
@@ -489,7 +560,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     <button
                       type="button"
                       disabled={!!isProcessingAction}
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium disabled:opacity-50"
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium disabled:opacity-50 cursor-pointer"
                       onClick={handleDuplicate}
                     >
                       <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
@@ -498,7 +569,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   )}
                   <button
                     type="button"
-                    className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium"
+                    className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
                       setShowMenu(false);
@@ -512,7 +583,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     <button
                       type="button"
                       disabled={!!isProcessingAction}
-                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium disabled:opacity-50"
+                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium disabled:opacity-50 cursor-pointer"
                       onClick={handleDelete}
                     >
                       <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500 dark:text-rose-400" />
@@ -520,7 +591,8 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     </button>
                   )}
                 </div>
-              </>
+              </>,
+              document.body
             )}
           </div>
         </div>
