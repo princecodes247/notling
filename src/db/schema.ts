@@ -223,7 +223,7 @@ export const databaseViews = pgTable('database_views', {
   id: uuid('id').primaryKey().defaultRandom(),
   databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull().default('Table'),
-  type: text('type', { enum: ['table', 'board', 'form', 'list'] }).notNull().default('table'),
+  type: text('type').notNull().default('table'),
   config: jsonb('config').$type<Record<string, any>>().notNull().default({}),
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),

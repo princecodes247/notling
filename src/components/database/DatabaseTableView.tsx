@@ -508,12 +508,12 @@ export function DatabaseTableView({
                       <GripVertical className="w-3.5 h-3.5" />
                     </span>
 
-                    {/* Row Checkbox (Visible on hover, or always if selected/painting) */}
+                    {/* Row Checkbox (Visible on hover, or when selected) */}
                     <input
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
                       onChange={() => { }}
-                      className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) || rowPaint.isPainting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                         }`}
                     />
                   </div>

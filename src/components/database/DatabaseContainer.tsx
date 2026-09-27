@@ -1,17 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import type { DatabaseItem, DatabaseProperty, DatabaseView, DatabaseForm } from '~/db/schema';
 import type { FullDatabase } from '~/server/databases.db';
 import { DatabaseTableView } from './DatabaseTableView';
 import { DatabaseBoardView } from './DatabaseBoardView';
 import { DatabaseFormView } from './DatabaseFormView';
+import { DatabaseGalleryView } from './DatabaseGalleryView';
+import { DatabaseListView } from './DatabaseListView';
+import { DatabaseChartView } from './DatabaseChartView';
 import { DatabaseRowDrawer } from './DatabaseRowDrawer';
+import { NewViewPopover, VIEW_LAYOUT_OPTIONS } from './NewViewPopover';
+import { ViewConfigDrawer } from './ViewConfigDrawer';
 import {
   Table,
-  Kanban,
-  FileText,
   Plus,
   Search,
   X,
+  Settings2,
 } from 'lucide-react';
 import clsx from 'clsx';
 import {
@@ -24,6 +28,7 @@ import {
   deleteDatabaseItem,
   deleteDatabaseItemsBulk,
   createDatabaseView,
+  updateDatabaseView,
   deleteDatabaseView,
   updateFormSettings,
   submitPublicForm,
@@ -54,10 +59,11 @@ export function DatabaseContainer({
     initialData.views[0]?.id || ''
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [addingView, setAddingView] = useState(false);
-  const [newViewName, setNewViewName] = useState('');
-  const [newViewType, setNewViewType] = useState<'table' | 'board' | 'form'>('table');
+  const [isViewPopoverOpen, setIsViewPopoverOpen] = useState(false);
+  const [isConfigDrawerOpen, setIsConfigDrawerOpen] = useState(false);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
+
+  const addViewBtnRef = useRef<HTMLButtonElement>(null);
 
   React.useEffect(() => {
     setDbData(initialData);
@@ -87,7 +93,6 @@ export function DatabaseContainer({
 
   // Handlers for Items (100% Optimistic)
   const handleAddItem = async (initialProps?: Record<string, any>) => {
-    // Guard against DOM PointerEvent / MouseEvent being passed as initialProps when called directly from onClick
     const safeProps =
       initialProps &&
       typeof initialProps === 'object' &&
@@ -116,7 +121,6 @@ export function DatabaseContainer({
       updatedAt: new Date(),
     };
 
-    // Immediately update client state (0ms latency!)
     setDbData((prev: FullDatabase) => ({
       ...prev,
       items: [...prev.items, optimisticItem],
@@ -190,7 +194,6 @@ export function DatabaseContainer({
       icon: null,
     };
 
-    // Immediately update client state (0ms latency!)
     setDbData((prev: FullDatabase) => ({
       ...prev,
       properties: [...prev.properties, optimisticProp],
@@ -247,27 +250,58 @@ export function DatabaseContainer({
     await deleteDatabaseProperty({ data: propertyId });
   };
 
-  // Handlers for Views
-  const handleAddViewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newViewName.trim()) return;
+  // Notion-Style Handlers for Views (Instant Optimistic + Auto Name)
+  const handleCreateView = async (type: string, defaultName: string) => {
+    const finalName = defaultName.trim() || 'View';
+    const tempId = crypto.randomUUID();
+    const optimisticView: DatabaseView = {
+      id: tempId,
+      databaseId: dbData.database.id,
+      name: finalName,
+      type,
+      config: {},
+      order: dbData.views.length,
+      createdAt: new Date(),
+    };
 
-    const newView = await createDatabaseView({
-      data: {
-        databaseId: dbData.database.id,
-        name: newViewName.trim(),
-        type: newViewType,
-      },
-    });
-
+    // 0ms Latency Optimistic Update
     setDbData((prev: FullDatabase) => ({
       ...prev,
-      views: [...prev.views, newView],
+      views: [...prev.views, optimisticView],
+    }));
+    setActiveViewId(tempId);
+    setIsConfigDrawerOpen(true);
+
+    try {
+      const createdView = await createDatabaseView({
+        data: {
+          databaseId: dbData.database.id,
+          name: finalName,
+          type,
+        },
+      });
+      setDbData((prev: FullDatabase) => ({
+        ...prev,
+        views: prev.views.map((v: DatabaseView) => (v.id === tempId ? createdView : v)),
+      }));
+      setActiveViewId(createdView.id);
+    } catch (err) {
+      console.error('Failed to create view on server:', err);
+    }
+  };
+
+  const handleUpdateView = async (viewId: string, updates: Partial<DatabaseView>) => {
+    setDbData((prev: FullDatabase) => ({
+      ...prev,
+      views: prev.views.map((v: DatabaseView) => (v.id === viewId ? { ...v, ...updates } : v)),
     }));
 
-    setActiveViewId(newView.id);
-    setNewViewName('');
-    setAddingView(false);
+    await updateDatabaseView({
+      data: {
+        viewId,
+        updates,
+      },
+    });
   };
 
   const handleDeleteView = async (viewId: string) => {
@@ -313,6 +347,12 @@ export function DatabaseContainer({
       ...prev,
       items: [newItem, ...prev.items],
     }));
+  };
+
+  const getViewIcon = (type: string) => {
+    const match = VIEW_LAYOUT_OPTIONS.find((opt) => opt.type === type);
+    const Icon = match ? match.icon : Table;
+    return <Icon className="w-3.5 h-3.5 shrink-0" />;
   };
 
   return (
@@ -369,9 +409,9 @@ export function DatabaseContainer({
           </div>
         </div>
 
-        {/* View Switcher Tabs Bar */}
-        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 px-1 pt-1 pb-0 overflow-x-auto select-none no-scrollbar">
-          <div className="flex items-center gap-1.5">
+        {/* Notion-Style Pill View Switcher Tabs Bar */}
+        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 px-1 pt-1 pb-2 overflow-x-auto select-none no-scrollbar">
+          <div className="flex items-center gap-1.5 relative">
             {dbData.views.map((view: DatabaseView) => {
               const isActive = view.id === activeView?.id;
               return (
@@ -380,16 +420,27 @@ export function DatabaseContainer({
                     type="button"
                     onClick={() => setActiveViewId(view.id)}
                     className={clsx(
-                      "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-t-lg border-b-2 transition-all cursor-pointer relative",
+                      "flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer relative",
                       isActive
-                        ? "border-[#1f4d3d] dark:border-emerald-500 text-stone-900 dark:text-white font-semibold bg-stone-100/70 dark:bg-zinc-800/60"
-                        : "border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100/40 dark:hover:bg-zinc-800/40"
+                        ? "bg-stone-200/80 dark:bg-zinc-800 text-stone-950 dark:text-white shadow-2xs"
+                        : "text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800/50"
                     )}
                   >
-                    {view.type === 'table' && <Table className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
-                    {view.type === 'board' && <Kanban className="w-3.5 h-3.5 text-purple-500 shrink-0" />}
-                    {view.type === 'form' && <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                    {getViewIcon(view.type)}
                     <span>{view.name}</span>
+
+                    {isActive && !readOnly && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsConfigDrawerOpen(!isConfigDrawerOpen);
+                        }}
+                        className="p-0.5 rounded hover:bg-stone-300/60 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors ml-1"
+                        title="View Options"
+                      >
+                        <Settings2 className="w-3 h-3" />
+                      </span>
+                    )}
 
                     {!readOnly && dbData.views.length > 1 && (
                       <span
@@ -397,7 +448,7 @@ export function DatabaseContainer({
                           e.stopPropagation();
                           handleDeleteView(view.id);
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-rose-100 dark:hover:bg-rose-950/60 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer ml-1"
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-rose-100 dark:hover:bg-rose-950/60 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer ml-0.5"
                         title="Delete View"
                       >
                         <X className="w-3 h-3" />
@@ -408,65 +459,35 @@ export function DatabaseContainer({
               );
             })}
 
-            {/* Add View Button */}
+            {/* Notion + Add View Trigger Button with Tooltip */}
             {!readOnly && (
               <div className="relative">
-                {addingView ? (
-                  <form
-                    onSubmit={handleAddViewSubmit}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Escape') {
-                        setNewViewName('');
-                        setAddingView(false);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-2 py-1 bg-stone-100 dark:bg-zinc-800 rounded-lg border border-stone-200 dark:border-zinc-700 shadow-2xs"
-                  >
-                    <input
-                      type="text"
-                      placeholder="View name..."
-                      value={newViewName}
-                      onChange={(e) => setNewViewName(e.target.value)}
-                      onBlur={() => {
-                        if (!newViewName.trim()) {
-                          setAddingView(false);
-                        }
-                      }}
-                      className="px-2 py-0.5 text-xs bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 rounded text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d]"
-                      autoFocus
+                <button
+                  ref={addViewBtnRef}
+                  type="button"
+                  onClick={() => setIsViewPopoverOpen(!isViewPopoverOpen)}
+                  className="flex items-center justify-center w-7 h-7 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/80 dark:hover:bg-zinc-800 rounded-lg transition-colors cursor-pointer"
+                  title="Add a new view"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+
+                {/* Notion "Add a new view" Grid Popover Menu */}
+                <AnimatePresence>
+                  {isViewPopoverOpen && (
+                    <NewViewPopover
+                      isOpen={isViewPopoverOpen}
+                      onClose={() => setIsViewPopoverOpen(false)}
+                      onSelectLayout={handleCreateView}
                     />
-                    <select
-                      value={newViewType}
-                      onChange={(e) => setNewViewType(e.target.value as any)}
-                      className="px-1.5 py-0.5 text-xs bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 rounded text-stone-800 dark:text-zinc-200 focus:outline-none"
-                    >
-                      <option value="table">Table</option>
-                      <option value="board">Board</option>
-                      <option value="form">Form</option>
-                    </select>
-                    <button
-                      type="submit"
-                      className="px-2.5 py-0.5 text-xs bg-[#1f4d3d] hover:bg-[#183e31] text-white rounded font-medium cursor-pointer shadow-2xs"
-                    >
-                      Add
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setAddingView(true)}
-                    className="flex items-center gap-1 px-2.5 py-1 text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>View</span>
-                  </button>
-                )}
+                  )}
+                </AnimatePresence>
               </div>
             )}
           </div>
         </div>
 
-        {/* Main View Area */}
+        {/* Main View Display Area */}
         <div className="pt-2">
           {activeView?.type === 'table' && (
             <DatabaseTableView
@@ -497,6 +518,37 @@ export function DatabaseContainer({
             />
           )}
 
+          {activeView?.type === 'gallery' && (
+            <DatabaseGalleryView
+              properties={dbData.properties}
+              items={filteredItems}
+              onUpdateItem={handleUpdateItem}
+              onDeleteItem={handleDeleteItem}
+              onAddItem={handleAddItem}
+              onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
+              readOnly={readOnly}
+            />
+          )}
+
+          {activeView?.type === 'list' && (
+            <DatabaseListView
+              properties={dbData.properties}
+              items={filteredItems}
+              onUpdateItem={handleUpdateItem}
+              onDeleteItem={handleDeleteItem}
+              onAddItem={handleAddItem}
+              onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
+              readOnly={readOnly}
+            />
+          )}
+
+          {activeView?.type === 'chart' && (
+            <DatabaseChartView
+              properties={dbData.properties}
+              items={filteredItems}
+            />
+          )}
+
           {activeView?.type === 'form' && (
             <DatabaseFormView
               form={activeForm}
@@ -506,9 +558,35 @@ export function DatabaseContainer({
               readOnly={readOnly}
             />
           )}
+
+          {!['table', 'board', 'gallery', 'list', 'chart', 'form'].includes(activeView?.type || '') && (
+            <DatabaseBoardView
+              properties={dbData.properties}
+              items={filteredItems}
+              groupByPropertyId={activeView?.config?.groupByPropertyId}
+              onUpdateItem={handleUpdateItem}
+              onDeleteItem={handleDeleteItem}
+              onAddItem={handleAddItem}
+              readOnly={readOnly}
+            />
+          )}
         </div>
 
       </div>
+
+      {/* Notion View Configuration Right Drawer */}
+      <AnimatePresence>
+        {isConfigDrawerOpen && activeView && (
+          <ViewConfigDrawer
+            isOpen={isConfigDrawerOpen}
+            view={activeView}
+            properties={dbData.properties}
+            onClose={() => setIsConfigDrawerOpen(false)}
+            onUpdateView={handleUpdateView}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Row Page Drawer Modal */}
       <AnimatePresence>
         {selectedDrawerItem && (
@@ -526,3 +604,4 @@ export function DatabaseContainer({
     </div>
   );
 }
+

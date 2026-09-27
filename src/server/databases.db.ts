@@ -289,7 +289,7 @@ export async function deleteDatabaseItem(itemId: string) {
   return { success: true };
 }
 
-export async function addDatabaseView(databaseId: string, view: { name: string; type: 'table' | 'board' | 'form' | 'list'; config?: any }) {
+export async function addDatabaseView(databaseId: string, view: { name: string; type: string; config?: any }) {
   const existingViews = await db.select().from(databaseViews).where(eq(databaseViews.databaseId, databaseId));
   const maxOrder = existingViews.reduce((max, v) => Math.max(max, v.order), -1);
 

@@ -85,10 +85,10 @@ export const deleteDatabaseItem = createServerFn({ method: 'POST' })
   });
 
 export const createDatabaseView = createServerFn({ method: 'POST' })
-  .validator((input: { databaseId: string; name: string; type: 'table' | 'board' | 'form' | 'list'; config?: any }) => input)
-  .handler(async ({ data }: { data: { databaseId: string; name: string; type: 'table' | 'board' | 'form' | 'list'; config?: any } }) => {
+  .validator((input: { databaseId: string; name: string; type: string; config?: any }) => input)
+  .handler(async ({ data }: { data: { databaseId: string; name: string; type: string; config?: any } }) => {
     const { addDatabaseView } = await import('./databases.db');
-    return addDatabaseView(data.databaseId, data);
+    return addDatabaseView(data.databaseId, data as any);
   });
 
 export const updateDatabaseView = createServerFn({ method: 'POST' })
