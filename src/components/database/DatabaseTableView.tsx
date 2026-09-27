@@ -145,11 +145,35 @@ export function DatabaseTableView({
   // Apple Grid Keyboard Focus State ({ rowIndex, colIndex })
   const [focusedCell, setFocusedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
 
+  const titleInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const shouldFocusNewRowRef = useRef<boolean>(false);
+  const prevItemsLengthRef = useRef<number>(items.length);
+
   const handleAddNewRow = () => {
+    shouldFocusNewRowRef.current = true;
     const newRowIndex = items.length;
     setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
     onAddItem();
   };
+
+  useEffect(() => {
+    if (!readOnly && (items.length > prevItemsLengthRef.current || shouldFocusNewRowRef.current)) {
+      const newRowIndex = items.length - 1;
+      if (newRowIndex >= 0) {
+        setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
+        const lastItem = items[newRowIndex];
+        if (lastItem) {
+          const el = titleInputRefs.current.get(lastItem.id);
+          if (el) {
+            el.focus();
+            el.select();
+          }
+        }
+      }
+      shouldFocusNewRowRef.current = false;
+    }
+    prevItemsLengthRef.current = items.length;
+  }, [items, readOnly]);
 
   const handleNavigateCell = (rIndex: number, cIndex: number, shift: boolean = false) => {
     const totalCols = nonTitleProps.length + 1;
@@ -562,6 +586,13 @@ export function DatabaseTableView({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <input
+                        ref={(el) => {
+                          if (el) {
+                            titleInputRefs.current.set(item.id, el);
+                          } else {
+                            titleInputRefs.current.delete(item.id);
+                          }
+                        }}
                         type="text"
                         defaultValue={item.title}
                         disabled={readOnly}
