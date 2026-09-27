@@ -230,6 +230,13 @@ export const getPageHistory = createServerFn({ method: 'GET' })
     return fetchPageHistory(data);
   });
 
+export const getPageHistoryDetail = createServerFn({ method: 'GET' })
+  .validator((historyId: string) => historyId)
+  .handler(async ({ data: historyId }: { data: string }) => {
+    const { fetchPageHistoryDetail } = await import('./pages.db');
+    return fetchPageHistoryDetail(historyId);
+  });
+
 export const restorePageVersion = createServerFn({ method: 'POST' })
   .validator((historyId: string) => historyId)
   .handler(async ({ data: historyId }: { data: string }) => {

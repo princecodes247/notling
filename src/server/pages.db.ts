@@ -880,9 +880,9 @@ export async function recordPageHistory(input: {
 
     const summary = input.changeSummary ?? (input.title !== undefined ? `Changed title to "${finalTitle}"` : 'Updated document content');
 
-    // Throttle: if user recorded entry in last 20 sec for this page, update it instead of creating duplicate rows
-    const twentySecsAgo = new Date(Date.now() - 20000);
-    const isRecent = latestHistory && new Date(latestHistory.createdAt).getTime() > twentySecsAgo.getTime();
+    // Throttle: if user recorded entry in last 5 minutes (300,000ms) for this page, update it instead of creating duplicate rows
+    const fiveMinsAgo = new Date(Date.now() - 300000);
+    const isRecent = latestHistory && new Date(latestHistory.createdAt).getTime() > fiveMinsAgo.getTime();
 
     if (isRecent) {
       // Baseline for throttled entry is the entry BEFORE it (historyEntries[1]), or empty array if first entry
@@ -919,6 +919,23 @@ export async function recordPageHistory(input: {
         changeSummary: summary,
       })
       .returning();
+
+    // Automatic Pruning: keep at most 50 history entries per page to prevent database bloat
+    try {
+      const oldEntries = await db
+        .select({ id: pageHistory.id })
+        .from(pageHistory)
+        .where(eq(pageHistory.pageId, input.pageId))
+        .orderBy(desc(pageHistory.createdAt))
+        .offset(50);
+
+      if (oldEntries.length > 0) {
+        const idsToDelete = oldEntries.map((e) => e.id);
+        await db.delete(pageHistory).where(inArray(pageHistory.id, idsToDelete));
+      }
+    } catch (pruneErr) {
+      console.warn('Failed to prune old page history:', pruneErr);
+    }
 
     return newHistory;
   } catch (err) {
@@ -961,8 +978,20 @@ export async function fetchPageHistory(input: { pageId: string; cursor?: string;
       }
     }
 
+    // Select lightweight list columns only - omitting heavy full content JSON blobs
     const historyList = await db
-      .select()
+      .select({
+        id: pageHistory.id,
+        pageId: pageHistory.pageId,
+        userId: pageHistory.userId,
+        userEmail: pageHistory.userEmail,
+        userName: pageHistory.userName,
+        userAvatarUrl: pageHistory.userAvatarUrl,
+        title: pageHistory.title,
+        delta: pageHistory.delta,
+        changeSummary: pageHistory.changeSummary,
+        createdAt: pageHistory.createdAt,
+      })
       .from(pageHistory)
       .where(and(...conditions))
       .orderBy(desc(pageHistory.createdAt))
@@ -980,6 +1009,26 @@ export async function fetchPageHistory(input: { pageId: string; cursor?: string;
   } catch (err) {
     console.error('Error fetching page history:', err);
     return { items: [], nextCursor: null, hasMore: false };
+  }
+}
+
+export async function fetchPageHistoryDetail(historyId: string) {
+  try {
+    const [entry] = await db
+      .select()
+      .from(pageHistory)
+      .where(eq(pageHistory.id, historyId))
+      .limit(1);
+
+    if (!entry) return null;
+
+    const canRead = await checkCanUserEditPage(entry.pageId);
+    if (!canRead) return null;
+
+    return entry;
+  } catch (err) {
+    console.error('Error fetching page history detail:', err);
+    return null;
   }
 }
 
