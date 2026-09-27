@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, Database } from 'lucide-react';
+import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, Database, ChevronDown, FileText, FolderPlus } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,
@@ -174,6 +175,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
   const [isRootDropTarget, setIsRootDropTarget] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const createMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showCreateMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (createMenuRef.current && !createMenuRef.current.contains(event.target as Node)) {
+        setShowCreateMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCreateMenu]);
 
   const workspaceNodes = treeNodes.filter((n) => !n.isShared);
   const sharedNodes = treeNodes.filter((n) => n.isShared === true);
@@ -298,8 +316,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* 2. Quick Actions Section (Search + New Document) */}
-      <div className="p-2.5 flex flex-col gap-1 border-b border-stone-200/60 dark:border-zinc-800/80">
+      {/* 2. Quick Actions Section (Search + Grouped New Creation Button) */}
+      <div className="p-2.5 flex flex-col gap-1.5 border-b border-stone-200/60 dark:border-zinc-800/80">
         <button
           type="button"
           onClick={toggleSearch}
@@ -312,19 +330,100 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <kbd className="text-[10px] font-mono text-stone-400 dark:text-zinc-500 bg-stone-200/70 dark:bg-zinc-800 px-1.5 py-0.5 rounded">⌘K</kbd>
         </button>
 
-        <button
-          type="button"
-          disabled={isCreatingPage}
-          onClick={() => !isCreatingPage && onCreatePage()}
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[#1f4d3d] dark:text-emerald-400 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 hover:bg-[#1f4d3d]/20 dark:hover:bg-emerald-900/50 font-medium text-xs transition-colors w-full text-left cursor-pointer disabled:opacity-50"
-        >
-          {isCreatingPage ? (
-            <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin text-[#1f4d3d] dark:text-emerald-400" />
-          ) : (
-            <Plus className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400" />
-          )}
-          <span>New Document</span>
-        </button>
+        {/* Grouped Split New Button */}
+        <div className="relative z-30 w-full flex items-center rounded-lg" ref={createMenuRef}>
+          <button
+            type="button"
+            disabled={isCreatingPage}
+            onClick={() => !isCreatingPage && onCreatePage()}
+            className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-l-lg text-[#1f4d3d] dark:text-emerald-400 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 hover:bg-[#1f4d3d]/20 dark:hover:bg-emerald-900/50 font-semibold text-xs transition-colors text-left cursor-pointer disabled:opacity-50 border-r border-[#1f4d3d]/15 dark:border-emerald-800/40"
+            title="Create a new document"
+          >
+            {isCreatingPage ? (
+              <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin text-[#1f4d3d] dark:text-emerald-400" />
+            ) : (
+              <Plus className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400 shrink-0" />
+            )}
+            <span className="truncate">New Document</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCreateMenu((prev) => !prev)}
+            className="px-2 h-full rounded-r-lg text-[#1f4d3d] dark:text-emerald-400 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 hover:bg-[#1f4d3d]/20 dark:hover:bg-emerald-900/50 font-medium text-xs transition-colors cursor-pointer flex items-center justify-center shrink-0"
+            title="More creation options"
+          >
+            <ChevronDown className={cn("w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400 transition-transform duration-150", showCreateMenu && "rotate-180")} />
+          </button>
+
+          {/* Creation Dropdown Menu */}
+          <AnimatePresence>
+            {showCreateMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowCreateMenu(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                  transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute left-0 right-0 top-9 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-md shadow-xl z-50 text-xs flex flex-col font-sans overflow-hidden origin-top"
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateMenu(false);
+                      onCreatePage();
+                    }}
+                    className="w-full text-left px-3 py-3 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-stone-900 dark:text-zinc-100">New Document</span>
+                      <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Rich text page with blocks & embeds</span>
+                    </div>
+                  </button>
+
+                  {onCreateDatabase && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateMenu(false);
+                        onCreateDatabase();
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
+                    >
+                      <Database className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-stone-900 dark:text-zinc-100">New Database & Form</span>
+                        <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Spreadsheet table with form collection</span>
+                      </div>
+                    </button>
+                  )}
+
+                  {onCreateFolder && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCreateMenu(false);
+                        onCreateFolder();
+                      }}
+                      className="w-full text-left px-3 py-3 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
+                    >
+                      <FolderPlus className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-semibold text-stone-900 dark:text-zinc-100">New Folder</span>
+                        <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Folder to organize pages</span>
+                      </div>
+                    </button>
+                  )}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* 3. Main Navigation Links (Home, Folders, Import, Settings, Trash) */}
@@ -341,29 +440,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label="Folders"
           isActive={activeNav === 'folders'}
           onClick={() => onNavClick?.('folders')}
-          badge={
-            <span className="text-[10px] bg-stone-200 dark:bg-zinc-800 font-medium text-stone-600 dark:text-zinc-400 px-1.5 py-0.2 rounded-full">
-              {workspaceNodes.filter((n) => n.children && n.children.length > 0).length || workspaceNodes.length}
-            </span>
-          }
-        />
-
-        {onCreateDatabase && (
-          <SidebarNavItem
-            icon={Database}
-            isLucide
-            label="New Database & Form"
-            isActive={false}
-            onClick={onCreateDatabase}
-          />
-        )}
-
-        <SidebarNavItem
-          icon={Upload}
-          isLucide
-          label="Import"
-          isActive={false}
-          onClick={() => setImportOpen(true)}
         />
 
         <SidebarNavItem

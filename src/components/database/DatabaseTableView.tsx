@@ -338,7 +338,7 @@ export function DatabaseTableView({
           <thead>
             <tr className="border-b border-stone-200/80 dark:border-zinc-800/80 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
-              <th className="py-2.5 px-3 w-10 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
+              <th className="py-2.5 px-3 w-10 text-right pr-9 border-r border-stone-200/70 dark:border-zinc-800/70">
                 <input
                   type="checkbox"
                   checked={items.length > 0 && selectedItemIds.length === items.length}
@@ -371,7 +371,7 @@ export function DatabaseTableView({
                           setEditingHeaderId(null);
                         }
                       }}
-                      className="w-full px-1.5 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-semibold focus:outline-none text-xs"
+                      className="w-full py-0.5 text-stone-900 dark:text-zinc-100 font-semibold focus:outline-none text-xs"
                       autoFocus
                     />
                   ) : (
@@ -382,7 +382,7 @@ export function DatabaseTableView({
                           setHeaderTitle(titleProp.name);
                         }
                       }}
-                      className="cursor-pointer hover:text-[#1f4d3d] font-semibold truncate text-xs"
+                      className="cursor-pointer hover:text-brand-600 w-full font-semibold truncate text-xs"
                     >
                       {titleProp?.name || 'Name'}
                     </span>
@@ -396,7 +396,6 @@ export function DatabaseTableView({
                 />
               </th>
 
-              {/* Dynamic Property Column Headers */}
               {nonTitleProps.map((prop) => (
                 <ColumnHeaderCell
                   key={prop.id}
@@ -463,9 +462,8 @@ export function DatabaseTableView({
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
                       onChange={() => handleToggleSelectItem(item.id)}
-                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] cursor-pointer transition-opacity ${
-                        selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                      }`}
+                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] cursor-pointer transition-opacity ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}
                     />
                   </div>
                 </td>
@@ -496,7 +494,7 @@ export function DatabaseTableView({
                           });
                         }
                       }}
-                      className="w-full bg-transparent border-none focus:bg-stone-100 dark:focus:bg-zinc-800 focus:outline-none px-1.5 py-0.5 rounded text-stone-900 dark:text-zinc-100 font-medium"
+                      className="w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-900 dark:text-zinc-100 font-medium"
                       placeholder="Untitled"
                     />
 
@@ -526,11 +524,10 @@ export function DatabaseTableView({
                       key={prop.id}
                       onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
                       style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px` } : { minWidth: '150px' }}
-                      className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors ${
-                        isFocused
-                          ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
-                          : ''
-                      }`}
+                      className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors ${isFocused
+                        ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500'
+                        : ''
+                        }`}
                     >
                       <InteractiveCell
                         prop={prop}
@@ -585,7 +582,7 @@ export function DatabaseTableView({
         {!readOnly && (
           <div className="p-2 border-t border-stone-200/70 dark:border-zinc-800/70 bg-stone-50/40 dark:bg-zinc-900/40">
             <button
-              onClick={onAddItem}
+              onClick={() => onAddItem()}
               className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800 active:scale-[0.96] transition-all cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 text-stone-400" />
@@ -736,7 +733,7 @@ function ColumnHeaderCell({
                   setEditingHeaderId(null);
                 }
               }}
-              className="w-full px-1 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-medium text-xs focus:outline-none"
+              className="w-full py-0.5 rounded border-brand-600 text-stone-900 dark:text-zinc-100 font-medium text-2xs focus:outline-none"
               autoFocus
             />
           ) : (
@@ -747,7 +744,7 @@ function ColumnHeaderCell({
                   setHeaderTitle(prop.name);
                 }
               }}
-              className="cursor-pointer hover:text-stone-950 dark:hover:text-white transition-colors truncate"
+              className="cursor-pointer w-full hover:text-stone-950 dark:hover:text-white transition-colors truncate"
             >
               {prop.name}
             </span>
@@ -1013,7 +1010,7 @@ function OptionRowItem({
         setDraggedIndex(null);
         setDragOver(false);
       }}
-      className={`group/opt flex flex-col p-1.5 rounded-lg border transition-transform transition-opacity transition-colors duration-150 select-none ${draggedIndex === index
+      className={`group/opt flex flex-col p-1.5 rounded border transition-transform transition-opacity transition-colors duration-150 select-none ${draggedIndex === index
         ? 'opacity-40 border-emerald-500/80 bg-emerald-50/40 dark:bg-emerald-950/30 scale-[0.99] shadow-inner'
         : dragOver
           ? 'border-[#1f4d3d] bg-emerald-50/50 dark:bg-emerald-950/20'
@@ -1202,7 +1199,7 @@ function InteractiveCell({
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 placeholder-stone-400"
+          className="w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 placeholder-stone-400"
           placeholder="Empty"
         />
       );
@@ -1215,9 +1212,8 @@ function InteractiveCell({
             defaultValue={value ?? ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : null)}
-            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono tabular-nums ${
-              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
-            }`}
+            className={`w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 font-mono tabular-nums ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+              }`}
             placeholder="0"
           />
           {isInvalid && (
@@ -1262,9 +1258,8 @@ function InteractiveCell({
                 else onChange(val);
               }
             }}
-            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200 ${
-              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
-            }`}
+            className={`w-full bg-transparent border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+              }`}
             placeholder="YYYY-MM-DD or today"
           />
           <button
@@ -1368,7 +1363,6 @@ function InteractiveCell({
             width={240}
           >
             <div className="p-1.5 space-y-2 font-sans text-left">
-              {/* Requirement 3: Top Search & Create Input */}
               <div className="relative">
                 <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
                 <input
@@ -1383,13 +1377,12 @@ function InteractiveCell({
                     }
                     if (e.key === 'Escape') closePopover();
                   }}
-                  className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
+                  className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
                   autoFocus
                 />
               </div>
 
-              {/* Requirement 1: Options List with Drag & Reorder + Single Color Palette */}
-              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-0.5 no-scrollbar">
+              <div className="max-h-48 overflow-y-auto space-y-1.5 no-scrollbar">
                 {filteredOptions.map((opt) => {
                   const isChecked = selectedIds.includes(opt.id);
                   const realIndex = (prop.options || []).findIndex((o) => o.id === opt.id);
@@ -1457,9 +1450,8 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
-            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${
-              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
-            }`}
+            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+              }`}
             placeholder="https://..."
           />
           {value && !isInvalid && (
@@ -1489,9 +1481,8 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
-            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${
-              isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
-            }`}
+            className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
+              }`}
             placeholder="name@domain.com"
           />
           {isInvalid && (

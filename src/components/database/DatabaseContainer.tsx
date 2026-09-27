@@ -85,13 +85,22 @@ export function DatabaseContainer({
   }, [dbData.items, searchQuery]);
 
   // Handlers for Items (100% Optimistic)
-  const handleAddItem = async (initialProps: Record<string, any> = {}) => {
+  const handleAddItem = async (initialProps?: Record<string, any>) => {
+    // Guard against DOM PointerEvent / MouseEvent being passed as initialProps when called directly from onClick
+    const safeProps =
+      initialProps &&
+      typeof initialProps === 'object' &&
+      !('nativeEvent' in initialProps) &&
+      !(initialProps instanceof Event)
+        ? initialProps
+        : {};
+
     const tempId = crypto.randomUUID();
     const titleProp = dbData.properties.find((p: DatabaseProperty) => p.type === 'title');
     const defaultTitle = 'Untitled';
     const mergedProps = {
       ...(titleProp ? { [titleProp.id]: defaultTitle } : {}),
-      ...initialProps,
+      ...safeProps,
     };
 
     const optimisticItem: DatabaseItem = {

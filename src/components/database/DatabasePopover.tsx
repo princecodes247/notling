@@ -136,7 +136,7 @@ export function DatabasePopover({
             maxWidth: `${pos.maxWidth}px`,
             zIndex: 99999,
           }}
-          className={`rounded-2xl bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800/90 shadow-2xl p-2 font-sans antialiased select-none ${className}`}
+          className={`rounded-md bg-white dark:bg-[#18181b] border border-stone-200/90 dark:border-zinc-800/90 shadow-2xl p-1 px-0.5 font-sans antialiased select-none ${className}`}
         >
           {children}
         </motion.div>

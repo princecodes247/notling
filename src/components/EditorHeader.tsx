@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Download01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
@@ -41,6 +41,23 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
     setShowHeaderMenu,
     setShowEmojiPicker,
   } = useUIStore();
+
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showHeaderMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowHeaderMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showHeaderMenu, setShowHeaderMenu]);
 
   const handleTriggerUndo = () => {
     window.dispatchEvent(new CustomEvent('editor-undo'));
@@ -85,11 +102,10 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                 onClick={handleTriggerUndo}
                 disabled={!canUndo}
                 aria-label="Undo (Cmd+Z)"
-                className={`p-1.5 rounded-md transition-colors ${
-                  canUndo
-                    ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
-                    : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
-                }`}
+                className={`p-1.5 rounded-md transition-colors ${canUndo
+                  ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
+                  : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
+                  }`}
               >
                 <Undo className="w-3.5 h-3.5" />
               </button>
@@ -100,11 +116,10 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                 onClick={handleTriggerRedo}
                 disabled={!canRedo}
                 aria-label="Redo (Cmd+Shift+Z)"
-                className={`p-1.5 rounded-md transition-colors ${
-                  canRedo
-                    ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
-                    : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
-                }`}
+                className={`p-1.5 rounded-md transition-colors ${canRedo
+                  ? 'hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 cursor-pointer'
+                  : 'text-stone-300 dark:text-zinc-700 cursor-not-allowed opacity-40'
+                  }`}
               >
                 <Redo className="w-3.5 h-3.5" />
               </button>
@@ -135,7 +150,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           )}
 
           {/* Kebab More Options Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
               onClick={() => setShowHeaderMenu(!showHeaderMenu)}
@@ -146,86 +161,80 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
             </button>
 
             {showHeaderMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowHeaderMenu(false)}
-                />
-                <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col">
-                  {/* Export Option */}
+              <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-9999999 text-xs flex flex-col">
+                {/* Export Option */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowHeaderMenu(false);
+                    setExportModalOpen(true);
+                  }}
+                  className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                >
+                  <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
+                  <span>Export Document</span>
+                </button>
+
+                {/* Bookmark / Favorite Option */}
+                {togglePinMutation && (
                   <button
                     type="button"
                     onClick={() => {
                       setShowHeaderMenu(false);
-                      setExportModalOpen(true);
+                      togglePinMutation?.mutate?.();
                     }}
                     className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                   >
-                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
-                    <span>Export Document</span>
+                    <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
+                    <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
                   </button>
+                )}
 
-                  {/* Bookmark / Favorite Option */}
-                  {togglePinMutation && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowHeaderMenu(false);
-                        togglePinMutation?.mutate?.();
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                    >
-                      <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
-                      <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
-                    </button>
-                  )}
+                {/* Duplicate Option */}
+                {duplicateMutation && !isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      duplicateMutation?.mutate?.();
+                    }}
+                    disabled={isDuplicating}
+                    className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                    <span>{isDuplicating ? 'Duplicating...' : 'Duplicate Page'}</span>
+                  </button>
+                )}
 
-                  {/* Duplicate Option */}
-                  {duplicateMutation && !isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowHeaderMenu(false);
-                        duplicateMutation?.mutate?.();
-                      }}
-                      disabled={isDuplicating}
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
-                    >
-                      <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
-                      <span>{isDuplicating ? 'Duplicating...' : 'Duplicate Page'}</span>
-                    </button>
-                  )}
+                {/* Change Icon Option */}
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      setShowEmojiPicker(true);
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                  >
+                    <span className="text-xs">✨</span>
+                    <span>Change Icon</span>
+                  </button>
+                )}
 
-                  {/* Change Icon Option */}
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowHeaderMenu(false);
-                        setShowEmojiPicker(true);
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                    >
-                      <span className="text-xs">✨</span>
-                      <span>Change Icon</span>
-                    </button>
-                  )}
-
-                  {/* Delete Option */}
-                  {onDelete && !isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowHeaderMenu(false);
-                        onDelete();
-                      }}
-                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium cursor-pointer border-t border-stone-100 dark:border-zinc-800/80 mt-1 pt-1.5"
-                    >
-                      <span>Delete Page/DB</span>
-                    </button>
-                  )}
-                </div>
-              </>
+                {/* Delete Option */}
+                {onDelete && !isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowHeaderMenu(false);
+                      onDelete();
+                    }}
+                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium cursor-pointer border-t border-stone-100 dark:border-zinc-800/80 mt-1 pt-1.5"
+                  >
+                    <span>Delete Page</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
