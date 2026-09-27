@@ -34,8 +34,8 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
     const cleanEmail = session?.email?.trim().toLowerCase();
     const isOwnerOrMember = session?.workspaceId === targetWorkspaceId;
 
-    // Run workspace pages, shared pages, and recently viewed public pages in PARALLEL
-    const [workspacePages, sharedPages, recentViews] = await Promise.all([
+    // Run workspace pages, shared pages, recently viewed public pages, and database row item subpages in PARALLEL
+    const [workspacePages, sharedPages, recentViews, dbItemRows] = await Promise.all([
       // 1. Workspace pages (filtered at SQL level, contentText truncated at DB level to 160 chars)
       db
         .select({
@@ -110,15 +110,15 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           .orderBy(desc(pageViews.viewedAt))
           .limit(10)
         : Promise.resolve([]),
+
+      // 4. DB row item subpages to exclude them from sidebar page tree
+      db
+        .select({ pageId: databaseItems.pageId })
+        .from(databaseItems)
+        .where(sql`${databaseItems.pageId} IS NOT NULL`),
     ]);
 
     const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
-
-    // Query DB row item subpages to exclude them from sidebar page tree
-    const dbItemRows = await db
-      .select({ pageId: databaseItems.pageId })
-      .from(databaseItems)
-      .where(sql`${databaseItems.pageId} IS NOT NULL`);
     const dbItemPageIdSet = new Set(dbItemRows.map((r) => r.pageId).filter(Boolean));
 
     // Single-pass tree construction
@@ -1256,17 +1256,17 @@ export async function reorderPageInDb(input: {
     const clampOrder = Math.max(0, Math.min(otherSiblings.length, targetOrder));
     otherSiblings.splice(clampOrder, 0, { id: pageId, order: clampOrder });
 
-    for (let i = 0; i < otherSiblings.length; i++) {
-      const sib = otherSiblings[i];
-      await db
+    const updates = otherSiblings.map((sib, i) =>
+      db
         .update(pages)
         .set({
           parentId: targetParentId,
           order: i,
           updatedAt: new Date(),
         })
-        .where(eq(pages.id, sib.id));
-    }
+        .where(eq(pages.id, sib.id))
+    );
+    await Promise.all(updates);
 
     return { success: true };
   } catch (err) {
@@ -1283,19 +1283,22 @@ export async function performSoftDelete(pageId: string) {
       return { success: false };
     }
 
-    const softDeleteRecursive = async (id: string) => {
-      await db
-        .update(pages)
-        .set({ isDeleted: true, deletedAt: new Date() })
-        .where(eq(pages.id, id));
-
+    const idsToDelete: string[] = [];
+    const collectRecursive = async (id: string) => {
+      idsToDelete.push(id);
       const children = await db.select({ id: pages.id }).from(pages).where(eq(pages.parentId, id));
       for (const child of children) {
-        await softDeleteRecursive(child.id);
+        await collectRecursive(child.id);
       }
     };
 
-    await softDeleteRecursive(pageId);
+    await collectRecursive(pageId);
+    if (idsToDelete.length > 0) {
+      await db
+        .update(pages)
+        .set({ isDeleted: true, deletedAt: new Date() })
+        .where(inArray(pages.id, idsToDelete));
+    }
     return { success: true };
   } catch (err) {
     console.error('Error soft deleting page:', err);
@@ -1311,19 +1314,22 @@ export async function performRestore(pageId: string) {
       return { success: false };
     }
 
-    const restoreRecursive = async (id: string) => {
-      await db
-        .update(pages)
-        .set({ isDeleted: false, deletedAt: null })
-        .where(eq(pages.id, id));
-
+    const idsToRestore: string[] = [];
+    const collectRecursive = async (id: string) => {
+      idsToRestore.push(id);
       const children = await db.select({ id: pages.id }).from(pages).where(eq(pages.parentId, id));
       for (const child of children) {
-        await restoreRecursive(child.id);
+        await collectRecursive(child.id);
       }
     };
 
-    await restoreRecursive(pageId);
+    await collectRecursive(pageId);
+    if (idsToRestore.length > 0) {
+      await db
+        .update(pages)
+        .set({ isDeleted: false, deletedAt: null })
+        .where(inArray(pages.id, idsToRestore));
+    }
     return { success: true };
   } catch (err) {
     console.error('Error restoring page:', err);
@@ -1487,22 +1493,15 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
     const session = await getSessionImpl();
     const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
 
-    const workspacePages = await db
-      .select({
-        id: pages.id,
-        workspaceId: pages.workspaceId,
-        visibility: pages.visibility,
-        title: pages.title,
-        icon: pages.icon,
-        contentText: pages.contentText,
-        updatedAt: pages.updatedAt,
-      })
-      .from(pages)
-      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false)));
+    const searchFilter = cleanQuery
+      ? or(
+          sql`lower(${pages.title}) LIKE lower(${'%' + cleanQuery + '%'})`,
+          sql`lower(${pages.contentText}) LIKE lower(${'%' + cleanQuery + '%'})`
+        )
+      : undefined;
 
-    let sharedPagesList: typeof workspacePages = [];
-    if (userEmail) {
-      sharedPagesList = await db
+    const [workspacePages, sharedPagesList] = await Promise.all([
+      db
         .select({
           id: pages.id,
           workspaceId: pages.workspaceId,
@@ -1512,10 +1511,25 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
           contentText: pages.contentText,
           updatedAt: pages.updatedAt,
         })
-        .from(pageShares)
-        .innerJoin(pages, eq(pageShares.pageId, pages.id))
-        .where(and(eq(pageShares.email, userEmail), eq(pages.isDeleted, false)));
-    }
+        .from(pages)
+        .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, false), searchFilter)),
+
+      userEmail
+        ? db
+          .select({
+            id: pages.id,
+            workspaceId: pages.workspaceId,
+            visibility: pages.visibility,
+            title: pages.title,
+            icon: pages.icon,
+            contentText: pages.contentText,
+            updatedAt: pages.updatedAt,
+          })
+          .from(pageShares)
+          .innerJoin(pages, eq(pageShares.pageId, pages.id))
+          .where(and(eq(pageShares.email, userEmail), eq(pages.isDeleted, false), searchFilter))
+        : Promise.resolve([]),
+    ]);
 
     const allCandidatePagesMap = new Map<string, typeof workspacePages[0]>();
     for (const p of [...workspacePages, ...sharedPagesList]) {

@@ -12,7 +12,7 @@ import {
   type DatabaseView,
   type DatabaseForm,
 } from '~/db/schema';
-import { eq, asc, desc, and, or, isNull } from 'drizzle-orm';
+import { eq, asc, desc, and, or, isNull, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { fetchPage } from './pages.db';
 
@@ -38,28 +38,27 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
   if (!row || !row.database || row.isDeleted === true) return null;
   const database = row.database;
 
-  const properties = await db
-    .select()
-    .from(databaseProperties)
-    .where(eq(databaseProperties.databaseId, database.id))
-    .orderBy(asc(databaseProperties.order));
-
-  const items = await db
-    .select()
-    .from(databaseItems)
-    .where(eq(databaseItems.databaseId, database.id))
-    .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt));
-
-  const views = await db
-    .select()
-    .from(databaseViews)
-    .where(eq(databaseViews.databaseId, database.id))
-    .orderBy(asc(databaseViews.order));
-
-  const forms = await db
-    .select()
-    .from(databaseForms)
-    .where(eq(databaseForms.databaseId, database.id));
+  const [properties, items, views, forms] = await Promise.all([
+    db
+      .select()
+      .from(databaseProperties)
+      .where(eq(databaseProperties.databaseId, database.id))
+      .orderBy(asc(databaseProperties.order)),
+    db
+      .select()
+      .from(databaseItems)
+      .where(eq(databaseItems.databaseId, database.id))
+      .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt)),
+    db
+      .select()
+      .from(databaseViews)
+      .where(eq(databaseViews.databaseId, database.id))
+      .orderBy(asc(databaseViews.order)),
+    db
+      .select()
+      .from(databaseForms)
+      .where(eq(databaseForms.databaseId, database.id)),
+  ]);
 
   return {
     database,
@@ -264,8 +263,13 @@ export async function removeDatabase(databaseId: string) {
 }
 
 export async function addDatabaseProperty(databaseId: string, prop: { id?: string; name: string; type: any; options?: any[] }) {
-  const existingProps = await db.select().from(databaseProperties).where(eq(databaseProperties.databaseId, databaseId));
-  const maxOrder = existingProps.reduce((max, p) => Math.max(max, p.order), -1);
+  const [lastProp] = await db
+    .select({ order: databaseProperties.order })
+    .from(databaseProperties)
+    .where(eq(databaseProperties.databaseId, databaseId))
+    .orderBy(desc(databaseProperties.order))
+    .limit(1);
+  const maxOrder = lastProp ? lastProp.order : -1;
 
   const [newProp] = await db
     .insert(databaseProperties)
@@ -328,8 +332,13 @@ export async function getOrCreateDatabaseItemPage(itemId: string) {
 }
 
 export async function addDatabaseItem(databaseId: string, item: { id?: string; title?: string; properties?: Record<string, any>; pageId?: string }) {
-  const existingItems = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, databaseId));
-  const maxOrder = existingItems.reduce((max, i) => Math.max(max, i.order), -1);
+  const [lastItem] = await db
+    .select({ order: databaseItems.order })
+    .from(databaseItems)
+    .where(eq(databaseItems.databaseId, databaseId))
+    .orderBy(desc(databaseItems.order))
+    .limit(1);
+  const maxOrder = lastItem ? lastItem.order : -1;
 
   const [dbInfo] = await db.select({ workspaceId: databases.workspaceId, pageId: databases.pageId }).from(databases).where(eq(databases.id, databaseId)).limit(1);
 
@@ -387,8 +396,13 @@ export async function deleteDatabaseItem(itemId: string) {
 }
 
 export async function addDatabaseView(databaseId: string, view: { name: string; type: string; config?: any }) {
-  const existingViews = await db.select().from(databaseViews).where(eq(databaseViews.databaseId, databaseId));
-  const maxOrder = existingViews.reduce((max, v) => Math.max(max, v.order), -1);
+  const [lastView] = await db
+    .select({ order: databaseViews.order })
+    .from(databaseViews)
+    .where(eq(databaseViews.databaseId, databaseId))
+    .orderBy(desc(databaseViews.order))
+    .limit(1);
+  const maxOrder = lastView ? lastView.order : -1;
 
   const [newView] = await db
     .insert(databaseViews)
@@ -468,9 +482,7 @@ export async function saveDatabaseItemContent(itemId: string, content: any[]) {
 
 export async function deleteDatabaseItemsBulk(itemIds: string[]) {
   if (!itemIds.length) return { success: true, count: 0 };
-  for (const id of itemIds) {
-    await db.delete(databaseItems).where(eq(databaseItems.id, id));
-  }
+  await db.delete(databaseItems).where(inArray(databaseItems.id, itemIds));
   return { success: true, count: itemIds.length };
 }
 
@@ -480,10 +492,10 @@ export async function convertPropertyType(propertyId: string, newType: string) {
 
   const items = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, prop.databaseId));
 
-  // Perform type conversion on existing row property values
-  for (const item of items) {
+  // Perform type conversion on existing row property values concurrently
+  const updates = items.map(async (item) => {
     const rawVal = item.properties?.[propertyId];
-    if (rawVal === undefined || rawVal === null) continue;
+    if (rawVal === undefined || rawVal === null) return;
 
     let convertedVal: any = rawVal;
     if (newType === 'number') {
@@ -508,7 +520,9 @@ export async function convertPropertyType(propertyId: string, newType: string) {
         },
       })
       .where(eq(databaseItems.id, item.id));
-  }
+  });
+
+  await Promise.all(updates);
 
   const [updatedProp] = await db
     .update(databaseProperties)
