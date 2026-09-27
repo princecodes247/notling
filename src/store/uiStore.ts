@@ -194,13 +194,17 @@ export const useUIStore = create<UIState>((set, get) => ({
     let nextPath: string | null = null;
     const state = get();
     const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
-    const index = fileTabs.findIndex((t) => t.id === tabId);
+    const index = fileTabs.findIndex(
+      (t) => t.id === tabId || t.path.endsWith(`/${tabId}`)
+    );
     if (index === -1) return null;
 
-    const remainingTabs = fileTabs.filter((t) => t.id !== tabId);
+    const matchedTab = fileTabs[index];
+    const actualTabId = matchedTab.id;
+    const remainingTabs = fileTabs.filter((t) => t.id !== actualTabId);
     let nextActiveId = state.activeTabId;
 
-    if (state.activeTabId === tabId) {
+    if (state.activeTabId === actualTabId || state.activeTabId === tabId) {
       if (remainingTabs.length > 0) {
         const nextIndex = Math.max(0, index - 1);
         nextActiveId = remainingTabs[nextIndex].id;

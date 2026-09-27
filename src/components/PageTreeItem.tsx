@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, ChevronRight, ChevronDown, Plus, FileText, Copy } from 'lucide-react';
+import { Star, ChevronRight, ChevronDown, Plus, Copy } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Delete02Icon,

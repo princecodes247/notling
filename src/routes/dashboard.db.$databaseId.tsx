@@ -3,9 +3,10 @@ import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDatabase, deleteDatabase } from '~/server/databases';
 import { togglePinPage, duplicatePage, softDeletePage } from '~/server/pages';
+import { deleteClientDatabase } from '~/lib/pageMetaSync';
 import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as dashboardRoute } from './dashboard';
-import { Database as DatabaseIcon, ArrowLeft } from 'lucide-react';
+import { Database as DatabaseIcon, ArrowLeft, Trash2 } from 'lucide-react';
 import { useUIStore } from '~/store/uiStore';
 
 export const Route = createRoute({
@@ -68,10 +69,19 @@ function DashboardDatabaseRoute() {
         await deleteDatabase({ data: databaseId });
       }
     },
+    onMutate: () => {
+      if (databaseId) {
+        const nextPath = deleteClientDatabase(queryClient, databaseId, targetPageId);
+        if (nextPath) {
+          navigate({ to: nextPath as any });
+        } else {
+          navigate({ to: '/dashboard/folders' });
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
       queryClient.invalidateQueries({ queryKey: ['databasesList'] });
-      navigate({ to: '/dashboard/folders' });
     },
   });
 
@@ -111,20 +121,41 @@ function DashboardDatabaseRoute() {
 
   if (error || !dbData) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-neutral-500 gap-4">
-        <div className="p-3 bg-red-50 dark:bg-red-950/40 text-red-600 rounded-full">
-          <DatabaseIcon className="w-8 h-8" />
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-stone-500 dark:text-zinc-400 bg-white dark:bg-[#18181b] min-h-[400px]">
+        <div className="max-w-md w-full flex flex-col items-center text-center gap-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-12 h-12 rounded-2xl bg-stone-100 dark:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-700/80 text-stone-500 dark:text-zinc-400 flex items-center justify-center shadow-2xs">
+            <DatabaseIcon className="w-6 h-6 text-stone-600 dark:text-zinc-300" />
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="text-base font-semibold text-stone-900 dark:text-white tracking-tight">
+              Database not found or in Trash
+            </h3>
+            <p className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm leading-relaxed">
+              This database may have been deleted, moved to trash, or you might not have access to view it.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/dashboard/folders' })}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-medium cursor-pointer transition-all active:scale-[0.98] shadow-2xs"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Workspace</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate({ to: '/dashboard/trash' })}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-300 text-xs font-medium cursor-pointer transition-all active:scale-[0.98]"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>View Trash</span>
+            </button>
+          </div>
         </div>
-        <h3 className="text-base font-semibold text-neutral-900 dark:text-neutral-100">
-          Database not found or failed to load
-        </h3>
-        <button
-          onClick={() => navigate({ to: '/dashboard/folders' })}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 text-xs font-semibold"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Workspace</span>
-        </button>
       </div>
     );
   }

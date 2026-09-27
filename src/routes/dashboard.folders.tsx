@@ -1,9 +1,10 @@
 import { useRef } from 'react';
 import { createRoute, useNavigate } from '@tanstack/react-router';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
 import { getPageTree, createPage, togglePinPage, duplicatePage, softDeletePage } from '~/server/pages';
 import { getDatabasesInWorkspace, createDatabase, deleteDatabase } from '~/server/databases';
+import { deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
 import { FoldersView } from '~/components/dashboard/FoldersView';
 import { Route as dashboardRoute } from './dashboard';
 
@@ -15,6 +16,7 @@ export const Route = createRoute({
 
 function DashboardFoldersPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: session } = useQuery({
     queryKey: ['session'],
@@ -134,6 +136,13 @@ function DashboardFoldersPage() {
         await deleteDatabase({ data: item.databaseId });
       }
       await softDeletePage({ data: item.id });
+    },
+    onMutate: (item) => {
+      if (item.databaseId) {
+        deleteClientDatabase(queryClient, item.databaseId, item.id);
+      } else {
+        deleteClientPage(queryClient, item.id);
+      }
     },
     onSuccess: () => {
       refetchTree();

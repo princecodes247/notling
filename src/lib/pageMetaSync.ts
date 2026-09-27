@@ -221,7 +221,59 @@ export function deleteClientPage(
       (old) => (old && Array.isArray(old) ? old.filter((item) => item.id !== pageId) : old)
     );
 
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['databasesList'] },
+      (old) => (old && Array.isArray(old) ? old.filter((db) => db.id !== pageId && db.pageId !== pageId) : old)
+    );
+
     queryClient.removeQueries({ queryKey: ['page', pageId] });
+  }
+
+  return nextPath;
+}
+
+/**
+ * Optimistically deletes a database client-side:
+ * 1. Closes open tabs for databaseId and backing pageId.
+ * 2. Cleans up Zustand `pageMeta`.
+ * 3. Removes from `['databasesList']` query cache and invalidates/removes database query.
+ */
+export function deleteClientDatabase(
+  queryClient: QueryClient | undefined,
+  databaseId: string,
+  pageId?: string | null
+): string | null {
+  const { closeTab } = useUIStore.getState();
+
+  let nextPath = closeTab(databaseId);
+  if (pageId) {
+    const nextPath2 = closeTab(pageId);
+    if (!nextPath && nextPath2) nextPath = nextPath2;
+  }
+
+  useUIStore.setState((state) => {
+    const nextMeta = { ...state.pageMeta };
+    let changed = false;
+    if (nextMeta[databaseId]) {
+      delete nextMeta[databaseId];
+      changed = true;
+    }
+    if (pageId && nextMeta[pageId]) {
+      delete nextMeta[pageId];
+      changed = true;
+    }
+    return changed ? { pageMeta: nextMeta } : state;
+  });
+
+  if (queryClient) {
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['databasesList'] },
+      (old) => (old && Array.isArray(old) ? old.filter((db) => db.id !== databaseId && db.pageId !== pageId) : old)
+    );
+    queryClient.removeQueries({ queryKey: ['database', databaseId] });
+    if (pageId) {
+      deleteClientPage(queryClient, pageId);
+    }
   }
 
   return nextPath;

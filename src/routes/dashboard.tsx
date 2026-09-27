@@ -10,7 +10,7 @@ import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
 import { createDatabase } from '~/server/databases';
-import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -393,12 +393,19 @@ function DashboardLayout() {
       return await softDeletePage({ data: pageId });
     },
     onMutate: async (pageId: string) => {
-      const nextPath = deleteClientPage(queryClient, pageId);
+      const dbMatch = databases.find((db: any) => db.pageId === pageId || db.id === pageId);
+      let nextPath: string | null = null;
+      if (dbMatch) {
+        nextPath = deleteClientDatabase(queryClient, dbMatch.id, pageId);
+      } else {
+        nextPath = deleteClientPage(queryClient, pageId);
+      }
+
       if (nextPath) {
         navigate({ to: nextPath as any });
       } else {
         const currentActiveTab = useUIStore.getState().activeTabId;
-        if (!currentActiveTab || currentActiveTab === pageId) {
+        if (!currentActiveTab || currentActiveTab === pageId || (dbMatch && currentActiveTab === dbMatch.id)) {
           navigate({ to: '/dashboard/folders' });
         }
       }
@@ -406,6 +413,7 @@ function DashboardLayout() {
     onSuccess: () => {
       refetchTree();
       queryClient.invalidateQueries({ queryKey: ['trashPages'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     },
   });
 
