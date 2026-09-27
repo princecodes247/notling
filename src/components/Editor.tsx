@@ -5,7 +5,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   PlusSignIcon,
   Folder01Icon,
-  Loading02Icon,
+  LoaderCircleIcon,
   LockIcon,
   File01Icon,
 } from '@hugeicons/core-free-icons';
@@ -420,7 +420,7 @@ export const Editor: React.FC<EditorProps> = ({
               <span>&bull;</span>
               {saveStatus === 'saving' ? (
                 <span className="flex items-center gap-1 text-stone-500 font-medium">
-                  <HugeiconsIcon icon={Loading02Icon} size={12} className="animate-spin text-stone-600" />
+                  <HugeiconsIcon icon={LoaderCircleIcon} size={12} className="animate-spin text-stone-600" />
                   <span>Saving...</span>
                 </span>
               ) : saveStatus === 'saved' ? (

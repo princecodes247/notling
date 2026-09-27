@@ -11,7 +11,7 @@ import {
   Cancel01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
-  Loading02Icon,
+  LoaderCircleIcon,
   Delete02Icon,
   TableIcon,
 } from '@hugeicons/core-free-icons';
@@ -309,7 +309,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         title="New document tab"
       >
         {isCreatingPage ? (
-          <HugeiconsIcon icon={Loading02Icon} size={15} className="animate-spin text-stone-600 dark:text-zinc-400" />
+          <HugeiconsIcon icon={LoaderCircleIcon} size={13} className="animate-spin text-stone-600 dark:text-zinc-400" />
         ) : (
           <HugeiconsIcon icon={PlusSignIcon} size={15} />
         )}

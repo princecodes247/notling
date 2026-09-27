@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'motion/react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, Database, ChevronDown, FileText, FolderPlus } from 'lucide-react';
+import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, Database, ChevronDown } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,
   FolderAddIcon,
+  File01Icon,
   Search01Icon,
   Settings02Icon,
   Delete02Icon,
-  Loading02Icon,
+  LoaderCircleIcon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
@@ -395,7 +395,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             title="Create a new document"
           >
             {isCreatingPage ? (
-              <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin text-[#1f4d3d] dark:text-emerald-400" />
+              <HugeiconsIcon icon={LoaderCircleIcon} size={12} className="animate-spin text-brand-600 dark:text-emerald-400" />
             ) : (
               <Plus className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400 shrink-0" />
             )}
@@ -412,78 +412,76 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* Creation Dropdown Menu */}
-          <AnimatePresence>
-            {showCreateMenu && createCoords && typeof document !== 'undefined' && createPortal(
-              <>
-                <div
-                  className="fixed inset-0 z-50 bg-transparent"
-                  onClick={(e) => {
-                    e.stopPropagation();
+          {showCreateMenu && createCoords && typeof document !== 'undefined' && createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-50 bg-transparent"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCreateMenu(false);
+                }}
+              />
+              <div
+                style={{
+                  top: `${createCoords.top}px`,
+                  left: `${createCoords.left}px`,
+                  width: `${Math.max(createCoords.width, 220)}px`,
+                }}
+                className="fixed bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-lg shadow-xl z-50 text-xs flex flex-col font-sans overflow-hidden origin-top animate-in fade-in-50 slide-in-from-top-1 duration-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
                     setShowCreateMenu(false);
+                    onCreatePage();
                   }}
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -6 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -6 }}
-                  transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                  style={{ top: `${createCoords.top}px`, left: `${createCoords.left}px`, width: `${createCoords.width}px` }}
-                  className="fixed bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-md shadow-xl z-50 text-xs flex flex-col font-sans overflow-hidden origin-top"
-                  onClick={(e) => e.stopPropagation()}
+                  className="w-full text-left px-3 py-2.5 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer"
                 >
+                  <HugeiconsIcon icon={File01Icon} size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-semibold text-stone-900 dark:text-zinc-100">New Document</span>
+                    <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Rich text page with blocks & embeds</span>
+                  </div>
+                </button>
+
+                {onCreateDatabase && (
                   <button
                     type="button"
                     onClick={() => {
                       setShowCreateMenu(false);
-                      onCreatePage();
+                      onCreateDatabase();
                     }}
-                    className="w-full text-left px-3 py-3 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer"
+                    className="w-full text-left px-3 py-2.5 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
                   >
-                    <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <Database className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-0.5">
-                      <span className="font-semibold text-stone-900 dark:text-zinc-100">New Document</span>
-                      <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Rich text page with blocks & embeds</span>
+                      <span className="font-semibold text-stone-900 dark:text-zinc-100">New Database</span>
+                      <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Spreadsheet table with form collection</span>
                     </div>
                   </button>
+                )}
 
-                  {onCreateDatabase && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCreateMenu(false);
-                        onCreateDatabase();
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
-                    >
-                      <Database className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-stone-900 dark:text-zinc-100">New Database</span>
-                        <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Spreadsheet table with form collection</span>
-                      </div>
-                    </button>
-                  )}
-
-                  {onCreateFolder && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowCreateMenu(false);
-                        onCreateFolder();
-                      }}
-                      className="w-full text-left px-3 py-3 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
-                    >
-                      <FolderPlus className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-stone-900 dark:text-zinc-100">New Folder</span>
-                        <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Folder to organize pages</span>
-                      </div>
-                    </button>
-                  )}
-                </motion.div>
-              </>,
-              document.body
-            )}
-          </AnimatePresence>
+                {onCreateFolder && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateMenu(false);
+                      onCreateFolder();
+                    }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
+                  >
+                    <HugeiconsIcon icon={FolderAddIcon} size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-semibold text-stone-900 dark:text-zinc-100">New Folder</span>
+                      <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Folder to organize pages</span>
+                    </div>
+                  </button>
+                )}
+              </div>
+            </>,
+            document.body
+          )}
         </div>
       </div>
 
@@ -586,7 +584,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     title="Create new page"
                   >
                     {isCreatingPage ? (
-                      <HugeiconsIcon icon={Loading02Icon} size={14} className="animate-spin text-stone-600 dark:text-zinc-400" />
+                      <HugeiconsIcon icon={LoaderCircleIcon} size={12} className="animate-spin text-stone-600 dark:text-zinc-400" />
                     ) : (
                       <Plus className="w-3 h-3" />
                     )}
