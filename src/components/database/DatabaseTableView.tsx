@@ -21,6 +21,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
+import { useDragPaint } from '~/hooks/useDragPaint';
 
 interface DatabaseTableViewProps {
   properties: DatabaseProperty[];
@@ -101,71 +102,35 @@ export function DatabaseTableView({
   // Bulk Row Selection State
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
-  // Paintable Row Selection Checkboxes State
-  const [isPaintingRows, setIsPaintingRows] = useState(false);
-  const [rowPaintTargetState, setRowPaintTargetState] = useState<boolean>(true);
+  // Shared Paint Hook for Row Selection Checkboxes
+  const rowPaint = useDragPaint<string>({
+    onPaintItem: (id, targetState) => {
+      setSelectedItemIds((prev) =>
+        targetState ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((item) => item !== id)
+      );
+    },
+    getItemState: (id) => selectedItemIds.includes(id),
+  });
 
-  // Paintable Property Checkboxes State
-  const [paintingPropId, setPaintingPropId] = useState<string | null>(null);
-  const [propPaintTargetState, setPropPaintTargetState] = useState<boolean>(true);
-
-  useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      setIsPaintingRows(false);
-      setPaintingPropId(null);
-    };
-    if (isPaintingRows || paintingPropId !== null) {
-      window.addEventListener('mouseup', handleGlobalMouseUp);
-      return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
-    }
-  }, [isPaintingRows, paintingPropId]);
-
-  const handleRowCheckboxMouseDown = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const currentlySelected = selectedItemIds.includes(id);
-    const nextState = !currentlySelected;
-    setRowPaintTargetState(nextState);
-    setIsPaintingRows(true);
-
-    if (nextState) {
-      setSelectedItemIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    } else {
-      setSelectedItemIds((prev) => prev.filter((item) => item !== id));
-    }
-  };
-
-  const handleRowCheckboxMouseEnter = (id: string) => {
-    if (!isPaintingRows) return;
-    if (rowPaintTargetState) {
-      setSelectedItemIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    } else {
-      setSelectedItemIds((prev) => prev.filter((item) => item !== id));
-    }
-  };
+  // Shared Paint Hook for Property Checkbox Cells
+  const propertyPaint = useDragPaint<{ itemId: string; propId: string }>({
+    onPaintItem: ({ itemId, propId }, targetState) => {
+      const targetItem = items.find((i) => i.id === itemId);
+      onUpdateItem(itemId, {
+        properties: {
+          ...targetItem?.properties,
+          [propId]: targetState,
+        },
+      });
+    },
+  });
 
   const handlePropertyCheckboxMouseDown = (itemId: string, propId: string, currentVal: boolean, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const nextVal = !currentVal;
-    setPropPaintTargetState(nextVal);
-    setPaintingPropId(propId);
-    const targetItem = items.find((i) => i.id === itemId);
-    onUpdateItem(itemId, {
-      properties: {
-        ...targetItem?.properties,
-        [propId]: nextVal,
-      },
-    });
+    propertyPaint.startPaint({ itemId, propId }, currentVal, e);
   };
 
   const handlePropertyCheckboxMouseEnter = (itemId: string, propId: string) => {
-    if (paintingPropId !== propId) return;
-    const targetItem = items.find((i) => i.id === itemId);
-    onUpdateItem(itemId, {
-      properties: {
-        ...targetItem?.properties,
-        [propId]: propPaintTargetState,
-      },
-    });
+    propertyPaint.paintItem({ itemId, propId });
   };
 
   // Apple Grid Keyboard Focus State ({ rowIndex, colIndex })
@@ -513,8 +478,7 @@ export function DatabaseTableView({
                 {/* Checkbox & Row Drag Handle Column */}
                 <td
                   className="py-2 px-2 text-center border-r border-stone-200/70 dark:border-zinc-800/70 w-12 select-none"
-                  onMouseDown={(e) => handleRowCheckboxMouseDown(item.id, e)}
-                  onMouseEnter={() => handleRowCheckboxMouseEnter(item.id)}
+                  {...rowPaint.getItemProps(item.id, selectedItemIds.includes(item.id))}
                 >
                   <div className="flex items-center justify-center gap-0.5 cursor-pointer">
                     {/* Row Drag Handle (Page Editor style GripVertical) */}
@@ -543,7 +507,7 @@ export function DatabaseTableView({
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
                       onChange={() => { }}
-                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) || isPaintingRows ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) || rowPaint.isPainting ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
                         }`}
                     />
                   </div>

@@ -23,6 +23,7 @@ import { getOfflineDraft, saveOfflineDraft, clearOfflineDraft, hasOfflineDraft }
 import { useNavigate } from '@tanstack/react-router';
 import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
+import { useDragPaint } from '~/hooks/useDragPaint';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { createDatabase } from '~/server/databases';
@@ -1882,12 +1883,22 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     return () => clearTimeout(timer);
   }, [editor]);
 
-  // Drag-to-paint checklist items functionality (reverses polarity of each item as cursor slides over)
+  // Shared Paint Hook for Editor Checklist Items
+  const editorPaint = useDragPaint<string>({
+    onPaintItem: (blockId, targetState) => {
+      if (!editor) return;
+      const block = editor.getBlock(blockId);
+      if (block) {
+        try {
+          editor.updateBlock(block, { props: { checked: targetState } });
+        } catch { }
+      }
+    },
+  });
+
+  // Drag-to-paint checklist items functionality (boundary-based high performance)
   useEffect(() => {
     if (readOnly || !editor) return;
-
-    let isPainting = false;
-    const paintedBlockIds = new Set<string>();
 
     const getCheckListItemInfo = (target: HTMLElement | null): { blockId: string | null; checkbox: HTMLInputElement | null } => {
       if (!target) return { blockId: null, checkbox: null };
@@ -1913,77 +1924,30 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       );
 
       if (isCheckboxOrItemArea && blockId) {
-        isPainting = true;
-        paintedBlockIds.clear();
-        paintedBlockIds.add(blockId);
-
         const block = editor.getBlock(blockId);
         const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
-        const reversedState = !currentChecked;
-
-        document.body.classList.add('bn-checkbox-painting');
-        document.body.style.userSelect = 'none';
-
-        if (block) {
-          try {
-            editor.updateBlock(block, { props: { checked: reversedState } });
-          } catch { }
-        }
-        if (checkbox) {
-          checkbox.checked = reversedState;
-        }
+        editorPaint.startPaint(blockId, currentChecked, e as any);
       }
     };
 
-    const handlePointerMove = (e: PointerEvent) => {
-      if (!isPainting || e.buttons !== 1) return;
-
-      const elemUnderCursor = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-      if (!elemUnderCursor) return;
-
-      const { blockId, checkbox } = getCheckListItemInfo(elemUnderCursor);
-      if (!blockId || paintedBlockIds.has(blockId)) return;
-
-      paintedBlockIds.add(blockId);
-
-      const block = editor.getBlock(blockId);
-      const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
-      const reversedState = !currentChecked;
-
-      if (block) {
-        try {
-          editor.updateBlock(block, { props: { checked: reversedState } });
-        } catch { }
-      }
-      if (checkbox) {
-        checkbox.checked = reversedState;
-      }
-
-      window.getSelection()?.removeAllRanges();
-    };
-
-    const stopPainting = () => {
-      if (isPainting) {
-        isPainting = false;
-        paintedBlockIds.clear();
-        document.body.classList.remove('bn-checkbox-painting');
-        document.body.style.userSelect = '';
+    const handlePointerOver = (e: PointerEvent) => {
+      if (!editorPaint.isPainting) return;
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const { blockId } = getCheckListItemInfo(target);
+      if (blockId) {
+        editorPaint.paintItem(blockId);
       }
     };
 
     window.addEventListener('pointerdown', handlePointerDown, true);
-    window.addEventListener('pointermove', handlePointerMove, true);
-    window.addEventListener('pointerup', stopPainting, true);
-    window.addEventListener('pointercancel', stopPainting, true);
+    window.addEventListener('pointerover', handlePointerOver, true);
 
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, true);
-      window.removeEventListener('pointermove', handlePointerMove, true);
-      window.removeEventListener('pointerup', stopPainting, true);
-      window.removeEventListener('pointercancel', stopPainting, true);
-      stopPainting();
+      window.removeEventListener('pointerover', handlePointerOver, true);
     };
-  }, [editor, readOnly]);
+  }, [editor, readOnly, editorPaint]);
 
   // Execute custom block drop
   const executeDrop = useCallback(
