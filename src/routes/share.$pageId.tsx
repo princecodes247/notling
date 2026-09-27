@@ -158,19 +158,19 @@ function PublicDocumentPageRoute() {
 
   if (isError || !sharedData) {
     return (
-      <div className="min-h-screen w-full bg-[#fafaf9] flex flex-col items-center justify-center p-6 text-neutral-900 font-sans select-none">
-        <div className="w-full max-w-md bg-white border border-neutral-200/90 rounded-xl p-8 shadow-xs flex flex-col items-center text-center">
-          <div className="w-12 h-12 rounded-lg bg-neutral-100 text-neutral-500 flex items-center justify-center mb-4">
+      <div className="min-h-screen w-full bg-[#fafaf9] dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-neutral-900 dark:text-neutral-100 font-sans select-none">
+        <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-neutral-200/90 dark:border-zinc-800 rounded-xl p-8 shadow-xs flex flex-col items-center text-center">
+          <div className="w-12 h-12 rounded-lg bg-neutral-100 dark:bg-zinc-800 text-neutral-500 dark:text-zinc-400 flex items-center justify-center mb-4">
             <HugeiconsIcon icon={LockIcon} size={24} />
           </div>
-          <h1 className="text-xl font-semibold tracking-tight text-neutral-950">This document is private</h1>
-          <p className="text-xs text-neutral-500 mt-2 mb-6 leading-relaxed">
+          <h1 className="text-xl font-semibold tracking-tight text-neutral-950 dark:text-white">This document is private</h1>
+          <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-2 mb-6 leading-relaxed">
             The page you are looking for may have been deleted, set to workspace-only visibility, or made private by its author.
           </p>
           <button
             type="button"
             onClick={handleSignInToEdit}
-            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 text-white font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+            className="w-full py-2.5 bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-medium rounded-lg text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
           >
             <span>Sign in to Notling</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
@@ -183,7 +183,7 @@ function PublicDocumentPageRoute() {
   const { page, accessLevel, isLoggedIn, isWorkspaceMember, activeUsers } = sharedData;
 
   return (
-    <div className="min-h-screen w-full bg-white flex flex-col select-none">
+    <div className="min-h-screen w-full bg-white dark:bg-[#18181b] flex flex-col select-none">
       {/* Top Header */}
       <ShareHeader
         pageId={page.id}
@@ -201,35 +201,10 @@ function PublicDocumentPageRoute() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full bg-white min-h-screen">
+      <main className="flex-1 w-full bg-white dark:bg-[#18181b] min-h-screen">
         {dbData?.database ? (
           <div className="w-full">
-            {accessLevel !== 'editor' && (
-              <div className="max-w-4xl mx-auto px-6 pt-6">
-                <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                      <HugeiconsIcon icon={LockIcon} size={16} />
-                    </div>
-                    <div>
-                      <span className="font-semibold text-amber-900 block text-xs">You have view-only access to this database</span>
-                      <span className="text-amber-700 text-[11px]">
-                        {isLoggedIn ? 'Need to make changes? Request edit access from the owner.' : 'Sign in or submit a request to get editing access.'}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsRequestModalOpen(true)}
-                    className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
-                  >
-                    <HugeiconsIcon icon={Edit02Icon} size={13} />
-                    <span>Request Edit Access</span>
-                  </button>
-                </div>
-              </div>
-            )}
-            <DatabaseContainer initialData={dbData} readOnly={accessLevel !== 'editor'} />
+            <DatabaseContainer initialData={dbData} readOnly={accessLevel !== 'editor'} hideHeader={true} />
           </div>
         ) : accessLevel === 'editor' ? (
           <div className="max-w-3xl mx-auto w-full px-6 py-12 sm:py-16">
@@ -238,14 +213,14 @@ function PublicDocumentPageRoute() {
         ) : (
           <div className="max-w-3xl mx-auto w-full px-6 py-12 sm:py-16 flex flex-col">
             {/* Read-Only Viewer Banner with Request Edit Access option */}
-            <div className="mb-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
+            <div className="mb-6 p-4 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 dark:text-amber-200 text-xs shadow-2xs">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                   <HugeiconsIcon icon={LockIcon} size={16} />
                 </div>
                 <div>
-                  <span className="font-semibold text-amber-900 block text-xs">You have view-only access to this document</span>
-                  <span className="text-amber-700 text-[11px]">
+                  <span className="font-semibold text-amber-900 dark:text-amber-200 block text-xs">You have view-only access to this document</span>
+                  <span className="text-amber-700 dark:text-amber-400 text-[11px]">
                     {isLoggedIn ? 'Need to make changes? Request edit access from the owner.' : 'Sign in or submit a request to get editing access.'}
                   </span>
                 </div>
@@ -253,7 +228,7 @@ function PublicDocumentPageRoute() {
               <button
                 type="button"
                 onClick={() => setIsRequestModalOpen(true)}
-                className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
               >
                 <HugeiconsIcon icon={Edit02Icon} size={13} />
                 <span>Request Edit Access</span>
@@ -261,7 +236,7 @@ function PublicDocumentPageRoute() {
             </div>
 
             <div className="text-4xl mb-4">{page.icon || '📄'}</div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 tracking-tight mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-8">
               {page.title || 'Untitled Document'}
             </h1>
             <PublicBlockViewer pageId={page.id} content={page.content} userEmail={userEmail} />

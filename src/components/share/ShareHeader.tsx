@@ -4,6 +4,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { LockIcon, ArrowRight01Icon, Download01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
 import { CollaboratorAvatars } from '~/components/CollaboratorAvatars';
 import { ExportModal } from '~/components/ExportModal';
+import ThemeToggle from '~/components/ThemeToggle';
 
 interface ShareHeaderProps {
   pageId: string;
@@ -36,7 +37,7 @@ export function ShareHeader({
   const [isExportOpen, setIsExportOpen] = useState(false);
 
   return (
-    <header className="h-14 border-b border-stone-200/70 px-3.5 sm:px-6 md:px-10 flex items-center justify-between bg-[#fdfcf9]/90 backdrop-blur-md sticky top-0 z-30">
+    <header className="h-14 border-b border-stone-200/70 dark:border-zinc-800 px-3.5 sm:px-6 md:px-10 flex items-center justify-between bg-[#fdfcf9]/90 dark:bg-[#18181b]/90 backdrop-blur-md sticky top-0 z-30">
       <div
         className="flex items-center gap-1.5 sm:gap-2 cursor-pointer shrink-0"
         onClick={onNavigateHome}
@@ -53,14 +54,14 @@ export function ShareHeader({
 
         {/* Access Status Badge & Request Edit Access Button */}
         {accessLevel === 'editor' ? (
-          <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
+          <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] animate-pulse" />
             <span className="hidden xs:inline">Can edit</span>
             <span className="xs:hidden">Edit</span>
           </span>
         ) : (
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
+            <span className="text-[10px] sm:text-[11px] px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60 flex items-center gap-1 sm:gap-1.5 shadow-2xs shrink-0">
               <HugeiconsIcon icon={LockIcon} size={11} />
               <span className="hidden xs:inline">View only</span>
               <span className="xs:hidden">View</span>
@@ -69,7 +70,7 @@ export function ShareHeader({
               <button
                 type="button"
                 onClick={onRequestEditAccess}
-                className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 text-white text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
+                className="px-2.5 py-1 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-semibold tracking-tight transition-all shadow-xs cursor-pointer active:scale-95 flex items-center gap-1.5 shrink-0"
               >
                 <HugeiconsIcon icon={Edit02Icon} size={12} />
                 <span className="hidden sm:inline">Request Edit Access</span>
@@ -79,15 +80,18 @@ export function ShareHeader({
           </div>
         )}
 
+        {/* Theme Toggle */}
+        <ThemeToggle variant="icon" />
+
         {/* Export Button */}
         {page && (
           <button
             type="button"
             onClick={() => setIsExportOpen(true)}
-            className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 text-xs font-semibold tracking-tight transition-colors cursor-pointer shrink-0"
             aria-label="Export page to Markdown or PDF"
           >
-            <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600" />
+            <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600 dark:text-zinc-400" />
             <span className="hidden sm:inline">Export</span>
           </button>
         )}
@@ -97,7 +101,7 @@ export function ShareHeader({
           <button
             type="button"
             onClick={onOpenDashboard}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold tracking-tight transition-colors cursor-pointer shrink-0"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 text-xs font-semibold tracking-tight transition-colors cursor-pointer shrink-0"
           >
             <span>Open in Dashboard</span>
             <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
@@ -106,11 +110,11 @@ export function ShareHeader({
 
         {/* User Status / Profile */}
         {isLoggedIn ? (
-          <div className="flex items-center gap-2 pl-1.5 sm:pl-2 border-l border-stone-200 shrink-0">
+          <div className="flex items-center gap-2 pl-1.5 sm:pl-2 border-l border-stone-200 dark:border-zinc-800 shrink-0">
             <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-brand-bg text-brand-fg flex items-center justify-center text-xs font-semibold shadow-2xs">
               {(userEmail || 'U').charAt(0).toUpperCase()}
             </div>
-            <span className="text-xs font-medium text-stone-700 hidden md:inline truncate max-w-[140px]">
+            <span className="text-xs font-medium text-stone-700 dark:text-zinc-300 hidden md:inline truncate max-w-[140px]">
               {userEmail}
             </span>
           </div>

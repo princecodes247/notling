@@ -30,6 +30,7 @@ interface DatabaseContainerProps {
   onTogglePin?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  hideHeader?: boolean;
 }
 
 export function DatabaseContainer({
@@ -39,6 +40,7 @@ export function DatabaseContainer({
   onTogglePin,
   onDuplicate,
   onDelete,
+  hideHeader = false,
 }: DatabaseContainerProps) {
   const queryClient = useQueryClient();
   const { isShareModalOpen, setShareModalOpen } = useUIStore();
@@ -377,29 +379,40 @@ export function DatabaseContainer({
 
   return (
     <div className="w-full font-sans text-stone-900 dark:text-zinc-100 min-h-screen">
-      <EditorHeader
-        icon={dbData.database.icon || ''}
-        title={dbTitle}
-        isDatabase={true}
-        isReadOnly={readOnly}
-        isPinned={isPinned}
-        togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}
-        duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: false } : undefined}
-        onDelete={onDelete}
-        onTitleChange={(newTitle) => {
-          isEditingTitleRef.current = true;
-          setDbTitle(newTitle);
-        }}
-        onSaveTitle={handleSaveTitle}
-        onRevertTitle={handleRevertTitle}
-        onIconChange={handleUpdateIcon}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onAddItem={() => handleAddItem()}
-      />
+      {hideHeader ? (
+        <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-8 pb-2">
+          <div className="mb-4 flex gap-2">
+            <div className="text-3xl">{dbData.database.icon || '📊'}</div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+              {dbTitle || 'Untitled Database'}
+            </h1>
+          </div>
+        </div>
+      ) : (
+        <EditorHeader
+          icon={dbData.database.icon || ''}
+          title={dbTitle}
+          isDatabase={true}
+          isReadOnly={readOnly}
+          isPinned={isPinned}
+          togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}
+          duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: false } : undefined}
+          onDelete={onDelete}
+          onTitleChange={(newTitle) => {
+            isEditingTitleRef.current = true;
+            setDbTitle(newTitle);
+          }}
+          onSaveTitle={handleSaveTitle}
+          onRevertTitle={handleRevertTitle}
+          onIconChange={handleUpdateIcon}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onAddItem={() => handleAddItem()}
+        />
+      )}
 
-      {/* Direct Table Content (Borderless, sitting directly on page background) */}
-      <div className="py-2 px-4 pt-6 sm:px-8">
+      {/* Direct Table Content */}
+      <div className={hideHeader ? "max-w-7xl mx-auto px-4 sm:px-8 pb-16" : "py-2 px-4 pt-6 sm:px-8"}>
         <DatabaseTableView
           properties={dbData.properties}
           items={filteredItems}

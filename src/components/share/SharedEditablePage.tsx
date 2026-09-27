@@ -74,7 +74,7 @@ export function SharedEditablePage({ page }: SharedEditablePageProps) {
           }
         }}
         placeholder="Untitled Document"
-        className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 placeholder-stone-300 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 pb-1.5 transition-colors"
+        className="w-full bg-transparent text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 dark:text-zinc-100 placeholder-stone-300 dark:placeholder-zinc-600 focus:outline-none mb-4 border-b border-transparent focus:border-stone-200/80 dark:focus:border-zinc-800 pb-1.5 transition-colors"
       />
 
       {/* Interactive Block Editor */}

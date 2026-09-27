@@ -144,7 +144,7 @@ export function PublicBlockViewer({ pageId, content, userEmail }: PublicBlockVie
 
   return (
     <div
-      className="min-h-[300px] text-stone-900 select-text bn-read-only cursor-default"
+      className="min-h-[300px] text-stone-900 dark:text-zinc-100 select-text bn-read-only cursor-default"
       onMouseDown={() => {
         const sideMenuView = (editor as any)?.sideMenu?.view;
         if (sideMenuView) {
