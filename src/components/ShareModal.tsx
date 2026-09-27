@@ -303,7 +303,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleCopyLink = () => {
     const isPublic = visibility === 'public' || visibility === 'public_edit';
-    const url = `${window.location.origin}${isPublic ? `/share/${page.id}` : `/dashboard/p/${page.id}`}`;
+    const isDb = Boolean((page as any).databaseId || (page as any).isDatabase);
+    const dbId = (page as any).databaseId || page.id;
+    const path = isPublic
+      ? `/share/${page.id}`
+      : (isDb ? `/dashboard/db/${dbId}` : `/dashboard/p/${page.id}`);
+    const url = `${window.location.origin}${path}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -698,7 +703,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             <div className="flex flex-col min-w-0">
               <span className="text-[9.5px] uppercase font-semibold tracking-wider text-stone-400">Share Link</span>
               <span className="text-xs font-mono text-stone-700 truncate">
-                {visibility === 'public' || visibility === 'public_edit' ? `/share/${page.id}` : `/dashboard/p/${page.id}`}
+                {visibility === 'public' || visibility === 'public_edit'
+                  ? `/share/${page.id}`
+                  : (page as any).databaseId || (page as any).isDatabase
+                    ? `/dashboard/db/${(page as any).databaseId || page.id}`
+                    : `/dashboard/p/${page.id}`}
               </span>
             </div>
           </div>

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { createRoute, useNavigate, redirect } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicPage, pingPagePresence, removePagePresence } from '~/server/pages';
+import { getDatabase } from '~/server/databases';
+import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as rootRoute } from './__root';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { LockIcon, ArrowRight01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
@@ -70,14 +72,31 @@ function PublicDocumentPageRoute() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: dbData } = useQuery({
+    queryKey: ['database', pageId],
+    queryFn: async () => {
+      if (!pageId) return null;
+      try {
+        return await getDatabase({ data: pageId });
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!pageId,
+  });
+
   const userEmail = sharedData?.userEmail ?? null;
 
-  // Auto-redirect logged-in users with edit access directly to dashboard document view
+  // Auto-redirect logged-in users with edit access directly to dashboard view
   useEffect(() => {
     if (sharedData?.isLoggedIn && (sharedData.accessLevel === 'editor' || sharedData.isWorkspaceMember) && pageId) {
-      navigate({ to: '/dashboard/p/$pageId', params: { pageId } });
+      if (dbData?.database) {
+        navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbData.database.id } });
+      } else {
+        navigate({ to: '/dashboard/p/$pageId', params: { pageId } });
+      }
     }
-  }, [sharedData?.isLoggedIn, sharedData?.accessLevel, sharedData?.isWorkspaceMember, pageId, navigate]);
+  }, [sharedData?.isLoggedIn, sharedData?.accessLevel, sharedData?.isWorkspaceMember, pageId, dbData?.database?.id, navigate]);
 
   // Synchronize document.title for viewers on share page
   useEffect(() => {
@@ -176,17 +195,48 @@ function PublicDocumentPageRoute() {
         currentClientId={getClientId()}
         page={page}
         onNavigateHome={() => navigate({ to: isLoggedIn ? '/dashboard' : '/' })}
-        onOpenDashboard={() => navigate({ to: '/dashboard/p/$pageId', params: { pageId: page.id } })}
+        onOpenDashboard={() => navigate({ to: dbData?.database ? '/dashboard/db/$databaseId' : '/dashboard/p/$pageId', params: { databaseId: dbData?.database?.id, pageId: page.id } as any })}
         onSignIn={handleSignInToEdit}
         onRequestEditAccess={() => setIsRequestModalOpen(true)}
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12 sm:py-16 bg-white min-h-screen">
-        {accessLevel === 'editor' ? (
-          <SharedEditablePage page={page as any} />
+      <main className="flex-1 w-full bg-white min-h-screen">
+        {dbData?.database ? (
+          <div className="w-full">
+            {accessLevel !== 'editor' && (
+              <div className="max-w-4xl mx-auto px-6 pt-6">
+                <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                      <HugeiconsIcon icon={LockIcon} size={16} />
+                    </div>
+                    <div>
+                      <span className="font-semibold text-amber-900 block text-xs">You have view-only access to this database</span>
+                      <span className="text-amber-700 text-[11px]">
+                        {isLoggedIn ? 'Need to make changes? Request edit access from the owner.' : 'Sign in or submit a request to get editing access.'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsRequestModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 text-white font-medium text-xs transition-colors shrink-0 shadow-2xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    <HugeiconsIcon icon={Edit02Icon} size={13} />
+                    <span>Request Edit Access</span>
+                  </button>
+                </div>
+              </div>
+            )}
+            <DatabaseContainer initialData={dbData} readOnly={accessLevel !== 'editor'} />
+          </div>
+        ) : accessLevel === 'editor' ? (
+          <div className="max-w-3xl mx-auto w-full px-6 py-12 sm:py-16">
+            <SharedEditablePage page={page as any} />
+          </div>
         ) : (
-          <div className="w-full flex flex-col">
+          <div className="max-w-3xl mx-auto w-full px-6 py-12 sm:py-16 flex flex-col">
             {/* Read-Only Viewer Banner with Request Edit Access option */}
             <div className="mb-6 p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-950 text-xs shadow-2xs">
               <div className="flex items-center gap-2.5">

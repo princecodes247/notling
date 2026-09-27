@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import type { DatabaseItem, DatabaseProperty } from '~/db/schema';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import type { DatabaseItem, DatabaseProperty, Page } from '~/db/schema';
 import type { FullDatabase } from '~/server/databases.db';
 import { DatabaseTableView } from './DatabaseTableView';
 import { DatabaseRowDrawer } from './DatabaseRowDrawer';
@@ -15,9 +15,11 @@ import {
   deleteDatabaseItemsBulk,
   updateDatabase,
 } from '~/server/databases';
+import { getPage, updatePageVisibility } from '~/server/pages';
 import { useUIStore } from '~/store/uiStore';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { EditorHeader } from '../EditorHeader';
+import { ShareModal } from '../ShareModal';
 
 import { AnimatePresence } from 'motion/react';
 
@@ -39,6 +41,7 @@ export function DatabaseContainer({
   onDelete,
 }: DatabaseContainerProps) {
   const queryClient = useQueryClient();
+  const { isShareModalOpen, setShareModalOpen } = useUIStore();
   const [dbData, setDbData] = useState<FullDatabase>(initialData);
   const [dbTitle, setDbTitle] = useState(initialData.database.title || 'Untitled Database');
   const savedTitleRef = useRef(initialData.database.title || 'Untitled Database');
@@ -46,6 +49,41 @@ export function DatabaseContainer({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
+
+  const targetPageId = initialData.database.pageId || initialData.database.id;
+
+  const { data: pageData } = useQuery({
+    queryKey: ['page', targetPageId],
+    queryFn: async () => {
+      if (!targetPageId) return null;
+      return await getPage({ data: targetPageId });
+    },
+    enabled: !!targetPageId && isShareModalOpen,
+  });
+
+  const updateVisibilityMutation = useMutation({
+    mutationFn: async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
+      if (!targetPageId) return null;
+      return await updatePageVisibility({ data: { pageId: targetPageId, visibility: newVisibility } });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['page', targetPageId] });
+      queryClient.invalidateQueries({ queryKey: ['database', initialData.database.id] });
+    },
+  });
+
+  const sharePageObject: Page = (pageData as any) || {
+    id: targetPageId,
+    workspaceId: initialData.database.workspaceId,
+    title: dbTitle || initialData.database.title || 'Untitled Database',
+    icon: dbData.database.icon || '',
+    visibility: (initialData.database as any).visibility || 'workspace',
+    order: 0,
+    createdAt: initialData.database.createdAt,
+    updatedAt: initialData.database.updatedAt,
+    databaseId: initialData.database.id,
+  };
 
   React.useEffect(() => {
     setDbData(initialData);
@@ -393,6 +431,15 @@ export function DatabaseContainer({
           />
         )}
       </AnimatePresence>
+
+      {/* Share Modal for Database */}
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        page={sharePageObject}
+        visibility={(sharePageObject as any).visibility || 'workspace'}
+        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+      />
     </div>
   );
 }
