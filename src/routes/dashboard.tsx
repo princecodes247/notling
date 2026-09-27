@@ -201,6 +201,31 @@ function DashboardLayout() {
           document.title = `${resolvedTitle} - Notling`;
         }
       }
+    } else if (currentPath.includes('/dashboard/db/')) {
+      const match = currentPath.match(/\/dashboard\/db\/([^/]+)/);
+      if (match && match[1]) {
+        const dbId = match[1];
+        doSetActivePageId(dbId);
+        const node = findNodeInTree(treeNodes, dbId);
+        const existingTab = useUIStore.getState().openTabs.find((t) => t.id === dbId);
+        const liveMeta = useUIStore.getState().pageMeta[dbId];
+        const resolvedTitle =
+          liveMeta?.title ??
+          node?.title ??
+          (existingTab?.title && existingTab.title !== 'Projects & Tasks Database' ? existingTab.title : 'Projects & Tasks Database');
+        const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? '📊';
+
+        doOpenTab({
+          id: dbId,
+          title: resolvedTitle,
+          icon: resolvedIcon,
+          path: currentPath,
+        });
+
+        if (resolvedTitle) {
+          document.title = `${resolvedTitle} — Notling`;
+        }
+      }
     } else if (currentPath.includes('/dashboard/folders')) {
       doSetActivePageId(null);
       document.title = 'Folders - Notling';
@@ -332,6 +357,8 @@ function DashboardLayout() {
     onSuccess: (newDb) => {
       if (newDb) {
         queryClient.invalidateQueries({ queryKey: ['databases'] });
+        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+        refetchTree();
         navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: newDb.database.id } });
         closeSidebarOnMobile();
       }
@@ -498,10 +525,6 @@ function DashboardLayout() {
                   navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
                   closeSidebarOnMobile();
                 }}
-                onCreateDatabase={() => {
-                  if (createDatabaseMutation.isPending) return;
-                  createDatabaseMutation.mutate();
-                }}
                 workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
                 session={session}
                 treeNodes={treeNodes}
@@ -541,9 +564,13 @@ function DashboardLayout() {
                   createDatabaseMutation.mutate();
                   closeSidebarOnMobile();
                 }}
-                onSelectPage={(id) => {
+                onSelectPage={(id, dbId) => {
                   useUIStore.getState().setActivePageId(id);
-                  navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+                  if (dbId) {
+                    navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
+                  } else {
+                    navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+                  }
                   closeSidebarOnMobile();
                 }}
                 onSoftDelete={(id) => softDeleteMutation.mutate(id)}

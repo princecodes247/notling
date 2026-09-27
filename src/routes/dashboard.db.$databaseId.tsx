@@ -6,6 +6,8 @@ import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as dashboardRoute } from './dashboard';
 import { Database as DatabaseIcon, ArrowLeft } from 'lucide-react';
 
+import { useUIStore } from '~/store/uiStore';
+
 export const Route = createRoute({
   getParentRoute: () => dashboardRoute,
   path: '/db/$databaseId',
@@ -25,6 +27,35 @@ function DashboardDatabaseRoute() {
     },
     enabled: !!databaseId,
   });
+
+  React.useEffect(() => {
+    if (databaseId) {
+      const { setActivePageId, setActiveTabId } = useUIStore.getState();
+      setActivePageId(databaseId);
+      setActiveTabId(databaseId);
+    }
+    if (dbData?.database) {
+      const { openTabs, updateTabMeta, openTab, pageMeta } = useUIStore.getState();
+      const dbId = dbData.database.id;
+      const live = pageMeta[dbId] || (dbData.database.pageId ? pageMeta[dbData.database.pageId] : undefined);
+      const existing = openTabs.find((t) => t.id === dbId || t.id === dbData.database.pageId);
+      const title = live?.title ?? dbData.database.title ?? 'Projects & Tasks Database';
+      const icon = live?.icon ?? dbData.database.icon ?? '📊';
+
+      if (existing) {
+        updateTabMeta(existing.id, title, icon);
+      } else {
+        openTab({
+          id: dbId,
+          title,
+          icon,
+          path: `/dashboard/db/${dbId}`,
+        });
+      }
+
+      document.title = `${title} — Notling`;
+    }
+  }, [databaseId, dbData?.database?.id, dbData?.database?.title, dbData?.database?.icon]);
 
   if (isLoading) {
     return (
@@ -57,8 +88,6 @@ function DashboardDatabaseRoute() {
   }
 
   return (
-    <div className="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
-      <DatabaseContainer initialData={dbData} />
-    </div>
+    <DatabaseContainer key={dbData.database.id} initialData={dbData} />
   );
 }

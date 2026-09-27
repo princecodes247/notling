@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getPage } from '~/server/pages';
@@ -6,6 +6,7 @@ import { Editor } from '~/components/Editor';
 import { EditorSkeleton } from '~/components/EditorSkeleton';
 import { useUIStore } from '~/store/uiStore';
 import { Route as dashboardRoute } from './dashboard';
+import { useEffect } from 'react';
 
 export const Route = createRoute({
   getParentRoute: () => dashboardRoute,
@@ -71,8 +72,22 @@ function DocumentPageRoute() {
     }
   }, [pageId, page?.id, page?.title, page?.icon]);
 
+  const { data: dbData } = useQuery({
+    queryKey: ['database', pageId],
+    queryFn: async () => {
+      if (!pageId) return null;
+      const { getDatabase } = await import('~/server/databases');
+      return await getDatabase({ data: pageId });
+    },
+    enabled: !!pageId,
+  });
+
   if (isLoading) {
     return <EditorSkeleton />;
+  }
+
+  if (dbData) {
+    return <DatabaseContainer key={dbData.database.id} initialData={dbData} />;
   }
 
   if (!page) {

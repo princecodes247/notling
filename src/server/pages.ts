@@ -11,6 +11,7 @@ export interface PageTreeNode {
   createdAt: Date;
   updatedAt: Date;
   contentText?: string | null;
+  databaseId?: string | null;
   children: PageTreeNode[];
   isShared?: boolean;
   isPinned?: boolean;

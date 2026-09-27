@@ -50,8 +50,8 @@ export const createDatabaseProperty = createServerFn({ method: 'POST' })
   });
 
 export const updateDatabaseProperty = createServerFn({ method: 'POST' })
-  .validator((input: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; order?: number } }) => input)
-  .handler(async ({ data }: { data: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; order?: number } } }) => {
+  .validator((input: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; order?: number; icon?: string | null } }) => input)
+  .handler(async ({ data }: { data: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; order?: number; icon?: string | null } } }) => {
     const { updateDatabaseProperty } = await import('./databases.db');
     return updateDatabaseProperty(data.propertyId, data.updates);
   });

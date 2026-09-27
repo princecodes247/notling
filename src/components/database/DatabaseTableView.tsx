@@ -111,6 +111,41 @@ export function DatabaseTableView({
   // Client-Side Undo Stack (Cmd+Z)
   const [undoStack, setUndoStack] = useState<Array<{ type: string; payload: any }>>([]);
 
+  // Column Width Resizing State
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+
+  // Row Drag Reordering State
+  const [draggedRowIndex, setDraggedRowIndex] = useState<number | null>(null);
+
+  const handleResizeStart = (e: React.MouseEvent, colId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startWidth = columnWidths[colId] || (colId === 'title' ? 240 : 180);
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const newWidth = Math.max(90, startWidth + deltaX);
+      setColumnWidths((prev) => ({ ...prev, [colId]: newWidth }));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handleMoveRow = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) return;
+    const targetItem = items[fromIndex];
+    if (targetItem && onUpdateItem) {
+      onUpdateItem(targetItem.id, { order: toIndex } as any);
+    }
+  };
+
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
 
@@ -320,41 +355,52 @@ export function DatabaseTableView({
               </th>
 
               {/* Title Column Header */}
-              <th className="py-2.5 px-3 w-64 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium">
-                {editingHeaderId === titleProp?.id ? (
-                  <input
-                    type="text"
-                    value={headerTitle}
-                    onChange={(e) => setHeaderTitle(e.target.value)}
-                    onBlur={() => {
-                      if (titleProp && onUpdateProperty) {
-                        onUpdateProperty(titleProp.id, { name: headerTitle });
-                      }
-                      setEditingHeaderId(null);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && titleProp && onUpdateProperty) {
-                        onUpdateProperty(titleProp.id, { name: headerTitle });
+              <th
+                style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px` } : { width: '240px', minWidth: '180px' }}
+                className="py-2.5 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-semibold relative group select-none"
+              >
+                <div className="flex items-center gap-1.5 text-stone-800 dark:text-zinc-200 flex-1 min-w-0">
+                  <PropertyTypeIcon type={titleProp?.type || 'title'} icon={titleProp?.icon} className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                  {editingHeaderId === titleProp?.id ? (
+                    <input
+                      type="text"
+                      value={headerTitle}
+                      onChange={(e) => setHeaderTitle(e.target.value)}
+                      onBlur={() => {
+                        if (titleProp && onUpdateProperty && headerTitle.trim()) {
+                          onUpdateProperty(titleProp.id, { name: headerTitle.trim() });
+                        }
                         setEditingHeaderId(null);
-                      }
-                    }}
-                    className="w-full px-1.5 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-semibold"
-                    autoFocus
-                  />
-                ) : (
-                  <div
-                    onClick={() => {
-                      if (!readOnly && titleProp) {
-                        setEditingHeaderId(titleProp.id);
-                        setHeaderTitle(titleProp.name);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 text-stone-800 dark:text-zinc-200 cursor-pointer hover:text-[#1f4d3d] font-semibold"
-                  >
-                    <PropertyTypeIcon type={titleProp?.type || 'title'} className="w-3.5 h-3.5 text-stone-400" />
-                    <span>{titleProp?.name || 'Name'}</span>
-                  </div>
-                )}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && titleProp && onUpdateProperty && headerTitle.trim()) {
+                          onUpdateProperty(titleProp.id, { name: headerTitle.trim() });
+                          setEditingHeaderId(null);
+                        }
+                      }}
+                      className="w-full px-1.5 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-semibold focus:outline-none text-xs"
+                      autoFocus
+                    />
+                  ) : (
+                    <span
+                      onClick={() => {
+                        if (!readOnly && titleProp) {
+                          setEditingHeaderId(titleProp.id);
+                          setHeaderTitle(titleProp.name);
+                        }
+                      }}
+                      className="cursor-pointer hover:text-[#1f4d3d] font-semibold truncate text-xs"
+                    >
+                      {titleProp?.name || 'Name'}
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  onMouseDown={(e) => handleResizeStart(e, 'title')}
+                  className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-[#1f4d3d]/50 active:bg-[#1f4d3d] opacity-0 hover:opacity-100 transition-opacity z-10"
+                  title="Drag to resize column"
+                />
               </th>
 
               {/* Dynamic Property Column Headers */}
@@ -372,6 +418,8 @@ export function DatabaseTableView({
                   setActiveOpenMenuId={setActiveOpenMenuId}
                   handleRequestConvertType={handleRequestConvertType}
                   handleRequestDeleteProperty={handleRequestDeleteProperty}
+                  width={columnWidths[prop.id]}
+                  onResizeStart={(e) => handleResizeStart(e, prop.id)}
                 />
               ))}
 
@@ -393,19 +441,46 @@ export function DatabaseTableView({
           <tbody className="divide-y divide-stone-200/70 dark:divide-zinc-800/70">
             {items.map((item, rowIndex) => (
               <tr key={item.id} className="group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors">
-                {/* Row Checkbox */}
-                <td className="py-2 px-3 text-center border-r border-stone-200/70 dark:border-zinc-800/70">
-                  <input
-                    type="checkbox"
-                    checked={selectedItemIds.includes(item.id)}
-                    onChange={() => handleToggleSelectItem(item.id)}
-                    className="w-3.5 h-3.5 rounded border-stone-300 text-brand-600 cursor-pointer"
-                  />
+                {/* Checkbox & Row Drag Handle Column */}
+                <td className="py-2 px-2 text-center border-r border-stone-200/70 dark:border-zinc-800/70 w-12">
+                  <div className="flex items-center justify-center gap-0.5">
+                    {/* Row Drag Handle (Page Editor style GripVertical) */}
+                    <span
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedRowIndex(rowIndex);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (draggedRowIndex !== null && draggedRowIndex !== rowIndex) {
+                          handleMoveRow(draggedRowIndex, rowIndex);
+                          setDraggedRowIndex(rowIndex);
+                        }
+                      }}
+                      onDragEnd={() => setDraggedRowIndex(null)}
+                      className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
+                      title="Drag to reorder row"
+                    >
+                      <GripVertical className="w-3.5 h-3.5" />
+                    </span>
+
+                    {/* Row Checkbox (Visible on hover, or always if selected) */}
+                    <input
+                      type="checkbox"
+                      checked={selectedItemIds.includes(item.id)}
+                      onChange={() => handleToggleSelectItem(item.id)}
+                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#1f4d3d] cursor-pointer transition-opacity ${
+                        selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                      }`}
+                    />
+                  </div>
                 </td>
 
                 {/* Title Cell + Open Page Button */}
                 <td
                   onClick={() => setFocusedCell({ rowIndex, colIndex: 0 })}
+                  style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px` } : { width: '240px', minWidth: '180px' }}
                   className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium text-stone-900 dark:text-zinc-100 transition-colors ${focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0
                     ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
                     : ''
@@ -451,11 +526,13 @@ export function DatabaseTableView({
                   const val = item.properties?.[prop.id];
                   const cellMenuId = `cell-${item.id}-${prop.id}`;
                   const isFocused = focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === colIndex + 1;
+                  const colWidth = columnWidths[prop.id];
 
                   return (
                     <td
                       key={prop.id}
                       onClick={() => setFocusedCell({ rowIndex, colIndex: colIndex + 1 })}
+                      style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px` } : { minWidth: '150px' }}
                       className={`py-2 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 transition-colors`}
                     >
                       <InteractiveCell
@@ -619,6 +696,8 @@ function ColumnHeaderCell({
   setActiveOpenMenuId,
   handleRequestConvertType,
   handleRequestDeleteProperty,
+  width,
+  onResizeStart,
 }: {
   prop: DatabaseProperty;
   readOnly: boolean;
@@ -631,45 +710,52 @@ function ColumnHeaderCell({
   setActiveOpenMenuId: (id: string | null) => void;
   handleRequestConvertType: (prop: DatabaseProperty, targetType: string) => void;
   handleRequestDeleteProperty: (prop: DatabaseProperty) => void;
+  width?: number;
+  onResizeStart?: (e: React.MouseEvent) => void;
 }) {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const isOpen = activeOpenMenuId === `col-${prop.id}`;
 
   return (
-    <th className="py-2.5 px-3 min-w-[150px] border-r border-stone-200/70 dark:border-zinc-800/70 font-medium relative group">
-      <div className="flex items-center justify-between">
-        {editingHeaderId === prop.id ? (
-          <input
-            type="text"
-            value={headerTitle}
-            onChange={(e) => setHeaderTitle(e.target.value)}
-            onBlur={() => {
-              if (onUpdateProperty) onUpdateProperty(prop.id, { name: headerTitle });
-              setEditingHeaderId(null);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && onUpdateProperty) {
-                onUpdateProperty(prop.id, { name: headerTitle });
+    <th
+      style={width ? { width: `${width}px`, minWidth: `${width}px` } : { width: '180px', minWidth: '150px' }}
+      className="py-2.5 px-3 border-r border-stone-200/70 dark:border-zinc-800/70 font-medium relative group select-none"
+    >
+      <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 flex-1 min-w-0">
+          <PropertyTypeIcon type={prop.type} icon={prop.icon} className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+          {editingHeaderId === prop.id ? (
+            <input
+              type="text"
+              value={headerTitle}
+              onChange={(e) => setHeaderTitle(e.target.value)}
+              onBlur={() => {
+                if (onUpdateProperty) onUpdateProperty(prop.id, { name: headerTitle });
                 setEditingHeaderId(null);
-              }
-            }}
-            className="w-full px-1 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-medium"
-            autoFocus
-          />
-        ) : (
-          <div
-            onClick={() => {
-              if (!readOnly) {
-                setEditingHeaderId(prop.id);
-                setHeaderTitle(prop.name);
-              }
-            }}
-            className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 cursor-pointer hover:text-stone-950 dark:hover:text-white transition-colors"
-          >
-            <PropertyTypeIcon type={prop.type} icon={prop.icon} className="w-3.5 h-3.5 text-stone-400" />
-            <span>{prop.name}</span>
-          </div>
-        )}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && onUpdateProperty) {
+                  onUpdateProperty(prop.id, { name: headerTitle });
+                  setEditingHeaderId(null);
+                }
+              }}
+              className="w-full px-1 py-0.5 border rounded bg-white dark:bg-zinc-900 border-[#1f4d3d] text-stone-900 dark:text-zinc-100 font-medium text-xs focus:outline-none"
+              autoFocus
+            />
+          ) : (
+            <span
+              onClick={() => {
+                if (!readOnly) {
+                  setEditingHeaderId(prop.id);
+                  setHeaderTitle(prop.name);
+                }
+              }}
+              className="cursor-pointer hover:text-stone-950 dark:hover:text-white transition-colors truncate"
+            >
+              {prop.name}
+            </span>
+          )}
+        </div>
 
         {!readOnly && (
           <button
@@ -682,6 +768,12 @@ function ColumnHeaderCell({
             <MoreHorizontal className="w-3.5 h-3.5 text-stone-400" />
           </button>
         )}
+
+        <div
+          onMouseDown={onResizeStart}
+          className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-[#1f4d3d]/50 active:bg-[#1f4d3d] opacity-0 hover:opacity-100 transition-opacity z-10"
+          title="Drag to resize column"
+        />
 
         <DatabasePopover
           isOpen={isOpen}

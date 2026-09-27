@@ -22,7 +22,7 @@ interface PageTreeItemProps {
   node: PageTreeNode;
   depth?: number;
   onCreateChild: (parentId: string) => void;
-  onSelectPage: (pageId: string) => void;
+  onSelectPage: (pageId: string, databaseId?: string | null) => void;
   onSoftDelete: (pageId: string) => void;
   onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
@@ -241,7 +241,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 ? 'bg-stone-200/90 dark:bg-zinc-700/80 ring-1 ring-stone-400 dark:ring-zinc-500 text-stone-900 dark:text-white font-medium'
                 : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50 hover:text-stone-900 dark:hover:text-white'
         )}
-        onClick={() => onSelectPage(node.id)}
+        onClick={() => onSelectPage(node.id, node.databaseId)}
         onMouseEnter={handleMouseEnter}
       >
         {/* Drop Line Indicators */}

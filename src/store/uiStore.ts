@@ -61,6 +61,23 @@ interface UIState {
   isOnline: boolean;
   isServerReachable: boolean;
   setConnectionStatus: (isOnline: boolean, isServerReachable: boolean) => void;
+
+  // Editor UI & Modals State
+  isShareModalOpen: boolean;
+  setShareModalOpen: (open: boolean) => void;
+  isExportModalOpen: boolean;
+  setExportModalOpen: (open: boolean) => void;
+  isHistoryDrawerOpen: boolean;
+  setHistoryDrawerOpen: (open: boolean) => void;
+  isRequestAccessOpen: boolean;
+  setRequestAccessOpen: (open: boolean) => void;
+  showHeaderMenu: boolean;
+  setShowHeaderMenu: (open: boolean) => void;
+  showEmojiPicker: boolean;
+  setShowEmojiPicker: (open: boolean) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -270,4 +287,20 @@ export const useUIStore = create<UIState>((set, get) => ({
   isServerReachable: true,
   setConnectionStatus: (isOnline, isServerReachable) =>
     set({ isOnline, isServerReachable }),
+
+  isShareModalOpen: false,
+  setShareModalOpen: (open) => set({ isShareModalOpen: open }),
+  isExportModalOpen: false,
+  setExportModalOpen: (open) => set({ isExportModalOpen: open }),
+  isHistoryDrawerOpen: false,
+  setHistoryDrawerOpen: (open) => set({ isHistoryDrawerOpen: open }),
+  isRequestAccessOpen: false,
+  setRequestAccessOpen: (open) => set({ isRequestAccessOpen: open }),
+  showHeaderMenu: false,
+  setShowHeaderMenu: (open) => set({ showHeaderMenu: open }),
+  showEmojiPicker: false,
+  setShowEmojiPicker: (open) => set({ showEmojiPicker: open }),
+  canUndo: false,
+  canRedo: false,
+  setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
 }));

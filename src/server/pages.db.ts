@@ -1,5 +1,5 @@
 import { db } from '~/db';
-import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests } from '~/db/schema';
+import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests, databases } from '~/db/schema';
 import { eq, and, or, desc, asc, isNull, lt, ne, sql, inArray } from 'drizzle-orm';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
@@ -50,8 +50,10 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           createdAt: pages.createdAt,
           updatedAt: pages.updatedAt,
           contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
+          databaseId: databases.id,
         })
         .from(pages)
+        .leftJoin(databases, eq(pages.id, databases.pageId))
         .where(
           and(
             eq(pages.workspaceId, targetWorkspaceId),
@@ -64,45 +66,49 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       // 2. Explicitly shared pages (for this user's email)
       cleanEmail
         ? db
-            .select({
-              id: pages.id,
-              workspaceId: pages.workspaceId,
-              parentId: pages.parentId,
-              title: pages.title,
-              icon: pages.icon,
-              visibility: pages.visibility,
-              order: pages.order,
-              isPinned: pages.isPinned,
-              role: pageShares.role,
-              createdAt: pages.createdAt,
-              updatedAt: pages.updatedAt,
-              contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
-            })
-            .from(pageShares)
-            .innerJoin(pages, eq(pageShares.pageId, pages.id))
-            .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)))
+          .select({
+            id: pages.id,
+            workspaceId: pages.workspaceId,
+            parentId: pages.parentId,
+            title: pages.title,
+            icon: pages.icon,
+            visibility: pages.visibility,
+            order: pages.order,
+            isPinned: pages.isPinned,
+            role: pageShares.role,
+            createdAt: pages.createdAt,
+            updatedAt: pages.updatedAt,
+            contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
+            databaseId: databases.id,
+          })
+          .from(pageShares)
+          .innerJoin(pages, eq(pageShares.pageId, pages.id))
+          .leftJoin(databases, eq(pages.id, databases.pageId))
+          .where(and(eq(pageShares.email, cleanEmail), eq(pages.isDeleted, false)))
         : Promise.resolve([]),
 
       // 3. Recently viewed pages (combines user's recent view timestamps + external public files)
       session?.userId
         ? db
-            .select({
-              pageId: pageViews.pageId,
-              viewedAt: pageViews.viewedAt,
-              workspaceId: pages.workspaceId,
-              parentId: pages.parentId,
-              title: pages.title,
-              icon: pages.icon,
-              visibility: pages.visibility,
-              order: pages.order,
-              createdAt: pages.createdAt,
-              contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
-            })
-            .from(pageViews)
-            .innerJoin(pages, eq(pageViews.pageId, pages.id))
-            .where(and(eq(pageViews.userId, session.userId), eq(pages.isDeleted, false)))
-            .orderBy(desc(pageViews.viewedAt))
-            .limit(30)
+          .select({
+            pageId: pageViews.pageId,
+            viewedAt: pageViews.viewedAt,
+            workspaceId: pages.workspaceId,
+            parentId: pages.parentId,
+            title: pages.title,
+            icon: pages.icon,
+            visibility: pages.visibility,
+            order: pages.order,
+            createdAt: pages.createdAt,
+            contentText: sql<string | null>`SUBSTRING(TRIM(${pages.contentText}), 1, 160)`.as('content_text'),
+            databaseId: databases.id,
+          })
+          .from(pageViews)
+          .innerJoin(pages, eq(pageViews.pageId, pages.id))
+          .leftJoin(databases, eq(pages.id, databases.pageId))
+          .where(and(eq(pageViews.userId, session.userId), eq(pages.isDeleted, false)))
+          .orderBy(desc(pageViews.viewedAt))
+          .limit(10)
         : Promise.resolve([]),
     ]);
 
@@ -149,6 +155,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
           createdAt: rv.createdAt,
           updatedAt: rv.viewedAt,
           contentText: rv.contentText,
+          databaseId: rv.databaseId,
           children: [],
           isShared: true,
         };
@@ -286,7 +293,7 @@ export async function fetchPage(pageId: string) {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(page, session);
 
@@ -381,7 +388,7 @@ export async function removePagePresence(input: { pageId: string; clientId?: str
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const cid = input.clientId || 'default';
     const cleanEmail = session?.email
@@ -420,7 +427,7 @@ export async function recordPagePresence(input: {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const cid = input.clientId || 'default';
     const cleanEmail = session?.email
@@ -481,7 +488,7 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const accessLevel = await getPageAccessLevel(page, session);
     if (!accessLevel) {
@@ -677,7 +684,7 @@ export async function checkCanUserEditPage(pageId: string, includeDeleted = fals
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(page, session);
     return access === 'editor';
@@ -746,7 +753,7 @@ export async function checkCanUserDeletePage(pageId: string, includeDeleted = fa
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     return await checkIsWorkspaceOwner(page.workspaceId, session);
   } catch (err) {
@@ -841,7 +848,7 @@ export async function recordPageHistory(input: {
     let session: UserSession | null = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const userId = session?.userId ?? null;
     const userEmail = session?.email ?? null;
@@ -1065,7 +1072,7 @@ export async function savePageContent(input: { pageId: string; content: any; con
       .returning({ id: pages.id, updatedAt: pages.updatedAt });
 
     if (updated) {
-      db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => {});
+      db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => { });
       recordPageHistory({
         pageId: input.pageId,
         content: input.content,
@@ -1508,7 +1515,7 @@ export async function fetchChildPages(parentId: string) {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(parentPage[0], session);
     if (!access) return [];
@@ -1546,7 +1553,7 @@ export async function fetchPageShares(pageId: string) {
     let session = null;
     try {
       session = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     const access = await getPageAccessLevel(pageRecord[0], session);
     if (!access) return { owner: null, shares: [] };
@@ -1801,7 +1808,7 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
 
     try {
       sessionUser = await getSessionImpl();
-    } catch {}
+    } catch { }
 
     if (!workspaceId && sessionUser) {
       workspaceId = sessionUser.workspaceId;

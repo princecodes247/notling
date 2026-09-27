@@ -11,7 +11,7 @@ import {
   type DatabaseView,
   type DatabaseForm,
 } from '~/db/schema';
-import { eq, asc, desc, and } from 'drizzle-orm';
+import { eq, asc, desc, and, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 export interface FullDatabase {
@@ -23,31 +23,35 @@ export interface FullDatabase {
 }
 
 export async function fetchDatabase(databaseId: string): Promise<FullDatabase | null> {
-  const [database] = await db.select().from(databases).where(eq(databases.id, databaseId)).limit(1);
+  const [database] = await db
+    .select()
+    .from(databases)
+    .where(or(eq(databases.id, databaseId), eq(databases.pageId, databaseId)))
+    .limit(1);
   if (!database) return null;
 
   const properties = await db
     .select()
     .from(databaseProperties)
-    .where(eq(databaseProperties.databaseId, databaseId))
+    .where(eq(databaseProperties.databaseId, database.id))
     .orderBy(asc(databaseProperties.order));
 
   const items = await db
     .select()
     .from(databaseItems)
-    .where(eq(databaseItems.databaseId, databaseId))
+    .where(eq(databaseItems.databaseId, database.id))
     .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt));
 
   const views = await db
     .select()
     .from(databaseViews)
-    .where(eq(databaseViews.databaseId, databaseId))
+    .where(eq(databaseViews.databaseId, database.id))
     .orderBy(asc(databaseViews.order));
 
   const forms = await db
     .select()
     .from(databaseForms)
-    .where(eq(databaseForms.databaseId, databaseId));
+    .where(eq(databaseForms.databaseId, database.id));
 
   return {
     database,
@@ -94,11 +98,27 @@ export async function createNewDatabase(input: {
   title?: string;
   inline?: boolean;
 }): Promise<FullDatabase> {
+  let targetPageId = input.pageId || null;
+
+  // Requirement 2: Treat databases as pages everywhere (auto-create page row for standalone database)
+  if (!targetPageId && !input.inline) {
+    const { pages } = await import('~/db/schema');
+    const [newPage] = await db
+      .insert(pages)
+      .values({
+        workspaceId: input.workspaceId,
+        title: input.title || 'Projects & Tasks Database',
+        icon: '📊',
+      })
+      .returning();
+    targetPageId = newPage.id;
+  }
+
   const [database] = await db
     .insert(databases)
     .values({
       workspaceId: input.workspaceId,
-      pageId: input.pageId || null,
+      pageId: targetPageId,
       title: input.title || 'Projects & Tasks Database',
       icon: '📊',
       inline: input.inline ?? false,
@@ -160,44 +180,8 @@ export async function createNewDatabase(input: {
 
   const insertedProperties = await db.insert(databaseProperties).values(propsToInsert).returning();
 
-  // Sample seed items
-  const seedItems = [
-    {
-      databaseId: database.id,
-      title: 'Design initial database component structure',
-      properties: {
-        [titlePropId]: 'Design initial database component structure',
-        [statusPropId]: 'done',
-        [priorityPropId]: 'high',
-        [tagsPropId]: ['design', 'feature'],
-      },
-      order: 0,
-    },
-    {
-      databaseId: database.id,
-      title: 'Implement Kanban Board & Table views',
-      properties: {
-        [titlePropId]: 'Implement Kanban Board & Table views',
-        [statusPropId]: 'in_progress',
-        [priorityPropId]: 'high',
-        [tagsPropId]: ['feature'],
-      },
-      order: 1,
-    },
-    {
-      databaseId: database.id,
-      title: 'Add interactive Form view & public submission route',
-      properties: {
-        [titlePropId]: 'Add interactive Form view & public submission route',
-        [statusPropId]: 'in_progress',
-        [priorityPropId]: 'medium',
-        [tagsPropId]: ['feature'],
-      },
-      order: 2,
-    },
-  ];
-
-  const insertedItems = await db.insert(databaseItems).values(seedItems).returning();
+  // Requirement 4: On creation of a database, it should be empty (0 initial rows)
+  const insertedItems: DatabaseItem[] = [];
 
   // Create default views
   const viewsToInsert = [
@@ -295,7 +279,10 @@ export async function addDatabaseProperty(databaseId: string, prop: { id?: strin
   return newProp;
 }
 
-export async function updateDatabaseProperty(propertyId: string, updates: Partial<{ name: string; type: any; options: any[]; order: number }>) {
+export async function updateDatabaseProperty(
+  propertyId: string,
+  updates: Partial<{ name: string; type: any; options: any[]; order: number; icon: string | null }>
+) {
   const [updated] = await db
     .update(databaseProperties)
     .set(updates)

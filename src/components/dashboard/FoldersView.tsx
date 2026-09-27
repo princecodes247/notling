@@ -12,7 +12,7 @@ import { useUIStore } from '~/store/uiStore';
 
 interface FoldersViewProps {
   treeNodes: PageTreeNode[];
-  onSelectPage: (id: string) => void;
+  onSelectPage: (id: string, databaseId?: string | null) => void;
   onCreateFolder: () => void;
   onCreateDocument: (folderId?: string) => void;
 }
@@ -58,7 +58,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-safe">
+    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-12">
       <div className="max-w-5xl mx-auto w-full flex flex-col gap-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-neutral-100 dark:border-zinc-800/80">
@@ -127,7 +127,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                   <div className="p-4 sm:p-5 flex items-center justify-between border-b border-neutral-100 dark:border-zinc-800 bg-neutral-50/40 dark:bg-zinc-900/80">
                     <div
                       className="flex items-center gap-3 min-w-0 cursor-pointer"
-                      onClick={() => onSelectPage(folder.id)}
+                      onClick={() => onSelectPage(folder.id, folder.databaseId)}
                     >
                       <div className="w-9 h-9 rounded-lg bg-white dark:bg-zinc-800 border border-neutral-200 dark:border-zinc-700 flex items-center justify-center text-lg shrink-0 shadow-2xs">
                         {folder.icon || '📁'}
@@ -187,7 +187,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         folder.children.map((child) => (
                           <div
                             key={child.id}
-                            onClick={() => onSelectPage(child.id)}
+                            onClick={() => onSelectPage(child.id, child.databaseId)}
                             className="p-2.5 rounded-lg hover:bg-neutral-50 dark:hover:bg-zinc-800/60 flex items-center justify-between cursor-pointer group transition-colors"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">

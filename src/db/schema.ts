@@ -47,13 +47,13 @@ export const pages = pgTable('pages', {
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-}, (table) => ({
-  parentFk: foreignKey({ columns: [table.parentId], foreignColumns: [table.id] }).onDelete('cascade'),
-  searchIdx: index('pages_search_idx').using(
+}, (table) => ([
+  foreignKey({ columns: [table.parentId], foreignColumns: [table.id] }).onDelete('cascade'),
+  index('pages_search_idx').using(
     'gin',
     sql`to_tsvector('english', coalesce(${table.title}, '') || ' ' || coalesce(${table.contentText}, ''))`
   ),
-}));
+]));
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
@@ -198,6 +198,7 @@ export const databaseProperties = pgTable('database_properties', {
   }).notNull().default('text'),
   options: jsonb('options').$type<Array<{ id: string; name: string; color: string }>>().notNull().default([]),
   order: integer('order').notNull().default(0),
+  icon: text('icon'),
 });
 
 export type DatabaseProperty = typeof databaseProperties.$inferSelect;
