@@ -397,7 +397,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     >
                       <Database className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
                       <div className="flex flex-col gap-0.5">
-                        <span className="font-semibold text-stone-900 dark:text-zinc-100">New Database & Form</span>
+                        <span className="font-semibold text-stone-900 dark:text-zinc-100">New Database</span>
                         <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Spreadsheet table with form collection</span>
                       </div>
                     </button>
