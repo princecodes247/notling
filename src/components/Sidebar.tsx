@@ -11,6 +11,7 @@ import {
   Settings02Icon,
   Delete02Icon,
   LoaderCircleIcon,
+  TableIcon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { PageTreeItem } from './PageTreeItem';
@@ -454,7 +455,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     className="w-full text-left px-3 py-2.5 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
                   >
-                    <Database className="w-4 h-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                    <HugeiconsIcon icon={TableIcon} size={16} className="text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
                     <div className="flex flex-col gap-0.5">
                       <span className="font-semibold text-stone-900 dark:text-zinc-100">New Database</span>
                       <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Spreadsheet table with form collection</span>
