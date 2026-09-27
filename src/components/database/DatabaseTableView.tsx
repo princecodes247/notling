@@ -156,6 +156,29 @@ export function DatabaseTableView({
     onAddItem();
   };
 
+  const handleEnterCell = (rIndex: number, cIndex: number) => {
+    if (rIndex === items.length - 1) {
+      handleAddNewRow();
+    } else {
+      setFocusedCell({ rowIndex: rIndex + 1, colIndex: cIndex });
+    }
+  };
+
+  useEffect(() => {
+    if (focusedCell && focusedCell.colIndex === 0) {
+      const targetItem = items[focusedCell.rowIndex];
+      if (targetItem) {
+        const el = titleInputRefs.current.get(targetItem.id);
+        if (el && document.activeElement !== el) {
+          el.focus();
+          if ('select' in el && typeof el.select === 'function') {
+            el.select();
+          }
+        }
+      }
+    }
+  }, [focusedCell, items]);
+
   useEffect(() => {
     if (!readOnly && (items.length > prevItemsLengthRef.current || shouldFocusNewRowRef.current)) {
       const newRowIndex = items.length - 1;
@@ -604,7 +627,7 @@ export function DatabaseTableView({
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             (e.target as HTMLInputElement).blur();
-                            handleAddNewRow();
+                            handleEnterCell(rowIndex, 0);
                           } else if (e.key === 'Tab') {
                             e.preventDefault();
                             handleNavigateCell(rowIndex, 1, e.shiftKey);
@@ -668,7 +691,7 @@ export function DatabaseTableView({
                           readOnly={readOnly}
                           isFocused={isFocused}
                           onNavigate={(shift) => handleNavigateCell(rowIndex, colIndex + 1 + (shift ? -1 : 1), shift)}
-                          onAddNewRow={handleAddNewRow}
+                          onEnterRow={() => handleEnterCell(rowIndex, colIndex + 1)}
                           onMouseDownCheckbox={(e) => handlePropertyCheckboxMouseDown(item.id, prop.id, Boolean(val), e)}
                           onMouseEnterCheckbox={() => handlePropertyCheckboxMouseEnter(item.id, prop.id)}
                           isPopoverOpen={activeOpenMenuId === cellMenuId}
@@ -1295,7 +1318,7 @@ interface InteractiveCellProps {
   onClosePopover?: () => void;
   isFocused?: boolean;
   onNavigate?: (shift: boolean) => void;
-  onAddNewRow?: () => void;
+  onEnterRow?: () => void;
   onMouseDownCheckbox?: (e: React.MouseEvent) => void;
   onMouseEnterCheckbox?: () => void;
 }
@@ -1312,7 +1335,7 @@ function InteractiveCell({
   onClosePopover,
   isFocused = false,
   onNavigate,
-  onAddNewRow,
+  onEnterRow,
   onMouseDownCheckbox,
   onMouseEnterCheckbox,
 }: InteractiveCellProps) {
@@ -1346,7 +1369,7 @@ function InteractiveCell({
     } else if (e.key === 'Enter' && !isPopoverOpen) {
       e.preventDefault();
       (e.target as HTMLElement).blur();
-      if (onAddNewRow) onAddNewRow();
+      if (onEnterRow) onEnterRow();
     }
   };
 
@@ -1480,7 +1503,7 @@ function InteractiveCell({
                 if (parsed !== null) onChange(parsed);
                 else onChange(val);
                 (e.target as HTMLInputElement).blur();
-                if (onAddNewRow) onAddNewRow();
+                if (onEnterRow) onEnterRow();
               }
             }}
             className={`w-full bg-transparent border-none focus:outline-none px-1 py-0.5 rounded text-xs text-stone-800 dark:text-zinc-200 placeholder:text-stone-300 dark:placeholder:text-zinc-600 placeholder:italic placeholder:font-normal ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
@@ -1696,6 +1719,7 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDownCell}
             className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
               }`}
             placeholder="https://..."
@@ -1728,6 +1752,7 @@ function InteractiveCell({
             defaultValue={value || ''}
             disabled={readOnly}
             onBlur={(e) => onChange(e.target.value)}
+            onKeyDown={handleKeyDownCell}
             className={`w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200 ${isInvalid ? 'ring-1 ring-rose-500 bg-rose-50/20' : ''
               }`}
             placeholder="name@domain.com"
@@ -1748,6 +1773,7 @@ function InteractiveCell({
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
+          onKeyDown={handleKeyDownCell}
           className="w-full bg-transparent focus:bg-stone-100 dark:focus:bg-zinc-800 border-none focus:outline-none px-1.5 py-0.5 rounded text-stone-800 dark:text-zinc-200"
         />
       );
