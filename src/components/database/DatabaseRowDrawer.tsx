@@ -84,6 +84,7 @@ export function DatabaseRowDrawer({
           {/* Row Title */}
           <div className="space-y-1">
             <input
+              autoFocus
               type="text"
               value={title}
               disabled={readOnly}
@@ -99,7 +100,7 @@ export function DatabaseRowDrawer({
                   });
                 }
               }}
-              className="w-full text-2xl font-bold bg-transparent border-none focus:outline-none focus:bg-stone-50 dark:focus:bg-zinc-900/60 px-1 py-1 rounded-lg text-stone-950 dark:text-white"
+              className="w-full text-2xl font-bold bg-transparent border-none focus:outline-none focus:bg-stone-50 dark:focus:bg-zinc-900/60 px-1 py-1 rounded-lg text-stone-950 dark:text-white placeholder:text-stone-300 dark:placeholder:text-zinc-600 placeholder:italic"
               placeholder="Untitled Row"
             />
           </div>
@@ -186,7 +187,7 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
           defaultValue={value || ''}
           disabled={readOnly}
           onBlur={(e) => onChange(e.target.value)}
-          className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100 focus:ring-1 focus:ring-[#1f4d3d]"
+          className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100 focus:ring-1 focus:ring-[#1f4d3d] placeholder:text-stone-300 dark:placeholder:text-zinc-600 placeholder:italic"
           placeholder="Empty"
         />
       );
@@ -204,7 +205,7 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
               const numVal = inputVal !== '' ? Number(inputVal) : null;
               onChange(numVal);
             }}
-            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 font-mono ${
+            className={`w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 font-mono placeholder:text-stone-300 dark:placeholder:text-zinc-600 ${
               isInvalid ? 'border-rose-500 ring-1 ring-rose-500' : 'border-stone-200 dark:border-zinc-800 focus:ring-1 focus:ring-[#1f4d3d]'
             }`}
             placeholder="0"

@@ -11,8 +11,9 @@ import {
   FileText,
   Plus,
   Search,
-  Trash2,
+  X,
 } from 'lucide-react';
+import clsx from 'clsx';
 import {
   createDatabaseProperty,
   updateDatabaseProperty,
@@ -133,6 +134,7 @@ export function DatabaseContainer({
     } catch (err) {
       console.error('Failed to save row to server:', err);
     }
+    return tempId;
   };
 
   const handleUpdateItem = async (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => {
@@ -368,38 +370,47 @@ export function DatabaseContainer({
         </div>
 
         {/* View Switcher Tabs Bar */}
-        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 pb-1 overflow-x-auto select-none">
-          <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 px-1 pt-1 pb-0 overflow-x-auto select-none no-scrollbar">
+          <div className="flex items-center gap-1.5">
             {dbData.views.map((view: DatabaseView) => {
               const isActive = view.id === activeView?.id;
               return (
                 <div key={view.id} className="relative group flex items-center">
                   <button
+                    type="button"
                     onClick={() => setActiveViewId(view.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer ${isActive ? 'bg-stone-200/80 dark:bg-zinc-800 text-stone-950 dark:text-white font-semibold' : 'text-stone-600 dark:text-zinc-400 hover:text-stone-950 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'}`}
+                    className={clsx(
+                      "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-t-lg border-b-2 transition-all cursor-pointer relative",
+                      isActive
+                        ? "border-[#1f4d3d] dark:border-emerald-500 text-stone-900 dark:text-white font-semibold bg-stone-100/70 dark:bg-zinc-800/60"
+                        : "border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100/40 dark:hover:bg-zinc-800/40"
+                    )}
                   >
-                    {view.type === 'table' && <Table className="w-3.5 h-3.5 text-blue-500" />}
-                    {view.type === 'board' && <Kanban className="w-3.5 h-3.5 text-purple-500" />}
-                    {view.type === 'form' && <FileText className="w-3.5 h-3.5 text-emerald-500" />}
+                    {view.type === 'table' && <Table className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                    {view.type === 'board' && <Kanban className="w-3.5 h-3.5 text-purple-500 shrink-0" />}
+                    {view.type === 'form' && <FileText className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
                     <span>{view.name}</span>
-                  </button>
 
-                  {!readOnly && dbData.views.length > 1 && (
-                    <button
-                      onClick={() => handleDeleteView(view.id)}
-                      className="opacity-0 group-hover:opacity-100 ml-0.5 p-1 text-stone-400 hover:text-rose-500 transition-opacity"
-                      title="Delete View"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  )}
+                    {!readOnly && dbData.views.length > 1 && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteView(view.id);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-rose-100 dark:hover:bg-rose-950/60 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all cursor-pointer ml-1"
+                        title="Delete View"
+                      >
+                        <X className="w-3 h-3" />
+                      </span>
+                    )}
+                  </button>
                 </div>
               );
             })}
 
             {/* Add View Button */}
             {!readOnly && (
-              <div>
+              <div className="relative">
                 {addingView ? (
                   <form
                     onSubmit={handleAddViewSubmit}
@@ -409,7 +420,7 @@ export function DatabaseContainer({
                         setAddingView(false);
                       }
                     }}
-                    className="flex items-center gap-1 pl-2"
+                    className="flex items-center gap-1.5 px-2 py-1 bg-stone-100 dark:bg-zinc-800 rounded-lg border border-stone-200 dark:border-zinc-700 shadow-2xs"
                   >
                     <input
                       type="text"
@@ -421,13 +432,13 @@ export function DatabaseContainer({
                           setAddingView(false);
                         }
                       }}
-                      className="px-2 py-1 text-xs border rounded-md bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100"
+                      className="px-2 py-0.5 text-xs bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 rounded text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d]"
                       autoFocus
                     />
                     <select
                       value={newViewType}
                       onChange={(e) => setNewViewType(e.target.value as any)}
-                      className="px-1.5 py-1 text-xs border rounded-md bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-800 dark:text-zinc-200"
+                      className="px-1.5 py-0.5 text-xs bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 rounded text-stone-800 dark:text-zinc-200 focus:outline-none"
                     >
                       <option value="table">Table</option>
                       <option value="board">Board</option>
@@ -435,18 +446,19 @@ export function DatabaseContainer({
                     </select>
                     <button
                       type="submit"
-                      className="px-2.5 py-1 text-xs bg-[#1f4d3d] text-white rounded-md font-medium cursor-pointer"
+                      className="px-2.5 py-0.5 text-xs bg-[#1f4d3d] hover:bg-[#183e31] text-white rounded font-medium cursor-pointer shadow-2xs"
                     >
                       Add
                     </button>
                   </form>
                 ) : (
                   <button
+                    type="button"
                     onClick={() => setAddingView(true)}
-                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 rounded-md transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add View</span>
+                    <span>View</span>
                   </button>
                 )}
               </div>

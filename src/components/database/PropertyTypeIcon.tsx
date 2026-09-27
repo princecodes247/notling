@@ -9,6 +9,7 @@ import {
   Tag,
   Clock,
   Heading,
+  User,
   HelpCircle,
 } from 'lucide-react';
 
@@ -40,6 +41,8 @@ export function PropertyTypeIcon({ type, icon, className = 'w-4 h-4' }: Property
       return <Calendar className={className} />;
     case 'checkbox':
       return <CheckSquare className={className} />;
+    case 'person':
+      return <User className={className} />;
     case 'url':
       return <LinkIcon className={className} />;
     case 'email':
