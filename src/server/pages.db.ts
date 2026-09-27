@@ -223,55 +223,63 @@ export async function getPageAccessLevel(
 ): Promise<'editor' | 'viewer' | null> {
   const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
 
-  // 1. Workspace Owner / Admin check
+  let isOwner = false;
+  let isAdmin = false;
+  let explicitShareRole: 'editor' | 'viewer' | null = null;
+
   if (session) {
-    const ws = await db
-      .select({ ownerId: workspaces.ownerId })
-      .from(workspaces)
-      .where(eq(workspaces.id, page.workspaceId))
-      .limit(1);
+    const [ws, member, shares] = await Promise.all([
+      db
+        .select({ ownerId: workspaces.ownerId })
+        .from(workspaces)
+        .where(eq(workspaces.id, page.workspaceId))
+        .limit(1),
+      userEmail
+        ? db
+          .select({ role: workspaceMembers.role })
+          .from(workspaceMembers)
+          .where(
+            and(
+              eq(workspaceMembers.workspaceId, page.workspaceId),
+              or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, userEmail))
+            )
+          )
+          .limit(1)
+        : Promise.resolve([]),
+      userEmail
+        ? db
+          .select({ role: pageShares.role })
+          .from(pageShares)
+          .where(and(eq(pageShares.pageId, page.id), eq(pageShares.email, userEmail)))
+          .limit(1)
+        : Promise.resolve([]),
+    ]);
 
     if (ws.length > 0 && ws[0].ownerId === session.userId) {
-      return 'editor';
+      isOwner = true;
     }
-
-    if (userEmail) {
-      const member = await db
-        .select({ role: workspaceMembers.role })
-        .from(workspaceMembers)
-        .where(
-          and(
-            eq(workspaceMembers.workspaceId, page.workspaceId),
-            or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, userEmail))
-          )
-        )
-        .limit(1);
-
-      if (member.length > 0 && member[0].role === 'admin') {
-        return 'editor';
-      }
+    if (member.length > 0 && member[0].role === 'admin') {
+      isAdmin = true;
+    }
+    if (shares.length > 0) {
+      explicitShareRole = shares[0].role as 'editor' | 'viewer';
     }
   }
 
-  // 2. Explicit Page-Level Share (pageShares table)
-  // Takes precedence for this specific user over general workspace membership
-  if (userEmail) {
-    const shares = await db
-      .select({ role: pageShares.role })
-      .from(pageShares)
-      .where(and(eq(pageShares.pageId, page.id), eq(pageShares.email, userEmail)))
-      .limit(1);
+  // 1. Workspace Owner / Admin check
+  if (isOwner || isAdmin) {
+    return 'editor';
+  }
 
-    if (shares.length > 0) {
-      return shares[0].role;
-    }
+  // 2. Explicit Page-Level Share
+  if (explicitShareRole) {
+    return explicitShareRole;
   }
 
   // 3. Page Visibility & Workspace Membership
   const isWorkspaceMember = !!(session && session.workspaceId === page.workspaceId);
 
   if (page.visibility === 'private') {
-    // Private page is only accessible to Owner/Admin (step 1) or explicitly invited users (step 2)
     return null;
   }
 
@@ -1819,7 +1827,6 @@ export async function fetchPageBacklinks(pageId: string): Promise<BacklinkItem[]
         id: pages.id,
         title: pages.title,
         icon: pages.icon,
-        content: pages.content,
         contentText: pages.contentText,
         updatedAt: pages.updatedAt,
       })
@@ -1828,7 +1835,11 @@ export async function fetchPageBacklinks(pageId: string): Promise<BacklinkItem[]
         and(
           eq(pages.workspaceId, targetPage.workspaceId),
           eq(pages.isDeleted, false),
-          ne(pages.id, pageId)
+          ne(pages.id, pageId),
+          or(
+            sql`cast(${pages.content} as text) LIKE ${'%' + pageId + '%'}`,
+            sql`${pages.contentText} LIKE ${'%' + pageId + '%'}`
+          )
         )
       )
       .orderBy(desc(pages.updatedAt));
@@ -1836,28 +1847,22 @@ export async function fetchPageBacklinks(pageId: string): Promise<BacklinkItem[]
     const backlinks: BacklinkItem[] = [];
 
     for (const p of candidatePages) {
-      const contentStr = p.content ? JSON.stringify(p.content) : '';
       const textStr = p.contentText || '';
-
-      const containsPageId = contentStr.includes(pageId) || textStr.includes(pageId);
-
-      if (containsPageId) {
-        let snippet = textStr.slice(0, 100);
-        const mentionIdx = textStr.indexOf(pageId);
-        if (mentionIdx !== -1) {
-          const start = Math.max(0, mentionIdx - 30);
-          const end = Math.min(textStr.length, mentionIdx + 70);
-          snippet = (start > 0 ? '...' : '') + textStr.slice(start, end) + (end < textStr.length ? '...' : '');
-        }
-
-        backlinks.push({
-          id: p.id,
-          title: p.title || 'Untitled',
-          icon: p.icon,
-          updatedAt: p.updatedAt,
-          snippet: snippet ? snippet.trim() : null,
-        });
+      let snippet = textStr.slice(0, 100);
+      const mentionIdx = textStr.indexOf(pageId);
+      if (mentionIdx !== -1) {
+        const start = Math.max(0, mentionIdx - 30);
+        const end = Math.min(textStr.length, mentionIdx + 70);
+        snippet = (start > 0 ? '...' : '') + textStr.slice(start, end) + (end < textStr.length ? '...' : '');
       }
+
+      backlinks.push({
+        id: p.id,
+        title: p.title || 'Untitled',
+        icon: p.icon,
+        updatedAt: p.updatedAt,
+        snippet: snippet ? snippet.trim() : null,
+      });
     }
 
     return backlinks;
@@ -1919,22 +1924,30 @@ export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise
       }
     });
 
+    const memberEmails = Array.from(memberEmailsMap.keys());
+    const userConditions = [];
+    if (ownerId) userConditions.push(eq(users.id, ownerId));
+    if (memberEmails.length > 0) userConditions.push(inArray(users.email, memberEmails));
+
     // 3. Fetch registered users matching workspace owner or workspace members
-    const allUsers = await db
-      .select({
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        avatarUrl: users.avatarUrl,
-        role: users.role,
-      })
-      .from(users)
-      .orderBy(asc(users.name), asc(users.email));
+    const matchedUsers = userConditions.length > 0
+      ? await db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          avatarUrl: users.avatarUrl,
+          role: users.role,
+        })
+        .from(users)
+        .where(or(...userConditions))
+        .orderBy(asc(users.name), asc(users.email))
+      : [];
 
     const result: WorkspaceUserItem[] = [];
     const seenEmails = new Set<string>();
 
-    allUsers.forEach((u) => {
+    matchedUsers.forEach((u) => {
       const emailLower = u.email.toLowerCase().trim();
       const isOwner = ownerId && u.id === ownerId;
       const isMember = memberEmailsMap.has(emailLower);
