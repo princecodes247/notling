@@ -361,7 +361,7 @@ export function DatabaseContainer({
       />
 
       {/* Direct Table Content (Borderless, sitting directly on page background) */}
-      <div className="py-2 px-4 sm:px-8">
+      <div className="py-2 px-4 pt-6 sm:px-8">
         <DatabaseTableView
           properties={dbData.properties}
           items={filteredItems}

@@ -114,17 +114,6 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                 className="pl-7 pr-2.5 py-1 text-xs rounded-md border border-stone-200/80 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d] w-28 sm:w-44 transition-all"
               />
             </div>
-
-            {!isReadOnly && onAddItem && (
-              <button
-                type="button"
-                onClick={onAddItem}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white transition-colors cursor-pointer shadow-2xs"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New</span>
-              </button>
-            )}
           </div>
         )}
         <CollaboratorAvatars
