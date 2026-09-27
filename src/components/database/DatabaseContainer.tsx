@@ -96,6 +96,7 @@ export function DatabaseContainer({
   }, [initialData.database.id, initialData.database.title]);
 
   const handleSaveTitle = async () => {
+    if (readOnly) return;
     isEditingTitleRef.current = false;
     const trimmed = dbTitle.trim();
     const finalTitle = trimmed || savedTitleRef.current || 'Untitled Database';
@@ -154,6 +155,7 @@ export function DatabaseContainer({
 
   // Handlers for Items (100% Optimistic)
   const handleAddItem = async (initialProps?: Record<string, any>) => {
+    if (readOnly) return '';
     const safeProps =
       initialProps &&
         typeof initialProps === 'object' &&
@@ -212,6 +214,7 @@ export function DatabaseContainer({
   };
 
   const handleUpdateItem = async (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => {
+    if (readOnly) return;
     setDbData((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.map((i: DatabaseItem) =>
@@ -234,6 +237,7 @@ export function DatabaseContainer({
   };
 
   const handleDeleteItem = async (itemId: string) => {
+    if (readOnly) return;
     setDbData((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.filter((i: DatabaseItem) => i.id !== itemId),
@@ -243,6 +247,7 @@ export function DatabaseContainer({
   };
 
   const handleDeleteItemsBulk = async (itemIds: string[]) => {
+    if (readOnly) return;
     setDbData((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.filter((i: DatabaseItem) => !itemIds.includes(i.id)),
@@ -252,6 +257,7 @@ export function DatabaseContainer({
   };
 
   const handleReorderItems = (fromIndex: number, toIndex: number) => {
+    if (readOnly) return;
     setDbData((prev: FullDatabase) => {
       if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.items.length || toIndex >= prev.items.length) return prev;
       const newItems = [...prev.items];
@@ -278,6 +284,7 @@ export function DatabaseContainer({
 
   // Handlers for Properties (100% Optimistic)
   const handleAddProperty = async (rawName: string, type: string) => {
+    if (readOnly) return;
     const name = getUniquePropertyName(dbData.properties, rawName.trim() || 'Property');
     const tempPropId = crypto.randomUUID();
     const optimisticProp: DatabaseProperty = {
@@ -310,6 +317,7 @@ export function DatabaseContainer({
   };
 
   const handleUpdateProperty = async (propertyId: string, updates: Partial<DatabaseProperty>) => {
+    if (readOnly) return;
     setDbData((prev: FullDatabase) => ({
       ...prev,
       properties: prev.properties.map((p: DatabaseProperty) => (p.id === propertyId ? { ...p, ...updates } : p)),
@@ -324,6 +332,7 @@ export function DatabaseContainer({
   };
 
   const handleConvertPropertyType = async (propertyId: string, targetType: string) => {
+    if (readOnly) return;
     const updatedProp = await convertDatabasePropertyType({
       data: {
         propertyId,
@@ -338,6 +347,7 @@ export function DatabaseContainer({
   };
 
   const handleDeleteProperty = async (propertyId: string) => {
+    if (readOnly) return;
     setDbData((prev: FullDatabase) => ({
       ...prev,
       properties: prev.properties.filter((p: DatabaseProperty) => p.id !== propertyId),
@@ -347,6 +357,7 @@ export function DatabaseContainer({
   };
 
   const handleUpdateIcon = async (newIcon: string | null) => {
+    if (readOnly) return;
     const iconValue = newIcon || '';
     setDbData((prev: FullDatabase) => ({
       ...prev,

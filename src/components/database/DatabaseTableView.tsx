@@ -443,7 +443,7 @@ export function DatabaseTableView({
     <div className="w-full font-sans relative">
       {/* Floating Action Bar for Bulk Selection (Overlayed to avoid table jumping) */}
       <AnimatePresence>
-        {selectedItemIds.length > 0 && (
+        {!readOnly && selectedItemIds.length > 0 && (
           <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-sm bg-stone-900/90 dark:bg-zinc-800/95 text-white backdrop-blur-md shadow-xl border border-stone-700/50 dark:border-zinc-700/50 text-xs animate-in fade-in slide-in-from-top-2 duration-150 select-none">
             <span className="font-medium text-stone-200">
               <strong className="text-white font-semibold">{selectedItemIds.length}</strong> row{selectedItemIds.length > 1 ? 's' : ''} selected
@@ -475,21 +475,23 @@ export function DatabaseTableView({
           <thead>
             <tr className="border-b border-stone-200/60 dark:border-zinc-800/60 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
-              <th
-                style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
-                className="py-2.5 px-3 text-center select-none shrink-0"
-              >
-                <div className='flex mx-auto w-fit'>
-                  <input
-                    type="checkbox"
-                    checked={items.length > 0 && selectedItemIds.length === items.length}
-                    onChange={handleToggleSelectAll}
-                    className={cn("bn-checkbox w-3.5 h-3.5 cursor-pointer",
-                      selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
-                    )}
-                  />
-                </div>
-              </th>
+              {!readOnly && (
+                <th
+                  style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
+                  className="py-2.5 px-3 text-center select-none shrink-0"
+                >
+                  <div className='flex mx-auto w-fit'>
+                    <input
+                      type="checkbox"
+                      checked={items.length > 0 && selectedItemIds.length === items.length}
+                      onChange={handleToggleSelectAll}
+                      className={cn("bn-checkbox w-3.5 h-3.5 cursor-pointer",
+                        selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
+                      )}
+                    />
+                  </div>
+                </th>
+              )}
 
               {/* Title Column Header */}
               <th
@@ -594,37 +596,39 @@ export function DatabaseTableView({
                   )}
                 >
                   {/* Checkbox & Row Drag Handle Column */}
-                  <td
-                    style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
-                    className="py-2 px-3 text-center select-none shrink-0"
-                    {...rowPaint.getItemProps(item.id, selectedItemIds.includes(item.id))}
-                  >
-                    <div className="flex items-center justify-center gap-1 cursor-pointer">
-                      {/* Row Drag Handle (Page Editor style GripVertical) */}
-                      <span
-                        draggable
-                        onDragStart={(e) => {
-                          setDraggedRowIndex(rowIndex);
-                          e.dataTransfer.effectAllowed = 'move';
-                          e.dataTransfer.setData('text/plain', item.id);
-                        }}
-                        onDragEnd={() => setDraggedRowIndex(null)}
-                        className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
-                        title="Drag to reorder row"
-                      >
-                        <GripVertical className="w-3.5 h-3.5" />
-                      </span>
+                  {!readOnly && (
+                    <td
+                      style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
+                      className="py-2 px-3 text-center select-none shrink-0"
+                      {...rowPaint.getItemProps(item.id, selectedItemIds.includes(item.id))}
+                    >
+                      <div className="flex items-center justify-center gap-1 cursor-pointer">
+                        {/* Row Drag Handle (Page Editor style GripVertical) */}
+                        <span
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedRowIndex(rowIndex);
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', item.id);
+                          }}
+                          onDragEnd={() => setDraggedRowIndex(null)}
+                          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
+                          title="Drag to reorder row"
+                        >
+                          <GripVertical className="w-3.5 h-3.5" />
+                        </span>
 
-                      {/* Row Checkbox (Visible on hover, or when selected) */}
-                      <input
-                        type="checkbox"
-                        checked={selectedItemIds.includes(item.id)}
-                        onChange={() => { }}
-                        className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                          }`}
-                      />
-                    </div>
-                  </td>
+                        {/* Row Checkbox (Visible on hover, or when selected) */}
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.includes(item.id)}
+                          onChange={() => { }}
+                          className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                            }`}
+                        />
+                      </div>
+                    </td>
+                  )}
 
                   {/* Title Cell + Open Page Button */}
                   <td

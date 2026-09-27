@@ -6,6 +6,8 @@ import {
   databaseViews,
   databaseForms,
   pages,
+  workspaces,
+  workspaceMembers,
   type Database,
   type DatabaseProperty,
   type DatabaseItem,
@@ -14,7 +16,8 @@ import {
 } from '~/db/schema';
 import { eq, asc, desc, and, or, isNull, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { fetchPage } from './pages.db';
+import { fetchPage, getPageAccessLevel } from './pages.db';
+import { getSessionImpl } from './auth.db';
 
 export interface FullDatabase {
   database: Database;
@@ -23,6 +26,138 @@ export interface FullDatabase {
   views: DatabaseView[];
   forms: DatabaseForm[];
 }
+
+// ---------------------------------------------------------------------------
+// Access Control & Permission Enforcement Helpers
+// ---------------------------------------------------------------------------
+
+export async function checkDatabaseAccessLevel(databaseId: string): Promise<'editor' | 'viewer' | null> {
+  const session = await getSessionImpl();
+
+  const [row] = await db
+    .select({
+      database: databases,
+      page: pages,
+    })
+    .from(databases)
+    .leftJoin(pages, eq(databases.pageId, pages.id))
+    .where(or(eq(databases.id, databaseId), eq(databases.pageId, databaseId)))
+    .limit(1);
+
+  if (!row || !row.database) {
+    const [pageRow] = await db
+      .select()
+      .from(pages)
+      .where(eq(pages.id, databaseId))
+      .limit(1);
+    if (!pageRow) return null;
+    return getPageAccessLevel(pageRow, session);
+  }
+
+  const { database, page } = row;
+  if (page) {
+    return getPageAccessLevel(page, session);
+  }
+
+  if (!session) return null;
+  const userEmail = session.email?.trim().toLowerCase();
+  const [ws, member] = await Promise.all([
+    db.select({ ownerId: workspaces.ownerId }).from(workspaces).where(eq(workspaces.id, database.workspaceId)).limit(1),
+    userEmail
+      ? db
+          .select({ role: workspaceMembers.role })
+          .from(workspaceMembers)
+          .where(and(eq(workspaceMembers.workspaceId, database.workspaceId), or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, userEmail))))
+          .limit(1)
+      : Promise.resolve([]),
+  ]);
+
+  if ((ws.length > 0 && ws[0].ownerId === session.userId) || member.length > 0 || session.workspaceId === database.workspaceId) {
+    return 'editor';
+  }
+
+  return null;
+}
+
+export async function assertDatabaseEditAccess(databaseId: string): Promise<void> {
+  const accessLevel = await checkDatabaseAccessLevel(databaseId);
+  if (accessLevel !== 'editor') {
+    throw new Error('Unauthorized: You do not have permission to modify this database.');
+  }
+}
+
+export async function assertDatabaseViewAccess(databaseId: string): Promise<void> {
+  const accessLevel = await checkDatabaseAccessLevel(databaseId);
+  if (!accessLevel) {
+    throw new Error('Unauthorized: You do not have permission to view this database.');
+  }
+}
+
+export async function assertDatabasePropertyEditAccess(propertyId: string): Promise<string> {
+  const [prop] = await db.select({ databaseId: databaseProperties.databaseId }).from(databaseProperties).where(eq(databaseProperties.id, propertyId)).limit(1);
+  if (!prop) throw new Error('Database property not found');
+  await assertDatabaseEditAccess(prop.databaseId);
+  return prop.databaseId;
+}
+
+export async function assertDatabaseItemEditAccess(itemId: string): Promise<string> {
+  const [item] = await db.select({ databaseId: databaseItems.databaseId }).from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
+  if (!item) throw new Error('Database item not found');
+  await assertDatabaseEditAccess(item.databaseId);
+  return item.databaseId;
+}
+
+export async function assertDatabaseItemsBulkEditAccess(itemIds: string[]): Promise<void> {
+  if (!itemIds || itemIds.length === 0) return;
+  const items = await db.select({ databaseId: databaseItems.databaseId }).from(databaseItems).where(inArray(databaseItems.id, itemIds));
+  if (items.length === 0) return;
+  const dbIds = Array.from(new Set(items.map((i) => i.databaseId)));
+  for (const dbId of dbIds) {
+    await assertDatabaseEditAccess(dbId);
+  }
+}
+
+export async function assertDatabaseViewEditAccess(viewId: string): Promise<string> {
+  const [view] = await db.select({ databaseId: databaseViews.databaseId }).from(databaseViews).where(eq(databaseViews.id, viewId)).limit(1);
+  if (!view) throw new Error('Database view not found');
+  await assertDatabaseEditAccess(view.databaseId);
+  return view.databaseId;
+}
+
+export async function assertDatabaseFormEditAccess(formId: string): Promise<string> {
+  const [form] = await db.select({ databaseId: databaseForms.databaseId }).from(databaseForms).where(eq(databaseForms.id, formId)).limit(1);
+  if (!form) throw new Error('Database form not found');
+  await assertDatabaseEditAccess(form.databaseId);
+  return form.databaseId;
+}
+
+export async function assertWorkspaceEditAccess(workspaceId: string): Promise<void> {
+  const session = await getSessionImpl();
+  if (!session) {
+    throw new Error('Unauthorized: Login required.');
+  }
+  const cleanEmail = session.email?.trim().toLowerCase();
+  const [ws, member] = await Promise.all([
+    db.select({ ownerId: workspaces.ownerId }).from(workspaces).where(eq(workspaces.id, workspaceId)).limit(1),
+    cleanEmail
+      ? db
+          .select({ role: workspaceMembers.role })
+          .from(workspaceMembers)
+          .where(and(eq(workspaceMembers.workspaceId, workspaceId), or(eq(workspaceMembers.userId, session.userId), eq(workspaceMembers.email, cleanEmail))))
+          .limit(1)
+      : Promise.resolve([]),
+  ]);
+
+  if ((ws.length > 0 && ws[0].ownerId === session.userId) || member.length > 0 || session.workspaceId === workspaceId) {
+    return;
+  }
+
+  throw new Error('Unauthorized: You do not have edit access to this workspace.');
+}
+
+// ---------------------------------------------------------------------------
+// Database Queries and Mutations with Security Assertions
+// ---------------------------------------------------------------------------
 
 export async function fetchDatabase(databaseId: string): Promise<FullDatabase | null> {
   const [row] = await db
@@ -37,6 +172,13 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
 
   if (!row || !row.database || row.isDeleted === true) return null;
   const database = row.database;
+
+  // Access control check
+  try {
+    await assertDatabaseViewAccess(database.id);
+  } catch {
+    return null;
+  }
 
   const [properties, items, views, forms] = await Promise.all([
     db
@@ -70,6 +212,12 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
 }
 
 export async function fetchDatabasesInWorkspace(workspaceId: string): Promise<Database[]> {
+  try {
+    await assertWorkspaceEditAccess(workspaceId);
+  } catch {
+    return [];
+  }
+
   const rows = await db
     .select({ database: databases })
     .from(databases)
@@ -116,9 +264,10 @@ export async function createNewDatabase(input: {
   title?: string;
   inline?: boolean;
 }): Promise<FullDatabase> {
+  await assertWorkspaceEditAccess(input.workspaceId);
+
   let targetPageId = input.pageId || null;
 
-  // Treat databases as pages everywhere (auto-create page row for standalone database)
   if (!targetPageId && !input.inline) {
     const { pages } = await import('~/db/schema');
     const [newPage] = await db
@@ -143,7 +292,6 @@ export async function createNewDatabase(input: {
     })
     .returning();
 
-  // Blank slate: create only single mandatory title property
   const titlePropId = randomUUID();
 
   const propsToInsert = [
@@ -158,11 +306,8 @@ export async function createNewDatabase(input: {
   ];
 
   const insertedProperties = await db.insert(databaseProperties).values(propsToInsert).returning();
-
-  // Blank slate: 0 initial items
   const insertedItems: DatabaseItem[] = [];
 
-  // Create default views
   const viewsToInsert = [
     {
       databaseId: database.id,
@@ -197,7 +342,6 @@ export async function createNewDatabase(input: {
 
   const insertedViews = await db.insert(databaseViews).values(viewsToInsert).returning();
 
-  // Create default shareable Form
   const shareToken = randomUUID().replace(/-/g, '').slice(0, 16);
   const formToInsert = {
     databaseId: database.id,
@@ -226,6 +370,8 @@ export async function createNewDatabase(input: {
 }
 
 export async function saveDatabase(databaseId: string, updates: Partial<{ title: string; description: string; icon: string | null; coverUrl: string }>) {
+  await assertDatabaseEditAccess(databaseId);
+
   const [updated] = await db
     .update(databases)
     .set({ ...updates, updatedAt: new Date() })
@@ -258,11 +404,14 @@ export async function saveDatabase(databaseId: string, updates: Partial<{ title:
 }
 
 export async function removeDatabase(databaseId: string) {
+  await assertDatabaseEditAccess(databaseId);
   await db.delete(databases).where(eq(databases.id, databaseId));
   return { success: true };
 }
 
 export async function addDatabaseProperty(databaseId: string, prop: { id?: string; name: string; type: any; options?: any[] }) {
+  await assertDatabaseEditAccess(databaseId);
+
   const [lastProp] = await db
     .select({ order: databaseProperties.order })
     .from(databaseProperties)
@@ -290,6 +439,8 @@ export async function updateDatabaseProperty(
   propertyId: string,
   updates: Partial<{ name: string; type: any; options: any[]; order: number; icon: string | null }>
 ) {
+  await assertDatabasePropertyEditAccess(propertyId);
+
   const [updated] = await db
     .update(databaseProperties)
     .set(updates)
@@ -299,11 +450,15 @@ export async function updateDatabaseProperty(
 }
 
 export async function deleteDatabaseProperty(propertyId: string) {
+  await assertDatabasePropertyEditAccess(propertyId);
+
   await db.delete(databaseProperties).where(eq(databaseProperties.id, propertyId));
   return { success: true };
 }
 
 export async function getOrCreateDatabaseItemPage(itemId: string) {
+  await assertDatabaseItemEditAccess(itemId);
+
   const [item] = await db.select().from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
   if (!item) return null;
 
@@ -332,6 +487,8 @@ export async function getOrCreateDatabaseItemPage(itemId: string) {
 }
 
 export async function addDatabaseItem(databaseId: string, item: { id?: string; title?: string; properties?: Record<string, any>; pageId?: string }) {
+  await assertDatabaseEditAccess(databaseId);
+
   const [lastItem] = await db
     .select({ order: databaseItems.order })
     .from(databaseItems)
@@ -374,6 +531,8 @@ export async function addDatabaseItem(databaseId: string, item: { id?: string; t
 }
 
 export async function updateDatabaseItem(itemId: string, updates: Partial<{ title: string; properties: Record<string, any>; order: number }>) {
+  await assertDatabaseItemEditAccess(itemId);
+
   const [updated] = await db
     .update(databaseItems)
     .set({ ...updates, updatedAt: new Date() })
@@ -387,6 +546,8 @@ export async function updateDatabaseItem(itemId: string, updates: Partial<{ titl
 }
 
 export async function deleteDatabaseItem(itemId: string) {
+  await assertDatabaseItemEditAccess(itemId);
+
   const [item] = await db.select({ pageId: databaseItems.pageId }).from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
   if (item?.pageId) {
     await db.update(pages).set({ isDeleted: true, updatedAt: new Date() }).where(eq(pages.id, item.pageId));
@@ -396,6 +557,8 @@ export async function deleteDatabaseItem(itemId: string) {
 }
 
 export async function addDatabaseView(databaseId: string, view: { name: string; type: string; config?: any }) {
+  await assertDatabaseEditAccess(databaseId);
+
   const [lastView] = await db
     .select({ order: databaseViews.order })
     .from(databaseViews)
@@ -419,6 +582,8 @@ export async function addDatabaseView(databaseId: string, view: { name: string; 
 }
 
 export async function updateDatabaseView(viewId: string, updates: Partial<{ name: string; type: any; config: any; order: number }>) {
+  await assertDatabaseViewEditAccess(viewId);
+
   const [updated] = await db
     .update(databaseViews)
     .set(updates)
@@ -428,11 +593,15 @@ export async function updateDatabaseView(viewId: string, updates: Partial<{ name
 }
 
 export async function deleteDatabaseView(viewId: string) {
+  await assertDatabaseViewEditAccess(viewId);
+
   await db.delete(databaseViews).where(eq(databaseViews.id, viewId));
   return { success: true };
 }
 
 export async function updateFormSettings(formId: string, updates: Partial<DatabaseForm>) {
+  await assertDatabaseFormEditAccess(formId);
+
   const [updated] = await db
     .update(databaseForms)
     .set(updates)
@@ -447,7 +616,6 @@ export async function submitFormResponse(shareToken: string, properties: Record<
     throw new Error('Form not found or is inactive');
   }
 
-  // Determine main item title from title property if provided or default
   const [titleProperty] = await db
     .select()
     .from(databaseProperties)
@@ -472,6 +640,8 @@ export async function submitFormResponse(shareToken: string, properties: Record<
 }
 
 export async function saveDatabaseItemContent(itemId: string, content: any[]) {
+  await assertDatabaseItemEditAccess(itemId);
+
   const [updated] = await db
     .update(databaseItems)
     .set({ content, updatedAt: new Date() })
@@ -482,17 +652,20 @@ export async function saveDatabaseItemContent(itemId: string, content: any[]) {
 
 export async function deleteDatabaseItemsBulk(itemIds: string[]) {
   if (!itemIds.length) return { success: true, count: 0 };
+  await assertDatabaseItemsBulkEditAccess(itemIds);
+
   await db.delete(databaseItems).where(inArray(databaseItems.id, itemIds));
   return { success: true, count: itemIds.length };
 }
 
 export async function convertPropertyType(propertyId: string, newType: string) {
+  await assertDatabasePropertyEditAccess(propertyId);
+
   const [prop] = await db.select().from(databaseProperties).where(eq(databaseProperties.id, propertyId)).limit(1);
   if (!prop) throw new Error('Property not found');
 
   const items = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, prop.databaseId));
 
-  // Perform type conversion on existing row property values concurrently
   const updates = items.map(async (item) => {
     const rawVal = item.properties?.[propertyId];
     if (rawVal === undefined || rawVal === null) return;
@@ -532,4 +705,3 @@ export async function convertPropertyType(propertyId: string, newType: string) {
 
   return updatedProp;
 }
-
