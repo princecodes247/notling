@@ -207,7 +207,7 @@ export function DatabaseRowDrawer({
 
 function RowEditorSkeleton() {
   return (
-    <div className="flex-1 min-h-[260px] p-4 space-y-4 animate-pulse rounded-xl border border-stone-200/60 dark:border-zinc-800 bg-stone-50/40 dark:bg-zinc-900/20">
+    <div className="flex-1 min-h-[260px] p-4 space-y-4 animate-pulse">
       {/* Heading Skeleton */}
       <div className="h-5 bg-stone-200/80 dark:bg-zinc-800 rounded-md w-1/2" />
 
