@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from '@tanstack/react-router';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { PanelLeftOpen } from 'lucide-react';
@@ -9,18 +8,18 @@ import {
   Folder01Icon,
   Settings02Icon,
   File01Icon,
-  PlusSignIcon,
   Cancel01Icon,
   ArrowLeft01Icon,
   ArrowRight01Icon,
   LoaderCircleIcon,
   Delete02Icon,
   TableIcon,
-  MoreHorizontalIcon,
+  Menu01Icon,
 } from '@hugeicons/core-free-icons';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { getPage } from '~/server/pages';
+import { TabOptionsPopover } from './TabOptionsPopover';
 
 interface TabBarProps {
   tabs: TabItem[];
@@ -52,7 +51,6 @@ export const TabBar: React.FC<TabBarProps> = ({
   } = useUIStore();
 
   const [showOptionsPopover, setShowOptionsPopover] = useState(false);
-  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
   const optionsButtonRef = useRef<HTMLButtonElement>(null);
 
   const handleTabMouseEnter = (tabId: string) => {
@@ -199,30 +197,7 @@ export const TabBar: React.FC<TabBarProps> = ({
   const hasTabsToLeft = activeTabIndex > 0;
   const hasAnyTabs = fileTabs.length > 0;
 
-  const handleToggleOptions = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!showOptionsPopover && optionsButtonRef.current) {
-      const rect = optionsButtonRef.current.getBoundingClientRect();
-      const popoverWidth = 220;
-      let left = rect.right - popoverWidth;
-      if (left < 8) left = 8;
-      setMenuCoords({
-        top: rect.bottom + 6,
-        left,
-      });
-      setShowOptionsPopover(true);
-    } else {
-      setShowOptionsPopover(false);
-    }
-  };
-
-  const handleNewTabClick = () => {
-    setShowOptionsPopover(false);
-    onNewTab();
-  };
-
   const handleCloseOtherTabs = () => {
-    setShowOptionsPopover(false);
     const targetId = activeTabId && activeTabId !== 'home' ? activeTabId : '';
     const nextPath = closeOtherTabs(targetId);
     if (nextPath) {
@@ -231,7 +206,6 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   const handleCloseTabsToRight = () => {
-    setShowOptionsPopover(false);
     if (activeTabId && activeTabId !== 'home') {
       const nextPath = closeTabsToRight(activeTabId);
       if (nextPath) {
@@ -241,7 +215,6 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   const handleCloseTabsToLeft = () => {
-    setShowOptionsPopover(false);
     if (activeTabId && activeTabId !== 'home') {
       const nextPath = closeTabsToLeft(activeTabId);
       if (nextPath) {
@@ -251,7 +224,6 @@ export const TabBar: React.FC<TabBarProps> = ({
   };
 
   const handleCloseAllTabs = () => {
-    setShowOptionsPopover(false);
     const nextPath = closeAllTabs();
     if (nextPath) {
       navigate({ to: nextPath as any });
@@ -304,14 +276,14 @@ export const TabBar: React.FC<TabBarProps> = ({
       >
         {/* Left Fade & Caret */}
         {canScrollLeft && (
-          <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-3 bg-gradient-to-r from-[#f4f3ef] dark:from-[#121214] via-[#f4f3ef]/90 dark:via-[#121214]/90 to-transparent pointer-events-none">
+          <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-8 bg-gradient-to-r from-[#f4f3ef] dark:from-[#121214] via-[#f4f3ef] dark:via-[#121214] to-transparent pointer-events-none">
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
-              className="p-1 rounded-md bg-white dark:bg-zinc-800 shadow-xs border border-stone-200 dark:border-zinc-700 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll left"
             >
-              <HugeiconsIcon icon={ArrowLeft01Icon} size={13} />
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={15} />
             </button>
           </div>
         )}
@@ -403,14 +375,14 @@ export const TabBar: React.FC<TabBarProps> = ({
 
         {/* Right Fade & Caret */}
         {canScrollRight && (
-          <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-4 bg-gradient-to-l from-[#f4f3ef] dark:from-[#121214] via-[#f4f3ef]/90 dark:via-[#121214]/90 to-transparent pointer-events-none">
+          <div className="absolute right-0 top-0 bottom-0 z-10 flex items-center pl-8 bg-gradient-to-l from-[#f4f3ef] dark:from-[#121214] via-[#f4f3ef] dark:via-[#121214] to-transparent pointer-events-none">
             <button
               type="button"
               onClick={() => scrollContainerRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
-              className="p-1 rounded-md bg-white dark:bg-zinc-800 shadow-xs border border-stone-200 dark:border-zinc-700 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors pointer-events-auto cursor-pointer"
+              className="p-1 rounded-md text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 transition-colors pointer-events-auto cursor-pointer"
               title="Scroll right"
             >
-              <HugeiconsIcon icon={ArrowRight01Icon} size={13} />
+              <HugeiconsIcon icon={ArrowRight01Icon} size={15} />
             </button>
           </div>
         )}
@@ -422,10 +394,10 @@ export const TabBar: React.FC<TabBarProps> = ({
           ref={optionsButtonRef}
           type="button"
           disabled={isCreatingPage}
-          onClick={handleToggleOptions}
+          onClick={() => setShowOptionsPopover((prev) => !prev)}
           className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 ${showOptionsPopover
-              ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white shadow-xs'
-              : 'bg-transparent border-transparent text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60'
+            ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white shadow-xs'
+            : 'bg-transparent border-transparent text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           title="Tab options & actions"
           aria-label="Tab options"
@@ -434,94 +406,25 @@ export const TabBar: React.FC<TabBarProps> = ({
           {isCreatingPage ? (
             <HugeiconsIcon icon={LoaderCircleIcon} size={14} className="animate-spin text-stone-600 dark:text-zinc-400" />
           ) : (
-            <HugeiconsIcon icon={MoreHorizontalIcon} size={15} />
+            <HugeiconsIcon icon={Menu01Icon} size={15} />
           )}
         </button>
 
-        {/* Options Dropdown Menu Portal */}
-        {showOptionsPopover && menuCoords && typeof document !== 'undefined' && createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-50 bg-transparent"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowOptionsPopover(false);
-              }}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: -4 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -4 }}
-              transition={{ duration: 0.12, ease: 'easeOut' }}
-              style={{ top: `${menuCoords.top}px`, left: `${menuCoords.left}px` }}
-              className="fixed w-52 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-md border border-stone-200/90 dark:border-zinc-800/90 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col ring-1 ring-black/5 dark:ring-white/5"
-              onClick={(e) => e.stopPropagation()}
-            >
-
-              {/* New Tab Action */}
-              <button
-                type="button"
-                onClick={handleNewTabClick}
-                disabled={isCreatingPage}
-                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-stone-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="flex items-center gap-2">
-                  <HugeiconsIcon icon={PlusSignIcon} size={14} className="text-stone-500 dark:text-zinc-400 shrink-0" />
-                  <span>New Document Tab</span>
-                </div>
-              </button>
-
-              <div className="h-px bg-stone-200/80 dark:bg-zinc-800 my-1" />
-
-              {/* Close Other Tabs */}
-              <button
-                type="button"
-                onClick={handleCloseOtherTabs}
-                disabled={!hasOtherTabs}
-                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <HugeiconsIcon icon={Cancel01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
-                <span>Close Other Tabs</span>
-              </button>
-
-              {/* Close Tabs to Right */}
-              <button
-                type="button"
-                onClick={handleCloseTabsToRight}
-                disabled={!hasTabsToRight}
-                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <HugeiconsIcon icon={ArrowRight01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
-                <span>Close Tabs to the Right</span>
-              </button>
-
-              {/* Close Tabs to Left */}
-              <button
-                type="button"
-                onClick={handleCloseTabsToLeft}
-                disabled={!hasTabsToLeft}
-                className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
-                <span>Close Tabs to the Left</span>
-              </button>
-
-              <div className="h-px bg-stone-200/80 dark:bg-zinc-800 my-1" />
-
-              {/* Close All Tabs */}
-              <button
-                type="button"
-                onClick={handleCloseAllTabs}
-                disabled={!hasAnyTabs}
-                className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium cursor-pointer transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <HugeiconsIcon icon={Delete02Icon} size={14} className="text-rose-500 dark:text-rose-400 shrink-0" />
-                <span>Close All Tabs</span>
-              </button>
-            </motion.div>
-          </>,
-          document.body
-        )}
+        <TabOptionsPopover
+          isOpen={showOptionsPopover}
+          onClose={() => setShowOptionsPopover(false)}
+          triggerRef={optionsButtonRef}
+          isCreatingPage={isCreatingPage}
+          hasOtherTabs={hasOtherTabs}
+          hasTabsToRight={hasTabsToRight}
+          hasTabsToLeft={hasTabsToLeft}
+          hasAnyTabs={hasAnyTabs}
+          onNewTab={onNewTab}
+          onCloseOtherTabs={handleCloseOtherTabs}
+          onCloseTabsToRight={handleCloseTabsToRight}
+          onCloseTabsToLeft={handleCloseTabsToLeft}
+          onCloseAllTabs={handleCloseAllTabs}
+        />
       </div>
     </div>
   );

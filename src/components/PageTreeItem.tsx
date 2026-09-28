@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Star, ChevronRight, ChevronDown, Plus, Copy } from 'lucide-react';
+import { Star, Plus, Copy } from 'lucide-react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Delete02Icon,
@@ -9,6 +9,8 @@ import {
   Download01Icon,
   File01Icon,
   TableIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
 } from '@hugeicons/core-free-icons';
 import type { PageTreeNode } from '~/server/pages';
 import { getPage } from '~/server/pages';
@@ -337,9 +339,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
             }}
           >
             {isExpanded ? (
-              <ChevronDown className="w-3 h-3 text-stone-400 dark:text-zinc-500 shrink-0" />
+              <HugeiconsIcon icon={ChevronDownIcon} size={13} className="text-stone-400 dark:text-zinc-500 shrink-0" />
             ) : (
-              <ChevronRight className="w-3 h-3 text-stone-400 dark:text-zinc-500 shrink-0" />
+              <HugeiconsIcon icon={ChevronRightIcon} size={13} className="text-stone-400 dark:text-zinc-500 shrink-0" />
             )}
           </button>
 
