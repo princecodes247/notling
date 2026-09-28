@@ -453,3 +453,167 @@ export function exportPageToPDF(page: ExportablePage) {
     }
   }, 300);
 }
+
+/**
+ * Escapes a cell value for standard CSV format
+ */
+function escapeCSVCell(val: any): string {
+  if (val === null || val === undefined) return '';
+  let str = '';
+  if (Array.isArray(val)) {
+    str = val.join(', ');
+  } else if (typeof val === 'object') {
+    str = JSON.stringify(val);
+  } else {
+    str = String(val);
+  }
+
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * Export full database records, properties, and values to CSV (.csv)
+ */
+export function exportDatabaseToCSV(
+  databaseData: { database: { title?: string | null }; properties?: any[]; items?: any[] },
+  customFilename?: string
+) {
+  const dbTitle = databaseData.database?.title || 'Untitled Database';
+  const properties = [...(databaseData.properties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const items = [...(databaseData.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const titleProp = properties.find((p) => p.type === 'title');
+  const nonTitleProps = properties.filter((p) => p.type !== 'title');
+
+  const headers: string[] = [
+    titleProp?.name || 'Title',
+    ...nonTitleProps.map((p) => p.name || 'Field'),
+  ];
+
+  const csvRows: string[] = [headers.map(escapeCSVCell).join(',')];
+
+  for (const item of items) {
+    const rowCells: string[] = [];
+    const titleVal = item.title || (titleProp ? item.properties?.[titleProp.id] : '') || '';
+    rowCells.push(escapeCSVCell(titleVal));
+
+    for (const prop of nonTitleProps) {
+      const rawVal = item.properties?.[prop.id];
+      rowCells.push(escapeCSVCell(rawVal));
+    }
+
+    csvRows.push(rowCells.join(','));
+  }
+
+  const csvContent = csvRows.join('\r\n');
+  const filename =
+    customFilename ||
+    `${dbTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'database'}.csv`;
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export full database records to JSON format (.json)
+ */
+export function exportDatabaseToJSON(
+  databaseData: { database: { title?: string | null }; properties?: any[]; items?: any[] },
+  customFilename?: string
+) {
+  const dbTitle = databaseData.database?.title || 'Untitled Database';
+  const properties = [...(databaseData.properties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const items = [...(databaseData.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const titleProp = properties.find((p) => p.type === 'title');
+  const nonTitleProps = properties.filter((p) => p.type !== 'title');
+
+  const formattedRows = items.map((item) => {
+    const record: Record<string, any> = {
+      title: item.title || (titleProp ? item.properties?.[titleProp.id] : '') || '',
+    };
+    for (const prop of nonTitleProps) {
+      record[prop.name || prop.id] = item.properties?.[prop.id] ?? null;
+    }
+    return record;
+  });
+
+  const jsonPayload = JSON.stringify(formattedRows, null, 2);
+  const filename =
+    customFilename ||
+    `${dbTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'database'}.json`;
+
+  const blob = new Blob([jsonPayload], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Export full database to Markdown table (.md)
+ */
+export function exportDatabaseToMarkdownTable(
+  databaseData: { database: { title?: string | null; icon?: string | null }; properties?: any[]; items?: any[] },
+  customFilename?: string
+) {
+  const dbTitle = databaseData.database?.title || 'Untitled Database';
+  const icon = databaseData.database?.icon || '📊';
+  const properties = [...(databaseData.properties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const items = [...(databaseData.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const titleProp = properties.find((p) => p.type === 'title');
+  const nonTitleProps = properties.filter((p) => p.type !== 'title');
+
+  const headers: string[] = [
+    titleProp?.name || 'Title',
+    ...nonTitleProps.map((p) => p.name || 'Field'),
+  ];
+
+  let md = `# ${icon ? `${icon} ` : ''}${dbTitle}\n\n`;
+  md += `| ${headers.join(' | ')} |\n`;
+  md += `| ${headers.map(() => '---').join(' | ')} |\n`;
+
+  for (const item of items) {
+    const rowCells: string[] = [];
+    const titleVal = item.title || (titleProp ? item.properties?.[titleProp.id] : '') || '';
+    rowCells.push(String(titleVal).replace(/\|/g, '\\|'));
+
+    for (const prop of nonTitleProps) {
+      const rawVal = item.properties?.[prop.id];
+      const displayVal = Array.isArray(rawVal) ? rawVal.join(', ') : rawVal !== undefined && rawVal !== null ? String(rawVal) : '';
+      rowCells.push(displayVal.replace(/\|/g, '\\|'));
+    }
+
+    md += `| ${rowCells.join(' | ')} |\n`;
+  }
+
+  const filename =
+    customFilename ||
+    `${dbTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'database'}.md`;
+
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+

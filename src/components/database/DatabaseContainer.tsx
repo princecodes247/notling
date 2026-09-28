@@ -20,6 +20,7 @@ import { useUIStore } from '~/store/uiStore';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { EditorHeader } from '../EditorHeader';
 import { ShareModal } from '../ShareModal';
+import { ExportModal } from '../ExportModal';
 import { DatabaseImportModal } from './DatabaseImportModal';
 
 import { AnimatePresence } from 'motion/react';
@@ -44,7 +45,7 @@ export function DatabaseContainer({
   hideHeader = false,
 }: DatabaseContainerProps) {
   const queryClient = useQueryClient();
-  const { isShareModalOpen, setShareModalOpen } = useUIStore();
+  const { isShareModalOpen, setShareModalOpen, isExportModalOpen, setExportModalOpen } = useUIStore();
   const [dbData, setDbData] = useState<FullDatabase>(initialData);
   const [dbTitle, setDbTitle] = useState(initialData.database.title || 'Untitled Database');
   const savedTitleRef = useRef(initialData.database.title || 'Untitled Database');
@@ -532,6 +533,15 @@ export function DatabaseContainer({
         databaseId={dbData.database.id}
         databaseTitle={dbTitle}
         existingProperties={dbData.properties}
+      />
+
+      {/* Export Modal for Database */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        isDatabase={true}
+        databaseData={dbData}
+        page={sharePageObject}
       />
     </div>
   );
