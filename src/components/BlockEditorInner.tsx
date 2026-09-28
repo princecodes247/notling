@@ -1140,6 +1140,10 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
   const maxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const firstEditTimeRef = useRef<number | null>(null);
 
+  // Checklist auto-sorting refs & state tracking
+  const prevCheckedMapRef = useRef<Map<string, boolean>>(new Map());
+  const isAutoSortingChecklistRef = useRef<boolean>(false);
+
   const performServerSync = useCallback(
     async (targetPageId?: string) => {
       const activePageId = targetPageId || pageIdRef.current;
@@ -1217,10 +1221,107 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     [initialContent, queryClient, setSaveStatus]
   );
 
+  // Helper to extract checklist item checked status across entire document
+  const collectChecklistStates = (blocks: any[], map: Map<string, boolean>) => {
+    if (!blocks || !Array.isArray(blocks)) return;
+    for (const b of blocks) {
+      if (b?.type === 'checkListItem' && b.id) {
+        map.set(b.id, Boolean((b.props as any)?.checked));
+      }
+      if (b?.children && Array.isArray(b.children) && b.children.length > 0) {
+        collectChecklistStates(b.children, map);
+      }
+    }
+  };
+
+  // Helper to sort contiguous checklist items within a list run
+  const sortContiguousChecklists = (editorInst: any, blocks: any[], targetBlockId?: string): boolean => {
+    if (!editorInst || !blocks || !Array.isArray(blocks) || blocks.length === 0) return false;
+
+    let i = 0;
+    while (i < blocks.length) {
+      if (blocks[i]?.type === 'checkListItem') {
+        const runStart = i;
+        while (i < blocks.length && blocks[i]?.type === 'checkListItem') {
+          i++;
+        }
+        const runEnd = i;
+        const runLength = runEnd - runStart;
+
+        // Only sort if it's a list (repeated checks with 2 or more contiguous items)
+        if (runLength >= 2) {
+          const runBlocks = blocks.slice(runStart, runEnd);
+          const matchesTarget =
+            !targetBlockId || runBlocks.some((b: any) => b.id === targetBlockId);
+
+          if (matchesTarget) {
+            // Check if any checked item is above an unchecked item in this run
+            let hasCheckedBeforeUnchecked = false;
+            let seenChecked = false;
+
+            for (const b of runBlocks) {
+              const isChecked = Boolean((b.props as any)?.checked);
+              if (isChecked) {
+                seenChecked = true;
+              } else if (seenChecked) {
+                hasCheckedBeforeUnchecked = true;
+                break;
+              }
+            }
+
+            if (hasCheckedBeforeUnchecked) {
+              const unchecked = runBlocks.filter((b: any) => !b.props?.checked);
+              const checked = runBlocks.filter((b: any) => Boolean(b.props?.checked));
+              const sortedRun = [...unchecked, ...checked];
+
+              try {
+                editorInst.replaceBlocks(runBlocks, sortedRun);
+                return true;
+              } catch (err) {
+                console.error('Error auto-sorting checklist run:', err);
+              }
+            }
+          }
+        }
+      } else {
+        if (blocks[i]?.children && Array.isArray(blocks[i].children) && blocks[i].children.length > 0) {
+          if (sortContiguousChecklists(editorInst, blocks[i].children, targetBlockId)) {
+            return true;
+          }
+        }
+        i++;
+      }
+    }
+    return false;
+  };
+
   // Point 1 & 3: Local-First Instant Writes + True Debounce (800ms pause) + Max-Wait Cap (4s)
   const handleContentChange = useCallback(() => {
     const currentBlocks = editorRef.current?.document;
     if (!currentBlocks) return;
+
+    // Auto-sort checklist run when checked state toggles in a contiguous checklist
+    if (!isAutoSortingChecklistRef.current) {
+      const currentCheckedMap = new Map<string, boolean>();
+      collectChecklistStates(currentBlocks, currentCheckedMap);
+
+      let changedBlockId: string | undefined;
+      for (const [id, checked] of currentCheckedMap.entries()) {
+        if (prevCheckedMapRef.current.has(id) && prevCheckedMapRef.current.get(id) !== checked) {
+          changedBlockId = id;
+          break;
+        }
+      }
+      prevCheckedMapRef.current = currentCheckedMap;
+
+      if (changedBlockId && editorRef.current) {
+        isAutoSortingChecklistRef.current = true;
+        sortContiguousChecklists(editorRef.current, editorRef.current.document, changedBlockId);
+        setTimeout(() => {
+          isAutoSortingChecklistRef.current = false;
+        }, 60);
+      }
+    }
 
     // Guard against blank blocks when initial content exists
     if (initialContent && !isBlocksArrayEmpty(initialContent) && isBlocksArrayEmpty(currentBlocks)) {
@@ -1949,12 +2050,24 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       }
     };
 
+    const handlePointerUp = () => {
+      if (editorPaint.isPainting) {
+        setTimeout(() => {
+          if (editor) {
+            sortContiguousChecklists(editor, editor.document);
+          }
+        }, 30);
+      }
+    };
+
     window.addEventListener('pointerdown', handlePointerDown, true);
     window.addEventListener('pointerover', handlePointerOver, true);
+    window.addEventListener('pointerup', handlePointerUp, true);
 
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('pointerover', handlePointerOver, true);
+      window.removeEventListener('pointerup', handlePointerUp, true);
     };
   }, [editor, readOnly, editorPaint]);
 
