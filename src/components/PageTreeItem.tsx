@@ -307,6 +307,12 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 : 'text-stone-600 dark:text-zinc-400 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50 hover:text-stone-900 dark:hover:text-white'
         )}
         onClick={() => onSelectPage(node.id, node.databaseId)}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          if (canEdit && !isEditing) {
+            setIsEditing(true);
+          }
+        }}
         onMouseEnter={handleMouseEnter}
       >
         {/* Drop Line Indicators */}
@@ -383,7 +389,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
           </div>
 
           {isEditing && canEdit ? (
-            <form onSubmit={handleTitleSubmit} className="flex-1" onClick={(e) => e.stopPropagation()}>
+            <form onSubmit={handleTitleSubmit} className="flex-1" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
               <input
                 type="text"
                 value={editTitle}
@@ -400,16 +406,8 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     title: val,
                     icon: inferred,
                   });
-                  // // 2. Debounce DB API call (1200ms after typing stops)
-                  // if (pendingTreeSaveTimeoutRef.current) {
-                  //   clearTimeout(pendingTreeSaveTimeoutRef.current);
-                  // }
-                  // pendingTreeSaveTimeoutRef.current = setTimeout(() => {
-                  //   onUpdateMeta(node.id, val.trim() || displayTitle, inferred);
-                  // }, 1200);
                 }}
-
-
+                onFocus={(e) => e.target.select()}
                 onBlur={() => handleTitleSubmit()}
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') {
@@ -426,7 +424,15 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
               />
             </form>
           ) : (
-            <div className="truncate flex-1 flex items-center gap-1.5 min-w-0">
+            <div
+              className="truncate flex-1 flex items-center gap-1.5 min-w-0"
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (canEdit && !isEditing) {
+                  setIsEditing(true);
+                }
+              }}
+            >
               <span className="truncate font-medium">
                 {displayTitle || 'Untitled'}
               </span>
