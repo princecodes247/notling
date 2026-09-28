@@ -428,6 +428,8 @@ function DashboardLayout() {
     onSuccess: () => {
       refetchTree();
       queryClient.invalidateQueries({ queryKey: ['page'] });
+      queryClient.invalidateQueries({ queryKey: ['database'] });
+      queryClient.invalidateQueries({ queryKey: ['databases'] });
     },
   });
 

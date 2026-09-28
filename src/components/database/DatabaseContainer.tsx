@@ -392,11 +392,33 @@ export function DatabaseContainer({
     <div className="w-full font-sans text-stone-900 dark:text-zinc-100 min-h-screen">
       {hideHeader ? (
         <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-8 pb-2">
-          <div className="mb-4 flex gap-2">
+          <div className="mb-4 flex gap-2 items-center">
             <div className="text-3xl">{dbData.database.icon || '📊'}</div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-              {dbTitle || 'Untitled Database'}
-            </h1>
+            {!readOnly ? (
+              <input
+                type="text"
+                value={dbTitle}
+                onChange={(e) => {
+                  isEditingTitleRef.current = true;
+                  setDbTitle(e.target.value);
+                }}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  } else if (e.key === 'Escape') {
+                    handleRevertTitle();
+                    e.currentTarget.blur();
+                  }
+                }}
+                className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight bg-transparent focus:outline-none focus:bg-stone-100/80 dark:focus:bg-zinc-800/60 px-1 py-0.5 rounded-lg w-full transition-colors"
+                placeholder="Untitled Database"
+              />
+            ) : (
+              <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
+                {dbTitle || 'Untitled Database'}
+              </h1>
+            )}
           </div>
         </div>
       ) : (

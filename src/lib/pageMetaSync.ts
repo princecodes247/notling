@@ -149,6 +149,46 @@ export function updateClientPageMeta(
         return changed ? updated : old;
       }
     );
+
+    // 2g. Optimistically update ['database']
+    queryClient.setQueriesData<any>(
+      { queryKey: ['database'] },
+      (old: any) => {
+        if (!old || !old.database) return old;
+        if (old.database.id === pageId || old.database.pageId === pageId) {
+          return {
+            ...old,
+            database: {
+              ...old.database,
+              ...(title !== undefined ? { title } : {}),
+              ...(icon !== undefined ? { icon } : {}),
+            },
+          };
+        }
+        return old;
+      }
+    );
+
+    // 2h. Optimistically update ['databases']
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['databases'] },
+      (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        let changed = false;
+        const updated = old.map((dbItem) => {
+          if (dbItem.id === pageId || dbItem.pageId === pageId) {
+            changed = true;
+            return {
+              ...dbItem,
+              ...(title !== undefined ? { title } : {}),
+              ...(icon !== undefined ? { icon } : {}),
+            };
+          }
+          return dbItem;
+        });
+        return changed ? updated : old;
+      }
+    );
   }
 
   // 3. Dispatch custom window event

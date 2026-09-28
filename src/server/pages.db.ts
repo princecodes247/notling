@@ -686,7 +686,7 @@ function isBlocksContentEmpty(content: any): boolean {
 
 export async function checkCanUserEditPage(pageId: string, includeDeleted = false): Promise<boolean> {
   try {
-    const pageList = await db
+    let pageList = await db
       .select()
       .from(pages)
       .where(
@@ -697,7 +697,36 @@ export async function checkCanUserEditPage(pageId: string, includeDeleted = fals
       )
       .limit(1);
 
-    if (pageList.length === 0) return false;
+    if (pageList.length === 0) {
+      const dbMatch = await db
+        .select({ pageId: databases.pageId })
+        .from(databases)
+        .where(eq(databases.id, pageId))
+        .limit(1);
+      if (dbMatch.length > 0 && dbMatch[0].pageId) {
+        pageList = await db
+          .select()
+          .from(pages)
+          .where(
+            and(
+              eq(pages.id, dbMatch[0].pageId),
+              includeDeleted ? undefined : eq(pages.isDeleted, false)
+            )
+          )
+          .limit(1);
+      }
+    }
+
+    if (pageList.length === 0) {
+      const dbMatch = await db.select().from(databases).where(eq(databases.id, pageId)).limit(1);
+      if (dbMatch.length > 0) {
+        let session = null;
+        try { session = await getSessionImpl(); } catch { }
+        if (!session) return false;
+        return session.workspaceId === dbMatch[0].workspaceId;
+      }
+      return false;
+    }
     const page = pageList[0];
 
     let session = null;
@@ -1167,21 +1196,46 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
     if (input.title !== undefined) updatePayload.title = input.title;
     if (input.icon !== undefined) updatePayload.icon = input.icon;
 
-    const [updated] = await db
+    let realPageId = input.pageId;
+    let realDbId = input.pageId;
+
+    const dbMatch = await db
+      .select({ id: databases.id, pageId: databases.pageId })
+      .from(databases)
+      .where(or(eq(databases.id, input.pageId), eq(databases.pageId, input.pageId)))
+      .limit(1);
+
+    if (dbMatch.length > 0) {
+      realDbId = dbMatch[0].id;
+      if (dbMatch[0].pageId) {
+        realPageId = dbMatch[0].pageId;
+      }
+    }
+
+    const [updatedPage] = await db
       .update(pages)
       .set(updatePayload)
-      .where(eq(pages.id, input.pageId))
+      .where(or(eq(pages.id, realPageId), eq(pages.id, input.pageId)))
       .returning();
 
-    if (updated && input.title !== undefined) {
+    await db
+      .update(databases)
+      .set({
+        ...(input.title !== undefined ? { title: input.title } : {}),
+        ...(input.icon !== undefined ? { icon: input.icon } : {}),
+        updatedAt: new Date(),
+      })
+      .where(or(eq(databases.id, realDbId), eq(databases.id, input.pageId), eq(databases.pageId, realPageId)));
+
+    if (updatedPage && input.title !== undefined) {
       recordPageHistory({
-        pageId: input.pageId,
+        pageId: realPageId,
         title: input.title,
         changeSummary: `Changed title to "${input.title}"`,
       }).catch((e) => console.error('Failed to log page meta history:', e));
     }
 
-    return updated;
+    return updatedPage || { id: input.pageId, ...updatePayload };
   } catch (err) {
     console.error('Error updating page meta:', err);
     return null;

@@ -102,8 +102,15 @@ export const useUIStore = create<UIState>((set, get) => ({
         },
       };
 
+      const isTabMatching = (t: TabItem) =>
+        t.id === pageId ||
+        t.path.endsWith(`/p/${pageId}`) ||
+        t.path.endsWith(`/db/${pageId}`) ||
+        t.path.includes(`/p/${pageId}/`) ||
+        t.path.includes(`/db/${pageId}/`);
+
       const updatedTabs = state.openTabs.map((t) =>
-        t.id === pageId
+        isTabMatching(t)
           ? {
             ...t,
             title: nextTitle,
@@ -114,7 +121,7 @@ export const useUIStore = create<UIState>((set, get) => ({
 
       // Instantly update browser document title if this page is active
       if (
-        (state.activeTabId === pageId || state.activePageId === pageId) &&
+        (state.activeTabId === pageId || state.activePageId === pageId || state.openTabs.some((t) => (t.id === state.activeTabId || t.id === state.activePageId) && isTabMatching(t))) &&
         typeof document !== 'undefined'
       ) {
         document.title = `${nextTitle} — Notling`;
@@ -242,10 +249,17 @@ export const useUIStore = create<UIState>((set, get) => ({
         document.title = `${resolvedTitle} — Notling`;
       }
 
+      const isTabMatching = (t: TabItem) =>
+        t.id === id ||
+        t.path.endsWith(`/p/${id}`) ||
+        t.path.endsWith(`/db/${id}`) ||
+        t.path.includes(`/p/${id}/`) ||
+        t.path.includes(`/db/${id}/`);
+
       return {
         pageMeta: updatedPageMeta,
         openTabs: state.openTabs.map((t) =>
-          t.id === id ? { ...t, title: resolvedTitle, icon: resolvedIcon } : t
+          isTabMatching(t) ? { ...t, title: resolvedTitle, icon: resolvedIcon } : t
         ),
       };
     }),

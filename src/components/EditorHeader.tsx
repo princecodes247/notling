@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Download01Icon, Edit02Icon, TableIcon } from '@hugeicons/core-free-icons';
@@ -40,6 +41,9 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   togglePinMutation,
   duplicateMutation,
   onDelete,
+  onTitleChange,
+  onSaveTitle,
+  onRevertTitle,
   searchQuery,
   onSearchChange,
   onAddItem,
@@ -55,22 +59,31 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
     setShowEmojiPicker,
   } = useUIStore();
 
-  const menuRef = useRef<HTMLDivElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
 
-  useEffect(() => {
-    if (!showHeaderMenu) return;
+  const handleToggleMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!showHeaderMenu && moreButtonRef.current) {
+      const rect = moreButtonRef.current.getBoundingClientRect();
+      const dropdownWidth = 176;
+      const dropdownHeight = 220;
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowHeaderMenu(false);
+      let top = rect.bottom + 4;
+      let left = rect.right - dropdownWidth;
+
+      if (rect.bottom + dropdownHeight > window.innerHeight - 12 && rect.top - dropdownHeight > 12) {
+        top = rect.top - dropdownHeight - 4;
       }
-    };
+      if (left < 10) left = 10;
+      if (left + dropdownWidth > window.innerWidth - 10) left = window.innerWidth - dropdownWidth - 10;
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showHeaderMenu, setShowHeaderMenu]);
+      setMenuCoords({ top, left });
+      setShowHeaderMenu(true);
+    } else {
+      setShowHeaderMenu(false);
+    }
+  };
 
   const handleTriggerUndo = () => {
     window.dispatchEvent(new CustomEvent('editor-undo'));
@@ -84,9 +97,9 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
 
   return (
     <header className="h-12 border-b border-stone-200/70 dark:border-zinc-800 px-4 flex items-center justify-between gap-4 bg-white/80 dark:bg-[#18181b]/80 backdrop-blur-xs shrink-0 select-none">
-      {/* Left: Breadcrumb Trail & Title */}
-      <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden">
-        <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1">
+      {/* Left: Breadcrumb Trail & Editable Title */}
+      <div className="flex items-center gap-1.5 text-xs text-stone-500 dark:text-zinc-400 overflow-hidden min-w-0">
+        <span className="hover:text-stone-800 dark:hover:text-zinc-200 cursor-pointer transition-colors flex items-center gap-1 shrink-0">
           {icon ? (
             <span>{icon}</span>
           ) : isDatabase ? (
@@ -94,10 +107,30 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           ) : null}
           <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : isDatabase ? 'Database' : 'Document'}</span>
         </span>
-        <span>/</span>
-        <span className="font-medium text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">
-          {title || 'Untitled Document'}
-        </span>
+        <span className="shrink-0">/</span>
+
+        {!isReadOnly && onSaveTitle ? (
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => onTitleChange?.(e.target.value)}
+            onBlur={onSaveTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur();
+              } else if (e.key === 'Escape') {
+                onRevertTitle?.();
+                e.currentTarget.blur();
+              }
+            }}
+            className="font-semibold text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75 bg-transparent border-none focus:outline-none focus:bg-stone-100 dark:focus:bg-zinc-800 px-1 py-0.5 rounded transition-colors text-xs"
+            placeholder={isDatabase ? "Untitled Database" : "Untitled Document"}
+          />
+        ) : (
+          <span className="font-semibold text-stone-900 dark:text-zinc-100 truncate max-w-40 sm:max-w-75">
+            {title || (isDatabase ? 'Untitled Database' : 'Untitled Document')}
+          </span>
+        )}
       </div>
 
       {/* Right: Actions, Search/New & Collaborators */}
@@ -181,91 +214,106 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           )}
 
           {/* Kebab More Options Dropdown */}
-          <div className="relative" ref={menuRef}>
+          <div className="relative">
             <button
+              ref={moreButtonRef}
               type="button"
-              onClick={() => setShowHeaderMenu(!showHeaderMenu)}
+              onClick={handleToggleMenu}
               className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
               title="More options"
             >
               <MoreHorizontal className="w-3.5 h-3.5" />
             </button>
 
-            {showHeaderMenu && (
-              <div className="absolute right-0 top-8 w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-9999999 text-xs flex flex-col">
-                {/* Export Option */}
-                <button
-                  type="button"
-                  onClick={() => {
+            {showHeaderMenu && menuCoords && typeof document !== 'undefined' && createPortal(
+              <>
+                <div
+                  className="fixed inset-0 z-50 bg-transparent"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setShowHeaderMenu(false);
-                    setExportModalOpen(true);
                   }}
-                  className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                />
+                <div
+                  style={{ top: `${menuCoords.top}px`, left: `${menuCoords.left}px` }}
+                  className="fixed w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col animate-in fade-in-50 duration-100"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
-                  <span>Export Document</span>
-                </button>
-
-                {/* Bookmark / Favorite Option */}
-                {togglePinMutation && (
+                  {/* Export Option */}
                   <button
                     type="button"
                     onClick={() => {
                       setShowHeaderMenu(false);
-                      togglePinMutation?.mutate?.();
+                      setExportModalOpen(true);
                     }}
                     className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                   >
-                    <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
-                    <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
+                    <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
+                    <span>Export Document</span>
                   </button>
-                )}
 
-                {/* Duplicate Option */}
-                {duplicateMutation && !isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowHeaderMenu(false);
-                      duplicateMutation?.mutate?.();
-                    }}
-                    disabled={isDuplicating}
-                    className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
-                  >
-                    <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
-                    <span>{isDuplicating ? 'Duplicating...' : 'Duplicate Page'}</span>
-                  </button>
-                )}
+                  {/* Bookmark / Favorite Option */}
+                  {togglePinMutation && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        togglePinMutation?.mutate?.();
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
+                      <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
+                    </button>
+                  )}
 
-                {/* Change Icon Option */}
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowHeaderMenu(false);
-                      setShowEmojiPicker(true);
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                  >
-                    <span className="text-xs">✨</span>
-                    <span>Change Icon</span>
-                  </button>
-                )}
+                  {/* Duplicate Option */}
+                  {duplicateMutation && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        duplicateMutation?.mutate?.();
+                      }}
+                      disabled={isDuplicating}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                      <span>{isDuplicating ? 'Duplicating...' : 'Duplicate Page'}</span>
+                    </button>
+                  )}
 
-                {/* Delete Option */}
-                {onDelete && !isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowHeaderMenu(false);
-                      onDelete();
-                    }}
-                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium cursor-pointer border-t border-stone-100 dark:border-zinc-800/80 mt-1 pt-1.5"
-                  >
-                    <span>Delete Page</span>
-                  </button>
-                )}
-              </div>
+                  {/* Change Icon Option */}
+                  {!isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        setShowEmojiPicker(true);
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <span className="text-xs">✨</span>
+                      <span>Change Icon</span>
+                    </button>
+                  )}
+
+                  {/* Delete Option */}
+                  {onDelete && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        onDelete();
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/30 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-medium cursor-pointer border-t border-stone-100 dark:border-zinc-800/80 mt-1 pt-1.5"
+                    >
+                      <span>Delete Page</span>
+                    </button>
+                  )}
+                </div>
+              </>,
+              document.body
             )}
           </div>
         </div>
