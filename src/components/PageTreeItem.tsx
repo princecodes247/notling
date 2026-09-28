@@ -182,10 +182,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
     const trimmed = editTitle.trim();
 
     if (trimmed) {
-      const isFolderNode = rawIcon === '📁' || rawIcon === '📂';
       let targetIcon = displayIcon;
-      if (isDefaultOrInferredIcon(rawIcon, displayTitle, { isFolder: isFolderNode })) {
-        targetIcon = inferEmojiFromTitle(trimmed, { isFolder: isFolderNode });
+      if (isDefaultOrInferredIcon(rawIcon, displayTitle)) {
+        targetIcon = inferEmojiFromTitle(trimmed);
       }
 
       updateClientPageMeta(queryClient, {
@@ -391,10 +390,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setEditTitle(val);
-                  const isFolderNode = rawIcon === '📁' || rawIcon === '📂';
                   let inferred = displayIcon;
-                  if (isDefaultOrInferredIcon(rawIcon, displayTitle, { isFolder: isFolderNode })) {
-                    inferred = inferEmojiFromTitle(val, { isFolder: isFolderNode });
+                  if (isDefaultOrInferredIcon(rawIcon, displayTitle)) {
+                    inferred = inferEmojiFromTitle(val);
                   }
                   // 1. Instant client-side UI update (Zustand + query cache) — NO DB API call!
                   updateClientPageMeta(queryClient, {

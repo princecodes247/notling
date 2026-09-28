@@ -46,24 +46,6 @@ function DashboardFoldersPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const isCreatingFolderRef = useRef(false);
-  const createFolderMutation = useMutation({
-    mutationFn: async () => {
-      if (!workspaceId || isCreatingFolderRef.current) return null;
-      isCreatingFolderRef.current = true;
-      try {
-        return await createPage({ data: { workspaceId: workspaceId!, title: 'New Collection', icon: '📁' } });
-      } finally {
-        isCreatingFolderRef.current = false;
-      }
-    },
-    onSuccess: () => {
-      refetchTree();
-    },
-    onError: () => {
-      isCreatingFolderRef.current = false;
-    },
-  });
 
   const isCreatingDocRef = useRef(false);
   const createDocumentMutation = useMutation({
@@ -156,7 +138,6 @@ function DashboardFoldersPage() {
       databasesList={databasesList}
       onSelectPage={(id) => navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } })}
       onSelectDatabase={(dbId) => navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } })}
-      onCreateFolder={() => createFolderMutation.mutate()}
       onCreateDocument={(folderId) => createDocumentMutation.mutate(folderId)}
       onCreateDatabase={() => createDbMutation.mutate()}
       onTogglePin={(id) => togglePinMutation.mutate(id)}

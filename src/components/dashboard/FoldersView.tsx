@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  FolderAddIcon,
   PlusSignIcon,
   ArrowRight01Icon,
   Search01Icon,
@@ -22,7 +21,7 @@ export interface FlatItem {
   id: string;
   title: string;
   icon: string | null;
-  type: 'folder' | 'database' | 'page';
+  type: 'database' | 'page';
   databaseId?: string | null;
   parentId?: string | null;
   parentTitle?: string;
@@ -37,7 +36,6 @@ interface FoldersViewProps {
   databasesList?: Database[];
   onSelectPage: (id: string) => void;
   onSelectDatabase?: (databaseId: string) => void;
-  onCreateFolder: () => void;
   onCreateDocument: (folderId?: string) => void;
   onCreateDatabase?: () => void;
   onTogglePin?: (id: string) => void;
@@ -52,7 +50,6 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   databasesList = [],
   onSelectPage,
   onSelectDatabase,
-  onCreateFolder,
   onCreateDocument,
   onCreateDatabase,
   onTogglePin,
@@ -61,7 +58,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
 }) => {
   const pageMeta = useUIStore((s) => s.pageMeta);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'page' | 'database' | 'folder'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'page' | 'database'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
@@ -81,12 +78,10 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
         const title = live?.title ?? node.title ?? 'Untitled';
         const icon = live?.icon ?? node.icon;
 
-        let type: 'folder' | 'database' | 'page' = 'page';
+        let type: 'database' | 'page' = 'page';
         if (node.databaseId) {
           type = 'database';
-          if (node.databaseId) dbPageIds.add(node.databaseId);
-        } else if (node.children && node.children.length > 0) {
-          type = 'folder';
+          dbPageIds.add(node.databaseId);
         }
 
         result.push({
@@ -236,15 +231,6 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                 <span>New Database</span>
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={onCreateFolder}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-950 text-xs font-medium transition-all active:scale-[0.98] shadow-2xs cursor-pointer"
-            >
-              <HugeiconsIcon icon={FolderAddIcon} size={14} />
-              <span>New Folder</span>
-            </button>
           </div>
         </div>
 
@@ -274,7 +260,6 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                 { key: 'all', label: `All (${allItems.length})` },
                 { key: 'page', label: 'Pages' },
                 { key: 'database', label: 'Databases' },
-                { key: 'folder', label: 'Folders' },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -370,16 +355,14 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="w-9 h-9 rounded-lg bg-stone-50 dark:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-700/80 flex items-center justify-center text-lg shrink-0 group-hover:scale-105 transition-transform">
-                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : item.type === 'folder' ? '📁' : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
+                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
                   </div>
 
                   <div className="flex items-center gap-1">
                     <span
                       className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase tracking-wider ${item.type === 'database'
                         ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50'
-                        : item.type === 'folder'
-                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/60 dark:border-amber-800/50'
-                          : 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
+                        : 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
                         }`}
                     >
                       {item.type}
@@ -402,11 +385,11 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
 
                 <div className="pt-3 border-t border-stone-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500">
                   <span>
-                    {item.type === 'folder'
-                      ? `${item.childrenCount} item${item.childrenCount === 1 ? '' : 's'}`
+                    {(item.childrenCount || 0) > 0
+                      ? `${item.childrenCount} sub-page${item.childrenCount === 1 ? '' : 's'}`
                       : item.createdAt
                         ? new Date(item.createdAt).toLocaleDateString()
-                        : 'Item'}
+                        : 'Document'}
                   </span>
 
                   <div className="flex items-center gap-1">
@@ -423,7 +406,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         <Star className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    {onDuplicate && item.type !== 'folder' && (
+                    {onDuplicate && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -470,7 +453,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-8 h-8 rounded-md bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0">
-                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : item.type === 'folder' ? '📁' : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
+                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
                   </div>
 
                   <div className="min-w-0 flex-1">
@@ -481,9 +464,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       <span
                         className={`px-1.5 py-0.2 rounded-md text-[9px] font-mono uppercase ${item.type === 'database'
                           ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
-                          : item.type === 'folder'
-                            ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
-                            : 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
+                          : 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
                           }`}
                       >
                         {item.type}
@@ -515,7 +496,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       <Star className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {onDuplicate && item.type !== 'folder' && (
+                  {onDuplicate && (
                     <button
                       type="button"
                       onClick={(e) => {

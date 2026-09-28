@@ -59,33 +59,12 @@ function DashboardIndexPage() {
     },
   });
 
-  const isCreatingFolderRef = useRef(false);
-  const createFolderMutation = useMutation({
-    mutationFn: async () => {
-      if (!workspaceId || isCreatingFolderRef.current) return null;
-      isCreatingFolderRef.current = true;
-      try {
-        return await createPage({ data: { workspaceId: workspaceId!, title: 'New Folder', icon: '📁' } });
-      } finally {
-        isCreatingFolderRef.current = false;
-      }
-    },
-    onSuccess: () => {
-      refetch();
-      navigate({ to: '/dashboard/folders' });
-    },
-    onError: () => {
-      isCreatingFolderRef.current = false;
-    },
-  });
-
   return (
     <HomeView
       userName={session?.name ? session.name.split(' ')[0] : 'Scotty'}
       treeNodes={treeNodes}
       isLoading={sessionLoading || (!!workspaceId && treeLoading)}
       onSelectPage={(id) => navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } })}
-      onCreateFolder={() => createFolderMutation.mutate()}
       onCreatePage={() => createPageMutation.mutate()}
       onNavigate={(nav) => {
         if (nav === 'folders') navigate({ to: '/dashboard/folders' });

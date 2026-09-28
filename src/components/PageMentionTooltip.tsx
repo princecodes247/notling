@@ -29,16 +29,14 @@ interface PageMentionTooltipProps {
   position?: { top: number; left: number } | null;
 }
 
-function flattenPageTree(nodes: PageTreeNode[]): Array<{ id: string; title: string; icon?: string | null; isFolder?: boolean }> {
-  const result: Array<{ id: string; title: string; icon?: string | null; isFolder?: boolean }> = [];
+function flattenPageTree(nodes: PageTreeNode[]): Array<{ id: string; title: string; icon?: string | null }> {
+  const result: Array<{ id: string; title: string; icon?: string | null }> = [];
   function recurse(list: PageTreeNode[]) {
     for (const node of list) {
-      const isFolder = node.icon === '📁' || node.icon === '📂';
       result.push({
         id: node.id,
         title: node.title || 'Untitled Page',
         icon: node.icon,
-        isFolder,
       });
       if (node.children && node.children.length > 0) {
         recurse(node.children);

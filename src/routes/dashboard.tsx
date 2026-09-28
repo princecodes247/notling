@@ -324,30 +324,6 @@ function DashboardLayout() {
     },
   });
 
-  const isCreatingFolderRef = React.useRef(false);
-
-  // Create Folder Mutation (Root page with folder icon)
-  const createFolderMutation = useMutation({
-    mutationFn: async () => {
-      if (!workspaceId || isCreatingFolderRef.current) return null;
-      isCreatingFolderRef.current = true;
-      try {
-        return await createPage({ data: { workspaceId, title: 'New Folder', icon: '📁' } });
-      } finally {
-        isCreatingFolderRef.current = false;
-      }
-    },
-    onSuccess: (newFolder) => {
-      refetchTree();
-      if (newFolder) {
-        navigate({ to: '/dashboard/folders' });
-      }
-    },
-    onError: () => {
-      isCreatingFolderRef.current = false;
-    },
-  });
-
   // Create Database Mutation
   const createDatabaseMutation = useMutation({
     mutationFn: async () => {
@@ -558,11 +534,6 @@ function DashboardLayout() {
                   else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
                   else if (nav === 'profile') navigate({ to: '/dashboard/profile' });
                   else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
-                  closeSidebarOnMobile();
-                }}
-                onCreateFolder={() => {
-                  if (createFolderMutation.isPending) return;
-                  createFolderMutation.mutate();
                   closeSidebarOnMobile();
                 }}
                 onCreatePage={(parentId) => {

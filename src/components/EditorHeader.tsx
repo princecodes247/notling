@@ -10,7 +10,6 @@ import { useUIStore } from '~/store/uiStore';
 interface EditorHeaderProps {
   icon?: React.ReactNode;
   title: string;
-  isFolder?: boolean;
   isDatabase?: boolean;
   activeUsers?: Array<any>;
   getClientId?: () => string;
@@ -32,7 +31,6 @@ interface EditorHeaderProps {
 export const EditorHeader: React.FC<EditorHeaderProps> = ({
   icon,
   title,
-  isFolder = false,
   isDatabase = false,
   activeUsers = [],
   getClientId = () => 'default',
@@ -105,7 +103,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
           ) : isDatabase ? (
             <HugeiconsIcon icon={TableIcon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
           ) : null}
-          <span className="hidden sm:inline font-normal">{isFolder ? 'Folder' : isDatabase ? 'Database' : 'Document'}</span>
+          <span className="hidden sm:inline font-normal">{isDatabase ? 'Database' : 'Document'}</span>
         </span>
         <span className="shrink-0">/</span>
 

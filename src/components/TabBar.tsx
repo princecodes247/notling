@@ -161,23 +161,18 @@ export const TabBar: React.FC<TabBarProps> = ({
         return false;
       }
 
-      const isDefaultPlaceholderTitle =
-        !tab.title ||
-        tab.title === 'Untitled Database' ||
-        tab.title === 'Untitled Document' ||
-        tab.title === 'Untitled';
-
-      if (!isDefaultPlaceholderTitle) {
+      // If the tab already has a known title (stored in localStorage / openTabs), it's ready to display
+      if (tab.title) {
         return false;
       }
 
       const dbState = queryClient.getQueryState(['database', tab.id]);
       const pageState = queryClient.getQueryState(['page', tab.id]);
 
-      const isDbLoading = dbState ? dbState.status === 'pending' : true;
-      const isPageLoading = pageState ? pageState.status === 'pending' : true;
+      const isDbLoading = dbState ? dbState.status === 'pending' : false;
+      const isPageLoading = pageState ? pageState.status === 'pending' : false;
 
-      return isDbLoading && isPageLoading;
+      return isDbLoading || isPageLoading;
     },
     [queryClient]
   );

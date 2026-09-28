@@ -4,10 +4,10 @@ import { useUIStore } from '~/store/uiStore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   PlusSignIcon,
-  Folder01Icon,
   LoaderCircleIcon,
   LockIcon,
   File01Icon,
+  ArrowRight01Icon,
 } from '@hugeicons/core-free-icons';
 import { Clock } from 'lucide-react';
 import {
@@ -20,6 +20,7 @@ import {
   removePagePresence,
   togglePinPage,
   duplicatePage,
+  softDeletePage,
 } from '~/server/pages';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
@@ -77,10 +78,11 @@ export const Editor: React.FC<EditorProps> = ({
     showEmojiPicker,
     setShowEmojiPicker,
     setHistoryState,
+    closeTab,
   } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || undefined);
-  const [isCustomIcon, setIsCustomIcon] = useState(() => !isDefaultOrInferredIcon(page.icon, page.title, { isFolder: page.icon === '📁' || page.icon === '📂' }));
+  const [isCustomIcon, setIsCustomIcon] = useState(() => !isDefaultOrInferredIcon(page.icon, page.title));
   const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>((page as any).visibility || 'workspace');
   const [isPinned, setIsPinned] = useState(!!(page as any).isPinned);
   const [, setMounted] = useState(false);
@@ -89,7 +91,7 @@ export const Editor: React.FC<EditorProps> = ({
     setTitle(page.title);
     const initialIcon = page.icon || undefined;
     setIcon(initialIcon);
-    setIsCustomIcon(!isDefaultOrInferredIcon(initialIcon, page.title, { isFolder: initialIcon === '📁' || initialIcon === '📂' }));
+    setIsCustomIcon(!isDefaultOrInferredIcon(initialIcon, page.title));
     setVisibility((page as any).visibility || 'workspace');
     setIsPinned(!!(page as any).isPinned);
   }, [page.id, page.title, page.icon, (page as any).visibility, (page as any).isPinned]);
@@ -110,7 +112,17 @@ export const Editor: React.FC<EditorProps> = ({
   latestMetaRef.current = { title, icon };
 
   const isReadOnly = readOnlyProp ?? (page.canEdit === false);
-  const isFolder = icon === '📁' || icon === '📂';
+
+  // Query child sub-pages if any
+  const { data: childPages = [], refetch: refetchChildren } = useQuery({
+    queryKey: ['childPages', page.id],
+    queryFn: async () => {
+      if (!page.id) return [];
+      return await getChildPages({ data: page.id });
+    },
+    enabled: !!page.id,
+    staleTime: 30 * 1000,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -122,7 +134,7 @@ export const Editor: React.FC<EditorProps> = ({
     }
     const currentIcon = page.icon || undefined;
     setIcon(currentIcon);
-    setIsCustomIcon(!isDefaultOrInferredIcon(currentIcon, page.title, { isFolder: currentIcon === '📁' || currentIcon === '📂' }));
+    setIsCustomIcon(!isDefaultOrInferredIcon(currentIcon, page.title));
     setVisibility((page as any).visibility || 'workspace');
     setIsPinned(!!(page as any).isPinned);
   }, [page.id, page.title, page.icon, (page as any).visibility, (page as any).isPinned]);
@@ -164,16 +176,6 @@ export const Editor: React.FC<EditorProps> = ({
     };
   }, [page.id, isReadOnly]);
 
-  // Query child pages if this page is a folder
-  const { data: childPages = [], refetch: refetchChildren } = useQuery({
-    queryKey: ['childPages', page.id],
-    queryFn: async () => {
-      if (!isFolder) return [];
-      return await getChildPages({ data: page.id });
-    },
-    enabled: isFolder,
-  });
-
   const updateVisibilityMutation = useMutation({
     mutationFn: async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
       if (isReadOnly) return null;
@@ -209,6 +211,18 @@ export const Editor: React.FC<EditorProps> = ({
         setActivePageId(newPage.id);
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
+    },
+  });
+
+  const deletePageMutation = useMutation({
+    mutationFn: async () => {
+      if (isReadOnly) return;
+      await softDeletePage({ data: page.id });
+    },
+    onSuccess: () => {
+      closeTab(page.id);
+      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      navigate({ to: '/dashboard' });
     },
   });
 
@@ -284,9 +298,8 @@ export const Editor: React.FC<EditorProps> = ({
     latestMetaRef.current.title = newTitle;
 
     let targetIcon = latestMetaRef.current.icon;
-    const isFolderCurrent = targetIcon === '📁' || targetIcon === '📂';
-    if (!isCustomIcon || isDefaultOrInferredIcon(targetIcon, newTitle, { isFolder: isFolderCurrent })) {
-      const inferred = inferEmojiFromTitle(newTitle, { isFolder: isFolderCurrent });
+    if (!isCustomIcon || isDefaultOrInferredIcon(targetIcon, newTitle)) {
+      const inferred = inferEmojiFromTitle(newTitle);
       if (inferred && inferred !== targetIcon) {
         targetIcon = inferred;
         setIcon(targetIcon);
@@ -321,7 +334,7 @@ export const Editor: React.FC<EditorProps> = ({
 
     setIcon(selectedIcon);
     latestMetaRef.current.icon = selectedIcon;
-    setIsCustomIcon(!isDefaultOrInferredIcon(selectedIcon, latestMetaRef.current.title, { isFolder: selectedIcon === '📁' || selectedIcon === '📂' }));
+    setIsCustomIcon(!isDefaultOrInferredIcon(selectedIcon, latestMetaRef.current.title));
     setShowEmojiPicker(false);
 
     updateClientPageMeta(queryClient, {
@@ -340,13 +353,15 @@ export const Editor: React.FC<EditorProps> = ({
       <EditorHeader
         icon={icon}
         title={title}
-        isFolder={isFolder}
         activeUsers={activeUsers}
         getClientId={getClientId}
         isReadOnly={isReadOnly}
         isPinned={isPinned}
         togglePinMutation={togglePinMutation}
         duplicateMutation={duplicateMutation}
+        onDelete={() => {
+          deletePageMutation.mutate();
+        }}
       />
 
       {/* Main Canvas */}
@@ -464,75 +479,62 @@ export const Editor: React.FC<EditorProps> = ({
             />
           )}
 
-          {/* Folder Child Document List or BlockNote Editor */}
-          {isFolder ? (
-            <div className="mt-2 flex flex-col gap-4">
-              <div className="flex items-center justify-between">
+          {/* BlockNote Rich Text Editor */}
+          <BlockEditorInner page={page} readOnly={isReadOnly} />
+
+          {/* Sub-pages Section (Notion-style Unified Container) */}
+          <div className="mt-12 pt-6 border-t border-stone-100 dark:border-zinc-800/80">
+            <div className="flex items-center justify-between mb-3.5">
+              <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
-                  Folder Contents
+                  Sub-pages
                 </span>
-                {!isReadOnly && (
-                  <button
-                    type="button"
-                    onClick={() => createDocumentInFolderMutation.mutate()}
-                    className="flex items-center gap-1.5 text-xs font-medium text-stone-700 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white px-2.5 py-1 rounded-lg bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 transition-colors cursor-pointer active-press"
-                  >
-                    <HugeiconsIcon icon={PlusSignIcon} size={13} />
-                    <span>New Document</span>
-                  </button>
+                {childPages.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400">
+                    {childPages.length}
+                  </span>
                 )}
               </div>
-
-              {childPages.length === 0 ? (
-                <div className="py-14 px-6 border border-dashed border-stone-200/90 dark:border-zinc-800/90 rounded-2xl flex flex-col items-center justify-center text-center gap-3 text-stone-400 dark:text-zinc-500 bg-stone-50/40 dark:bg-zinc-900/40 shadow-2xs">
-                  <div className="w-12 h-12 rounded-2xl bg-stone-100 dark:bg-zinc-800 text-stone-400 dark:text-zinc-400 flex items-center justify-center shadow-2xs">
-                    <HugeiconsIcon icon={Folder01Icon} size={24} />
-                  </div>
-                  <div className="flex flex-col gap-1 max-w-xs">
-                    <h4 className="text-sm font-semibold text-stone-900 dark:text-zinc-100 tracking-tight">
-                      This folder is empty
-                    </h4>
-                    <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
-                      Create your first document inside this folder to start organizing notes and pages.
-                    </p>
-                  </div>
-                  {!isReadOnly && (
-                    <button
-                      type="button"
-                      onClick={() => createDocumentInFolderMutation.mutate()}
-                      className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium shadow-2xs transition-all cursor-pointer active-press"
-                    >
-                      <HugeiconsIcon icon={PlusSignIcon} size={14} />
-                      <span>Create document</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {childPages.map((child: any) => (
-                    <button
-                      key={child.id}
-                      type="button"
-                      onClick={() => {
-                        setActivePageId(child.id);
-                        navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
-                      }}
-                      className="p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 hover:border-stone-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900/60 hover:bg-stone-50/60 dark:hover:bg-zinc-800/60 transition-all text-left flex items-center justify-between group cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className="text-lg">{child.icon || null}</span>
-                        <span className="text-xs font-medium text-stone-800 dark:text-zinc-200 truncate group-hover:text-stone-900 dark:group-hover:text-white">
-                          {child.title || 'Untitled Document'}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => createDocumentInFolderMutation.mutate()}
+                  className="flex items-center gap-1.5 text-xs font-medium text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white px-2.5 py-1 rounded-lg bg-stone-100/80 dark:bg-zinc-800/80 hover:bg-stone-200/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                >
+                  <HugeiconsIcon icon={PlusSignIcon} size={13} />
+                  <span>Add sub-page</span>
+                </button>
               )}
             </div>
-          ) : (
-            <BlockEditorInner page={page} readOnly={isReadOnly} />
-          )}
+
+            {childPages.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {childPages.map((child: any) => (
+                  <button
+                    key={child.id}
+                    type="button"
+                    onClick={() => {
+                      setActivePageId(child.id);
+                      navigate({ to: '/dashboard/p/$pageId', params: { pageId: child.id } });
+                    }}
+                    className="p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 hover:border-stone-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900/60 hover:bg-stone-50/60 dark:hover:bg-zinc-800/60 transition-all text-left flex items-center justify-between group cursor-pointer shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="text-base">{child.icon || '📄'}</span>
+                      <span className="text-xs font-medium text-stone-800 dark:text-zinc-200 truncate group-hover:text-stone-900 dark:group-hover:text-white">
+                        {child.title || 'Untitled Document'}
+                      </span>
+                    </div>
+                    <HugeiconsIcon
+                      icon={ArrowRight01Icon}
+                      size={13}
+                      className="text-stone-300 dark:text-zinc-600 group-hover:text-stone-600 dark:group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all shrink-0"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

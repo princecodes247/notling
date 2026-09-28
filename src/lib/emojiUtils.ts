@@ -55,17 +55,17 @@ const KEYWORD_MAP: Array<{ keywords: string[]; emoji: string }> = [
 ];
 
 /**
- * Automatically infers an appropriate emoji based on the title of a page or folder.
+ * Automatically infers an appropriate emoji based on the title of a page.
  */
-export function inferEmojiFromTitle(title: string, options?: { isFolder?: boolean }): string {
-  const fallback = options?.isFolder ? '📁' : '📄';
+export function inferEmojiFromTitle(title: string): string {
+  const fallback = '📄';
   if (!title || typeof title !== 'string') return fallback;
 
   const cleanTitle = title.trim().toLowerCase();
   if (!cleanTitle) return fallback;
 
   // Ignore generic default names
-  const genericNames = ['untitled', 'untitled document', 'untitled page', 'untitled folder', 'new collection', 'new folder', 'folder'];
+  const genericNames = ['untitled', 'untitled document', 'untitled page'];
   if (genericNames.includes(cleanTitle)) {
     return fallback;
   }
@@ -132,10 +132,10 @@ export function inferEmojiFromTitle(title: string, options?: { isFolder?: boolea
  */
 export function isDefaultOrInferredIcon(
   icon: string | null | undefined,
-  title: string,
-  options?: { isFolder?: boolean }
+  title: string
 ): boolean {
-  if (!icon || icon === '📄' || icon === '📁' || icon === '📂') return true;
-  const inferred = inferEmojiFromTitle(title, options);
+  if (!icon || icon === '📄') return true;
+  const inferred = inferEmojiFromTitle(title);
   return icon === inferred;
 }
+

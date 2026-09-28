@@ -5,7 +5,6 @@ import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, ChevronDown 
 import {
   Home01Icon,
   Folder01Icon,
-  FolderAddIcon,
   File01Icon,
   Search01Icon,
   Settings02Icon,
@@ -47,7 +46,6 @@ interface SidebarProps {
   trashCount?: number;
   activeNav?: string;
   onNavClick?: (nav: string) => void;
-  onCreateFolder?: () => void;
   onCreatePage: (parentId?: string) => void;
   onCreateDatabase?: () => void;
   onSelectDatabase?: (databaseId: string) => void;
@@ -161,7 +159,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   trashCount,
   activeNav = 'folders',
   onNavClick,
-  onCreateFolder,
   onCreatePage,
   onSelectPage,
   onSoftDelete,
@@ -462,23 +459,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                   </button>
                 )}
-
-                {onCreateFolder && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateMenu(false);
-                      onCreateFolder();
-                    }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-stone-100 dark:hover:bg-zinc-800/80 flex items-start gap-2.5 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer border-t border-stone-100 dark:border-zinc-800/60"
-                  >
-                    <HugeiconsIcon icon={FolderAddIcon} size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-semibold text-stone-900 dark:text-zinc-100">New Folder</span>
-                      <span className="text-[10px] text-stone-500 dark:text-zinc-400 leading-tight">Folder to organize pages</span>
-                    </div>
-                  </button>
-                )}
               </div>
             </>,
             document.body
@@ -497,7 +477,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <SidebarNavItem
           icon={Folder01Icon}
-          label="Folders"
+          label="All Pages"
           isActive={activeNav === 'folders'}
           onClick={() => onNavClick?.('folders')}
         />
@@ -560,23 +540,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
 
-
-
-
-
             <div>
               <div className="px-2.5 py-1 text-[11px] font-semibold text-stone-400 dark:text-zinc-500 tracking-wider uppercase flex items-center justify-between">
                 <span>Workspace Pages</span>
                 <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={isCreatingPage}
-                    onClick={() => !isCreatingPage && (onCreateFolder ? onCreateFolder() : onCreatePage())}
-                    className="p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800/70 text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer disabled:opacity-50"
-                    title="Create new folder"
-                  >
-                    <HugeiconsIcon icon={FolderAddIcon} size={14} />
-                  </button>
                   <button
                     type="button"
                     disabled={isCreatingPage}

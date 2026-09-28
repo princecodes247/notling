@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
-  FolderAddIcon,
   PlusSignIcon,
   ArrowRight01Icon,
   File01Icon,
@@ -13,7 +12,6 @@ interface HomeViewProps {
   userName?: string;
   treeNodes: PageTreeNode[];
   onSelectPage: (id: string, databaseId?: string | null) => void;
-  onCreateFolder: () => void;
   onCreatePage: () => void;
   onNavigate: (nav: string) => void;
   isLoading?: boolean;
@@ -99,7 +97,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   userName = 'Scotty',
   treeNodes,
   onSelectPage,
-  onCreateFolder,
   onCreatePage,
   onNavigate,
   isLoading = false,
@@ -171,14 +168,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
               {hasAnyContent && (
                 <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={onCreateFolder}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
-                  >
-                    <HugeiconsIcon icon={FolderAddIcon} size={15} />
-                    <span>New Folder</span>
-                  </button>
                   <button
                     type="button"
                     onClick={onCreatePage}
