@@ -346,3 +346,250 @@ export async function parseNotionZipArchive(zipFile: File): Promise<ImportedDoc[
 
   return importedDocs;
 }
+
+export interface ParsedDatabaseSource {
+  headers: string[];
+  rows: Record<string, string>[];
+  totalRows: number;
+}
+
+/**
+ * Detects common delimiters in CSV/TSV text
+ */
+function detectDelimiter(text: string): string {
+  const firstLine = text.split(/\r\n|\n|\r/)[0] || '';
+  const commaCount = (firstLine.match(/,/g) || []).length;
+  const tabCount = (firstLine.match(/\t/g) || []).length;
+  const semiCount = (firstLine.match(/;/g) || []).length;
+  const pipeCount = (firstLine.match(/\|/g) || []).length;
+
+  if (tabCount > commaCount && tabCount > semiCount) return '\t';
+  if (semiCount > commaCount && semiCount > tabCount) return ';';
+  if (pipeCount > commaCount && pipeCount > tabCount) return '|';
+  return ',';
+}
+
+/**
+ * Parses CSV/TSV text into structured headers and records (RFC 4180 compliant)
+ */
+export function parseCSVToRecords(csvText: string): ParsedDatabaseSource {
+  if (!csvText || !csvText.trim()) {
+    return { headers: [], rows: [], totalRows: 0 };
+  }
+
+  // Strip BOM if present
+  let cleanText = csvText;
+  if (cleanText.charCodeAt(0) === 0xfeff) {
+    cleanText = cleanText.slice(1);
+  }
+
+  const delimiter = detectDelimiter(cleanText);
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentCell = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < cleanText.length; i++) {
+    const char = cleanText[i];
+    const nextChar = cleanText[i + 1];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          currentCell += '"';
+          i++; // Skip escaped quote
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        currentCell += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === delimiter) {
+        currentRow.push(currentCell.trim());
+        currentCell = '';
+      } else if (char === '\r') {
+        if (nextChar === '\n') {
+          i++; // Skip \n
+        }
+        currentRow.push(currentCell.trim());
+        rows.push(currentRow);
+        currentRow = [];
+        currentCell = '';
+      } else if (char === '\n') {
+        currentRow.push(currentCell.trim());
+        rows.push(currentRow);
+        currentRow = [];
+        currentCell = '';
+      } else {
+        currentCell += char;
+      }
+    }
+  }
+
+  if (currentCell.length > 0 || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    rows.push(currentRow);
+  }
+
+  if (rows.length === 0) {
+    return { headers: [], rows: [], totalRows: 0 };
+  }
+
+  // First row is headers
+  const rawHeaders = rows[0];
+  const headers: string[] = rawHeaders.map((h, idx) => {
+    const trimmed = h.trim();
+    return trimmed || `Column ${idx + 1}`;
+  });
+
+  // Data rows
+  const parsedRecords: Record<string, string>[] = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    // Skip empty lines
+    if (row.length === 1 && !row[0]) continue;
+    if (row.every((cell) => !cell)) continue;
+
+    const record: Record<string, string> = {};
+    for (let c = 0; c < headers.length; c++) {
+      const headerName = headers[c];
+      record[headerName] = (row[c] !== undefined ? row[c] : '').trim();
+    }
+    parsedRecords.push(record);
+  }
+
+  return {
+    headers,
+    rows: parsedRecords,
+    totalRows: parsedRecords.length,
+  };
+}
+
+/**
+ * Parses JSON array or object with items into structured records
+ */
+export function parseJSONToRecords(jsonText: string): ParsedDatabaseSource {
+  if (!jsonText || !jsonText.trim()) {
+    return { headers: [], rows: [], totalRows: 0 };
+  }
+
+  try {
+    let parsed = JSON.parse(jsonText.trim());
+
+    if (!Array.isArray(parsed) && typeof parsed === 'object' && parsed !== null) {
+      if (Array.isArray(parsed.data)) parsed = parsed.data;
+      else if (Array.isArray(parsed.items)) parsed = parsed.items;
+      else if (Array.isArray(parsed.records)) parsed = parsed.records;
+      else if (Array.isArray(parsed.rows)) parsed = parsed.rows;
+      else {
+        parsed = [parsed];
+      }
+    }
+
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return { headers: [], rows: [], totalRows: 0 };
+    }
+
+    const headerSet = new Set<string>();
+    parsed.forEach((obj: any) => {
+      if (typeof obj === 'object' && obj !== null) {
+        Object.keys(obj).forEach((k) => headerSet.add(k));
+      }
+    });
+
+    const headers = Array.from(headerSet);
+    const rows: Record<string, string>[] = parsed.map((obj: any) => {
+      const row: Record<string, string> = {};
+      headers.forEach((h) => {
+        const val = obj[h];
+        if (val === null || val === undefined) {
+          row[h] = '';
+        } else if (typeof val === 'object') {
+          row[h] = JSON.stringify(val);
+        } else {
+          row[h] = String(val);
+        }
+      });
+      return row;
+    });
+
+    return {
+      headers,
+      rows,
+      totalRows: rows.length,
+    };
+  } catch (err) {
+    console.error('Error parsing JSON for database import:', err);
+    return { headers: [], rows: [], totalRows: 0 };
+  }
+}
+
+/**
+ * Automatically infers optimal database property type based on column values and name
+ */
+export function inferPropertyType(
+  values: (string | null | undefined)[],
+  headerName?: string
+): 'title' | 'text' | 'number' | 'select' | 'multi_select' | 'date' | 'checkbox' | 'url' | 'email' {
+  const cleanHeader = (headerName || '').trim().toLowerCase();
+  if (['title', 'name', 'item', 'subject', 'task', 'document', 'page'].includes(cleanHeader)) {
+    return 'title';
+  }
+
+  const nonEmpties = values
+    .filter((v): v is string => v !== null && v !== undefined && String(v).trim().length > 0)
+    .map((v) => String(v).trim());
+
+  if (nonEmpties.length === 0) return 'text';
+
+  // Checkbox
+  const isBool = nonEmpties.every((v) =>
+    ['true', 'false', 'yes', 'no', '1', '0', '✓', 'x'].includes(v.toLowerCase())
+  );
+  if (isBool && (cleanHeader.includes('is_') || cleanHeader.includes('has_') || cleanHeader.includes('done') || cleanHeader.includes('active') || nonEmpties.length > 2)) {
+    return 'checkbox';
+  }
+
+  // Number
+  const isNum = nonEmpties.every((v) => {
+    const stripped = v.replace(/[\$,%]/g, '');
+    return !isNaN(Number(stripped)) && stripped.length > 0;
+  });
+  if (isNum) return 'number';
+
+  // URL
+  const isUrl = nonEmpties.every((v) => /^https?:\/\/[^\s]+$/i.test(v));
+  if (isUrl) return 'url';
+
+  // Email
+  const isEmail = nonEmpties.every((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v));
+  if (isEmail) return 'email';
+
+  // Date
+  const isDate = nonEmpties.every((v) => {
+    if (v.length < 4) return false;
+    const d = Date.parse(v);
+    return !isNaN(d) && (v.includes('-') || v.includes('/') || v.includes('.'));
+  });
+  if (isDate) return 'date';
+
+  // Multi-select (contains comma or semicolon within cells)
+  const hasDelimiters = nonEmpties.some((v) => v.includes(',') || v.includes(';'));
+  if (
+    hasDelimiters &&
+    (cleanHeader.includes('tag') || cleanHeader.includes('category') || cleanHeader.includes('label') || cleanHeader.includes('skill'))
+  ) {
+    return 'multi_select';
+  }
+
+  // Select (low cardinality unique values relative to row count)
+  const uniqueCount = new Set(nonEmpties).size;
+  if (uniqueCount <= 12 && uniqueCount < nonEmpties.length * 0.7) {
+    return 'select';
+  }
+
+  return 'text';
+}

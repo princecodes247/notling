@@ -20,6 +20,7 @@ import { useUIStore } from '~/store/uiStore';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { EditorHeader } from '../EditorHeader';
 import { ShareModal } from '../ShareModal';
+import { DatabaseImportModal } from './DatabaseImportModal';
 
 import { AnimatePresence } from 'motion/react';
 
@@ -51,6 +52,7 @@ export function DatabaseContainer({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const targetPageId = initialData.database.pageId || initialData.database.id;
 
@@ -475,6 +477,7 @@ export function DatabaseContainer({
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onAddItem={() => handleAddItem()}
+          onImportData={() => setIsImportModalOpen(true)}
         />
       )}
 
@@ -493,6 +496,7 @@ export function DatabaseContainer({
           onConvertPropertyType={handleConvertPropertyType}
           onUpdateProperty={handleUpdateProperty}
           onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
+          onImportData={() => setIsImportModalOpen(true)}
           readOnly={readOnly}
         />
       </div>
@@ -519,6 +523,15 @@ export function DatabaseContainer({
         page={sharePageObject}
         visibility={(sharePageObject as any).visibility || 'workspace'}
         onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+      />
+
+      {/* Import Modal */}
+      <DatabaseImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        databaseId={dbData.database.id}
+        databaseTitle={dbTitle}
+        existingProperties={dbData.properties}
       />
     </div>
   );

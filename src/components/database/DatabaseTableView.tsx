@@ -19,6 +19,7 @@ import {
   RefreshCw,
   AlertTriangle,
   AlertCircle,
+  Upload,
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { useDragPaint } from '~/hooks/useDragPaint';
@@ -37,6 +38,7 @@ interface DatabaseTableViewProps {
   onConvertPropertyType?: (propertyId: string, newType: string) => void;
   onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
   onOpenRowDrawer?: (item: DatabaseItem) => void;
+  onImportData?: () => void;
   readOnly?: boolean;
 }
 
@@ -80,6 +82,7 @@ export function DatabaseTableView({
   onConvertPropertyType,
   onUpdateProperty,
   onOpenRowDrawer,
+  onImportData,
   readOnly = false,
 }: DatabaseTableViewProps) {
   // Unified State-Aware Menu ID
@@ -794,17 +797,40 @@ export function DatabaseTableView({
             {/* Full-width + New row Table Row */}
             {!readOnly && (
               <tr
-                onClick={handleAddNewRow}
-                className="group hover:bg-stone-100/70 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer border-b border-stone-200/40 dark:border-zinc-800/40 select-none"
+                className="group hover:bg-stone-100/70 dark:hover:bg-zinc-800/40 transition-colors border-b border-stone-200/40 dark:border-zinc-800/40 select-none"
               >
-                <td className="py-2 px-2 text-center text-stone-400 dark:text-zinc-500">
+                <td
+                  onClick={handleAddNewRow}
+                  className="py-2 px-2 text-center text-stone-400 dark:text-zinc-500 cursor-pointer"
+                >
                   <Plus className="w-3.5 h-3.5 mx-auto text-stone-400 dark:text-zinc-500 group-hover:text-stone-700 dark:group-hover:text-zinc-300 transition-colors" />
                 </td>
                 <td
                   colSpan={nonTitleProps.length + 2}
-                  className="py-2 px-3 text-xs text-stone-400 dark:text-zinc-500 group-hover:text-stone-700 dark:group-hover:text-zinc-300 transition-colors font-normal"
+                  className="py-2 px-3 text-xs text-stone-400 dark:text-zinc-500 font-normal"
                 >
-                  New row
+                  <div className="flex items-center justify-between">
+                    <span
+                      onClick={handleAddNewRow}
+                      className="group-hover:text-stone-700 dark:group-hover:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                      New row
+                    </span>
+                    {onImportData && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onImportData();
+                        }}
+                        className="text-[11px] font-medium text-stone-400 hover:text-stone-700 dark:text-zinc-500 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                        title="Import CSV, TSV or JSON data"
+                      >
+                        <Upload className="w-3 h-3" />
+                        <span>Import data</span>
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             )}

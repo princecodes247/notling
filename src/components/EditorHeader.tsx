@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Download01Icon, Edit02Icon, TableIcon, File01Icon } from '@hugeicons/core-free-icons';
+import { Download01Icon, Edit02Icon, TableIcon, File01Icon, Upload01Icon } from '@hugeicons/core-free-icons';
 import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
@@ -26,6 +26,7 @@ interface EditorHeaderProps {
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
   onAddItem?: () => void;
+  onImportData?: () => void;
 }
 
 export const EditorHeader: React.FC<EditorHeaderProps> = ({
@@ -45,6 +46,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   searchQuery,
   onSearchChange,
   onAddItem: _onAddItem,
+  onImportData,
 }) => {
   const {
     canUndo,
@@ -251,6 +253,21 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                     <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
                     <span>Export Document</span>
                   </button>
+
+                  {/* Import Data Option (for Databases) */}
+                  {onImportData && !isReadOnly && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        onImportData();
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <HugeiconsIcon icon={Upload01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
+                      <span>Import Data</span>
+                    </button>
+                  )}
 
                   {/* Bookmark / Favorite Option */}
                   {togglePinMutation && (

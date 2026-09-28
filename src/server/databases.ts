@@ -140,3 +140,22 @@ export const convertDatabasePropertyType = createServerFn({ method: 'POST' })
     return convertPropertyType(data.propertyId, data.targetType);
   });
 
+export const importDatabaseData = createServerFn({ method: 'POST' })
+  .validator(
+    (input: {
+      databaseId: string;
+      mappings: Array<{
+        columnName: string;
+        targetPropertyId: string;
+        newPropertyName?: string;
+        newPropertyType?: any;
+      }>;
+      rows: Record<string, any>[];
+    }) => input
+  )
+  .handler(async ({ data }) => {
+    const { importDatabaseData: importFn } = await import('./databases.db');
+    return importFn(data);
+  });
+
+
