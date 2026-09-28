@@ -87,13 +87,29 @@ export function DatabaseContainer({
     databaseId: initialData.database.id,
   };
 
+  const updateLocalAndCache = (updater: (prev: FullDatabase) => FullDatabase) => {
+    setDbData((prev: FullDatabase) => {
+      const next = updater(prev);
+      const dbId = next.database.id;
+      const pageId = next.database.pageId;
+
+      if (dbId) {
+        queryClient.setQueryData(['database', dbId], next);
+      }
+      if (pageId && pageId !== dbId) {
+        queryClient.setQueryData(['database', pageId], next);
+      }
+      return next;
+    });
+  };
+
   React.useEffect(() => {
     setDbData(initialData);
     if (!isEditingTitleRef.current) {
       setDbTitle(initialData.database.title || 'Untitled Database');
       savedTitleRef.current = initialData.database.title || 'Untitled Database';
     }
-  }, [initialData.database.id, initialData.database.title]);
+  }, [initialData]);
 
   const handleSaveTitle = async () => {
     if (readOnly) return;
@@ -109,7 +125,7 @@ export function DatabaseContainer({
     savedTitleRef.current = finalTitle;
     setDbTitle(finalTitle);
 
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       database: {
         ...prev.database,
@@ -194,7 +210,7 @@ export function DatabaseContainer({
       updatedAt: new Date(),
     };
 
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: [...prev.items, optimisticItem],
     }));
@@ -210,7 +226,7 @@ export function DatabaseContainer({
       });
 
       if (res?.pageId) {
-        setDbData((prev: FullDatabase) => ({
+        updateLocalAndCache((prev: FullDatabase) => ({
           ...prev,
           items: prev.items.map((item: DatabaseItem) =>
             item.id === tempId ? { ...item, pageId: res.pageId } : item
@@ -225,7 +241,7 @@ export function DatabaseContainer({
 
   const handleUpdateItem = async (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => {
     if (readOnly) return;
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.map((i: DatabaseItem) =>
         i.id === itemId
@@ -248,7 +264,7 @@ export function DatabaseContainer({
 
   const handleDeleteItem = async (itemId: string) => {
     if (readOnly) return;
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.filter((i: DatabaseItem) => i.id !== itemId),
     }));
@@ -258,7 +274,7 @@ export function DatabaseContainer({
 
   const handleDeleteItemsBulk = async (itemIds: string[]) => {
     if (readOnly) return;
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.filter((i: DatabaseItem) => !itemIds.includes(i.id)),
     }));
@@ -268,7 +284,7 @@ export function DatabaseContainer({
 
   const handleReorderItems = (fromIndex: number, toIndex: number) => {
     if (readOnly) return;
-    setDbData((prev: FullDatabase) => {
+    updateLocalAndCache((prev: FullDatabase) => {
       if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.items.length || toIndex >= prev.items.length) return prev;
       const newItems = [...prev.items];
       const [moved] = newItems.splice(fromIndex, 1);
@@ -307,7 +323,7 @@ export function DatabaseContainer({
       icon: null,
     };
 
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       properties: [...prev.properties, optimisticProp],
     }));
@@ -328,7 +344,7 @@ export function DatabaseContainer({
 
   const handleUpdateProperty = async (propertyId: string, updates: Partial<DatabaseProperty>) => {
     if (readOnly) return;
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       properties: prev.properties.map((p: DatabaseProperty) => (p.id === propertyId ? { ...p, ...updates } : p)),
     }));
@@ -350,7 +366,7 @@ export function DatabaseContainer({
       },
     });
 
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       properties: prev.properties.map((p: DatabaseProperty) => (p.id === propertyId ? { ...p, type: updatedProp.type } : p)),
     }));
@@ -358,7 +374,7 @@ export function DatabaseContainer({
 
   const handleDeleteProperty = async (propertyId: string) => {
     if (readOnly) return;
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       properties: prev.properties.filter((p: DatabaseProperty) => p.id !== propertyId),
     }));
@@ -369,7 +385,7 @@ export function DatabaseContainer({
   const handleUpdateIcon = async (newIcon: string | null) => {
     if (readOnly) return;
     const iconValue = newIcon || '';
-    setDbData((prev: FullDatabase) => ({
+    updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       database: {
         ...prev.database,

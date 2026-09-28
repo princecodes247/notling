@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, Database, ChevronDown } from 'lucide-react';
+import { PanelLeftClose, ChevronsUpDown, Check, Plus, Star, Upload, ChevronDown } from 'lucide-react';
 import {
   Home01Icon,
   Folder01Icon,

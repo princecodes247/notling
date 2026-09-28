@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Download01Icon, Edit02Icon, TableIcon } from '@hugeicons/core-free-icons';
-import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search, Plus } from 'lucide-react';
+import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
 
@@ -46,7 +46,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   onRevertTitle,
   searchQuery,
   onSearchChange,
-  onAddItem,
+  onAddItem: _onAddItem,
 }) => {
   const {
     canUndo,
