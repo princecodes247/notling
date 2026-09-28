@@ -55,7 +55,7 @@ export function DatabaseRowDrawer({
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-3xl bg-white dark:bg-[#18181b] h-full shadow-2xl border-l border-stone-200/80 dark:border-zinc-800/80 flex flex-col font-sans cursor-default"
       >
@@ -126,7 +126,7 @@ export function DatabaseRowDrawer({
                   });
                 }
               }}
-              className="w-full text-2xl font-bold bg-transparent border-none focus:outline-none focus:bg-stone-50 dark:focus:bg-zinc-900/60 px-1 py-1 rounded-lg text-stone-950 dark:text-white placeholder:text-stone-300 dark:placeholder:text-zinc-600"
+              className="w-full text-2xl font-bold bg-transparent border-none focus:outline-none px-1 py-1 rounded-lg text-stone-950 dark:text-white placeholder:text-stone-300 dark:placeholder:text-zinc-600"
               placeholder="Untitled Row"
             />
           </div>
