@@ -1,340 +1,110 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { useTabsStore, type TabItem } from './tabsStore';
+import { useNavigationStore, type LivePageMeta } from './navigationStore';
+import { useModalStore } from './modalStore';
+import { useStatusStore } from './statusStore';
 
-export interface TabItem {
-  id: string;
-  title: string;
-  icon?: string;
-  path: string;
+export type { TabItem, LivePageMeta };
+export { useTabsStore, useNavigationStore, useModalStore, useStatusStore };
+
+type CombinedUIState = ReturnType<typeof useTabsStore.getState> &
+  ReturnType<typeof useNavigationStore.getState> &
+  ReturnType<typeof useModalStore.getState> &
+  ReturnType<typeof useStatusStore.getState>;
+
+/**
+ * Backward-compatible unified UI Store hook that seamlessly delegates
+ * to specialized smaller stores (tabs, navigation, modals, status).
+ */
+export function useUIStore(): CombinedUIState;
+export function useUIStore<T>(selector: (state: CombinedUIState) => T): T;
+export function useUIStore<T>(selector?: (state: CombinedUIState) => T): T | CombinedUIState {
+  const tabs = useTabsStore();
+  const nav = useNavigationStore();
+  const modal = useModalStore();
+  const status = useStatusStore();
+
+  const combined: CombinedUIState = {
+    ...tabs,
+    ...nav,
+    ...modal,
+    ...status,
+    // Cross-store synchronized helpers
+    setPageMeta: (pageId: string, meta: { title?: string; icon?: string | null }) => {
+      nav.setPageMeta(pageId, meta);
+      if (meta.title !== undefined || meta.icon !== undefined) {
+        tabs.updateTabMeta(pageId, meta.title || '', meta.icon ?? undefined);
+      }
+    },
+    updateTabMeta: (id: string, title: string, icon?: string) => {
+      tabs.updateTabMeta(id, title, icon);
+      nav.setPageMeta(id, { title, icon });
+    },
+  };
+
+  return selector ? selector(combined) : combined;
 }
 
-export interface LivePageMeta {
-  title: string;
-  icon: string;
-}
+useUIStore.getState = (): CombinedUIState => {
+  const tabs = useTabsStore.getState();
+  const nav = useNavigationStore.getState();
+  const modal = useModalStore.getState();
+  const status = useStatusStore.getState();
 
-interface UIState {
-  // Live client-side page meta overrides (pageId -> { title, icon })
-  pageMeta: Record<string, LivePageMeta>;
-  setPageMeta: (pageId: string, meta: { title?: string; icon?: string | null }) => void;
-
-  // Tree expanded nodes state
-  expandedNodeIds: Record<string, boolean>;
-  toggleNodeExpand: (nodeId: string) => void;
-  setNodeExpand: (nodeId: string, expanded: boolean) => void;
-
-  // Active Page ID
-  activePageId: string | null;
-  setActivePageId: (pageId: string | null) => void;
-
-  // Tabs State
-  openTabs: TabItem[];
-  activeTabId: string | null;
-  openTab: (tab: TabItem) => void;
-  closeTab: (tabId: string) => string | null;
-  updateTabMeta: (id: string, title: string, icon?: string) => void;
-  setActiveTabId: (id: string) => void;
-  reorderTabs: (fromIndex: number, toIndex: number) => void;
-  setOpenTabs: (tabs: TabItem[]) => void;
-
-  // Modals & Panels
-  isSearchOpen: boolean;
-  setSearchOpen: (open: boolean) => void;
-  toggleSearch: () => void;
-
-  isTrashOpen: boolean;
-  setTrashOpen: (open: boolean) => void;
-  toggleTrash: () => void;
-
-  isImportOpen: boolean;
-  setImportOpen: (open: boolean) => void;
-  toggleImport: () => void;
-
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
-  toggleSidebar: () => void;
-
-  // Save Indicator State
-  saveStatus: 'idle' | 'saving' | 'saved' | 'offline' | 'error';
-  setSaveStatus: (status: 'idle' | 'saving' | 'saved' | 'offline' | 'error') => void;
-
-  // Connection State
-  isOnline: boolean;
-  isServerReachable: boolean;
-  setConnectionStatus: (isOnline: boolean, isServerReachable: boolean) => void;
-
-  // Editor UI & Modals State
-  isShareModalOpen: boolean;
-  setShareModalOpen: (open: boolean) => void;
-  isExportModalOpen: boolean;
-  setExportModalOpen: (open: boolean) => void;
-  isHistoryDrawerOpen: boolean;
-  setHistoryDrawerOpen: (open: boolean) => void;
-  isRequestAccessOpen: boolean;
-  setRequestAccessOpen: (open: boolean) => void;
-  showHeaderMenu: boolean;
-  setShowHeaderMenu: (open: boolean) => void;
-  showEmojiPicker: boolean;
-  setShowEmojiPicker: (open: boolean) => void;
-  canUndo: boolean;
-  canRedo: boolean;
-  setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
-}
-
-export const useUIStore = create<UIState>()(
-  persist(
-    (set, get) => ({
-  pageMeta: {},
-  setPageMeta: (pageId, meta) =>
-    set((state) => {
-      const prevMeta = state.pageMeta[pageId];
-      const nextTitle =
-        meta.title !== undefined
-          ? meta.title || 'Untitled Document'
-          : prevMeta?.title || 'Untitled Document';
-      const nextIcon =
-        meta.icon !== undefined
-          ? (meta.icon || '')
-          : prevMeta?.icon || '';
-
-      const updatedPageMeta = {
-        ...state.pageMeta,
-        [pageId]: {
-          title: nextTitle,
-          icon: nextIcon,
-        },
-      };
-
-      const isTabMatching = (t: TabItem) =>
-        t.id === pageId ||
-        t.path.endsWith(`/p/${pageId}`) ||
-        t.path.endsWith(`/db/${pageId}`) ||
-        t.path.includes(`/p/${pageId}/`) ||
-        t.path.includes(`/db/${pageId}/`);
-
-      const updatedTabs = state.openTabs.map((t) =>
-        isTabMatching(t)
-          ? {
-            ...t,
-            title: nextTitle,
-            icon: nextIcon,
-          }
-          : t
-      );
-
-      // Instantly update browser document title if this page is active
-      if (
-        (state.activeTabId === pageId || state.activePageId === pageId || state.openTabs.some((t) => (t.id === state.activeTabId || t.id === state.activePageId) && isTabMatching(t))) &&
-        typeof document !== 'undefined'
-      ) {
-        document.title = `${nextTitle} — Notling`;
+  return {
+    ...tabs,
+    ...nav,
+    ...modal,
+    ...status,
+    setPageMeta: (pageId: string, meta: { title?: string; icon?: string | null }) => {
+      nav.setPageMeta(pageId, meta);
+      if (meta.title !== undefined || meta.icon !== undefined) {
+        tabs.updateTabMeta(pageId, meta.title || '', meta.icon ?? undefined);
       }
+    },
+    updateTabMeta: (id: string, title: string, icon?: string) => {
+      tabs.updateTabMeta(id, title, icon);
+      nav.setPageMeta(id, { title, icon });
+    },
+  };
+};
 
-      return {
-        pageMeta: updatedPageMeta,
-        openTabs: updatedTabs,
-      };
-    }),
+useUIStore.setState = (
+  updater:
+    | Partial<CombinedUIState>
+    | ((state: CombinedUIState) => Partial<CombinedUIState>)
+): void => {
+  const currentState = useUIStore.getState();
+  const nextStatePartial = typeof updater === 'function' ? updater(currentState) : updater;
 
-  expandedNodeIds: {},
-  toggleNodeExpand: (nodeId) =>
-    set((state) => ({
-      expandedNodeIds: {
-        ...state.expandedNodeIds,
-        [nodeId]: !state.expandedNodeIds[nodeId],
-      },
-    })),
-  setNodeExpand: (nodeId, expanded) =>
-    set((state) => ({
-      expandedNodeIds: {
-        ...state.expandedNodeIds,
-        [nodeId]: expanded,
-      },
-    })),
+  if (!nextStatePartial) return;
 
-  activePageId: null,
-  setActivePageId: (pageId) =>
-    set((state) => (state.activePageId === pageId ? state : { activePageId: pageId })),
+  useTabsStore.setState(nextStatePartial);
+  useNavigationStore.setState(nextStatePartial);
+  useModalStore.setState(nextStatePartial);
+  useStatusStore.setState(nextStatePartial);
+};
 
-  openTabs: [],
-  activeTabId: 'home',
-  openTab: (tab) =>
-    set((state) => {
-      if (tab.id === 'home') {
-        if (state.activeTabId === 'home') return state;
-        return { activeTabId: 'home' };
-      }
+useUIStore.subscribe = (
+  listener: (state: CombinedUIState, prevState: CombinedUIState) => void
+): (() => void) => {
+  let currentState = useUIStore.getState();
+  const notify = () => {
+    const nextState = useUIStore.getState();
+    const prevState = currentState;
+    currentState = nextState;
+    listener(nextState, prevState);
+  };
 
-      const live = state.pageMeta[tab.id];
-      const resolvedTabTitle = live?.title ?? tab.title;
-      const resolvedTabIcon = live?.icon ?? tab.icon;
+  const unsub1 = useTabsStore.subscribe(notify);
+  const unsub2 = useNavigationStore.subscribe(notify);
+  const unsub3 = useModalStore.subscribe(notify);
+  const unsub4 = useStatusStore.subscribe(notify);
 
-      const existingIndex = state.openTabs.findIndex((t) => t.id === tab.id);
-      if (existingIndex !== -1) {
-        const existing = state.openTabs[existingIndex];
-        const isSame =
-          existing.title === resolvedTabTitle &&
-          existing.icon === resolvedTabIcon &&
-          existing.path === tab.path &&
-          state.activeTabId === tab.id;
+  return () => {
+    unsub1();
+    unsub2();
+    unsub3();
+    unsub4();
+  };
+};
 
-        if (isSame) {
-          return state;
-        }
-
-        const newTabs = [...state.openTabs];
-        const mergedTitle =
-          resolvedTabTitle && resolvedTabTitle !== 'Untitled Document'
-            ? resolvedTabTitle
-            : (existing.title && existing.title !== 'Untitled Document' ? existing.title : resolvedTabTitle);
-        const mergedIcon = resolvedTabIcon || existing.icon;
-
-        newTabs[existingIndex] = { ...existing, ...tab, title: mergedTitle, icon: mergedIcon };
-        return {
-          openTabs: newTabs,
-          activeTabId: tab.id,
-        };
-      }
-      return {
-        openTabs: [...state.openTabs, { ...tab, title: resolvedTabTitle, icon: resolvedTabIcon }],
-        activeTabId: tab.id,
-      };
-    }),
-  closeTab: (tabId) => {
-    let nextPath: string | null = null;
-    const state = get();
-    const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
-    const index = fileTabs.findIndex(
-      (t) => t.id === tabId || t.path.endsWith(`/${tabId}`)
-    );
-    if (index === -1) return null;
-
-    const matchedTab = fileTabs[index];
-    const actualTabId = matchedTab.id;
-    const remainingTabs = fileTabs.filter((t) => t.id !== actualTabId);
-    let nextActiveId = state.activeTabId;
-
-    if (state.activeTabId === actualTabId || state.activeTabId === tabId) {
-      if (remainingTabs.length > 0) {
-        const nextIndex = Math.max(0, index - 1);
-        nextActiveId = remainingTabs[nextIndex].id;
-        nextPath = remainingTabs[nextIndex].path;
-      } else {
-        nextActiveId = 'home';
-        nextPath = '/dashboard';
-      }
-    }
-
-    set({
-      openTabs: remainingTabs,
-      activeTabId: nextActiveId,
-    });
-
-    return nextPath;
-  },
-  updateTabMeta: (id, title, icon) =>
-    set((state) => {
-      const resolvedTitle = title || 'Untitled Document';
-      const resolvedIcon = icon !== undefined ? icon : (state.pageMeta[id]?.icon || '');
-
-      const updatedPageMeta = {
-        ...state.pageMeta,
-        [id]: {
-          title: resolvedTitle,
-          icon: resolvedIcon,
-        },
-      };
-
-      if (
-        (state.activeTabId === id || state.activePageId === id) &&
-        typeof document !== 'undefined'
-      ) {
-        document.title = `${resolvedTitle} — Notling`;
-      }
-
-      const isTabMatching = (t: TabItem) =>
-        t.id === id ||
-        t.path.endsWith(`/p/${id}`) ||
-        t.path.endsWith(`/db/${id}`) ||
-        t.path.includes(`/p/${id}/`) ||
-        t.path.includes(`/db/${id}/`);
-
-      return {
-        pageMeta: updatedPageMeta,
-        openTabs: state.openTabs.map((t) =>
-          isTabMatching(t) ? { ...t, title: resolvedTitle, icon: resolvedIcon } : t
-        ),
-      };
-    }),
-  setActiveTabId: (id) => set({ activeTabId: id }),
-  reorderTabs: (fromIndex, toIndex) =>
-    set((state) => {
-      if (
-        fromIndex < 0 ||
-        fromIndex >= state.openTabs.length ||
-        toIndex < 0 ||
-        toIndex >= state.openTabs.length ||
-        fromIndex === toIndex
-      ) {
-        return state;
-      }
-      const updated = [...state.openTabs];
-      const [moved] = updated.splice(fromIndex, 1);
-      updated.splice(toIndex, 0, moved);
-      return { openTabs: updated };
-    }),
-  setOpenTabs: (tabs) => set({ openTabs: tabs }),
-
-  isSearchOpen: false,
-  setSearchOpen: (open) => set({ isSearchOpen: open }),
-  toggleSearch: () => set((state) => ({ isSearchOpen: !state.isSearchOpen })),
-
-  isTrashOpen: false,
-  setTrashOpen: (open) => set({ isTrashOpen: open }),
-  toggleTrash: () => set((state) => ({ isTrashOpen: !state.isTrashOpen })),
-
-  isImportOpen: false,
-  setImportOpen: (open) => set({ isImportOpen: open }),
-  toggleImport: () => set((state) => ({ isImportOpen: !state.isImportOpen })),
-
-  sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
-  setSidebarOpen: (open) => set({ sidebarOpen: open }),
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-
-  saveStatus: 'saved',
-  setSaveStatus: (status) => set({ saveStatus: status }),
-
-  isOnline: typeof window !== 'undefined' ? navigator.onLine : true,
-  isServerReachable: true,
-  setConnectionStatus: (isOnline, isServerReachable) =>
-    set({ isOnline, isServerReachable }),
-
-  isShareModalOpen: false,
-  setShareModalOpen: (open) => set({ isShareModalOpen: open }),
-  isExportModalOpen: false,
-  setExportModalOpen: (open) => set({ isExportModalOpen: open }),
-  isHistoryDrawerOpen: false,
-  setHistoryDrawerOpen: (open) => set({ isHistoryDrawerOpen: open }),
-  isRequestAccessOpen: false,
-  setRequestAccessOpen: (open) => set({ isRequestAccessOpen: open }),
-  showHeaderMenu: false,
-  setShowHeaderMenu: (open) => set({ showHeaderMenu: open }),
-  showEmojiPicker: false,
-  setShowEmojiPicker: (open) => set({ showEmojiPicker: open }),
-  canUndo: false,
-  canRedo: false,
-  setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
-    }),
-    {
-      name: 'notling_ui_state',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        openTabs: state.openTabs,
-        activeTabId: state.activeTabId,
-        expandedNodeIds: state.expandedNodeIds,
-        sidebarOpen: state.sidebarOpen,
-        pageMeta: state.pageMeta,
-      }),
-    }
-  )
-);
