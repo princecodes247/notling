@@ -543,7 +543,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
           )}
 
           {!hasMore && filteredSortedItems.length > 0 && (
-            <span className="text-[11px] font-medium text-neutral-400 dark:text-zinc-500 border-t border-neutral-100 dark:border-zinc-800/80 pt-4 w-full text-center">
+            <span className="text-[11px] font-medium text-neutral-400 dark:text-zinc-500 pt-4 w-full text-center">
               You've reached the end of the list ({filteredSortedItems.length} items)
             </span>
           )}

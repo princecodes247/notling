@@ -138,7 +138,7 @@ export const TrashView: React.FC<TrashViewProps> = ({
         {/* Trashed Items List */}
         <div className="flex flex-col gap-3">
           {trashPages.length === 0 ? (
-            <div className="py-20 border border-dashed border-stone-200 dark:border-zinc-800 rounded-xl flex flex-col items-center justify-center text-center p-8 gap-3 text-stone-400 dark:text-zinc-500 bg-stone-50/40 dark:bg-zinc-900/40">
+            <div className="py-20 flex flex-col items-center justify-center text-center p-8 gap-3 text-stone-400 dark:text-zinc-500 bg-stone-50/40 dark:bg-zinc-900/40">
               <div className="w-12 h-12 rounded-xl bg-stone-100 dark:bg-zinc-800 text-stone-400 dark:text-zinc-400 flex items-center justify-center">
                 <Trash2 className="w-6 h-6 stroke-1" />
               </div>
@@ -152,14 +152,14 @@ export const TrashView: React.FC<TrashViewProps> = ({
               No trashed pages match "{filterQuery}"
             </div>
           ) : (
-            <div className="flex flex-col divide-y divide-stone-100 dark:divide-zinc-800/80 rounded-xl border border-stone-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 overflow-hidden shadow-2xs">
+            <div className="flex flex-col divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
               {filteredTrash.map((item) => (
                 <div
                   key={item.id}
                   className="p-4 hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors group"
                 >
                   <div className="flex items-center gap-3.5 min-w-0">
-                    <span className="text-xl shrink-0 p-1.5 bg-stone-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
+                    <span className="text-xl shrink-0 p-1.5 flex items-center justify-center">
                       {item.icon ? item.icon : <HugeiconsIcon icon={File01Icon} size={18} className="text-stone-400 dark:text-zinc-500" />}
                     </span>
                     <div className="flex flex-col min-w-0">

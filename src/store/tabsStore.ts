@@ -13,6 +13,10 @@ interface TabsState {
   activeTabId: string | null;
   openTab: (tab: TabItem) => void;
   closeTab: (tabId: string) => string | null;
+  closeOtherTabs: (tabId: string) => string | null;
+  closeTabsToRight: (tabId: string) => string | null;
+  closeTabsToLeft: (tabId: string) => string | null;
+  closeAllTabs: () => string;
   updateTabMeta: (id: string, title: string, icon?: string) => void;
   setActiveTabId: (id: string) => void;
   reorderTabs: (fromIndex: number, toIndex: number) => void;
@@ -94,6 +98,77 @@ export const useTabsStore = create<TabsState>()(
         });
 
         return nextPath;
+      },
+
+      closeOtherTabs: (tabId) => {
+        const state = get();
+        const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
+        const targetTab = fileTabs.find((t) => t.id === tabId || t.path.endsWith(`/${tabId}`));
+        if (!targetTab) {
+          set({ openTabs: [], activeTabId: 'home' });
+          return '/dashboard';
+        }
+        set({
+          openTabs: [targetTab],
+          activeTabId: targetTab.id,
+        });
+        return targetTab.path;
+      },
+
+      closeTabsToRight: (tabId) => {
+        const state = get();
+        const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
+        const index = fileTabs.findIndex((t) => t.id === tabId || t.path.endsWith(`/${tabId}`));
+        if (index === -1) return null;
+
+        const remainingTabs = fileTabs.slice(0, index + 1);
+        let nextActiveId = state.activeTabId;
+        let nextPath: string | null = null;
+
+        const activeIndex = fileTabs.findIndex((t) => t.id === state.activeTabId);
+        if (activeIndex > index) {
+          const targetTab = fileTabs[index];
+          nextActiveId = targetTab.id;
+          nextPath = targetTab.path;
+        }
+
+        set({
+          openTabs: remainingTabs,
+          activeTabId: nextActiveId,
+        });
+        return nextPath;
+      },
+
+      closeTabsToLeft: (tabId) => {
+        const state = get();
+        const fileTabs = state.openTabs.filter((t) => t.id !== 'home');
+        const index = fileTabs.findIndex((t) => t.id === tabId || t.path.endsWith(`/${tabId}`));
+        if (index === -1) return null;
+
+        const remainingTabs = fileTabs.slice(index);
+        let nextActiveId = state.activeTabId;
+        let nextPath: string | null = null;
+
+        const activeIndex = fileTabs.findIndex((t) => t.id === state.activeTabId);
+        if (activeIndex < index) {
+          const targetTab = fileTabs[index];
+          nextActiveId = targetTab.id;
+          nextPath = targetTab.path;
+        }
+
+        set({
+          openTabs: remainingTabs,
+          activeTabId: nextActiveId,
+        });
+        return nextPath;
+      },
+
+      closeAllTabs: () => {
+        set({
+          openTabs: [],
+          activeTabId: 'home',
+        });
+        return '/dashboard';
       },
 
       updateTabMeta: (id, title, icon) =>

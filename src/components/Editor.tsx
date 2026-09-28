@@ -22,7 +22,7 @@ import {
   duplicatePage,
   softDeletePage,
 } from '~/server/pages';
-import { updateClientPageMeta } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
@@ -78,7 +78,6 @@ export const Editor: React.FC<EditorProps> = ({
     showEmojiPicker,
     setShowEmojiPicker,
     setHistoryState,
-    closeTab,
   } = useUIStore();
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || undefined);
@@ -217,11 +216,12 @@ export const Editor: React.FC<EditorProps> = ({
   const deletePageMutation = useMutation({
     mutationFn: async () => {
       if (isReadOnly) return;
+      deleteClientPage(queryClient, page.id);
       await softDeletePage({ data: page.id });
     },
     onSuccess: () => {
-      closeTab(page.id);
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['trashPages'] });
       navigate({ to: '/dashboard' });
     },
   });
@@ -481,33 +481,30 @@ export const Editor: React.FC<EditorProps> = ({
 
           {/* BlockNote Rich Text Editor */}
           <BlockEditorInner page={page} readOnly={isReadOnly} />
-
-          {/* Sub-pages Section (Notion-style Unified Container) */}
-          <div className="mt-12 pt-6 border-t border-stone-100 dark:border-zinc-800/80">
-            <div className="flex items-center justify-between mb-3.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
-                  Sub-pages
-                </span>
-                {childPages.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400">
-                    {childPages.length}
+          {childPages.length > 0 ? (
+            <div className="mt-12 pt-6 border-t border-stone-100 dark:border-zinc-800/80">
+              <div className="flex items-center justify-between mb-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-400 dark:text-zinc-500">
+                    Sub-pages
                   </span>
+                  {childPages.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-medium bg-stone-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400">
+                      {childPages.length}
+                    </span>
+                  )}
+                </div>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => createDocumentInFolderMutation.mutate()}
+                    className="flex items-center gap-1.5 text-xs font-medium text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white px-2.5 py-1 rounded-lg bg-stone-100/80 dark:bg-zinc-800/80 hover:bg-stone-200/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
+                  >
+                    <HugeiconsIcon icon={PlusSignIcon} size={13} />
+                    <span>Add sub-page</span>
+                  </button>
                 )}
               </div>
-              {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={() => createDocumentInFolderMutation.mutate()}
-                  className="flex items-center gap-1.5 text-xs font-medium text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-white px-2.5 py-1 rounded-lg bg-stone-100/80 dark:bg-zinc-800/80 hover:bg-stone-200/80 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-                >
-                  <HugeiconsIcon icon={PlusSignIcon} size={13} />
-                  <span>Add sub-page</span>
-                </button>
-              )}
-            </div>
-
-            {childPages.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {childPages.map((child: any) => (
                   <button
@@ -535,8 +532,8 @@ export const Editor: React.FC<EditorProps> = ({
                   </button>
                 ))}
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

@@ -20,10 +20,21 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 export async function invalidatePageCaches(workspaceId?: string | null, pageId?: string | null) {
   const promises: Promise<any>[] = [];
-  if (workspaceId) {
-    promises.push(deleteCachePattern(`${redisKeys.workspaceTree(workspaceId)}*`));
-    promises.push(deleteCachePattern(`search:${workspaceId}:*`));
-    promises.push(deleteCache(redisKeys.workspaceDatabases(workspaceId)));
+  let resolvedWsId = workspaceId;
+
+  if (!resolvedWsId && pageId) {
+    try {
+      const pageRow = await db.select({ workspaceId: pages.workspaceId }).from(pages).where(eq(pages.id, pageId)).limit(1);
+      if (pageRow.length > 0) {
+        resolvedWsId = pageRow[0].workspaceId;
+      }
+    } catch { }
+  }
+
+  if (resolvedWsId) {
+    promises.push(deleteCachePattern(`${redisKeys.workspaceTree(resolvedWsId)}*`));
+    promises.push(deleteCachePattern(`search:${resolvedWsId}:*`));
+    promises.push(deleteCache(redisKeys.workspaceDatabases(resolvedWsId)));
   }
   if (pageId) {
     promises.push(deleteCache([redisKeys.page(pageId), redisKeys.publicPage(pageId), redisKeys.database(pageId)]));
@@ -156,7 +167,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
     // Combine workspace pages (excluding database row subpages)
     for (const p of workspacePages) {
       if (dbItemPageIdSet.has(p.id)) continue;
-      pageMap.set(p.id, { ...p, children: [], canEdit: true, canDelete: isOwner });
+      pageMap.set(p.id, { ...p, children: [], canEdit: true, canDelete: isOwner || isOwnerOrMember });
     }
 
     // Combine explicit shares (excluding database row subpages)
@@ -164,7 +175,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       if (dbItemPageIdSet.has(sp.id)) continue;
       if (!pageMap.has(sp.id)) {
         const canEdit = (sp as any).role === 'editor';
-        const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit, canDelete: isOwner };
+        const node: PageTreeNode = { ...sp, children: [], isShared: true, canEdit, canDelete: isOwner || isOwnerOrMember || canEdit };
         pageMap.set(sp.id, node);
         rootNodes.push(node);
       }
@@ -363,12 +374,13 @@ export async function fetchPage(pageId: string) {
     }
 
     const isOwner = await checkIsWorkspaceOwner(page.workspaceId, session);
+    const isMember = !!(session && session.workspaceId === page.workspaceId);
 
     return {
       ...page,
       accessLevel: access,
       canEdit: access === 'editor',
-      canDelete: isOwner,
+      canDelete: isOwner || isMember || access === 'editor',
     };
   } catch (err) {
     console.error('Error fetching page:', err);
@@ -895,7 +907,7 @@ export async function checkIsWorkspaceOwner(
 export async function checkCanUserDeletePage(pageId: string, includeDeleted = false): Promise<boolean> {
   try {
     const pageList = await db
-      .select({ workspaceId: pages.workspaceId })
+      .select({ workspaceId: pages.workspaceId, isDeleted: pages.isDeleted })
       .from(pages)
       .where(
         and(
@@ -913,7 +925,10 @@ export async function checkCanUserDeletePage(pageId: string, includeDeleted = fa
       session = await getSessionImpl();
     } catch { }
 
-    return await checkIsWorkspaceOwner(page.workspaceId, session);
+    const isOwner = await checkIsWorkspaceOwner(page.workspaceId, session);
+    if (isOwner) return true;
+
+    return await checkCanUserEditPage(pageId, includeDeleted);
   } catch (err) {
     console.error('Error checking delete permissions:', err);
     return false;
@@ -1455,9 +1470,25 @@ export async function reorderPageInDb(input: {
 
 export async function performSoftDelete(pageId: string) {
   try {
+    const pageRows = await db
+      .select({ id: pages.id, workspaceId: pages.workspaceId, isDeleted: pages.isDeleted })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+      .limit(1);
+
+    if (pageRows.length === 0) {
+      return { success: false, error: 'Page not found' };
+    }
+
+    const page = pageRows[0];
+    if (page.isDeleted) {
+      await invalidatePageCaches(page.workspaceId, pageId);
+      return { success: true };
+    }
+
     const canDelete = await checkCanUserDeletePage(pageId);
     if (!canDelete) {
-      console.warn(`[Permission Denied] Blocked soft delete for page ${pageId}. Only workspace owners can delete pages.`);
+      console.warn(`[Permission Denied] Blocked soft delete for page ${pageId}. Only workspace owners or editors can delete pages.`);
       return { success: false };
     }
 
@@ -1477,7 +1508,7 @@ export async function performSoftDelete(pageId: string) {
         .set({ isDeleted: true, deletedAt: new Date() })
         .where(inArray(pages.id, idsToDelete));
     }
-    invalidatePageCaches(null, pageId).catch(() => { });
+    await invalidatePageCaches(page.workspaceId, pageId);
     return { success: true };
   } catch (err) {
     console.error('Error soft deleting page:', err);
@@ -1487,9 +1518,18 @@ export async function performSoftDelete(pageId: string) {
 
 export async function performRestore(pageId: string) {
   try {
+    const pageRows = await db
+      .select({ id: pages.id, workspaceId: pages.workspaceId, isDeleted: pages.isDeleted })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+      .limit(1);
+
+    if (pageRows.length === 0) return { success: false };
+    const page = pageRows[0];
+
     const canDelete = await checkCanUserDeletePage(pageId, true);
     if (!canDelete) {
-      console.warn(`[Permission Denied] Blocked restore for page ${pageId}. Only workspace owners can restore pages.`);
+      console.warn(`[Permission Denied] Blocked restore for page ${pageId}. Only workspace owners or editors can restore pages.`);
       return { success: false };
     }
 
@@ -1509,7 +1549,7 @@ export async function performRestore(pageId: string) {
         .set({ isDeleted: false, deletedAt: null })
         .where(inArray(pages.id, idsToRestore));
     }
-    invalidatePageCaches(null, pageId).catch(() => { });
+    await invalidatePageCaches(page.workspaceId, pageId);
     return { success: true };
   } catch (err) {
     console.error('Error restoring page:', err);
@@ -1528,7 +1568,8 @@ export async function fetchTrashPages(workspaceId: string) {
     }
 
     const isOwner = await checkIsWorkspaceOwner(targetWorkspaceId, session);
-    if (!isOwner) {
+    const isMember = session.workspaceId === targetWorkspaceId;
+    if (!isOwner && !isMember) {
       return [];
     }
 
@@ -1550,13 +1591,23 @@ export async function fetchTrashPages(workspaceId: string) {
 
 export async function performPermanentDelete(pageId: string) {
   try {
+    const pageRows = await db
+      .select({ id: pages.id, workspaceId: pages.workspaceId })
+      .from(pages)
+      .where(eq(pages.id, pageId))
+      .limit(1);
+
+    if (pageRows.length === 0) return { success: true };
+    const page = pageRows[0];
+
     const canDelete = await checkCanUserDeletePage(pageId, true);
     if (!canDelete) {
-      console.warn(`[Permission Denied] Blocked permanent delete for page ${pageId}. Only workspace owners can delete pages.`);
+      console.warn(`[Permission Denied] Blocked permanent delete for page ${pageId}. Only workspace owners or editors can delete pages.`);
       return { success: false };
     }
 
     await db.delete(pages).where(eq(pages.id, pageId));
+    await invalidatePageCaches(page.workspaceId, pageId);
     return { success: true };
   } catch (err) {
     console.error('Error permanent deleting page:', err);

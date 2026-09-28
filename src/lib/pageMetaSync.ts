@@ -229,29 +229,75 @@ export function updateClientPageMeta(
   }
 }
 
+import { clearOfflineDraft } from '~/lib/offlineStorage';
+
+/**
+ * Helper to clean up all persisted localStorage artifacts related to a deleted page or database ID.
+ */
+function cleanPersistedStorageForId(id: string) {
+  if (typeof window === 'undefined' || !id) return;
+  try {
+    clearOfflineDraft(id);
+    localStorage.removeItem(`notling_offline_draft_${id}`);
+    localStorage.removeItem(`notling_presence_${id}`);
+    localStorage.removeItem(`notling_active_page_${id}`);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith(`notling_offline_draft_${id}`) || key.endsWith(`_${id}`))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch (err) {
+    console.error(`Failed to clean localStorage for id ${id}:`, err);
+  }
+}
+
 /**
  * Optimistically deletes a page client-side everywhere BEFORE performing any API calls:
- * 1. Closes open tab in Zustand uiStore and determines next route path if active.
- * 2. Removes from Zustand `pageMeta` map.
- * 3. Removes from `['pageTree']` query cache recursively.
- * 4. Removes from `['childPages']`, `['pages', 'search']`, `['trashPages']` query caches.
+ * 1. Closes open tab in Zustand tabsStore (persisted to localStorage) and determines next route path if active.
+ * 2. Removes from Zustand `pageMeta` and `expandedNodeIds` maps (persisted to localStorage).
+ * 3. Clears offline draft from localStorage.
+ * 4. Removes from `['pageTree']` query cache recursively.
+ * 5. Removes from `['childPages']`, `['pages', 'search']`, `['trashPages']` query caches.
  */
 export function deleteClientPage(
   queryClient: QueryClient | undefined,
   pageId: string
 ): string | null {
-  // 1. Immediately close open tab in Zustand uiStore (returns nextPath if active)
+  // 1. Immediately close open tab in Zustand tabsStore (updates persisted openTabs & activeTabId in localStorage)
   const nextPath = useUIStore.getState().closeTab(pageId);
 
-  // 2. Clean up Zustand pageMeta map
+  // 2. Clean up Zustand pageMeta, expandedNodeIds, and activePageId (persisted to localStorage)
   useUIStore.setState((state) => {
-    if (!state.pageMeta[pageId]) return state;
-    const nextMeta = { ...state.pageMeta };
-    delete nextMeta[pageId];
-    return { pageMeta: nextMeta };
+    let changed = false;
+    let nextMeta = state.pageMeta;
+    let nextExpanded = state.expandedNodeIds;
+    let nextActive = state.activePageId;
+
+    if (state.pageMeta[pageId]) {
+      nextMeta = { ...state.pageMeta };
+      delete nextMeta[pageId];
+      changed = true;
+    }
+    if (state.expandedNodeIds[pageId] !== undefined) {
+      nextExpanded = { ...state.expandedNodeIds };
+      delete nextExpanded[pageId];
+      changed = true;
+    }
+    if (state.activePageId === pageId) {
+      nextActive = null;
+      changed = true;
+    }
+
+    return changed
+      ? { pageMeta: nextMeta, expandedNodeIds: nextExpanded, activePageId: nextActive }
+      : state;
   });
 
-  // 3. Optimistically remove node from TanStack Query caches
+  // 3. Clear offline drafts and cached data from localStorage
+  cleanPersistedStorageForId(pageId);
+
+  // 4. Optimistically remove node from TanStack Query caches
   if (queryClient) {
     const filterTreeNodes = (nodes: PageTreeNode[]): PageTreeNode[] => {
       let hasChanges = false;
@@ -303,8 +349,9 @@ export function deleteClientPage(
 /**
  * Optimistically deletes a database client-side:
  * 1. Closes open tabs for databaseId and backing pageId.
- * 2. Cleans up Zustand `pageMeta`.
- * 3. Removes from `['databasesList']` query cache and invalidates/removes database query.
+ * 2. Cleans up Zustand `pageMeta` and `expandedNodeIds`.
+ * 3. Clears persisted offline drafts from localStorage.
+ * 4. Removes from `['databasesList']` query cache and invalidates/removes database query.
  */
 export function deleteClientDatabase(
   queryClient: QueryClient | undefined,
@@ -321,17 +368,45 @@ export function deleteClientDatabase(
 
   useUIStore.setState((state) => {
     const nextMeta = { ...state.pageMeta };
+    const nextExpanded = { ...state.expandedNodeIds };
     let changed = false;
+
     if (nextMeta[databaseId]) {
       delete nextMeta[databaseId];
       changed = true;
     }
-    if (pageId && nextMeta[pageId]) {
-      delete nextMeta[pageId];
+    if (nextExpanded[databaseId] !== undefined) {
+      delete nextExpanded[databaseId];
       changed = true;
     }
-    return changed ? { pageMeta: nextMeta } : state;
+
+    if (pageId) {
+      if (nextMeta[pageId]) {
+        delete nextMeta[pageId];
+        changed = true;
+      }
+      if (nextExpanded[pageId] !== undefined) {
+        delete nextExpanded[pageId];
+        changed = true;
+      }
+    }
+
+    let nextActive = state.activePageId;
+    if (state.activePageId === databaseId || (pageId && state.activePageId === pageId)) {
+      nextActive = null;
+      changed = true;
+    }
+
+    return changed
+      ? { pageMeta: nextMeta, expandedNodeIds: nextExpanded, activePageId: nextActive }
+      : state;
   });
+
+  // Clear offline drafts and localStorage entries
+  cleanPersistedStorageForId(databaseId);
+  if (pageId) {
+    cleanPersistedStorageForId(pageId);
+  }
 
   if (queryClient) {
     queryClient.setQueriesData<any[]>(
@@ -368,7 +443,8 @@ export function restoreClientPage(
 /**
  * Optimistically permanently deletes a page from trash:
  * 1. Immediately removes from `['trashPages']` query cache.
- * 2. Closes open tab and cleans up `pageMeta`.
+ * 2. Closes open tab and cleans up `pageMeta` and `expandedNodeIds`.
+ * 3. Clears offline drafts and localStorage keys.
  */
 export function permanentlyDeleteClientPage(
   queryClient: QueryClient | undefined,
@@ -376,11 +452,27 @@ export function permanentlyDeleteClientPage(
 ) {
   useUIStore.getState().closeTab(pageId);
   useUIStore.setState((state) => {
-    if (!state.pageMeta[pageId]) return state;
-    const nextMeta = { ...state.pageMeta };
-    delete nextMeta[pageId];
-    return { pageMeta: nextMeta };
+    let changed = false;
+    let nextMeta = state.pageMeta;
+    let nextExpanded = state.expandedNodeIds;
+
+    if (state.pageMeta[pageId]) {
+      nextMeta = { ...state.pageMeta };
+      delete nextMeta[pageId];
+      changed = true;
+    }
+    if (state.expandedNodeIds[pageId] !== undefined) {
+      nextExpanded = { ...state.expandedNodeIds };
+      delete nextExpanded[pageId];
+      changed = true;
+    }
+
+    return changed
+      ? { pageMeta: nextMeta, expandedNodeIds: nextExpanded }
+      : state;
   });
+
+  cleanPersistedStorageForId(pageId);
 
   if (queryClient) {
     queryClient.setQueriesData<any[]>(
@@ -394,9 +486,18 @@ export function permanentlyDeleteClientPage(
 /**
  * Optimistically empties all items from trash:
  * 1. Instantly sets `['trashPages']` query cache to empty array.
+ * 2. Clears tabs, drafts, and localStorage items for all trash items.
  */
 export function emptyClientTrash(queryClient: QueryClient | undefined) {
   if (queryClient) {
+    const trashList = queryClient.getQueryData<any[]>(['trashPages']) || [];
+    for (const item of trashList) {
+      if (item?.id) {
+        useUIStore.getState().closeTab(item.id);
+        cleanPersistedStorageForId(item.id);
+      }
+    }
+
     queryClient.setQueriesData<any[]>(
       { queryKey: ['trashPages'] },
       () => []
