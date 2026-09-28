@@ -361,8 +361,8 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                   <div className="flex items-center gap-1">
                     <span
                       className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase tracking-wider ${item.type === 'database'
-                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/50'
-                        : 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
+                        ? 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
+                        : 'hidden'
                         }`}
                     >
                       {item.type}
@@ -444,7 +444,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
           </div>
         ) : (
           /* List Layout */
-          <div className="rounded-lg border border-stone-200 dark:border-zinc-800 bg-white dark:bg-[#1f1f23] divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
+          <div className="divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
             {displayedItems.map((item) => (
               <div
                 key={item.id}
@@ -452,7 +452,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                 className="p-3 px-4 flex items-center justify-between hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 cursor-pointer group transition-colors"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-8 h-8 rounded-md bg-stone-100 dark:bg-zinc-800 flex items-center justify-center text-base shrink-0">
+                  <div className="flex items-center justify-center text-base shrink-0">
                     {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
                   </div>
 
@@ -463,8 +463,8 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       </h3>
                       <span
                         className={`px-1.5 py-0.2 rounded-md text-[9px] font-mono uppercase ${item.type === 'database'
-                          ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
-                          : 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
+                          ? 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
+                          : 'hidden'
                           }`}
                       >
                         {item.type}

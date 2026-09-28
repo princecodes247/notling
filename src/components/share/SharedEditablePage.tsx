@@ -4,6 +4,8 @@ import { updatePageMeta } from '~/server/pages';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from '~/components/BlockEditorInner';
 import type { Page } from '~/db/schema';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { File01Icon } from '@hugeicons/core-free-icons';
 
 interface SharedEditablePageProps {
   page: Page;
@@ -12,7 +14,7 @@ interface SharedEditablePageProps {
 export function SharedEditablePage({ page }: SharedEditablePageProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState(page.title);
-  const [icon] = useState(page.icon || '📄');
+  const [icon] = useState(page.icon || '');
   const [mounted, setMounted] = useState(false);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -60,7 +62,13 @@ export function SharedEditablePage({ page }: SharedEditablePageProps) {
   return (
     <div className="w-full flex flex-col">
       {/* Icon */}
-      <div className="text-4xl mb-3">{icon}</div>
+      {icon ? (
+        <div className="text-4xl mb-3">{icon}</div>
+      ) : (
+        <div className="mb-3 inline-flex items-center text-stone-400 dark:text-zinc-500">
+          <HugeiconsIcon icon={File01Icon} size={36} />
+        </div>
+      )}
 
       {/* Title Input */}
       <input

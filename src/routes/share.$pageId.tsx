@@ -6,7 +6,7 @@ import { getDatabase } from '~/server/databases';
 import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as rootRoute } from './__root';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { LockIcon, ArrowRight01Icon, Edit02Icon } from '@hugeicons/core-free-icons';
+import { LockIcon, ArrowRight01Icon, Edit02Icon, File01Icon } from '@hugeicons/core-free-icons';
 import { getClientId } from '~/lib/collaboration';
 import { FullScreenWordListLoader } from '~/components/FullScreenWordListLoader';
 import { ShareHeader } from '~/components/share/ShareHeader';
@@ -235,7 +235,13 @@ function PublicDocumentPageRoute() {
               </button>
             </div>
 
-            <div className="text-4xl mb-4">{page.icon || '📄'}</div>
+            {page.icon ? (
+              <div className="text-4xl mb-4">{page.icon}</div>
+            ) : (
+              <div className="mb-4 inline-flex items-center justify-center text-stone-400 dark:text-zinc-500">
+                <HugeiconsIcon icon={File01Icon} size={36} />
+              </div>
+            )}
             <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-zinc-100 tracking-tight mb-8">
               {page.title || 'Untitled Document'}
             </h1>

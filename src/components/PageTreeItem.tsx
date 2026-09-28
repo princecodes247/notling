@@ -27,7 +27,7 @@ interface PageTreeItemProps {
   onCreateChild: (parentId: string) => void;
   onSelectPage: (pageId: string, databaseId?: string | null) => void;
   onSoftDelete: (pageId: string) => void;
-  onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
+  onUpdateMeta: (pageId: string, title: string, icon?: string | null) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onTogglePin?: (pageId: string) => void;
   onDuplicatePage?: (pageId: string) => void;
@@ -60,9 +60,9 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   };
   const liveMeta = useUIStore((s) => s.pageMeta[node.id]);
   const displayTitle = liveMeta?.title ?? node.title;
-  const rawIcon = liveMeta?.icon ?? node.icon;
+  const rawIcon = liveMeta?.icon !== undefined ? liveMeta.icon : node.icon;
   const hasCustomEmoji = Boolean(rawIcon && rawIcon !== '📄');
-  const displayIcon = hasCustomEmoji ? rawIcon : '📄';
+  const displayIcon = rawIcon || '';
 
   const isExpanded = !!expandedNodeIds[node.id];
   const isActive = activePageId === node.id || (Boolean(node.databaseId) && activePageId === node.databaseId);
@@ -182,7 +182,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
     const trimmed = editTitle.trim();
 
     if (trimmed) {
-      let targetIcon = displayIcon;
+      let targetIcon = rawIcon || null;
       if (isDefaultOrInferredIcon(rawIcon, displayTitle)) {
         targetIcon = inferEmojiFromTitle(trimmed);
       }
@@ -199,7 +199,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
 
 
 
-  const handleSelectIcon = (selectedIcon: string) => {
+  const handleSelectIcon = (selectedIcon: string | null) => {
     setShowEmojiPicker(false);
     onUpdateMeta(node.id, displayTitle, selectedIcon);
   };
@@ -373,7 +373,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     onSelect={(selectedEmoji) => handleSelectIcon(selectedEmoji)}
                     onClose={() => setShowEmojiPicker(false)}
                     currentEmoji={displayIcon}
-                    onRemove={() => handleSelectIcon('📄')}
+                    onRemove={() => handleSelectIcon(null)}
                     className="!static"
                   />
                 </div>
@@ -390,7 +390,7 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   setEditTitle(val);
-                  let inferred = displayIcon;
+                  let inferred = rawIcon || null;
                   if (isDefaultOrInferredIcon(rawIcon, displayTitle)) {
                     inferred = inferEmojiFromTitle(val);
                   }

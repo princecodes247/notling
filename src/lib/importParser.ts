@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 export interface ImportedDoc {
   id?: string;
   title: string;
-  icon?: string;
+  icon?: string | null;
   contentBlocks: any[];
   relativePath: string;
   parentPath?: string | null;
@@ -318,7 +318,7 @@ export async function parseNotionZipArchive(zipFile: File): Promise<ImportedDoc[
 
       importedDocs.push({
         title,
-        icon: '📄',
+        icon: null,
         contentBlocks: blocks,
         relativePath,
         parentPath: parentPath || null,
@@ -334,7 +334,7 @@ export async function parseNotionZipArchive(zipFile: File): Promise<ImportedDoc[
 
       importedDocs.push({
         title,
-        icon: '📄',
+        icon: null,
         contentBlocks: blocks,
         relativePath,
         parentPath: parentPath || null,

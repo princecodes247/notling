@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { Download01Icon, Edit02Icon, TableIcon } from '@hugeicons/core-free-icons';
+import { Download01Icon, Edit02Icon, TableIcon, File01Icon } from '@hugeicons/core-free-icons';
 import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
@@ -102,7 +102,9 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
             <span>{icon}</span>
           ) : isDatabase ? (
             <HugeiconsIcon icon={TableIcon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
-          ) : null}
+          ) : (
+            <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+          )}
           <span className="hidden sm:inline font-normal">{isDatabase ? 'Database' : 'Document'}</span>
         </span>
         <span className="shrink-0">/</span>

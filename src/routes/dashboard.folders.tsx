@@ -36,6 +36,8 @@ function DashboardFoldersPage() {
     staleTime: 5 * 60 * 1000,
   });
 
+  console.log({ treeNodes })
+
   const { data: databasesList = [], refetch: refetchDbs } = useQuery({
     queryKey: ['databasesList', workspaceId],
     queryFn: async () => {

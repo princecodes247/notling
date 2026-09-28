@@ -520,7 +520,9 @@ export const Editor: React.FC<EditorProps> = ({
                     className="p-3 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 hover:border-stone-400 dark:hover:border-zinc-600 bg-white dark:bg-zinc-900/60 hover:bg-stone-50/60 dark:hover:bg-zinc-800/60 transition-all text-left flex items-center justify-between group cursor-pointer shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-base">{child.icon || '📄'}</span>
+                      <span className="text-base shrink-0 flex items-center justify-center">
+                        {child.icon ? child.icon : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
+                      </span>
                       <span className="text-xs font-medium text-stone-800 dark:text-zinc-200 truncate group-hover:text-stone-900 dark:group-hover:text-white">
                         {child.title || 'Untitled Document'}
                       </span>

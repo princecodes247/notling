@@ -1417,7 +1417,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           linkText = `@${item.title}`;
           href = `mailto:${item.email || item.id}`;
         } else {
-          linkText = `@${item.icon || '📄'} ${item.title}`;
+          linkText = item.icon ? `@${item.icon} ${item.title}` : `@${item.title}`;
           href = `/dashboard/p/${item.id}`;
         }
 

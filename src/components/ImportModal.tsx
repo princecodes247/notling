@@ -161,7 +161,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ workspaceId, onSelectP
             const blocks = parseHTMLToBlocks(html);
             docs.push({
               title,
-              icon: '📄',
+              icon: null,
               contentBlocks: blocks,
               relativePath: name,
             });

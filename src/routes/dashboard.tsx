@@ -395,7 +395,7 @@ function DashboardLayout() {
 
   // Update Page Meta Mutation
   const updateMetaMutation = useMutation({
-    mutationFn: async ({ pageId, title, icon }: { pageId: string; title: string; icon?: string }) => {
+    mutationFn: async ({ pageId, title, icon }: { pageId: string; title: string; icon?: string | null }) => {
       return await updatePageMeta({ data: { pageId, title, icon } });
     },
     onMutate: async ({ pageId, title, icon }) => {

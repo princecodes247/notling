@@ -56,23 +56,23 @@ const KEYWORD_MAP: Array<{ keywords: string[]; emoji: string }> = [
 
 /**
  * Automatically infers an appropriate emoji based on the title of a page.
+ * Returns null when no specific keyword match is found.
  */
-export function inferEmojiFromTitle(title: string): string {
-  const fallback = '📄';
-  if (!title || typeof title !== 'string') return fallback;
+export function inferEmojiFromTitle(title: string): string | null {
+  if (!title || typeof title !== 'string') return null;
 
   const cleanTitle = title.trim().toLowerCase();
-  if (!cleanTitle) return fallback;
+  if (!cleanTitle) return null;
 
   // Ignore generic default names
   const genericNames = ['untitled', 'untitled document', 'untitled page'];
   if (genericNames.includes(cleanTitle)) {
-    return fallback;
+    return null;
   }
 
   // Split title into words
   const tokens = cleanTitle.split(/[^a-z0-9]+/i).filter(Boolean);
-  if (tokens.length === 0) return fallback;
+  if (tokens.length === 0) return null;
 
   // 1. High-precision KEYWORD_MAP lookup
   for (const token of tokens) {
@@ -124,7 +124,7 @@ export function inferEmojiFromTitle(title: string): string {
     return bestEmoji;
   }
 
-  return fallback;
+  return null;
 }
 
 /**
@@ -136,6 +136,6 @@ export function isDefaultOrInferredIcon(
 ): boolean {
   if (!icon || icon === '📄') return true;
   const inferred = inferEmojiFromTitle(title);
-  return icon === inferred;
+  return icon === inferred || (!icon && !inferred);
 }
 

@@ -213,7 +213,7 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       }
     }
 
-    setCache(treeCacheKey, rootNodes, 600).catch(() => {});
+    setCache(treeCacheKey, rootNodes, 600).catch(() => { });
 
     return rootNodes;
   } catch (err) {
@@ -342,7 +342,7 @@ export async function fetchPage(pageId: string) {
       const pageList = await db.select().from(pages).where(and(eq(pages.id, pageId), eq(pages.isDeleted, false))).limit(1);
       if (pageList.length === 0) return null;
       page = pageList[0];
-      setCache(pageCacheKey, page, 600).catch(() => {});
+      setCache(pageCacheKey, page, 600).catch(() => { });
     }
 
     let session = null;
@@ -422,7 +422,7 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
       }
 
       if (staleKeys.length > 0) {
-        redis.hdel(key, ...staleKeys).catch(() => {});
+        redis.hdel(key, ...staleKeys).catch(() => { });
       }
 
       return results;
@@ -612,7 +612,7 @@ export async function fetchPublicPage(pageId: string): Promise<SharedPageData | 
 
       if (pageList.length === 0) return null;
       page = pageList[0];
-      setCache(publicCacheKey, page, 60).catch(() => {});
+      setCache(publicCacheKey, page, 60).catch(() => { });
     }
 
     let session = null;
@@ -681,7 +681,7 @@ export async function createNewPage(input: {
 
     const nextOrder = existingInParent.length > 0 ? existingInParent[0].order + 1 : 0;
     const pageTitle = input.title || 'Untitled';
-    const finalIcon = input.icon && input.icon !== '📄'
+    const finalIcon = input.icon && input.icon !== ''
       ? input.icon
       : (inferEmojiFromTitle(pageTitle) || null);
 
@@ -699,7 +699,7 @@ export async function createNewPage(input: {
       })
       .returning();
 
-    invalidatePageCaches(targetWorkspaceId, newPage.id).catch(() => {});
+    invalidatePageCaches(targetWorkspaceId, newPage.id).catch(() => { });
 
     return newPage;
   } catch (err) {
@@ -751,7 +751,7 @@ export async function duplicatePageInDb(pageId: string) {
           workspaceId: src.workspaceId,
           parentId: targetParentId,
           title: copyTitle,
-          icon: src.icon || '📄',
+          icon: src.icon || '',
           visibility: src.visibility || 'workspace',
           order: nextOrder,
           content: src.content ? JSON.parse(JSON.stringify(src.content)) : [],
@@ -1279,7 +1279,7 @@ export async function savePageContent(input: { pageId: string; content: any; con
       .returning({ id: pages.id, updatedAt: pages.updatedAt });
 
     if (updated) {
-      invalidatePageCaches(null, input.pageId).catch(() => {});
+      invalidatePageCaches(null, input.pageId).catch(() => { });
       db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => { });
       recordPageHistory({
         pageId: input.pageId,
@@ -1346,7 +1346,7 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
       }).catch((e) => console.error('Failed to log page meta history:', e));
     }
 
-    invalidatePageCaches(null, realPageId).catch(() => {});
+    invalidatePageCaches(null, realPageId).catch(() => { });
 
     return updatedPage || { id: input.pageId, ...updatePayload };
   } catch (err) {
@@ -1392,7 +1392,7 @@ export async function savePageVisibility(input: { pageId: string; visibility: 'p
       .where(eq(pages.id, input.pageId))
       .returning();
 
-    invalidatePageCaches(null, input.pageId).catch(() => {});
+    invalidatePageCaches(null, input.pageId).catch(() => { });
 
     return updated;
   } catch (err) {
@@ -1444,7 +1444,7 @@ export async function reorderPageInDb(input: {
         .where(eq(pages.id, sib.id))
     );
     await Promise.all(updates);
-    invalidatePageCaches(workspaceId, pageId).catch(() => {});
+    invalidatePageCaches(workspaceId, pageId).catch(() => { });
 
     return { success: true };
   } catch (err) {
@@ -1477,7 +1477,7 @@ export async function performSoftDelete(pageId: string) {
         .set({ isDeleted: true, deletedAt: new Date() })
         .where(inArray(pages.id, idsToDelete));
     }
-    invalidatePageCaches(null, pageId).catch(() => {});
+    invalidatePageCaches(null, pageId).catch(() => { });
     return { success: true };
   } catch (err) {
     console.error('Error soft deleting page:', err);
@@ -1509,7 +1509,7 @@ export async function performRestore(pageId: string) {
         .set({ isDeleted: false, deletedAt: null })
         .where(inArray(pages.id, idsToRestore));
     }
-    invalidatePageCaches(null, pageId).catch(() => {});
+    invalidatePageCaches(null, pageId).catch(() => { });
     return { success: true };
   } catch (err) {
     console.error('Error restoring page:', err);
@@ -1688,9 +1688,9 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
 
     const searchFilter = cleanQuery
       ? or(
-          sql`lower(${pages.title}) LIKE lower(${'%' + cleanQuery + '%'})`,
-          sql`lower(${pages.contentText}) LIKE lower(${'%' + cleanQuery + '%'})`
-        )
+        sql`lower(${pages.title}) LIKE lower(${'%' + cleanQuery + '%'})`,
+        sql`lower(${pages.contentText}) LIKE lower(${'%' + cleanQuery + '%'})`
+      )
       : undefined;
 
     const [workspacePages, sharedPagesList] = await Promise.all([
@@ -1751,7 +1751,7 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
         results.push({
           id: page.id,
           title: page.title || 'Untitled',
-          icon: page.icon || '📄',
+          icon: page.icon || null,
           snippet: extractSnippet(page.contentText, cleanQuery, tokens),
           updatedAt: page.updatedAt,
           matchType,
@@ -1763,7 +1763,7 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
     results.sort((a, b) => b.score - a.score || b.updatedAt.getTime() - a.updatedAt.getTime());
 
     const topResults = results.slice(0, 20);
-    setCache(searchCacheKey, topResults, 60).catch(() => {});
+    setCache(searchCacheKey, topResults, 60).catch(() => { });
 
     return topResults;
   } catch (err) {

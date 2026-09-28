@@ -51,7 +51,7 @@ interface SidebarProps {
   onSelectDatabase?: (databaseId: string) => void;
   onSelectPage: (pageId: string, databaseId?: string | null) => void;
   onSoftDelete: (pageId: string) => void;
-  onUpdateMeta: (pageId: string, title: string, icon?: string) => void;
+  onUpdateMeta: (pageId: string, title: string, icon?: string | null) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onTogglePin?: (pageId: string) => void;
   onDuplicatePage?: (pageId: string) => void;
