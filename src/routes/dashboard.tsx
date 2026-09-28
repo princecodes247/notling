@@ -430,6 +430,7 @@ function DashboardLayout() {
       queryClient.invalidateQueries({ queryKey: ['page'] });
       queryClient.invalidateQueries({ queryKey: ['database'] });
       queryClient.invalidateQueries({ queryKey: ['databases'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     },
   });
 

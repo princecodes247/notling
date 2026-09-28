@@ -156,6 +156,13 @@ export function updateClientPageMeta(
       (old: any) => {
         if (!old || !old.database) return old;
         if (old.database.id === pageId || old.database.pageId === pageId) {
+          if (old.database.id && old.database.id !== pageId) {
+            useUIStore.getState().setPageMeta(old.database.id, { title, icon });
+          }
+          if (old.database.pageId && old.database.pageId !== pageId) {
+            useUIStore.getState().setPageMeta(old.database.pageId, { title, icon });
+          }
+
           return {
             ...old,
             database: {
@@ -172,6 +179,27 @@ export function updateClientPageMeta(
     // 2h. Optimistically update ['databases']
     queryClient.setQueriesData<any[]>(
       { queryKey: ['databases'] },
+      (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        let changed = false;
+        const updated = old.map((dbItem) => {
+          if (dbItem.id === pageId || dbItem.pageId === pageId) {
+            changed = true;
+            return {
+              ...dbItem,
+              ...(title !== undefined ? { title } : {}),
+              ...(icon !== undefined ? { icon } : {}),
+            };
+          }
+          return dbItem;
+        });
+        return changed ? updated : old;
+      }
+    );
+
+    // 2i. Optimistically update ['databasesList']
+    queryClient.setQueriesData<any[]>(
+      { queryKey: ['databasesList'] },
       (old: any) => {
         if (!old || !Array.isArray(old)) return old;
         let changed = false;

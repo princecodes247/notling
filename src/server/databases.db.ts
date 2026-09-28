@@ -378,27 +378,16 @@ export async function saveDatabase(databaseId: string, updates: Partial<{ title:
     .where(or(eq(databases.id, databaseId), eq(databases.pageId, databaseId)))
     .returning();
 
-  if (updated?.pageId) {
-    const { pages } = await import('~/db/schema');
-    await db
-      .update(pages)
-      .set({
-        ...(updates.title !== undefined ? { title: updates.title } : {}),
-        ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(pages.id, updated.pageId));
-  } else {
-    const { pages } = await import('~/db/schema');
-    await db
-      .update(pages)
-      .set({
-        ...(updates.title !== undefined ? { title: updates.title } : {}),
-        ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(pages.id, databaseId));
-  }
+  const targetPageId = updated?.pageId || databaseId;
+  const { pages } = await import('~/db/schema');
+  await db
+    .update(pages)
+    .set({
+      ...(updates.title !== undefined ? { title: updates.title } : {}),
+      ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+      updatedAt: new Date(),
+    })
+    .where(eq(pages.id, targetPageId));
 
   return updated;
 }

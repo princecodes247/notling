@@ -118,19 +118,29 @@ export function DatabaseContainer({
     }));
 
     try {
-      const { updateTabMeta } = useUIStore.getState();
-      updateTabMeta(dbData.database.id, finalTitle, dbData.database.icon || '');
-      if (dbData.database.pageId) {
-        updateTabMeta(dbData.database.pageId, finalTitle, dbData.database.icon || '');
+      const dbId = dbData.database.id;
+      const pageId = dbData.database.pageId;
+
+      updateClientPageMeta(queryClient, { pageId: dbId, title: finalTitle, icon: dbData.database.icon });
+      if (pageId) {
+        updateClientPageMeta(queryClient, { pageId, title: finalTitle, icon: dbData.database.icon });
       }
 
       await updateDatabase({
         data: {
-          databaseId: dbData.database.id,
+          databaseId: dbId,
           updates: { title: finalTitle },
         },
       });
+
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      queryClient.invalidateQueries({ queryKey: ['database', dbId] });
+      if (pageId) {
+        queryClient.invalidateQueries({ queryKey: ['database', pageId] });
+        queryClient.invalidateQueries({ queryKey: ['page', pageId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['databases'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     } catch (err) {
       console.error('Failed to update database title:', err);
     }
@@ -368,21 +378,29 @@ export function DatabaseContainer({
     }));
 
     try {
-      const { updateTabMeta } = useUIStore.getState();
-      updateTabMeta(dbData.database.id, dbTitle, iconValue);
-      if (dbData.database.pageId) {
-        updateTabMeta(dbData.database.pageId, dbTitle, iconValue);
-        updateClientPageMeta(queryClient, { pageId: dbData.database.pageId, title: dbTitle, icon: iconValue });
+      const dbId = dbData.database.id;
+      const pageId = dbData.database.pageId;
+
+      updateClientPageMeta(queryClient, { pageId: dbId, title: dbTitle, icon: iconValue });
+      if (pageId) {
+        updateClientPageMeta(queryClient, { pageId, title: dbTitle, icon: iconValue });
       }
 
       await updateDatabase({
         data: {
-          databaseId: dbData.database.id,
+          databaseId: dbId,
           updates: { icon: iconValue },
         },
       });
+
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
-      queryClient.invalidateQueries({ queryKey: ['database', dbData.database.id] });
+      queryClient.invalidateQueries({ queryKey: ['database', dbId] });
+      if (pageId) {
+        queryClient.invalidateQueries({ queryKey: ['database', pageId] });
+        queryClient.invalidateQueries({ queryKey: ['page', pageId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['databases'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     } catch (err) {
       console.error('Failed to update database icon:', err);
     }

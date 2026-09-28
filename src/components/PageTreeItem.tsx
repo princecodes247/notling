@@ -180,12 +180,14 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
       pendingTreeSaveTimeoutRef.current = null;
     }
     const trimmed = editTitle.trim();
-    if (trimmed && (trimmed !== node.title || displayIcon !== (node.icon || '📄'))) {
+
+    if (trimmed) {
       const isFolderNode = rawIcon === '📁' || rawIcon === '📂';
       let targetIcon = displayIcon;
       if (isDefaultOrInferredIcon(rawIcon, displayTitle, { isFolder: isFolderNode })) {
         targetIcon = inferEmojiFromTitle(trimmed, { isFolder: isFolderNode });
       }
+
       updateClientPageMeta(queryClient, {
         pageId: node.id,
         title: trimmed,
@@ -400,13 +402,13 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                     title: val,
                     icon: inferred,
                   });
-                  // 2. Debounce DB API call (1200ms after typing stops)
-                  if (pendingTreeSaveTimeoutRef.current) {
-                    clearTimeout(pendingTreeSaveTimeoutRef.current);
-                  }
-                  pendingTreeSaveTimeoutRef.current = setTimeout(() => {
-                    onUpdateMeta(node.id, val.trim() || displayTitle, inferred);
-                  }, 1200);
+                  // // 2. Debounce DB API call (1200ms after typing stops)
+                  // if (pendingTreeSaveTimeoutRef.current) {
+                  //   clearTimeout(pendingTreeSaveTimeoutRef.current);
+                  // }
+                  // pendingTreeSaveTimeoutRef.current = setTimeout(() => {
+                  //   onUpdateMeta(node.id, val.trim() || displayTitle, inferred);
+                  // }, 1200);
                 }}
 
 
@@ -415,6 +417,10 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   if (e.key === 'Escape') {
                     setEditTitle(displayTitle);
                     setIsEditing(false);
+                  }
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.currentTarget.blur();
                   }
                 }}
                 autoFocus
