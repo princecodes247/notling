@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface TabItem {
   id: string;
@@ -80,7 +81,9 @@ interface UIState {
   setHistoryState: (canUndo: boolean, canRedo: boolean) => void;
 }
 
-export const useUIStore = create<UIState>((set, get) => ({
+export const useUIStore = create<UIState>()(
+  persist(
+    (set, get) => ({
   pageMeta: {},
   setPageMeta: (pageId, meta) =>
     set((state) => {
@@ -321,4 +324,17 @@ export const useUIStore = create<UIState>((set, get) => ({
   canUndo: false,
   canRedo: false,
   setHistoryState: (canUndo, canRedo) => set({ canUndo, canRedo }),
-}));
+    }),
+    {
+      name: 'notling_ui_state',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        openTabs: state.openTabs,
+        activeTabId: state.activeTabId,
+        expandedNodeIds: state.expandedNodeIds,
+        sidebarOpen: state.sidebarOpen,
+        pageMeta: state.pageMeta,
+      }),
+    }
+  )
+);
