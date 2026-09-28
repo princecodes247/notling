@@ -4,6 +4,7 @@ import { eq, and, gt, or, sql } from 'drizzle-orm';
 import type { UserSession, AuthResponse, UserWorkspaceItem } from './auth';
 import { getCookie, setCookie, deleteCookie } from '@tanstack/react-start/server';
 import { sanitizeServerError } from './errors';
+import { getCache, setCache, deleteCachePattern, checkRateLimit, redisKeys } from './redis';
 import crypto from 'node:crypto';
 
 const COOKIE_NAME = 'notling_session';
@@ -301,6 +302,11 @@ export async function switchWorkspaceImpl(targetWorkspaceId: string): Promise<Au
       return { success: false, error: 'Workspace not found or access denied.' };
     }
 
+    const token = getCookie(COOKIE_NAME);
+    if (token) {
+      deleteCachePattern(`session:${token}:*`).catch(() => {});
+    }
+
     setCookie(ACTIVE_WS_COOKIE, targetWorkspaceId, {
       path: '/',
       httpOnly: true,
@@ -332,6 +338,11 @@ export async function switchWorkspaceBySlugImpl(slug: string): Promise<AuthRespo
 
     if (!targetWs) {
       return { success: false, error: 'Workspace not found or access denied.' };
+    }
+
+    const token = getCookie(COOKIE_NAME);
+    if (token) {
+      deleteCachePattern(`session:${token}:*`).catch(() => {});
     }
 
     setCookie(ACTIVE_WS_COOKIE, targetWs.id, {
@@ -403,6 +414,13 @@ export async function getSessionImpl(): Promise<UserSession | null> {
     }
 
     const activeWsCookie = getCookie(ACTIVE_WS_COOKIE);
+    const sessionCacheKey = redisKeys.session(token, activeWsCookie);
+
+    // Fast-path: Check Redis cache first (< 1ms)
+    const cachedSession = await getCache<UserSession>(sessionCacheKey);
+    if (cachedSession) {
+      return cachedSession;
+    }
 
     // Single query joining sessions, users, and optionally the active workspace
     const activeSession = await db
@@ -419,6 +437,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
 
     if (!activeSession || activeSession.length === 0) {
       deleteCookie(COOKIE_NAME, { path: '/' });
+      deleteCachePattern(`session:${token}:*`).catch(() => {});
       return null;
     }
 
@@ -473,7 +492,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspace = newWs;
     }
 
-    return {
+    const resolvedSession: UserSession = {
       userId: user.id,
       email: user.email,
       name: user.name,
@@ -487,6 +506,11 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       welcomePageId: undefined,
       isWorkspaceOwner: workspace.ownerId === user.id,
     };
+
+    // Store in Redis with a 5-minute TTL
+    setCache(sessionCacheKey, resolvedSession, 300).catch(() => {});
+
+    return resolvedSession;
   } catch (err) {
     console.error('Error fetching session:', err);
     return null;
@@ -501,6 +525,15 @@ export async function signUpWithEmailImpl(
   const cleanEmail = email.trim().toLowerCase();
   if (!cleanEmail || !password || password.length < 6) {
     return { success: false, error: 'Password must be at least 6 characters.' };
+  }
+
+  // Rate-limiting check (10 attempts per minute per email)
+  const rateLimit = await checkRateLimit('signup', cleanEmail, 10, 60);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many registration attempts. Please try again in ${rateLimit.resetSeconds} seconds.`,
+    };
   }
 
   const existing = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1);
@@ -561,6 +594,16 @@ export async function signUpWithEmailImpl(
 
 export async function signInWithEmailImpl(email: string, password: string): Promise<AuthResponse> {
   const cleanEmail = email.trim().toLowerCase();
+
+  // Rate-limiting check (10 attempts per minute per email)
+  const rateLimit = await checkRateLimit('signin', cleanEmail, 10, 60);
+  if (!rateLimit.allowed) {
+    return {
+      success: false,
+      error: `Too many sign-in attempts. Please try again in ${rateLimit.resetSeconds} seconds.`,
+    };
+  }
+
   const existing = await db.select().from(users).where(eq(users.email, cleanEmail)).limit(1);
   const user = existing[0];
 
@@ -1018,6 +1061,11 @@ export async function updateSettingsImpl(data: {
         .where(eq(workspaces.id, currentSession.workspaceId));
     }
 
+    const token = getCookie(COOKIE_NAME);
+    if (token) {
+      deleteCachePattern(`session:${token}:*`).catch(() => {});
+    }
+
     const updatedSession = await getSessionImpl();
     return {
       success: true,
@@ -1032,6 +1080,7 @@ export async function signOutImpl(): Promise<{ success: boolean }> {
   try {
     const token = getCookie(COOKIE_NAME);
     if (token) {
+      deleteCachePattern(`session:${token}:*`).catch(() => {});
       await db.delete(sessions).where(eq(sessions.token, token));
     }
   } catch (err) {

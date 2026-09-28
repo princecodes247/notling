@@ -6,9 +6,30 @@ import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
 import { sanitizeServerError } from './errors';
 import { inferEmojiFromTitle } from '~/lib/emojiUtils';
-
+import {
+  getRedisClient,
+  getCache,
+  setCache,
+  deleteCache,
+  deleteCachePattern,
+  checkRateLimit,
+  redisKeys,
+} from './redis';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function invalidatePageCaches(workspaceId?: string | null, pageId?: string | null) {
+  const promises: Promise<any>[] = [];
+  if (workspaceId) {
+    promises.push(deleteCachePattern(`${redisKeys.workspaceTree(workspaceId)}*`));
+    promises.push(deleteCachePattern(`search:${workspaceId}:*`));
+    promises.push(deleteCache(redisKeys.workspaceDatabases(workspaceId)));
+  }
+  if (pageId) {
+    promises.push(deleteCache([redisKeys.page(pageId), redisKeys.publicPage(pageId), redisKeys.database(pageId)]));
+  }
+  await Promise.allSettled(promises);
+}
 
 async function resolveWorkspaceId(providedWorkspaceId?: string): Promise<string | null> {
   if (!providedWorkspaceId) return null;
@@ -33,6 +54,13 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
     const session = await getSessionImpl();
     const cleanEmail = session?.email?.trim().toLowerCase();
     const isOwnerOrMember = session?.workspaceId === targetWorkspaceId;
+
+    // Fast-path: Check Redis cache for workspace page tree (< 1ms)
+    const treeCacheKey = `${redisKeys.workspaceTree(targetWorkspaceId)}:${session?.userId || 'anon'}:${isOwnerOrMember ? 'member' : 'guest'}`;
+    const cachedTree = await getCache<PageTreeNode[]>(treeCacheKey);
+    if (cachedTree) {
+      return cachedTree;
+    }
 
     // Run workspace pages, shared pages, recently viewed public pages, and database row item subpages in PARALLEL
     const [workspacePages, sharedPages, recentViews, dbItemRows] = await Promise.all([
@@ -185,6 +213,8 @@ export async function fetchPageTree(workspaceId: string): Promise<PageTreeNode[]
       }
     }
 
+    setCache(treeCacheKey, rootNodes, 600).catch(() => {});
+
     return rootNodes;
   } catch (err) {
     console.error('Error fetching page tree:', err);
@@ -305,9 +335,15 @@ export async function getPageAccessLevel(
 
 export async function fetchPage(pageId: string) {
   try {
-    const pageList = await db.select().from(pages).where(and(eq(pages.id, pageId), eq(pages.isDeleted, false))).limit(1);
-    if (pageList.length === 0) return null;
-    const page = pageList[0];
+    const pageCacheKey = redisKeys.page(pageId);
+    let page = await getCache<typeof pages.$inferSelect>(pageCacheKey);
+
+    if (!page) {
+      const pageList = await db.select().from(pages).where(and(eq(pages.id, pageId), eq(pages.isDeleted, false))).limit(1);
+      if (pageList.length === 0) return null;
+      page = pageList[0];
+      setCache(pageCacheKey, page, 600).catch(() => {});
+    }
 
     let session = null;
     try {
@@ -360,6 +396,41 @@ export interface SharedPageData {
 }
 
 export async function fetchActivePresence(pageId: string): Promise<ActiveUserPresence[]> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const key = redisKeys.pagePresence(pageId);
+      const rawEntries = await redis.hgetall(key);
+      const now = Date.now();
+      const results: ActiveUserPresence[] = [];
+      const staleKeys: string[] = [];
+
+      for (const [memberKey, rawJson] of Object.entries(rawEntries)) {
+        try {
+          const item = JSON.parse(rawJson);
+          if (now - Number(item.lastPingTimestamp || 0) > 6000) {
+            staleKeys.push(memberKey);
+          } else {
+            results.push({
+              ...item,
+              lastPing: new Date(item.lastPingTimestamp || item.lastPing || now),
+            });
+          }
+        } catch {
+          staleKeys.push(memberKey);
+        }
+      }
+
+      if (staleKeys.length > 0) {
+        redis.hdel(key, ...staleKeys).catch(() => {});
+      }
+
+      return results;
+    } catch {
+      // Fallback to database
+    }
+  }
+
   try {
     // Delete stale presence older than 6 seconds (ping interval is 3s)
     const threshold = new Date(Date.now() - 6 * 1000);
@@ -403,21 +474,27 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
 }
 
 export async function removePagePresence(input: { pageId: string; clientId?: string }) {
+  const cid = input.clientId || 'default';
+  let session = null;
   try {
-    let session = null;
+    session = await getSessionImpl();
+  } catch { }
+
+  const cleanEmail = session?.email
+    ? `${session.email.trim().toLowerCase()}#${cid}`
+    : `guest-${cid}@notling.app`;
+
+  const redis = getRedisClient();
+  if (redis) {
     try {
-      session = await getSessionImpl();
+      await redis.hdel(redisKeys.pagePresence(input.pageId), cleanEmail);
     } catch { }
+  }
 
-    const cid = input.clientId || 'default';
-    const cleanEmail = session?.email
-      ? `${session.email.trim().toLowerCase()}#${cid}`
-      : `guest-${cid}@notling.app`;
-
+  try {
     await db
       .delete(pagePresence)
       .where(and(eq(pagePresence.pageId, input.pageId), eq(pagePresence.email, cleanEmail)));
-
     return { success: true };
   } catch (err) {
     console.error('Error removing presence:', err);
@@ -431,6 +508,43 @@ export async function recordPagePresence(input: {
   clientId?: string;
   guestName?: string;
 }) {
+  let session = null;
+  try {
+    session = await getSessionImpl();
+  } catch { }
+
+  const cid = input.clientId || 'default';
+  const cleanEmail = session?.email
+    ? `${session.email.trim().toLowerCase()}#${cid}`
+    : `guest-${cid}@notling.app`;
+  const cleanName =
+    session?.name ||
+    input.guestName ||
+    (session?.email ? session.email.split('@')[0] : `Guest ${cid.slice(-4)}`);
+
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const key = redisKeys.pagePresence(input.pageId);
+      const presencePayload = {
+        id: cid,
+        email: session?.email ? session.email.trim().toLowerCase() : cleanEmail,
+        name: cleanName,
+        role: input.role,
+        lastPingTimestamp: Date.now(),
+        avatarUrl: session?.avatarUrl || null,
+        clientId: cid,
+      };
+
+      await redis.hset(key, cleanEmail, JSON.stringify(presencePayload));
+      await redis.expire(key, 15);
+
+      return await fetchActivePresence(input.pageId);
+    } catch {
+      // Fallback to database
+    }
+  }
+
   try {
     // Verify target page exists in DB and is not deleted
     const targetPage = await db
@@ -442,20 +556,6 @@ export async function recordPagePresence(input: {
     if (targetPage.length === 0) {
       return [];
     }
-
-    let session = null;
-    try {
-      session = await getSessionImpl();
-    } catch { }
-
-    const cid = input.clientId || 'default';
-    const cleanEmail = session?.email
-      ? `${session.email.trim().toLowerCase()}#${cid}`
-      : `guest-${cid}@notling.app`;
-    const cleanName =
-      session?.name ||
-      input.guestName ||
-      (session?.email ? session.email.split('@')[0] : `Guest ${cid.slice(-4)}`);
 
     // Clean stale presence older than 6 seconds
     const threshold = new Date(Date.now() - 6 * 1000);
@@ -482,7 +582,6 @@ export async function recordPagePresence(input: {
           lastPing: new Date(),
         });
       } catch (insertErr) {
-        // Silently handle race condition where page was deleted during ping
         return [];
       }
     }
@@ -495,14 +594,26 @@ export async function recordPagePresence(input: {
 
 export async function fetchPublicPage(pageId: string): Promise<SharedPageData | null> {
   try {
-    const pageList = await db
-      .select()
-      .from(pages)
-      .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
-      .limit(1);
+    // Rate limit public page view requests (60 req/min per IP/token)
+    const rateLimit = await checkRateLimit('public_page', pageId, 120, 60);
+    if (!rateLimit.allowed) {
+      console.warn(`[RateLimit] Public page view threshold reached for ${pageId}`);
+    }
 
-    if (pageList.length === 0) return null;
-    const page = pageList[0];
+    const publicCacheKey = redisKeys.publicPage(pageId);
+    let page = await getCache<typeof pages.$inferSelect>(publicCacheKey);
+
+    if (!page) {
+      const pageList = await db
+        .select()
+        .from(pages)
+        .where(and(eq(pages.id, pageId), eq(pages.isDeleted, false)))
+        .limit(1);
+
+      if (pageList.length === 0) return null;
+      page = pageList[0];
+      setCache(publicCacheKey, page, 60).catch(() => {});
+    }
 
     let session = null;
     try {
@@ -590,6 +701,7 @@ export async function createNewPage(input: {
       })
       .returning();
 
+    invalidatePageCaches(targetWorkspaceId, newPage.id).catch(() => {});
 
     return newPage;
   } catch (err) {
@@ -1169,6 +1281,7 @@ export async function savePageContent(input: { pageId: string; content: any; con
       .returning({ id: pages.id, updatedAt: pages.updatedAt });
 
     if (updated) {
+      invalidatePageCaches(null, input.pageId).catch(() => {});
       db.delete(pageUpdates).where(eq(pageUpdates.pageId, input.pageId)).catch(() => { });
       recordPageHistory({
         pageId: input.pageId,
@@ -1235,6 +1348,8 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
       }).catch((e) => console.error('Failed to log page meta history:', e));
     }
 
+    invalidatePageCaches(null, realPageId).catch(() => {});
+
     return updatedPage || { id: input.pageId, ...updatePayload };
   } catch (err) {
     console.error('Error updating page meta:', err);
@@ -1278,6 +1393,8 @@ export async function savePageVisibility(input: { pageId: string; visibility: 'p
       })
       .where(eq(pages.id, input.pageId))
       .returning();
+
+    invalidatePageCaches(null, input.pageId).catch(() => {});
 
     return updated;
   } catch (err) {
@@ -1329,6 +1446,7 @@ export async function reorderPageInDb(input: {
         .where(eq(pages.id, sib.id))
     );
     await Promise.all(updates);
+    invalidatePageCaches(workspaceId, pageId).catch(() => {});
 
     return { success: true };
   } catch (err) {
@@ -1361,6 +1479,7 @@ export async function performSoftDelete(pageId: string) {
         .set({ isDeleted: true, deletedAt: new Date() })
         .where(inArray(pages.id, idsToDelete));
     }
+    invalidatePageCaches(null, pageId).catch(() => {});
     return { success: true };
   } catch (err) {
     console.error('Error soft deleting page:', err);
@@ -1392,6 +1511,7 @@ export async function performRestore(pageId: string) {
         .set({ isDeleted: false, deletedAt: null })
         .where(inArray(pages.id, idsToRestore));
     }
+    invalidatePageCaches(null, pageId).catch(() => {});
     return { success: true };
   } catch (err) {
     console.error('Error restoring page:', err);
@@ -1555,6 +1675,19 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
     const session = await getSessionImpl();
     const userEmail = session?.email ? session.email.trim().toLowerCase() : null;
 
+    // Rate limiting (60 searches/min per user/IP)
+    const rateLimit = await checkRateLimit('search', session?.userId || 'anon', 60, 60);
+    if (!rateLimit.allowed) {
+      console.warn(`[RateLimit] Search query threshold reached for ${session?.userId || 'anon'}`);
+    }
+
+    // Fast-path: Check Redis cache (< 1ms)
+    const searchCacheKey = `${redisKeys.workspaceSearch(targetWorkspaceId, cleanQuery)}:${session?.userId || 'anon'}`;
+    const cachedResults = await getCache<SearchResult[]>(searchCacheKey);
+    if (cachedResults) {
+      return cachedResults;
+    }
+
     const searchFilter = cleanQuery
       ? or(
           sql`lower(${pages.title}) LIKE lower(${'%' + cleanQuery + '%'})`,
@@ -1631,7 +1764,10 @@ export async function performSearchPages(workspaceId: string, query: string): Pr
 
     results.sort((a, b) => b.score - a.score || b.updatedAt.getTime() - a.updatedAt.getTime());
 
-    return results.slice(0, 20);
+    const topResults = results.slice(0, 20);
+    setCache(searchCacheKey, topResults, 60).catch(() => {});
+
+    return topResults;
   } catch (err) {
     console.error('Error searching pages:', err);
     return [];

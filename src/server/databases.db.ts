@@ -18,6 +18,13 @@ import { eq, asc, desc, and, or, isNull, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { fetchPage, getPageAccessLevel } from './pages.db';
 import { getSessionImpl } from './auth.db';
+import {
+  getCache,
+  setCache,
+  deleteCache,
+  deleteCachePattern,
+  redisKeys,
+} from './redis';
 
 export interface FullDatabase {
   database: Database;
@@ -25,6 +32,23 @@ export interface FullDatabase {
   items: DatabaseItem[];
   views: DatabaseView[];
   forms: DatabaseForm[];
+}
+
+export async function invalidateDatabaseCaches(
+  databaseId?: string | null,
+  workspaceId?: string | null,
+  pageId?: string | null
+) {
+  const keys: string[] = [];
+  if (databaseId) keys.push(redisKeys.database(databaseId));
+  if (pageId) keys.push(redisKeys.database(pageId));
+  if (workspaceId) {
+    keys.push(redisKeys.workspaceDatabases(workspaceId));
+    deleteCachePattern(`${redisKeys.workspaceTree(workspaceId)}*`).catch(() => {});
+  }
+  if (keys.length > 0) {
+    await deleteCache(keys);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +184,19 @@ export async function assertWorkspaceEditAccess(workspaceId: string): Promise<vo
 // ---------------------------------------------------------------------------
 
 export async function fetchDatabase(databaseId: string): Promise<FullDatabase | null> {
+  const dbCacheKey = redisKeys.database(databaseId);
+
+  // Fast-path: Check Redis cache (< 1ms)
+  const cachedDb = await getCache<FullDatabase>(dbCacheKey);
+  if (cachedDb) {
+    try {
+      await assertDatabaseViewAccess(cachedDb.database.id);
+      return cachedDb;
+    } catch {
+      return null;
+    }
+  }
+
   const [row] = await db
     .select({
       database: databases,
@@ -202,13 +239,21 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
       .where(eq(databaseForms.databaseId, database.id)),
   ]);
 
-  return {
+  const fullDb: FullDatabase = {
     database,
     properties,
     items,
     views,
     forms,
   };
+
+  // Cache in Redis for fast access (30 min TTL)
+  setCache(redisKeys.database(database.id), fullDb, 1800).catch(() => {});
+  if (database.pageId) {
+    setCache(redisKeys.database(database.pageId), fullDb, 1800).catch(() => {});
+  }
+
+  return fullDb;
 }
 
 export async function fetchDatabasesInWorkspace(workspaceId: string): Promise<Database[]> {
@@ -216,6 +261,12 @@ export async function fetchDatabasesInWorkspace(workspaceId: string): Promise<Da
     await assertWorkspaceEditAccess(workspaceId);
   } catch {
     return [];
+  }
+
+  const wsDbsCacheKey = redisKeys.workspaceDatabases(workspaceId);
+  const cachedList = await getCache<Database[]>(wsDbsCacheKey);
+  if (cachedList) {
+    return cachedList;
   }
 
   const rows = await db
@@ -229,7 +280,11 @@ export async function fetchDatabasesInWorkspace(workspaceId: string): Promise<Da
       )
     )
     .orderBy(desc(databases.createdAt));
-  return rows.map((r) => r.database);
+  const result = rows.map((r) => r.database);
+
+  setCache(wsDbsCacheKey, result, 600).catch(() => {});
+
+  return result;
 }
 
 export async function fetchPublicFormByToken(shareToken: string) {
@@ -360,6 +415,8 @@ export async function createNewDatabase(input: {
 
   const insertedForms = await db.insert(databaseForms).values(formToInsert).returning();
 
+  invalidateDatabaseCaches(database.id, input.workspaceId, targetPageId).catch(() => {});
+
   return {
     database,
     properties: insertedProperties,
@@ -389,12 +446,15 @@ export async function saveDatabase(databaseId: string, updates: Partial<{ title:
     })
     .where(eq(pages.id, targetPageId));
 
+  invalidateDatabaseCaches(databaseId, null, targetPageId).catch(() => {});
+
   return updated;
 }
 
 export async function removeDatabase(databaseId: string) {
   await assertDatabaseEditAccess(databaseId);
   await db.delete(databases).where(eq(databases.id, databaseId));
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return { success: true };
 }
 
@@ -421,6 +481,8 @@ export async function addDatabaseProperty(databaseId: string, prop: { id?: strin
     })
     .returning();
 
+  invalidateDatabaseCaches(databaseId).catch(() => {});
+
   return newProp;
 }
 
@@ -428,20 +490,23 @@ export async function updateDatabaseProperty(
   propertyId: string,
   updates: Partial<{ name: string; type: any; options: any[]; order: number; icon: string | null }>
 ) {
-  await assertDatabasePropertyEditAccess(propertyId);
+  const databaseId = await assertDatabasePropertyEditAccess(propertyId);
 
   const [updated] = await db
     .update(databaseProperties)
     .set(updates)
     .where(eq(databaseProperties.id, propertyId))
     .returning();
+
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return updated;
 }
 
 export async function deleteDatabaseProperty(propertyId: string) {
-  await assertDatabasePropertyEditAccess(propertyId);
+  const databaseId = await assertDatabasePropertyEditAccess(propertyId);
 
   await db.delete(databaseProperties).where(eq(databaseProperties.id, propertyId));
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return { success: true };
 }
 
@@ -516,11 +581,13 @@ export async function addDatabaseItem(databaseId: string, item: { id?: string; t
     })
     .returning();
 
+  invalidateDatabaseCaches(databaseId).catch(() => {});
+
   return newItem;
 }
 
 export async function updateDatabaseItem(itemId: string, updates: Partial<{ title: string; properties: Record<string, any>; order: number }>) {
-  await assertDatabaseItemEditAccess(itemId);
+  const databaseId = await assertDatabaseItemEditAccess(itemId);
 
   const [updated] = await db
     .update(databaseItems)
@@ -531,17 +598,20 @@ export async function updateDatabaseItem(itemId: string, updates: Partial<{ titl
   if (updated && updated.pageId && updates.title !== undefined) {
     await db.update(pages).set({ title: updates.title || 'Untitled', updatedAt: new Date() }).where(eq(pages.id, updated.pageId));
   }
+
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return updated;
 }
 
 export async function deleteDatabaseItem(itemId: string) {
-  await assertDatabaseItemEditAccess(itemId);
+  const databaseId = await assertDatabaseItemEditAccess(itemId);
 
   const [item] = await db.select({ pageId: databaseItems.pageId }).from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
   if (item?.pageId) {
     await db.update(pages).set({ isDeleted: true, updatedAt: new Date() }).where(eq(pages.id, item.pageId));
   }
   await db.delete(databaseItems).where(eq(databaseItems.id, itemId));
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return { success: true };
 }
 
@@ -567,24 +637,29 @@ export async function addDatabaseView(databaseId: string, view: { name: string; 
     })
     .returning();
 
+  invalidateDatabaseCaches(databaseId).catch(() => {});
+
   return newView;
 }
 
 export async function updateDatabaseView(viewId: string, updates: Partial<{ name: string; type: any; config: any; order: number }>) {
-  await assertDatabaseViewEditAccess(viewId);
+  const databaseId = await assertDatabaseViewEditAccess(viewId);
 
   const [updated] = await db
     .update(databaseViews)
     .set(updates)
     .where(eq(databaseViews.id, viewId))
     .returning();
+
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return updated;
 }
 
 export async function deleteDatabaseView(viewId: string) {
-  await assertDatabaseViewEditAccess(viewId);
+  const databaseId = await assertDatabaseViewEditAccess(viewId);
 
   await db.delete(databaseViews).where(eq(databaseViews.id, viewId));
+  invalidateDatabaseCaches(databaseId).catch(() => {});
   return { success: true };
 }
 
@@ -691,6 +766,8 @@ export async function convertPropertyType(propertyId: string, newType: string) {
     .set({ type: newType as any })
     .where(eq(databaseProperties.id, propertyId))
     .returning();
+
+  invalidateDatabaseCaches(prop.databaseId).catch(() => {});
 
   return updatedProp;
 }
