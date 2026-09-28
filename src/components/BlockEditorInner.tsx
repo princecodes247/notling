@@ -2038,12 +2038,47 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     }
   };
 
-  // Global window drag & drop event listeners in capture phase to take full control
+function preselectBlockForDrag(editor: any, blockId: string | undefined) {
+  if (!editor || !blockId) return;
+  try {
+    const doc = editor.prosemirrorView?.state?.doc || editor._tiptapEditor?.state?.doc;
+    if (!doc) return;
+    let posBeforeNode: number | undefined = undefined;
+    doc.firstChild?.descendants((node: any, pos: number) => {
+      if (posBeforeNode !== undefined) return false;
+      if (node.attrs?.id === blockId) {
+        posBeforeNode = pos + 1;
+        return false;
+      }
+      return true;
+    });
+    if (posBeforeNode !== undefined && editor._tiptapEditor?.commands?.setNodeSelection) {
+      editor._tiptapEditor.commands.setNodeSelection(posBeforeNode);
+    }
+  } catch (err) {
+    console.error('Error pre-selecting block for drag:', err);
+  }
+}
+
+// Global window drag & drop event listeners in capture phase to take full control
   useEffect(() => {
-    const handleDragStart = (_e: DragEvent) => {
+    const handleDragStart = (e: DragEvent) => {
       const sideMenuView = (editor as any)?.sideMenu?.view;
       if (sideMenuView) {
         sideMenuView.isDragOrigin = false;
+      }
+      if (!draggedBlockRef.current) {
+        const target = e.target as HTMLElement;
+        const blockEl = target?.closest?.('[data-id]') as HTMLElement | null;
+        const blockId = blockEl?.getAttribute('data-id');
+        if (blockId) {
+          draggedBlockRef.current = editor.getBlock(blockId);
+        } else {
+          const selBlock = editor.getSelection()?.blocks?.[0] || editor.getTextCursorPosition()?.block;
+          if (selBlock) {
+            draggedBlockRef.current = selBlock;
+          }
+        }
       }
     };
 
@@ -2156,44 +2191,65 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             />
             <SideMenuController
               sideMenu={(props) => (
-                <SideMenu
-                  {...props}
-                  blockDragStart={(event, block) => {
-                    draggedBlockRef.current = block;
-                    const sideMenuView = (editor as any)?.sideMenu?.view;
-                    if (sideMenuView) {
-                      sideMenuView.isDragOrigin = false;
-                    }
-                    props.blockDragStart(event, block);
-                    if (sideMenuView) {
-                      sideMenuView.isDragOrigin = false;
+                <div
+                  onPointerDown={() => {
+                    if (props.block?.id) {
+                      draggedBlockRef.current = props.block;
+                      preselectBlockForDrag(editor, props.block.id);
                     }
                   }}
-                  blockDragEnd={() => {
-                    removeDropIndicator();
-                    props.blockDragEnd();
-                    draggedBlockRef.current = null;
+                  onMouseDown={() => {
+                    if (props.block?.id) {
+                      draggedBlockRef.current = props.block;
+                      preselectBlockForDrag(editor, props.block.id);
+                    }
                   }}
-                  dragHandleMenu={(menuProps) => (
-                    <DragHandleMenu {...menuProps}>
-                      <CustomActionMenu
-                        editor={props.editor}
-                        block={props.block}
-                        freezeMenu={props.freezeMenu}
-                        unfreezeMenu={props.unfreezeMenu}
-                        userName={userName}
-                        pageUpdatedAt={page.updatedAt}
-                        onOpenMentionModal={() => {
-                          setTooltipPosition(getCursorPos());
-                          setMentionSearchQuery('');
-                          setMentionSelectedIndex(0);
-                          setIsMentionModalOpen(true);
-                        }}
-                        onOpenMediaPicker={handleOpenMediaPicker}
-                      />
-                    </DragHandleMenu>
-                  )}
-                />
+                  onMouseEnter={() => {
+                    if (props.block?.id && !draggedBlockRef.current) {
+                      draggedBlockRef.current = props.block;
+                    }
+                  }}
+                >
+                  <SideMenu
+                    {...props}
+                    blockDragStart={(event, block) => {
+                      draggedBlockRef.current = block;
+                      preselectBlockForDrag(editor, block?.id);
+                      const sideMenuView = (editor as any)?.sideMenu?.view;
+                      if (sideMenuView) {
+                        sideMenuView.isDragOrigin = false;
+                      }
+                      props.blockDragStart(event, block);
+                      if (sideMenuView) {
+                        sideMenuView.isDragOrigin = false;
+                      }
+                    }}
+                    blockDragEnd={() => {
+                      removeDropIndicator();
+                      props.blockDragEnd();
+                      draggedBlockRef.current = null;
+                    }}
+                    dragHandleMenu={(menuProps) => (
+                      <DragHandleMenu {...menuProps}>
+                        <CustomActionMenu
+                          editor={props.editor}
+                          block={props.block}
+                          freezeMenu={props.freezeMenu}
+                          unfreezeMenu={props.unfreezeMenu}
+                          userName={userName}
+                          pageUpdatedAt={page.updatedAt}
+                          onOpenMentionModal={() => {
+                            setTooltipPosition(getCursorPos());
+                            setMentionSearchQuery('');
+                            setMentionSelectedIndex(0);
+                            setIsMentionModalOpen(true);
+                          }}
+                          onOpenMediaPicker={handleOpenMediaPicker}
+                        />
+                      </DragHandleMenu>
+                    )}
+                  />
+                </div>
               )}
             />
           </>
