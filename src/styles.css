@@ -178,6 +178,12 @@
   color: #f2f2f7 !important;
 }
 
+/* BlockNote Side Menu / Drag Handle spacing - keeps drag handle well separated from content */
+.bn-side-menu {
+  margin-right: 14px !important;
+  transform: translateX(-12px) !important;
+}
+
 /* Block highlight when context menu is open (applied via inline styles on .bn-block-outer) */
 .bn-block-outer {
   transition: background-color 0.12s ease, outline 0.12s ease;

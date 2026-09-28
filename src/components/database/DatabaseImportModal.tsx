@@ -9,7 +9,7 @@ import {
   Upload01Icon,
   AlertCircleIcon,
 } from '@hugeicons/core-free-icons';
-import { FileSpreadsheet, FileCode, Sparkles, ArrowRight, Eye, RefreshCw, Check } from 'lucide-react';
+import { FileSpreadsheet, FileCode, ArrowRight, Eye, RefreshCw, Check } from 'lucide-react';
 import clsx from 'clsx';
 
 interface DatabaseImportModalProps {
