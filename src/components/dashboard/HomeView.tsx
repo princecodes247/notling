@@ -256,7 +256,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     </button>
                   </div>
 
-                  <div className="flex flex-col divide-y divide-stone-100 dark:divide-zinc-800/80 rounded-xl border border-stone-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/40 overflow-hidden shadow-2xs">
+                  <div className="flex flex-col divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
                     {recentDocs.slice(0, 10).map((node) => (
                       <div
                         key={node.id}

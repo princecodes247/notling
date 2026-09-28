@@ -84,24 +84,28 @@ export const ProfileSettingsView: React.FC<ProfileSettingsViewProps> = ({ sessio
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-6 sm:pb-10 pt-10">
-      <div className="max-w-4xl mx-auto w-full flex flex-col gap-8">
+    <div className="flex-1 pt-12 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans flex flex-col">
+      <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-8">
         {/* Header */}
-        <div className="pb-5 border-b border-neutral-100 dark:border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
           <div>
-            <h1 className="text-2xl font-normal text-neutral-950 dark:text-white tracking-tight">Profile Settings</h1>
-            <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-0.5">
+            <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
+              Profile Settings
+            </h1>
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
               Manage your personal information, interface theme, and account settings.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="px-3.5 py-2 rounded-lg border border-neutral-200 dark:border-zinc-700/80 hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-800 dark:text-zinc-200 text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5 text-neutral-500 dark:text-zinc-400" />
-            <span>Sign Out</span>
-          </button>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
+            >
+              <LogOut className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-6">

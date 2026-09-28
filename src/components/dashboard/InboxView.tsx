@@ -110,24 +110,26 @@ export const InboxView: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] flex flex-col overflow-y-auto select-none font-sans p-6 sm:p-10">
-      <div className="max-w-4xl mx-auto w-full flex flex-col gap-6 text-stone-900 dark:text-stone-100">
+    <div className="flex-1 pt-12 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans flex flex-col">
+      <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-neutral-100 dark:border-zinc-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
           <div>
-            <h1 className="text-2xl font-normal text-neutral-950 dark:text-white tracking-tight">Inbox & Activity</h1>
-            <p className="text-xs text-neutral-500 dark:text-zinc-400 mt-0.5">
+            <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
+              Inbox & Activity
+            </h1>
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
               Live notifications, edit access requests, teammate actions, and system events.
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={markAllAsRead}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-zinc-800 hover:bg-neutral-50 dark:hover:bg-zinc-800 text-neutral-700 dark:text-zinc-300 text-xs font-medium transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
             >
-              <CheckCheck className="w-3.5 h-3.5 text-neutral-500" />
+              <CheckCheck className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
               <span>Mark all read</span>
             </button>
           </div>

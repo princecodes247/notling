@@ -194,30 +194,27 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   };
 
   return (
-    <div className="flex-1 w-full h-full bg-white dark:bg-[#18181b] text-neutral-900 dark:text-zinc-100 flex flex-col overflow-y-auto select-none font-sans p-4 sm:p-10 pb-12 pt-10">
-      <div className="max-w-6xl mx-auto w-full flex flex-col gap-8">
+    <div className="flex-1 pt-12 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans flex flex-col">
+      <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-8">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-200/80 dark:border-zinc-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📂</span>
-              <h1 className="text-2xl font-semibold text-stone-950 dark:text-white tracking-tight">
-                All Pages & Databases
-              </h1>
-            </div>
+            <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
+              All Pages
+            </h1>
             <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
               Browse, filter, and manage all documents, databases, and collections in your workspace.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={() => onCreateDocument()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-all active:scale-[0.98] cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
             >
-              <HugeiconsIcon icon={PlusSignIcon} size={14} />
+              <HugeiconsIcon icon={PlusSignIcon} size={15} />
               <span>New Document</span>
             </button>
 
@@ -225,9 +222,9 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
               <button
                 type="button"
                 onClick={onCreateDatabase}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1f4d3d] hover:bg-[#183e31] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white text-xs font-medium transition-all active:scale-[0.98] shadow-2xs cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
               >
-                <HugeiconsIcon icon={DatabaseIcon} size={14} />
+                <HugeiconsIcon icon={DatabaseIcon} size={15} />
                 <span>New Database</span>
               </button>
             )}
