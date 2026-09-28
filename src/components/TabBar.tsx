@@ -148,6 +148,40 @@ export const TabBar: React.FC<TabBarProps> = ({
     }
   }, [activeTabId]);
 
+  const isTabLoading = useCallback(
+    (tab: TabItem) => {
+      if (
+        !tab.id ||
+        tab.id === 'home' ||
+        tab.id === 'folders' ||
+        tab.id === 'settings' ||
+        tab.id === 'profile' ||
+        tab.id === 'trash'
+      ) {
+        return false;
+      }
+
+      const isDefaultPlaceholderTitle =
+        !tab.title ||
+        tab.title === 'Untitled Database' ||
+        tab.title === 'Untitled Document' ||
+        tab.title === 'Untitled';
+
+      if (!isDefaultPlaceholderTitle) {
+        return false;
+      }
+
+      const dbState = queryClient.getQueryState(['database', tab.id]);
+      const pageState = queryClient.getQueryState(['page', tab.id]);
+
+      const isDbLoading = dbState ? dbState.status === 'pending' : true;
+      const isPageLoading = pageState ? pageState.status === 'pending' : true;
+
+      return isDbLoading && isPageLoading;
+    },
+    [queryClient]
+  );
+
   return (
     <div className="hidden md:flex items-center gap-1.5 px-1 py-0 shrink-0 select-none relative w-full overflow-hidden">
       {/* Sidebar Reopen Toggle Button (Shown when sidebar is closed) */}
@@ -218,6 +252,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             const isDropTarget = dropTargetId === tab.id;
             const isDropLeft = isDropTarget && dropPosition === 'left';
             const isDropRight = isDropTarget && dropPosition === 'right';
+            const isLoading = isTabLoading(tab);
 
             return (
               <div
@@ -246,9 +281,10 @@ export const TabBar: React.FC<TabBarProps> = ({
                   <span className="absolute -right-1 top-1 bottom-1 w-0.5 bg-stone-900 dark:bg-white rounded-full z-20 pointer-events-none" />
                 )}
 
-
                 {/* Tab Icon */}
-                {tab.icon ? (
+                {isLoading ? (
+                  <div className="w-3.5 h-3.5 rounded bg-stone-200/80 dark:bg-zinc-700/80 animate-pulse shrink-0" />
+                ) : tab.icon ? (
                   <span className="text-xs shrink-0">{tab.icon}</span>
                 ) : tab.id === 'folders' ? (
                   <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
@@ -263,9 +299,13 @@ export const TabBar: React.FC<TabBarProps> = ({
                 )}
 
                 {/* Tab Title */}
-                <span className="max-w-[140px] truncate leading-none">
-                  {tab.title || 'Untitled'}
-                </span>
+                {isLoading ? (
+                  <div className="w-20 h-3 rounded bg-stone-200/80 dark:bg-zinc-700/80 animate-pulse shrink-0 my-0.5" />
+                ) : (
+                  <span className="max-w-[140px] truncate leading-none">
+                    {tab.title || 'Untitled'}
+                  </span>
+                )}
 
                 {/* Close Button */}
                 <button
