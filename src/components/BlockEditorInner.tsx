@@ -2060,8 +2060,97 @@ function preselectBlockForDrag(editor: any, blockId: string | undefined) {
   }
 }
 
+// Helper to find scrollable container ancestor
+function findScrollContainer(element: HTMLElement | null): HTMLElement | Window {
+  let parent = element?.parentElement;
+  while (parent && parent !== document.body && parent !== document.documentElement) {
+    const style = window.getComputedStyle(parent);
+    const hasScroll = parent.scrollHeight > parent.clientHeight + 10;
+    const canScroll = style.overflowY === 'auto' || style.overflowY === 'scroll';
+    if (hasScroll && canScroll) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  return window;
+}
+
+// Compute auto-scroll speed based on cursor distance to edges
+function computeAutoScrollSpeed(container: HTMLElement | Window, clientY: number): number {
+  const edgeZone = 120; // Distance in pixels from edge to trigger auto-scroll
+  const maxSpeed = 28; // Maximum scroll speed per frame
+
+  if (container === window || !(container instanceof HTMLElement)) {
+    const vh = window.innerHeight;
+    if (clientY < edgeZone && clientY >= 0) {
+      const ratio = Math.max(0, (edgeZone - clientY) / edgeZone);
+      return -Math.max(5, Math.round(ratio * maxSpeed));
+    }
+    if (clientY > vh - edgeZone && clientY <= vh) {
+      const ratio = Math.max(0, (clientY - (vh - edgeZone)) / edgeZone);
+      return Math.max(5, Math.round(ratio * maxSpeed));
+    }
+    return 0;
+  }
+
+  const rect = container.getBoundingClientRect();
+  if (clientY < rect.top + edgeZone && clientY >= rect.top - 20) {
+    const ratio = Math.max(0, (rect.top + edgeZone - clientY) / edgeZone);
+    return -Math.max(5, Math.round(ratio * maxSpeed));
+  }
+  if (clientY > rect.bottom - edgeZone && clientY <= rect.bottom + 20) {
+    const ratio = Math.max(0, (clientY - (rect.bottom - edgeZone)) / edgeZone);
+    return Math.max(5, Math.round(ratio * maxSpeed));
+  }
+  return 0;
+}
+
 // Global window drag & drop event listeners in capture phase to take full control
   useEffect(() => {
+    let autoScrollRaf: number | null = null;
+    let currentScrollTarget: HTMLElement | Window | null = null;
+    let currentScrollSpeed = 0;
+    let lastPointerPos: { x: number; y: number } | null = null;
+
+    const startAutoScroll = (target: HTMLElement | Window, speed: number, x: number, y: number) => {
+      currentScrollTarget = target;
+      currentScrollSpeed = speed;
+      lastPointerPos = { x, y };
+
+      if (autoScrollRaf !== null) return;
+
+      const tick = () => {
+        if (!currentScrollTarget || currentScrollSpeed === 0) {
+          autoScrollRaf = null;
+          return;
+        }
+
+        if (currentScrollTarget === window || !(currentScrollTarget instanceof HTMLElement)) {
+          window.scrollBy(0, currentScrollSpeed);
+        } else {
+          currentScrollTarget.scrollTop += currentScrollSpeed;
+        }
+
+        if (lastPointerPos && editor) {
+          updateDropIndicator(editor, lastPointerPos.x, lastPointerPos.y, draggedBlockRef.current?.id);
+        }
+
+        autoScrollRaf = requestAnimationFrame(tick);
+      };
+
+      autoScrollRaf = requestAnimationFrame(tick);
+    };
+
+    const stopAutoScroll = () => {
+      if (autoScrollRaf !== null) {
+        cancelAnimationFrame(autoScrollRaf);
+        autoScrollRaf = null;
+      }
+      currentScrollTarget = null;
+      currentScrollSpeed = 0;
+      lastPointerPos = null;
+    };
+
     const handleDragStart = (e: DragEvent) => {
       const sideMenuView = (editor as any)?.sideMenu?.view;
       if (sideMenuView) {
@@ -2093,9 +2182,21 @@ function preselectBlockForDrag(editor: any, blockId: string | undefined) {
         e.dataTransfer.dropEffect = 'move';
       }
       updateDropIndicator(editor, e.clientX, e.clientY, draggedBlockRef.current?.id);
+
+      const editorDom = editor?.prosemirrorView?.dom || (e.target as HTMLElement);
+      const scrollContainer = findScrollContainer(editorDom);
+      const speed = computeAutoScrollSpeed(scrollContainer, e.clientY);
+
+      if (speed !== 0) {
+        startAutoScroll(scrollContainer, speed, e.clientX, e.clientY);
+      } else {
+        stopAutoScroll();
+      }
     };
 
     const handleDrop = (e: DragEvent) => {
+      stopAutoScroll();
+
       const isOurDrag =
         !!draggedBlockRef.current ||
         (e.dataTransfer && e.dataTransfer.types.includes('blocknote/html'));
@@ -2124,6 +2225,7 @@ function preselectBlockForDrag(editor: any, blockId: string | undefined) {
     };
 
     const handleDragEnd = () => {
+      stopAutoScroll();
       removeDropIndicator();
       draggedBlockRef.current = null;
       const sideMenuView = (editor as any)?.sideMenu?.view;
@@ -2138,6 +2240,7 @@ function preselectBlockForDrag(editor: any, blockId: string | undefined) {
     window.addEventListener('dragend', handleDragEnd, true);
 
     return () => {
+      stopAutoScroll();
       window.removeEventListener('dragstart', handleDragStart, true);
       window.removeEventListener('dragover', handleDragOver, true);
       window.removeEventListener('drop', handleDrop, true);
