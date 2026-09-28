@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
 import { PropertyTypeIcon } from './PropertyTypeIcon';
 import { DatabasePopover } from './DatabasePopover';
@@ -85,6 +86,19 @@ export function DatabaseTableView({
   onImportData,
   readOnly = false,
 }: DatabaseTableViewProps) {
+  // Table virtual scroll container ref
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Fast O(1) map for item lookups
+  const itemsMapRef = useRef<Map<string, DatabaseItem>>(new Map());
+  useEffect(() => {
+    const map = new Map<string, DatabaseItem>();
+    for (let i = 0; i < items.length; i++) {
+      map.set(items[i].id, items[i]);
+    }
+    itemsMapRef.current = map;
+  }, [items]);
+
   // Unified State-Aware Menu ID
   const [activeOpenMenuId, setActiveOpenMenuId] = useState<string | null>(null);
 
@@ -107,6 +121,8 @@ export function DatabaseTableView({
 
   // Bulk Row Selection State
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const selectedItemIdsSet = useRef<Set<string>>(new Set());
+  selectedItemIdsSet.current = new Set(selectedItemIds);
 
   // Shared Paint Hook for Row Selection Checkboxes
   const rowPaint = useDragPaint<string>({
@@ -116,14 +132,14 @@ export function DatabaseTableView({
         targetState ? (prev.includes(id) ? prev : [...prev, id]) : prev.filter((item) => item !== id)
       );
     },
-    getItemState: (id) => selectedItemIds.includes(id),
+    getItemState: (id) => selectedItemIdsSet.current.has(id),
   });
 
-  // Shared Paint Hook for Property Checkbox Cells
+  // Shared Paint Hook for Property Checkbox Cells (O(1) lookup via itemsMapRef)
   const propertyPaint = useDragPaint<{ itemId: string; propId: string }>({
     mode: 'invert',
     onPaintItem: ({ itemId, propId }, targetState) => {
-      const targetItem = items.find((i) => i.id === itemId);
+      const targetItem = itemsMapRef.current.get(itemId);
       onUpdateItem(itemId, {
         properties: {
           ...targetItem?.properties,
@@ -132,18 +148,18 @@ export function DatabaseTableView({
       });
     },
     getItemState: ({ itemId, propId }) => {
-      const targetItem = items.find((i) => i.id === itemId);
+      const targetItem = itemsMapRef.current.get(itemId);
       return Boolean(targetItem?.properties?.[propId]);
     },
   });
 
-  const handlePropertyCheckboxMouseDown = (itemId: string, propId: string, currentVal: boolean, e: React.MouseEvent) => {
+  const handlePropertyCheckboxMouseDown = useCallback((itemId: string, propId: string, currentVal: boolean, e: React.MouseEvent) => {
     propertyPaint.startPaint({ itemId, propId }, currentVal, e);
-  };
+  }, [propertyPaint]);
 
-  const handlePropertyCheckboxMouseEnter = (itemId: string, propId: string) => {
+  const handlePropertyCheckboxMouseEnter = useCallback((itemId: string, propId: string) => {
     propertyPaint.paintItem({ itemId, propId });
-  };
+  }, [propertyPaint]);
 
   const [focusedCell, setFocusedCell] = useState<{ rowIndex: number; colIndex: number } | null>(null);
   const [isEditingCell, setIsEditingCell] = useState(false);
@@ -152,22 +168,38 @@ export function DatabaseTableView({
   const shouldFocusNewRowRef = useRef<boolean>(false);
   const prevItemsLengthRef = useRef<number>(items.length);
 
-  const handleAddNewRow = () => {
+  const titleProp = properties.find((p) => p.type === 'title');
+  const nonTitleProps = properties.filter((p) => p.type !== 'title');
+
+  // TanStack Row Virtualizer for instant 60-120 FPS rendering
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 38,
+    overscan: 12,
+  });
+
+  const handleAddNewRow = useCallback(() => {
     shouldFocusNewRowRef.current = true;
     const newRowIndex = items.length;
     setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
     setIsEditingCell(true);
     onAddItem();
-  };
+    // Scroll to bottom
+    setTimeout(() => {
+      rowVirtualizer.scrollToIndex(newRowIndex, { align: 'end' });
+    }, 0);
+  }, [items.length, onAddItem, rowVirtualizer]);
 
-  const handleEnterCell = (rIndex: number, cIndex: number) => {
+  const handleEnterCell = useCallback((rIndex: number, cIndex: number) => {
     if (rIndex === items.length - 1) {
       handleAddNewRow();
     } else {
       setFocusedCell({ rowIndex: rIndex + 1, colIndex: cIndex });
       setIsEditingCell(true);
+      rowVirtualizer.scrollToIndex(rIndex + 1, { align: 'auto' });
     }
-  };
+  }, [handleAddNewRow, items.length, rowVirtualizer]);
 
   useEffect(() => {
     if (focusedCell && focusedCell.colIndex === 0 && (isEditingCell || shouldFocusNewRowRef.current)) {
@@ -190,6 +222,7 @@ export function DatabaseTableView({
       if (newRowIndex >= 0) {
         setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
         setIsEditingCell(true);
+        rowVirtualizer.scrollToIndex(newRowIndex, { align: 'end' });
         const lastItem = items[newRowIndex];
         if (lastItem) {
           const el = titleInputRefs.current.get(lastItem.id);
@@ -202,9 +235,9 @@ export function DatabaseTableView({
       shouldFocusNewRowRef.current = false;
     }
     prevItemsLengthRef.current = items.length;
-  }, [items, readOnly]);
+  }, [items, readOnly, rowVirtualizer]);
 
-  const handleNavigateCell = (rIndex: number, cIndex: number, shift: boolean = false) => {
+  const handleNavigateCell = useCallback((rIndex: number, cIndex: number, shift: boolean = false) => {
     const totalCols = nonTitleProps.length + 1;
     if (!shift) {
       if (cIndex < totalCols) {
@@ -213,6 +246,7 @@ export function DatabaseTableView({
       } else if (rIndex < items.length - 1) {
         setFocusedCell({ rowIndex: rIndex + 1, colIndex: 0 });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(rIndex + 1, { align: 'auto' });
       } else {
         handleAddNewRow();
       }
@@ -223,9 +257,10 @@ export function DatabaseTableView({
       } else if (rIndex > 0) {
         setFocusedCell({ rowIndex: rIndex - 1, colIndex: totalCols - 1 });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(rIndex - 1, { align: 'auto' });
       }
     }
-  };
+  }, [handleAddNewRow, items.length, nonTitleProps.length, rowVirtualizer]);
 
   // Client-Side Undo Stack (Cmd+Z)
   const [undoStack, setUndoStack] = useState<Array<{ type: string; payload: any }>>([]);
@@ -257,9 +292,6 @@ export function DatabaseTableView({
     document.addEventListener('mouseup', onMouseUp);
   };
 
-  const titleProp = properties.find((p) => p.type === 'title');
-  const nonTitleProps = properties.filter((p) => p.type !== 'title');
-
   // Handle Apple Grid Keyboard Navigation (Arrow Keys, Tab, Enter, Escape)
   useEffect(() => {
     const handleTableKeyDown = (e: KeyboardEvent) => {
@@ -275,12 +307,16 @@ export function DatabaseTableView({
 
       if (e.key === 'ArrowDown' && !isInput) {
         e.preventDefault();
-        setFocusedCell({ ...focusedCell, rowIndex: Math.min(numRows - 1, focusedCell.rowIndex + 1) });
+        const nextRow = Math.min(numRows - 1, focusedCell.rowIndex + 1);
+        setFocusedCell({ ...focusedCell, rowIndex: nextRow });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(nextRow, { align: 'auto' });
       } else if (e.key === 'ArrowUp' && !isInput) {
         e.preventDefault();
-        setFocusedCell({ ...focusedCell, rowIndex: Math.max(0, focusedCell.rowIndex - 1) });
+        const prevRow = Math.max(0, focusedCell.rowIndex - 1);
+        setFocusedCell({ ...focusedCell, rowIndex: prevRow });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(prevRow, { align: 'auto' });
       } else if (e.key === 'ArrowRight' && !isInput) {
         e.preventDefault();
         setFocusedCell({ ...focusedCell, colIndex: Math.min(numCols - 1, focusedCell.colIndex + 1) });
@@ -307,16 +343,20 @@ export function DatabaseTableView({
             setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex - 1 });
             setIsEditingCell(false);
           } else if (focusedCell.rowIndex > 0) {
-            setFocusedCell({ rowIndex: focusedCell.rowIndex - 1, colIndex: numCols - 1 });
+            const prevRow = focusedCell.rowIndex - 1;
+            setFocusedCell({ rowIndex: prevRow, colIndex: numCols - 1 });
             setIsEditingCell(false);
+            rowVirtualizer.scrollToIndex(prevRow, { align: 'auto' });
           }
         } else {
           if (focusedCell.colIndex < numCols - 1) {
             setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex + 1 });
             setIsEditingCell(false);
           } else if (focusedCell.rowIndex < numRows - 1) {
-            setFocusedCell({ rowIndex: focusedCell.rowIndex + 1, colIndex: 0 });
+            const nextRow = focusedCell.rowIndex + 1;
+            setFocusedCell({ rowIndex: nextRow, colIndex: 0 });
             setIsEditingCell(false);
+            rowVirtualizer.scrollToIndex(nextRow, { align: 'auto' });
           }
         }
       } else if (e.key === 'Escape' && !isInput && !isEditingCell) {
@@ -328,7 +368,7 @@ export function DatabaseTableView({
 
     window.addEventListener('keydown', handleTableKeyDown);
     return () => window.removeEventListener('keydown', handleTableKeyDown);
-  }, [focusedCell, items.length, nonTitleProps.length, activeOpenMenuId, editingHeaderId]);
+  }, [focusedCell, items, nonTitleProps, activeOpenMenuId, editingHeaderId, rowVirtualizer]);
 
   // Click Outside Table Cells to Deselect
   useEffect(() => {
@@ -442,6 +482,13 @@ export function DatabaseTableView({
   // Active Row Title Editing State
   const [editingRowTitleId, setEditingRowTitleId] = useState<string | null>(null);
 
+  // Virtualizer row geometry
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalVirtualSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start || 0 : 0;
+  const paddingBottom = virtualRows.length > 0 ? totalVirtualSize - (virtualRows[virtualRows.length - 1]?.end || 0) : 0;
+  const totalColSpan = !readOnly ? nonTitleProps.length + 3 : nonTitleProps.length + 1;
+
   return (
     <div className="w-full font-sans relative">
       {/* Floating Action Bar for Bulk Selection (Overlayed to avoid table jumping) */}
@@ -472,23 +519,27 @@ export function DatabaseTableView({
         )}
       </AnimatePresence>
 
-      {/* Grid Table */}
-      <div className="w-full overflow-x-auto text-xs">
+      {/* Virtualized Scrollable Grid Table Container */}
+      <div
+        ref={tableContainerRef}
+        className="w-full overflow-auto max-h-[calc(100vh-160px)] text-xs"
+      >
         <table className="w-full text-left border-collapse min-w-full">
-          <thead>
-            <tr className="border-b border-stone-200/60 dark:border-zinc-800/60 text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
+          <thead className="sticky top-0 z-20 bg-white/95 dark:bg-[#1c1c1f]/95 backdrop-blur-md border-b border-stone-200/80 dark:border-zinc-800/80 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
+            <tr className="text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
               {!readOnly && (
                 <th
                   style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
-                  className="py-2.5 px-3 text-center select-none shrink-0"
+                  className="py-2.5 px-3 text-center select-none shrink-0 bg-inherit"
                 >
-                  <div className='flex mx-auto w-fit'>
+                  <div className="flex mx-auto w-fit">
                     <input
                       type="checkbox"
                       checked={items.length > 0 && selectedItemIds.length === items.length}
                       onChange={handleToggleSelectAll}
-                      className={cn("bn-checkbox w-3.5 h-3.5 cursor-pointer",
+                      className={cn(
+                        "bn-checkbox w-3.5 h-3.5 cursor-pointer",
                         selectedItemIds.length === 0 && "opacity-0 pointer-events-none"
                       )}
                     />
@@ -498,8 +549,12 @@ export function DatabaseTableView({
 
               {/* Title Column Header */}
               <th
-                style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` } : { width: '220px', minWidth: '160px', maxWidth: '300px' }}
-                className="py-2.5 px-3 font-semibold relative group select-none"
+                style={
+                  columnWidths['title']
+                    ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` }
+                    : { width: '220px', minWidth: '160px', maxWidth: '300px' }
+                }
+                className="py-2.5 px-3 font-semibold relative group select-none bg-inherit"
               >
                 <div className="flex items-center gap-1.5 text-stone-800 dark:text-zinc-200 flex-1 min-w-0">
                   <PropertyTypeIcon type={titleProp?.type || 'title'} icon={titleProp?.icon} className="w-3.5 h-3.5 text-stone-400 shrink-0" />
@@ -576,14 +631,52 @@ export function DatabaseTableView({
           </thead>
 
           <tbody className="divide-y divide-stone-200/35 dark:divide-zinc-800/35">
-            {items.map((item, rowIndex) => {
-              const isUntitledRow = !item.title || item.title === 'Untitled' || item.title.trim() === '';
-              const isEditingRowTitle = editingRowTitleId === item.id;
-              const isGhostedRow = !isEditingRowTitle && isUntitledRow;
+            {/* Top Virtual Spacer Row */}
+            {paddingTop > 0 && (
+              <tr>
+                <td style={{ height: `${paddingTop}px`, padding: 0, border: 'none' }} colSpan={totalColSpan} />
+              </tr>
+            )}
+
+            {/* Virtualized Rows */}
+            {virtualRows.map((virtualRow) => {
+              const item = items[virtualRow.index];
+              if (!item) return null;
+              const rowIndex = virtualRow.index;
+              const isSelected = selectedItemIds.includes(item.id);
+              const isFocusedRow = focusedCell?.rowIndex === rowIndex;
+              const focusedColIndex = isFocusedRow ? focusedCell.colIndex : null;
+              const isRowEditingCell = isFocusedRow && isEditingCell;
+              const isEditingTitle = editingRowTitleId === item.id;
+              const activeCellMenuId = activeOpenMenuId?.startsWith(`cell-${item.id}-`) ? activeOpenMenuId : null;
 
               return (
-                <tr
+                <DatabaseTableRowMemo
                   key={item.id}
+                  item={item}
+                  rowIndex={rowIndex}
+                  titleProp={titleProp}
+                  nonTitleProps={nonTitleProps}
+                  columnWidths={columnWidths}
+                  readOnly={readOnly}
+                  isSelected={isSelected}
+                  isFocusedRow={isFocusedRow}
+                  focusedColIndex={focusedColIndex}
+                  isEditingCell={isRowEditingCell}
+                  activeCellMenuId={activeCellMenuId}
+                  isEditingRowTitle={isEditingTitle}
+                  draggedRowIndex={draggedRowIndex}
+                  rowPaintProps={rowPaint.getItemProps(item.id, isSelected)}
+                  onSelectRow={() => {
+                    setSelectedItemIds((prev) =>
+                      isSelected ? prev.filter((id) => id !== item.id) : [...prev, item.id]
+                    );
+                  }}
+                  onDragStart={(e) => {
+                    setDraggedRowIndex(rowIndex);
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', item.id);
+                  }}
                   onDragOver={(e) => {
                     e.preventDefault();
                     if (draggedRowIndex !== null && draggedRowIndex !== rowIndex) {
@@ -593,212 +686,90 @@ export function DatabaseTableView({
                       setDraggedRowIndex(rowIndex);
                     }
                   }}
-                  className={cn(
-                    "group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors",
-                    draggedRowIndex === rowIndex ? "opacity-50 bg-stone-100 dark:bg-zinc-800" : ""
-                  )}
-                >
-                  {/* Checkbox & Row Drag Handle Column */}
-                  {!readOnly && (
-                    <td
-                      style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
-                      className="py-2 px-3 text-center select-none shrink-0"
-                      {...rowPaint.getItemProps(item.id, selectedItemIds.includes(item.id))}
-                    >
-                      <div className="flex items-center justify-center gap-1 cursor-pointer">
-                        {/* Row Drag Handle (Page Editor style GripVertical) */}
-                        <span
-                          draggable
-                          onDragStart={(e) => {
-                            setDraggedRowIndex(rowIndex);
-                            e.dataTransfer.effectAllowed = 'move';
-                            e.dataTransfer.setData('text/plain', item.id);
-                          }}
-                          onDragEnd={() => setDraggedRowIndex(null)}
-                          className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
-                          title="Drag to reorder row"
-                        >
-                          <GripVertical className="w-3.5 h-3.5" />
-                        </span>
+                  onDragEnd={() => setDraggedRowIndex(null)}
+                  onFocusCell={(colIndex) => {
+                    setFocusedCell({ rowIndex, colIndex });
+                    setIsEditingCell(false);
+                  }}
+                  onSelectCell={(colIndex) => {
+                    setFocusedCell({ rowIndex, colIndex });
+                    setIsEditingCell(true);
+                  }}
+                  onEnterCell={(colIndex) => handleEnterCell(rowIndex, colIndex)}
+                  onNavigateCell={(colIndex, shift) => handleNavigateCell(rowIndex, colIndex, shift)}
+                  onExitEditing={() => setIsEditingCell(false)}
+                  onOpenRowDrawer={onOpenRowDrawer}
+                  onUpdateTitle={(newTitle) => {
+                    if (newTitle !== item.title) {
+                      onUpdateItem(item.id, {
+                        title: newTitle,
+                        properties: {
+                          ...item.properties,
+                          ...(titleProp ? { [titleProp.id]: newTitle } : {}),
+                        },
+                      });
+                    }
+                  }}
+                  onStartEditingTitle={() => {
+                    setEditingRowTitleId(item.id);
+                    setFocusedCell({ rowIndex, colIndex: 0 });
+                    setIsEditingCell(true);
+                  }}
+                  onStopEditingTitle={() => setEditingRowTitleId(null)}
+                  onCellChange={(propId, newVal) => {
+                    const prevProps = { ...item.properties };
+                    setUndoStack((prev) => [
+                      ...prev,
+                      {
+                        type: 'UPDATE_ITEM',
+                        payload: { itemId: item.id, previousState: { properties: prevProps } },
+                      },
+                    ]);
 
-                        {/* Row Checkbox (Visible on hover, or when selected) */}
-                        <input
-                          type="checkbox"
-                          checked={selectedItemIds.includes(item.id)}
-                          onChange={() => { }}
-                          className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${selectedItemIds.includes(item.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                            }`}
-                        />
-                      </div>
-                    </td>
-                  )}
-
-                  {/* Title Cell + Open Page Button */}
-                  <td
-                    onClick={() => {
-                      setFocusedCell({ rowIndex, colIndex: 0 });
-                      setIsEditingCell(false);
-                    }}
-                    style={columnWidths['title'] ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` } : { width: '220px', minWidth: '160px', maxWidth: '300px' }}
-                    className={`py-2 px-3 font-medium transition-colors ${focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === 0
-                      ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
-                      : ''
-                      }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <input
-                        ref={(el) => {
-                          if (el) {
-                            titleInputRefs.current.set(item.id, el);
-                          } else {
-                            titleInputRefs.current.delete(item.id);
-                          }
-                        }}
-                        type="text"
-                        defaultValue={item.title}
-                        disabled={readOnly}
-                        onFocus={() => {
-                          setEditingRowTitleId(item.id);
-                          setFocusedCell({ rowIndex, colIndex: 0 });
-                          setIsEditingCell(true);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            (e.target as HTMLInputElement).blur();
-                            handleEnterCell(rowIndex, 0);
-                          } else if (e.key === 'Escape') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            (e.target as HTMLInputElement).blur();
-                            setIsEditingCell(false);
-                          } else if (e.key === 'Tab') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            (e.target as HTMLInputElement).blur();
-                            handleNavigateCell(rowIndex, 0, e.shiftKey);
-                          }
-                        }}
-                        onBlur={(e) => {
-                          setEditingRowTitleId(null);
-                          if (e.target.value !== item.title) {
-                            onUpdateItem(item.id, {
-                              title: e.target.value,
-                              properties: {
-                                ...item.properties,
-                                ...(titleProp ? { [titleProp.id]: e.target.value } : {}),
-                              },
-                            });
-                          }
-                        }}
-                        className={cn(
-                          "w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-xs transition-colors focus:text-stone-900 dark:focus:text-zinc-100 focus:opacity-100 focus:font-medium",
-                          isGhostedRow
-                            ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
-                            : "text-stone-900 dark:text-zinc-100 font-medium opacity-100"
-                        )}
-                        placeholder="Untitled"
-                      />
-
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        {onOpenRowDrawer && (
-                          <button
-                            onClick={() => onOpenRowDrawer(item)}
-                            className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
-                          >
-                            <Maximize2 className="w-3 h-3" />
-                            <span>Open</span>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Dynamic Property Cells */}
-                  {nonTitleProps.map((prop, colIndex) => {
+                    onUpdateItem(item.id, {
+                      properties: {
+                        ...item.properties,
+                        [propId]: newVal,
+                      },
+                    });
+                  }}
+                  onAddOption={(prop, newOptName) => {
+                    if (!onUpdateProperty) return;
+                    const newOptId = newOptName.toLowerCase().replace(/\s+/g, '_');
+                    const color = AUTO_COLORS[(prop.options?.length || 0) % AUTO_COLORS.length];
+                    const updatedOptions = [...(prop.options || []), { id: newOptId, name: newOptName, color }];
+                    onUpdateProperty(prop.id, { options: updatedOptions });
                     const val = item.properties?.[prop.id];
-                    const cellMenuId = `cell-${item.id}-${prop.id}`;
-                    const isFocused = focusedCell?.rowIndex === rowIndex && focusedCell?.colIndex === colIndex + 1;
-                    const colWidth = columnWidths[prop.id];
-
-                    return (
-                      <td
-                        key={prop.id}
-                        onClick={() => {
-                          setFocusedCell({ rowIndex, colIndex: colIndex + 1 });
-                          setIsEditingCell(false);
-                        }}
-                        style={colWidth ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` } : { width: '160px', minWidth: '120px', maxWidth: '200px' }}
-                        className={`py-2 px-3 transition-colors ${isFocused
-                          ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500'
-                          : ''
-                          }`}
-                      >
-                        <InteractiveCell
-                          prop={prop}
-                          value={val}
-                          readOnly={readOnly}
-                          isFocused={isFocused}
-                          isEditing={isEditingCell && isFocused}
-                          onNavigate={(shift) => handleNavigateCell(rowIndex, colIndex + 1, shift)}
-                          onEnterRow={() => handleEnterCell(rowIndex, colIndex + 1)}
-                          onExitEditing={() => setIsEditingCell(false)}
-                          onSelectCell={() => {
-                            setFocusedCell({ rowIndex, colIndex: colIndex + 1 });
-                            setIsEditingCell(true);
-                          }}
-                          onMouseDownCheckbox={(e) => handlePropertyCheckboxMouseDown(item.id, prop.id, Boolean(val), e)}
-                          onMouseEnterCheckbox={() => handlePropertyCheckboxMouseEnter(item.id, prop.id)}
-                          isPopoverOpen={activeOpenMenuId === cellMenuId}
-                          onTogglePopover={() => setActiveOpenMenuId(activeOpenMenuId === cellMenuId ? null : cellMenuId)}
-                          onClosePopover={() => setActiveOpenMenuId(null)}
-                          onUpdateProperty={onUpdateProperty}
-                          onChange={(newVal) => {
-                            const prevProps = { ...item.properties };
-                            setUndoStack((prev) => [
-                              ...prev,
-                              {
-                                type: 'UPDATE_ITEM',
-                                payload: { itemId: item.id, previousState: { properties: prevProps } },
-                              },
-                            ]);
-
-                            onUpdateItem(item.id, {
-                              properties: {
-                                ...item.properties,
-                                [prop.id]: newVal,
-                              },
-                            });
-                          }}
-                          onAddOption={(newOptName) => {
-                            if (!onUpdateProperty) return;
-                            const newOptId = newOptName.toLowerCase().replace(/\s+/g, '_');
-                            const color = AUTO_COLORS[(prop.options?.length || 0) % AUTO_COLORS.length];
-                            const updatedOptions = [...(prop.options || []), { id: newOptId, name: newOptName, color }];
-                            onUpdateProperty(prop.id, { options: updatedOptions });
-                            onUpdateItem(item.id, {
-                              properties: {
-                                ...item.properties,
-                                [prop.id]: prop.type === 'multi_select' ? [...(Array.isArray(val) ? val : []), newOptId] : newOptId,
-                              },
-                            });
-                          }}
-                        />
-                      </td>
-                    );
-                  })}
-
-                  {!readOnly && <td className="py-2 px-2"></td>}
-                </tr>
+                    onUpdateItem(item.id, {
+                      properties: {
+                        ...item.properties,
+                        [prop.id]: prop.type === 'multi_select' ? [...(Array.isArray(val) ? val : []), newOptId] : newOptId,
+                      },
+                    });
+                  }}
+                  onTogglePopover={(cellMenuId) => setActiveOpenMenuId(activeOpenMenuId === cellMenuId ? null : cellMenuId)}
+                  onClosePopover={() => setActiveOpenMenuId(null)}
+                  onPropertyCheckboxMouseDown={(propId, currentVal, e) => handlePropertyCheckboxMouseDown(item.id, propId, currentVal, e)}
+                  onPropertyCheckboxMouseEnter={(propId) => handlePropertyCheckboxMouseEnter(item.id, propId)}
+                  onUpdateProperty={onUpdateProperty}
+                  registerTitleInputRef={(el) => {
+                    if (el) titleInputRefs.current.set(item.id, el);
+                    else titleInputRefs.current.delete(item.id);
+                  }}
+                />
               );
             })}
 
+            {/* Bottom Virtual Spacer Row */}
+            {paddingBottom > 0 && (
+              <tr>
+                <td style={{ height: `${paddingBottom}px`, padding: 0, border: 'none' }} colSpan={totalColSpan} />
+              </tr>
+            )}
+
             {/* Full-width + New row Table Row */}
             {!readOnly && (
-              <tr
-                className="group hover:bg-stone-100/70 dark:hover:bg-zinc-800/40 transition-colors border-b border-stone-200/40 dark:border-zinc-800/40 select-none"
-              >
+              <tr className="group hover:bg-stone-100/70 dark:hover:bg-zinc-800/40 transition-colors border-b border-stone-200/40 dark:border-zinc-800/40 select-none">
                 <td
                   onClick={handleAddNewRow}
                   className="py-2 px-2 text-center text-stone-400 dark:text-zinc-500 cursor-pointer"
@@ -924,6 +895,268 @@ export function DatabaseTableView({
   );
 }
 
+// --------------------------------------------------------------------------
+// Ultra-Performant Memoized Row Component
+// --------------------------------------------------------------------------
+interface DatabaseTableRowProps {
+  item: DatabaseItem;
+  rowIndex: number;
+  titleProp?: DatabaseProperty;
+  nonTitleProps: DatabaseProperty[];
+  columnWidths: Record<string, number>;
+  readOnly: boolean;
+  isSelected: boolean;
+  isFocusedRow: boolean;
+  focusedColIndex: number | null;
+  isEditingCell: boolean;
+  activeCellMenuId: string | null;
+  isEditingRowTitle: boolean;
+  draggedRowIndex: number | null;
+  rowPaintProps: any;
+  onSelectRow: () => void;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
+  onFocusCell: (colIndex: number) => void;
+  onSelectCell: (colIndex: number) => void;
+  onEnterCell: (colIndex: number) => void;
+  onNavigateCell: (colIndex: number, shift?: boolean) => void;
+  onExitEditing: () => void;
+  onOpenRowDrawer?: (item: DatabaseItem) => void;
+  onUpdateTitle: (newTitle: string) => void;
+  onStartEditingTitle: () => void;
+  onStopEditingTitle: () => void;
+  onCellChange: (propId: string, val: any) => void;
+  onAddOption: (prop: DatabaseProperty, optName: string) => void;
+  onTogglePopover: (cellMenuId: string) => void;
+  onClosePopover: () => void;
+  onPropertyCheckboxMouseDown: (propId: string, currentVal: boolean, e: React.MouseEvent) => void;
+  onPropertyCheckboxMouseEnter: (propId: string) => void;
+  onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
+  registerTitleInputRef: (el: HTMLInputElement | null) => void;
+}
+
+function DatabaseTableRow({
+  item,
+  rowIndex,
+  titleProp: _titleProp,
+  nonTitleProps,
+  columnWidths,
+  readOnly,
+  isSelected,
+  isFocusedRow,
+  focusedColIndex,
+  isEditingCell,
+  activeCellMenuId,
+  isEditingRowTitle,
+  draggedRowIndex,
+  rowPaintProps,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+  onFocusCell,
+  onSelectCell,
+  onEnterCell,
+  onNavigateCell,
+  onExitEditing,
+  onOpenRowDrawer,
+  onUpdateTitle,
+  onStartEditingTitle,
+  onStopEditingTitle,
+  onCellChange,
+  onAddOption,
+  onTogglePopover,
+  onClosePopover,
+  onPropertyCheckboxMouseDown,
+  onPropertyCheckboxMouseEnter,
+  onUpdateProperty,
+  registerTitleInputRef,
+}: DatabaseTableRowProps) {
+  const isUntitledRow = !item.title || item.title === 'Untitled' || item.title.trim() === '';
+  const isGhostedRow = !isEditingRowTitle && isUntitledRow;
+
+  const localTitleRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (localTitleRef.current && localTitleRef.current !== document.activeElement) {
+      localTitleRef.current.value = item.title || '';
+    }
+  }, [item.title]);
+
+  return (
+    <tr
+      onDragOver={onDragOver}
+      className={cn(
+        "group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors",
+        draggedRowIndex === rowIndex ? "opacity-50 bg-stone-100 dark:bg-zinc-800" : ""
+      )}
+    >
+      {/* Checkbox & Row Drag Handle Column */}
+      {!readOnly && (
+        <td
+          style={{ width: '48px', minWidth: '48px', maxWidth: '48px' }}
+          className="py-2 px-3 text-center select-none shrink-0"
+          {...rowPaintProps}
+        >
+          <div className="flex items-center justify-center gap-1 cursor-pointer">
+            {/* Row Drag Handle */}
+            <span
+              draggable
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              className="opacity-0 group-hover:opacity-100 cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 p-0.5 shrink-0 transition-opacity"
+              title="Drag to reorder row"
+            >
+              <GripVertical className="w-3.5 h-3.5" />
+            </span>
+
+            {/* Row Checkbox (Visible on hover, or when selected) */}
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => { }}
+              className={`bn-checkbox w-3.5 h-3.5 cursor-pointer transition-opacity pointer-events-none ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                }`}
+            />
+          </div>
+        </td>
+      )}
+
+      {/* Title Cell + Open Page Button */}
+      <td
+        onClick={() => onFocusCell(0)}
+        style={
+          columnWidths['title']
+            ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` }
+            : { width: '220px', minWidth: '160px', maxWidth: '300px' }
+        }
+        className={`py-2 px-3 font-medium transition-colors ${isFocusedRow && focusedColIndex === 0
+          ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
+          : ''
+          }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <input
+            ref={(el) => {
+              localTitleRef.current = el;
+              registerTitleInputRef(el);
+            }}
+            type="text"
+            defaultValue={item.title}
+            disabled={readOnly}
+            onFocus={onStartEditingTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                e.stopPropagation();
+                (e.target as HTMLInputElement).blur();
+                onEnterCell(0);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                e.stopPropagation();
+                (e.target as HTMLInputElement).blur();
+                onExitEditing();
+              } else if (e.key === 'Tab') {
+                e.preventDefault();
+                e.stopPropagation();
+                (e.target as HTMLInputElement).blur();
+                onNavigateCell(0, e.shiftKey);
+              }
+            }}
+            onBlur={(e) => {
+              onStopEditingTitle();
+              onUpdateTitle(e.target.value);
+            }}
+            className={cn(
+              "w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-xs transition-colors focus:text-stone-900 dark:focus:text-zinc-100 focus:opacity-100 focus:font-medium",
+              isGhostedRow
+                ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
+                : "text-stone-900 dark:text-zinc-100 font-medium opacity-100"
+            )}
+            placeholder="Untitled"
+          />
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+            {onOpenRowDrawer && (
+              <button
+                onClick={() => onOpenRowDrawer(item)}
+                className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
+              >
+                <Maximize2 className="w-3 h-3" />
+                <span>Open</span>
+              </button>
+            )}
+          </div>
+        </div>
+      </td>
+
+      {/* Dynamic Property Cells */}
+      {nonTitleProps.map((prop, colIndex) => {
+        const val = item.properties?.[prop.id];
+        const cellMenuId = `cell-${item.id}-${prop.id}`;
+        const isCellFocused = isFocusedRow && focusedColIndex === colIndex + 1;
+        const colWidth = columnWidths[prop.id];
+
+        return (
+          <td
+            key={prop.id}
+            onClick={() => onFocusCell(colIndex + 1)}
+            style={
+              colWidth
+                ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` }
+                : { width: '160px', minWidth: '120px', maxWidth: '200px' }
+            }
+            className={`py-2 px-3 transition-colors ${isCellFocused ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500' : ''
+              }`}
+          >
+            <InteractiveCell
+              prop={prop}
+              value={val}
+              readOnly={readOnly}
+              isFocused={isCellFocused}
+              isEditing={isEditingCell && isCellFocused}
+              onNavigate={(shift) => onNavigateCell(colIndex + 1, shift)}
+              onEnterRow={() => onEnterCell(colIndex + 1)}
+              onExitEditing={onExitEditing}
+              onSelectCell={() => onSelectCell(colIndex + 1)}
+              onMouseDownCheckbox={(e) => onPropertyCheckboxMouseDown(prop.id, Boolean(val), e)}
+              onMouseEnterCheckbox={() => onPropertyCheckboxMouseEnter(prop.id)}
+              isPopoverOpen={activeCellMenuId === cellMenuId}
+              onTogglePopover={() => onTogglePopover(cellMenuId)}
+              onClosePopover={onClosePopover}
+              onUpdateProperty={onUpdateProperty}
+              onChange={(newVal) => onCellChange(prop.id, newVal)}
+              onAddOption={(newOptName) => onAddOption(prop, newOptName)}
+            />
+          </td>
+        );
+      })}
+
+      {!readOnly && <td className="py-2 px-2"></td>}
+    </tr>
+  );
+}
+
+const DatabaseTableRowMemo = React.memo(DatabaseTableRow, (prev, next) => {
+  return (
+    prev.item === next.item &&
+    prev.rowIndex === next.rowIndex &&
+    prev.isSelected === next.isSelected &&
+    prev.isFocusedRow === next.isFocusedRow &&
+    prev.focusedColIndex === next.focusedColIndex &&
+    prev.isEditingCell === next.isEditingCell &&
+    prev.activeCellMenuId === next.activeCellMenuId &&
+    prev.isEditingRowTitle === next.isEditingRowTitle &&
+    (prev.draggedRowIndex === prev.rowIndex) === (next.draggedRowIndex === next.rowIndex) &&
+    prev.columnWidths === next.columnWidths &&
+    prev.nonTitleProps === next.nonTitleProps &&
+    prev.readOnly === next.readOnly
+  );
+});
+
+// --------------------------------------------------------------------------
+// Column Header & Action Components
+// --------------------------------------------------------------------------
 function ColumnHeaderCell({
   prop,
   readOnly,
@@ -959,7 +1192,7 @@ function ColumnHeaderCell({
   return (
     <th
       style={width ? { width: `${width}px`, minWidth: `${width}px`, maxWidth: `${width}px` } : { width: '160px', minWidth: '120px', maxWidth: '200px' }}
-      className="py-2.5 px-3 font-medium relative group select-none"
+      className="py-2.5 px-3 font-medium relative group select-none bg-inherit"
     >
       <div className="flex items-center justify-between gap-1">
         <div className="flex items-center gap-1.5 text-stone-700 dark:text-zinc-300 flex-1 min-w-0">
@@ -1145,7 +1378,7 @@ function AddPropertyHeaderCell({
   };
 
   return (
-    <th className="py-2.5 px-3 text-left font-normal relative select-none shrink-0">
+    <th className="py-2.5 px-3 text-left font-normal relative select-none shrink-0 bg-inherit">
       <button
         ref={buttonRef}
         onClick={() => {
@@ -1385,6 +1618,9 @@ function OptionRowItem({
   );
 }
 
+// --------------------------------------------------------------------------
+// Interactive Cell Implementation
+// --------------------------------------------------------------------------
 interface InteractiveCellProps {
   prop: DatabaseProperty;
   value: any;
@@ -1499,6 +1735,12 @@ function InteractiveCell({
   const validation = validatePropertyValue(prop.type, value);
   const isInvalid = !validation.isValid;
   const cellInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (cellInputRef.current && cellInputRef.current !== document.activeElement) {
+      cellInputRef.current.value = value ?? '';
+    }
+  }, [value]);
 
   useEffect(() => {
     if (isEditing && cellInputRef.current && document.activeElement !== cellInputRef.current) {
@@ -1660,7 +1902,7 @@ function InteractiveCell({
         const query = searchInput.trim();
         if (!query) return;
 
-        // Requirement 3: On Enter key, auto-select top remaining matching option
+        // Auto-select top remaining matching option
         if (filteredOptions.length > 0) {
           const topMatch = filteredOptions[0];
           if (prop.type === 'multi_select') {
@@ -1675,7 +1917,7 @@ function InteractiveCell({
           }
           setSearchInput('');
         } else {
-          // If no matching options exist, create new option from input
+          // Create new option
           onAddOption(query);
           setSearchInput('');
           closePopover();
