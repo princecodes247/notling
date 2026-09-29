@@ -18,7 +18,7 @@ function DashboardFoldersPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: session } = useQuery({
+  const { data: session, isLoading: sessionLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => await getSession(),
     staleTime: 5 * 60 * 1000,
@@ -26,7 +26,7 @@ function DashboardFoldersPage() {
 
   const workspaceId = session?.workspaceId;
 
-  const { data: treeNodes = [], refetch: refetchTree } = useQuery({
+  const { data: treeNodes = [], refetch: refetchTree, isLoading: isTreeLoading } = useQuery({
     queryKey: ['pageTree', workspaceId],
     queryFn: async () => {
       if (!workspaceId) return [];
@@ -36,7 +36,7 @@ function DashboardFoldersPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: databasesList = [], refetch: refetchDbs } = useQuery({
+  const { data: databasesList = [], refetch: refetchDbs, isLoading: isDbsLoading } = useQuery({
     queryKey: ['databasesList', workspaceId],
     queryFn: async () => {
       if (!workspaceId) return [];
@@ -45,6 +45,8 @@ function DashboardFoldersPage() {
     enabled: !!workspaceId,
     staleTime: 5 * 60 * 1000,
   });
+
+  const isLoading = sessionLoading || (!!workspaceId && (isTreeLoading || isDbsLoading));
 
 
   const isCreatingDocRef = useRef(false);
@@ -136,6 +138,7 @@ function DashboardFoldersPage() {
     <FoldersView
       treeNodes={treeNodes}
       databasesList={databasesList}
+      isLoading={isLoading}
       onSelectPage={(id) => navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } })}
       onSelectDatabase={(dbId) => navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } })}
       onCreateDocument={(folderId) => createDocumentMutation.mutate(folderId)}

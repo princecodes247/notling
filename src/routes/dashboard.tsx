@@ -228,10 +228,10 @@ function DashboardLayout() {
       }
     } else if (currentPath.includes('/dashboard/folders')) {
       doSetActivePageId(null);
-      document.title = 'Folders - Notling';
+      document.title = 'All Pages - Notling';
       doOpenTab({
         id: 'folders',
-        title: 'Folders',
+        title: 'All Pages',
         path: '/dashboard/folders',
       });
     } else if (currentPath.includes('/dashboard/settings')) {

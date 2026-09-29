@@ -34,6 +34,7 @@ export interface FlatItem {
 interface FoldersViewProps {
   treeNodes: PageTreeNode[];
   databasesList?: Database[];
+  isLoading?: boolean;
   onSelectPage: (id: string) => void;
   onSelectDatabase?: (databaseId: string) => void;
   onCreateDocument: (folderId?: string) => void;
@@ -43,11 +44,64 @@ interface FoldersViewProps {
   onDelete?: (item: { id: string; databaseId?: string | null }) => void;
 }
 
+export const FoldersSkeleton: React.FC = () => {
+  return (
+    <div className="animate-pulse flex flex-col gap-8">
+      {/* Header Skeleton */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
+        <div className="flex flex-col gap-2">
+          <div className="h-7 w-36 bg-stone-200 dark:bg-zinc-800 rounded-md" />
+          <div className="h-4 w-72 bg-stone-100 dark:bg-zinc-800/60 rounded-md" />
+        </div>
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="h-8 w-32 bg-stone-200 dark:bg-zinc-800 rounded-lg" />
+          <div className="h-8 w-32 bg-stone-200 dark:bg-zinc-800 rounded-lg" />
+        </div>
+      </div>
+
+      {/* Toolbar Skeleton */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="h-9 flex-1 max-w-md bg-stone-100 dark:bg-zinc-900/60 rounded-xl" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="h-8 w-48 bg-stone-100 dark:bg-zinc-800/60 rounded-xl" />
+          <div className="h-8 w-28 bg-stone-100 dark:bg-zinc-800/60 rounded-xl" />
+          <div className="h-8 w-16 bg-stone-100 dark:bg-zinc-800/60 rounded-xl" />
+        </div>
+      </div>
+
+      <div>
+        <div className="h-4 w-1/3 bg-stone-100 dark:bg-zinc-800 rounded" />
+
+      </div>
+
+      {/* Items List Skeleton */}
+      <div className="flex flex-col divide-y divide-stone-100 dark:divide-zinc-800/80 bg-stone-50/30 dark:bg-zinc-900/20 overflow-hidden">
+        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+          <div key={i} className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-5 h-5 rounded bg-stone-200 dark:bg-zinc-800 shrink-0" />
+              <div className="flex flex-col gap-1.5 flex-1 max-w-md">
+                <div className="h-4 w-1/3 bg-stone-200 dark:bg-zinc-800 rounded" />
+                <div className="h-3 w-1/5 bg-stone-100 dark:bg-zinc-800/60 rounded" />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-16 bg-stone-100 dark:bg-zinc-800/60 rounded" />
+              <div className="w-4 h-4 rounded bg-stone-200 dark:bg-zinc-800" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const PAGE_SIZE = 12;
 
 export const FoldersView: React.FC<FoldersViewProps> = ({
   treeNodes,
   databasesList = [],
+  isLoading = false,
   onSelectPage,
   onSelectDatabase,
   onCreateDocument,
@@ -196,356 +250,360 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   return (
     <div className="flex-1 pt-12 w-full h-full bg-white dark:bg-[#18181b] text-stone-900 dark:text-zinc-100 overflow-y-auto select-none p-4 sm:p-10 pb-6 sm:pb-10 font-sans flex flex-col">
       <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col gap-8">
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
-              All Pages
-            </h1>
-            <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
-              Browse, filter, and manage all documents, databases, and collections in your workspace.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => onCreateDocument()}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
-            >
-              <HugeiconsIcon icon={PlusSignIcon} size={15} />
-              <span>New Document</span>
-            </button>
-
-            {onCreateDatabase && (
-              <button
-                type="button"
-                onClick={onCreateDatabase}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
-              >
-                <HugeiconsIcon icon={DatabaseIcon} size={15} />
-                <span>New Database</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Toolbar: Search, Filters, Sort & View Mode */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-
-          {/* Search Input */}
-          <div className="relative flex-1 max-w-md">
-            <HugeiconsIcon
-              icon={Search01Icon}
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-zinc-500 pointer-events-none"
-            />
-            <input
-              type="text"
-              placeholder="Search pages and databases..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-neutral-200/90 dark:border-zinc-800 bg-neutral-50/70 dark:bg-zinc-900/60 text-neutral-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-all"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between md:justify-end gap-3">
-            {/* Category Filter Pills */}
-            <div className="flex items-center p-1 rounded-xl bg-neutral-100/80 dark:bg-zinc-800/60 text-xs font-medium border border-neutral-200/60 dark:border-zinc-700/50">
-              {[
-                { key: 'all', label: `All (${allItems.length})` },
-                { key: 'page', label: 'Pages' },
-                { key: 'database', label: 'Databases' },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilterType(tab.key as any)}
-                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${filterType === tab.key
-                    ? 'bg-white dark:bg-zinc-900 text-neutral-950 dark:text-white shadow-2xs'
-                    : 'text-neutral-500 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200'
-                    }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Sort & View Mode Controls */}
-            <div className="flex items-center gap-2">
-              {/* Sort Selector */}
-              <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-neutral-600 dark:text-zinc-300">
-                <HugeiconsIcon icon={Sorting01Icon} size={14} className="text-neutral-400" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="bg-transparent border-none focus:outline-none cursor-pointer text-xs"
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="alpha">Alphabetical</option>
-                </select>
+        {isLoading ? (
+          <FoldersSkeleton />
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100 dark:border-zinc-800/80">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-normal text-stone-950 dark:text-white tracking-tight">
+                  All Pages
+                </h1>
+                <p className="text-xs sm:text-sm text-stone-500 dark:text-zinc-400 mt-1">
+                  Browse, filter, and manage all documents, databases, and collections in your workspace.
+                </p>
               </div>
 
-              {/* View Toggle */}
-              <div className="flex items-center p-1 rounded-xl bg-neutral-100/80 dark:bg-zinc-800/60 border border-neutral-200/60 dark:border-zinc-700/50">
+              <div className="flex items-center gap-2.5 shrink-0">
                 <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-lg cursor-pointer transition-colors ${viewMode === 'grid'
-                    ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
-                    : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
-                    }`}
-                  title="Grid View"
+                  type="button"
+                  onClick={() => onCreateDocument()}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-stone-200/90 dark:border-zinc-700/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-800 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer shadow-2xs active-press"
                 >
-                  <HugeiconsIcon icon={GridIcon} size={14} />
+                  <HugeiconsIcon icon={PlusSignIcon} size={15} />
+                  <span>New Document</span>
                 </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-lg cursor-pointer transition-colors ${viewMode === 'list'
-                    ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
-                    : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
-                    }`}
-                  title="List View"
-                >
-                  <HugeiconsIcon icon={Menu01Icon} size={14} />
-                </button>
+
+                {onCreateDatabase && (
+                  <button
+                    type="button"
+                    onClick={onCreateDatabase}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-brand-bg hover:bg-brand-hover text-brand-fg text-xs font-medium transition-colors shadow-2xs cursor-pointer active-press"
+                  >
+                    <HugeiconsIcon icon={DatabaseIcon} size={15} />
+                    <span>New Database</span>
+                  </button>
+                )}
               </div>
             </div>
 
-          </div>
-        </div>
+            {/* Toolbar: Search, Filters, Sort & View Mode */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
-        {/* Counter Summary */}
-        <div className="text-xs text-neutral-400 dark:text-zinc-500 font-medium">
-          Showing {displayedItems.length} of {filteredSortedItems.length} items
-        </div>
+              {/* Search Input */}
+              <div className="relative flex-1 max-w-md">
+                <HugeiconsIcon
+                  icon={Search01Icon}
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 dark:text-zinc-500 pointer-events-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Search pages and databases..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-neutral-200/90 dark:border-zinc-800 bg-neutral-50/70 dark:bg-zinc-900/60 text-neutral-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                />
+              </div>
 
-        {/* Items Container */}
-        {filteredSortedItems.length === 0 ? (
-          <div className="py-20 border border-dashed border-neutral-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center p-8 gap-3 bg-neutral-50/40 dark:bg-zinc-900/40">
-            <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200 dark:border-zinc-700 text-neutral-500 dark:text-zinc-400 flex items-center justify-center shadow-2xs">
-              <HugeiconsIcon icon={File01Icon} size={24} />
-            </div>
-            <div className="flex flex-col gap-1 max-w-sm">
-              <h3 className="text-base font-semibold text-neutral-950 dark:text-white tracking-tight">
-                No items found
-              </h3>
-              <p className="text-xs text-neutral-500 dark:text-zinc-400 leading-relaxed">
-                {searchQuery
-                  ? `No pages or databases match "${searchQuery}".`
-                  : 'Start by creating your first document, database, or folder.'}
-              </p>
-            </div>
-          </div>
-        ) : viewMode === 'grid' ? (
-          /* Grid Layout */
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {displayedItems.map((item) => (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.15 }}
-                onClick={() => handleItemClick(item)}
-                className="group rounded-lg border border-stone-200/90 dark:border-zinc-800/90 bg-white dark:bg-[#1f1f23] hover:border-stone-300 dark:hover:border-zinc-700 p-4 flex flex-col justify-between gap-4 cursor-pointer transition-all hover:shadow-xs active:scale-[0.99]"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="w-9 h-9 rounded-lg bg-stone-50 dark:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-700/80 flex items-center justify-center text-lg shrink-0 group-hover:scale-105 transition-transform">
-                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <span
-                      className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase tracking-wider ${item.type === 'database'
-                        ? 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
-                        : 'hidden'
+              <div className="flex flex-wrap items-center justify-between md:justify-end gap-3">
+                {/* Category Filter Pills */}
+                <div className="flex items-center p-1 rounded-xl bg-neutral-100/80 dark:bg-zinc-800/60 text-xs font-medium border border-neutral-200/60 dark:border-zinc-700/50">
+                  {[
+                    { key: 'all', label: `All (${allItems.length})` },
+                    { key: 'page', label: 'Pages' },
+                    { key: 'database', label: 'Databases' },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setFilterType(tab.key as any)}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer ${filterType === tab.key
+                        ? 'bg-white dark:bg-zinc-900 text-neutral-950 dark:text-white shadow-2xs'
+                        : 'text-neutral-500 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200'
                         }`}
                     >
-                      {item.type}
-                    </span>
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sort & View Mode Controls */}
+                <div className="flex items-center gap-2">
+                  {/* Sort Selector */}
+                  <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-neutral-600 dark:text-zinc-300">
+                    <HugeiconsIcon icon={Sorting01Icon} size={14} className="text-neutral-400" />
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="bg-transparent border-none focus:outline-none cursor-pointer text-xs"
+                    >
+                      <option value="newest">Newest first</option>
+                      <option value="oldest">Oldest first</option>
+                      <option value="alpha">Alphabetical</option>
+                    </select>
+                  </div>
+
+                  {/* View Toggle */}
+                  <div className="flex items-center p-1 rounded-xl bg-neutral-100/80 dark:bg-zinc-800/60 border border-neutral-200/60 dark:border-zinc-700/50">
+                    <button
+                      onClick={() => setViewMode('grid')}
+                      className={`p-1.5 rounded-lg cursor-pointer transition-colors ${viewMode === 'grid'
+                        ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
+                        : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
+                        }`}
+                      title="Grid View"
+                    >
+                      <HugeiconsIcon icon={GridIcon} size={14} />
+                    </button>
+                    <button
+                      onClick={() => setViewMode('list')}
+                      className={`p-1.5 rounded-lg cursor-pointer transition-colors ${viewMode === 'list'
+                        ? 'bg-white dark:bg-zinc-900 text-neutral-900 dark:text-white shadow-2xs'
+                        : 'text-neutral-400 hover:text-neutral-700 dark:hover:text-zinc-300'
+                        }`}
+                      title="List View"
+                    >
+                      <HugeiconsIcon icon={Menu01Icon} size={14} />
+                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-1 min-w-0">
-                  <h3 className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
-                    {item.title}
+              </div>
+            </div>
+
+            {/* Counter Summary */}
+            <div className="text-xs text-neutral-400 dark:text-zinc-500 font-medium">
+              Showing {displayedItems.length} of {filteredSortedItems.length} items
+            </div>
+
+            {/* Items Container */}
+            {filteredSortedItems.length === 0 ? (
+              <div className="py-20 border border-dashed border-neutral-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center p-8 gap-3 bg-neutral-50/40 dark:bg-zinc-900/40">
+                <div className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-200 dark:border-zinc-700 text-neutral-500 dark:text-zinc-400 flex items-center justify-center shadow-2xs">
+                  <HugeiconsIcon icon={File01Icon} size={24} />
+                </div>
+                <div className="flex flex-col gap-1 max-w-sm">
+                  <h3 className="text-base font-semibold text-neutral-950 dark:text-white tracking-tight">
+                    No items found
                   </h3>
-
-                  {item.parentTitle && (
-                    <p className="text-[11px] text-stone-400 dark:text-zinc-500 truncate flex items-center gap-1">
-                      <span>in</span>
-                      <span className="font-medium text-stone-600 dark:text-zinc-400">{item.parentTitle}</span>
-                    </p>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t border-stone-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500">
-                  <span>
-                    {(item.childrenCount || 0) > 0
-                      ? `${item.childrenCount} sub-page${item.childrenCount === 1 ? '' : 's'}`
-                      : item.createdAt
-                        ? new Date(item.createdAt).toLocaleDateString()
-                        : 'Document'}
-                  </span>
-
-                  <div className="flex items-center gap-1">
-                    {onTogglePin && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onTogglePin(item.id);
-                        }}
-                        className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 transition-colors cursor-pointer"
-                        title="Favorite Item"
-                      >
-                        <Star className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {onDuplicate && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDuplicate(item.id);
-                        }}
-                        className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                        title="Duplicate Item"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {onDelete && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDelete({ id: item.id, databaseId: item.databaseId });
-                        }}
-                        className="p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-500 transition-colors cursor-pointer"
-                        title="Delete Item"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      size={14}
-                      className="group-hover:translate-x-0.5 text-stone-300 dark:text-zinc-600 group-hover:text-stone-700 dark:group-hover:text-zinc-200 transition-all ml-0.5"
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          /* List Layout */
-          <div className="divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
-            {displayedItems.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => handleItemClick(item)}
-                className="p-3 px-4 flex items-center justify-between hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 cursor-pointer group transition-colors"
-              >
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="flex items-center justify-center text-base shrink-0">
-                    {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xs font-semibold text-stone-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
-                        {item.title}
-                      </h3>
-                      <span
-                        className={`px-1.5 py-0.2 rounded-md text-[9px] font-mono uppercase ${item.type === 'database'
-                          ? 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
-                          : 'hidden'
-                          }`}
-                      >
-                        {item.type}
-                      </span>
-                    </div>
-
-                    {item.parentTitle && (
-                      <span className="text-[10px] text-stone-400 dark:text-zinc-500">
-                        In {item.parentTitle}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 text-xs text-stone-400 shrink-0">
-                  <span className="hidden sm:inline text-[11px]">
-                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
-                  </span>
-                  {onTogglePin && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onTogglePin(item.id);
-                      }}
-                      className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 cursor-pointer"
-                      title="Favorite Item"
-                    >
-                      <Star className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {onDuplicate && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDuplicate(item.id);
-                      }}
-                      className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 cursor-pointer"
-                      title="Duplicate Item"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {onDelete && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete({ id: item.id, databaseId: item.databaseId });
-                      }}
-                      className="p-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-500 cursor-pointer"
-                      title="Delete Item"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    size={14}
-                    className="group-hover:translate-x-0.5 text-stone-300 dark:text-zinc-600 group-hover:text-stone-700 dark:group-hover:text-zinc-200 transition-all"
-                  />
+                  <p className="text-xs text-neutral-500 dark:text-zinc-400 leading-relaxed">
+                    {searchQuery
+                      ? `No pages or databases match "${searchQuery}".`
+                      : 'Start by creating your first document, database, or folder.'}
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            ) : viewMode === 'grid' ? (
+              /* Grid Layout */
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {displayedItems.map((item) => (
+                  <motion.div
+                    key={item.id}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    onClick={() => handleItemClick(item)}
+                    className="group rounded-lg border border-stone-200/90 dark:border-zinc-800/90 bg-white dark:bg-[#1f1f23] hover:border-stone-300 dark:hover:border-zinc-700 p-4 flex flex-col justify-between gap-4 cursor-pointer transition-all hover:shadow-xs active:scale-[0.99]"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="w-9 h-9 rounded-lg bg-stone-50 dark:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-700/80 flex items-center justify-center text-lg shrink-0 group-hover:scale-105 transition-transform">
+                        {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
+                      </div>
 
-        {/* Infinite Scroll Sentinel & Loader */}
-        <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center min-h-[60px]">
-          {isLoadingMore && (
-            <div className="flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-zinc-400 animate-pulse">
-              <div className="w-4 h-4 rounded-full border-2 border-[#1f4d3d] border-t-transparent animate-spin" />
-              <span>Loading more items...</span>
+                      <div className="flex items-center gap-1">
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase tracking-wider ${item.type === 'database'
+                            ? 'bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-400 border border-stone-200 dark:border-zinc-700'
+                            : 'hidden'
+                            }`}
+                        >
+                          {item.type}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 min-w-0">
+                      <h3 className="text-xs sm:text-sm font-semibold text-stone-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
+                        {item.title}
+                      </h3>
+
+                      {item.parentTitle && (
+                        <p className="text-[11px] text-stone-400 dark:text-zinc-500 truncate flex items-center gap-1">
+                          <span>in</span>
+                          <span className="font-medium text-stone-600 dark:text-zinc-400">{item.parentTitle}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-3 border-t border-stone-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500">
+                      <span>
+                        {(item.childrenCount || 0) > 0
+                          ? `${item.childrenCount} sub-page${item.childrenCount === 1 ? '' : 's'}`
+                          : item.createdAt
+                            ? new Date(item.createdAt).toLocaleDateString()
+                            : 'Document'}
+                      </span>
+
+                      <div className="flex items-center gap-1">
+                        {onTogglePin && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(item.id);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 transition-colors cursor-pointer"
+                            title="Favorite Item"
+                          >
+                            <Star className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDuplicate && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDuplicate(item.id);
+                            }}
+                            className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                            title="Duplicate Item"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDelete({ id: item.id, databaseId: item.databaseId });
+                            }}
+                            className="p-1.5 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-500 transition-colors cursor-pointer"
+                            title="Delete Item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <HugeiconsIcon
+                          icon={ArrowRight01Icon}
+                          size={14}
+                          className="group-hover:translate-x-0.5 text-stone-300 dark:text-zinc-600 group-hover:text-stone-700 dark:group-hover:text-zinc-200 transition-all ml-0.5"
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              /* List Layout */
+              <div className="divide-y divide-stone-100 dark:divide-zinc-800/80 overflow-hidden shadow-2xs">
+                {displayedItems.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleItemClick(item)}
+                    className="p-3 px-4 flex items-center justify-between hover:bg-stone-50/80 dark:hover:bg-zinc-800/50 cursor-pointer group transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="flex items-center justify-center text-base shrink-0">
+                        {item.icon ? item.icon : item.type === 'database' ? <HugeiconsIcon icon={TableIcon} size={16} className="text-stone-400 dark:text-zinc-500" /> : <HugeiconsIcon icon={File01Icon} size={16} className="text-stone-400 dark:text-zinc-500" />}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xs font-semibold text-stone-900 dark:text-zinc-100 truncate group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors">
+                            {item.title}
+                          </h3>
+                          <span
+                            className={`px-1.5 py-0.2 rounded-md text-[9px] font-mono uppercase ${item.type === 'database'
+                              ? 'bg-stone-100 dark:bg-zinc-800 text-stone-500'
+                              : 'hidden'
+                              }`}
+                          >
+                            {item.type}
+                          </span>
+                        </div>
+
+                        {item.parentTitle && (
+                          <span className="text-[10px] text-stone-400 dark:text-zinc-500">
+                            In {item.parentTitle}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs text-stone-400 shrink-0">
+                      <span className="hidden sm:inline text-[11px]">
+                        {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}
+                      </span>
+                      {onTogglePin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onTogglePin(item.id);
+                          }}
+                          className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 cursor-pointer"
+                          title="Favorite Item"
+                        >
+                          <Star className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {onDuplicate && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicate(item.id);
+                          }}
+                          className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 cursor-pointer"
+                          title="Duplicate Item"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {onDelete && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete({ id: item.id, databaseId: item.databaseId });
+                          }}
+                          className="p-1 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/40 text-stone-400 hover:text-rose-500 cursor-pointer"
+                          title="Delete Item"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <HugeiconsIcon
+                        icon={ArrowRight01Icon}
+                        size={14}
+                        className="group-hover:translate-x-0.5 text-stone-300 dark:text-zinc-600 group-hover:text-stone-700 dark:group-hover:text-zinc-200 transition-all"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Infinite Scroll Sentinel & Loader */}
+            <div ref={sentinelRef} className="py-6 flex flex-col items-center justify-center min-h-[60px]">
+              {isLoadingMore && (
+                <div className="flex items-center gap-2 text-xs font-medium text-neutral-500 dark:text-zinc-400 animate-pulse">
+                  <div className="w-4 h-4 rounded-full border-2 border-[#1f4d3d] border-t-transparent animate-spin" />
+                  <span>Loading more items...</span>
+                </div>
+              )}
+
+              {!hasMore && filteredSortedItems.length > 0 && (
+                <span className="text-[11px] font-medium text-neutral-400 dark:text-zinc-500 pt-4 w-full text-center">
+                  You've reached the end of the list ({filteredSortedItems.length} items)
+                </span>
+              )}
             </div>
-          )}
-
-          {!hasMore && filteredSortedItems.length > 0 && (
-            <span className="text-[11px] font-medium text-neutral-400 dark:text-zinc-500 pt-4 w-full text-center">
-              You've reached the end of the list ({filteredSortedItems.length} items)
-            </span>
-          )}
-        </div>
-
+          </>
+        )}
       </div>
     </div>
   );

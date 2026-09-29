@@ -16,14 +16,15 @@ function DashboardTrashPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: session } = useQuery({
+  const { data: session, isLoading: isSessionLoading } = useQuery({
     queryKey: ['session'],
     queryFn: async () => await getSession(),
+    staleTime: 5 * 60 * 1000,
   });
 
   const workspaceId = session?.workspaceId;
 
-  const { data: trashPages = [], refetch } = useQuery({
+  const { data: trashPages = [], refetch, isLoading: isTrashLoading } = useQuery({
     queryKey: ['trashPages', workspaceId],
     queryFn: async () => {
       if (!workspaceId) return [];
@@ -31,6 +32,8 @@ function DashboardTrashPage() {
     },
     enabled: !!workspaceId,
   });
+
+  const isLoading = isSessionLoading || (!!workspaceId && isTrashLoading);
 
   const invalidateAll = () => {
     refetch();
@@ -72,6 +75,7 @@ function DashboardTrashPage() {
   return (
     <TrashView
       trashPages={trashPages}
+      isLoading={isLoading}
       onRestore={handleRestore}
       onRestoreAll={handleRestoreAll}
       onPermanentDelete={handlePermanentDelete}
