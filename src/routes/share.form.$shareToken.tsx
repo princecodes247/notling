@@ -231,10 +231,10 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
       return (
         <select
           value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value || null)}
           className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
         >
-          <option value="">Select option...</option>
+          <option value="">None / Empty</option>
           {prop.options?.map((opt) => (
             <option key={opt.id} value={opt.id}>
               {opt.name}
@@ -246,29 +246,40 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
     case 'multi_select': {
       const selected: string[] = Array.isArray(value) ? value : [];
       return (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {prop.options?.map((opt) => {
-            const isChecked = selected.includes(opt.id);
-            const badge = getOptionBadgeStyles(opt.color);
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
-                  onChange(next);
-                }}
-                className={cn(
-                  "px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer",
-                  isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-70 hover:opacity-100",
-                  badge.className
-                )}
-                style={badge.style}
-              >
-                {isChecked ? `✓ ${opt.name}` : opt.name}
-              </button>
-            );
-          })}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex flex-wrap gap-2">
+            {prop.options?.map((opt) => {
+              const isChecked = selected.includes(opt.id);
+              const badge = getOptionBadgeStyles(opt.color);
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
+                    onChange(next);
+                  }}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer",
+                    isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-70 hover:opacity-100",
+                    badge.className
+                  )}
+                  style={badge.style}
+                >
+                  {isChecked ? `✓ ${opt.name}` : opt.name}
+                </button>
+              );
+            })}
+          </div>
+          {selected.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer"
+            >
+              Unselect all ({selected.length})
+            </button>
+          )}
         </div>
       );
     }

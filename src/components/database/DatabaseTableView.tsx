@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   AlertCircle,
   Upload,
+  X,
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { useDragPaint } from '~/hooks/useDragPaint';
@@ -1957,10 +1958,31 @@ function InteractiveCell({
                 return (
                   <span
                     key={opt.id}
-                    className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors", badge.className)}
+                    className={cn(
+                      "group/tag inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors",
+                      badge.className
+                    )}
                     style={badge.style}
                   >
-                    {opt.name}
+                    <span>{opt.name}</span>
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (prop.type === 'multi_select') {
+                            const next = selectedIds.filter((id) => id !== opt.id);
+                            onChange(next);
+                          } else {
+                            onChange(null);
+                          }
+                        }}
+                        className="hover:opacity-100 opacity-40 hover:bg-black/10 dark:hover:bg-white/10 rounded p-0.2 transition-all cursor-pointer"
+                        title="Remove tag"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    )}
                   </span>
                 );
               })
@@ -2003,6 +2025,23 @@ function InteractiveCell({
                 />
               </div>
 
+              {/* Unselect / Clear Selection Action */}
+              {selectedIds.length > 0 && (
+                <div className="flex items-center justify-between px-1 text-[11px] text-stone-500 dark:text-zinc-400 border-b border-stone-100 dark:border-zinc-800/80 pb-1">
+                  <span>{selectedIds.length} selected</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(prop.type === 'multi_select' ? [] : null);
+                      if (prop.type !== 'multi_select') closePopover();
+                    }}
+                    className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer transition-colors"
+                  >
+                    {prop.type === 'multi_select' ? 'Unselect all' : 'Clear selection'}
+                  </button>
+                </div>
+              )}
+
               <div className="max-h-48 overflow-y-auto space-y-1.5 no-scrollbar">
                 {filteredOptions.map((opt) => {
                   const isChecked = selectedIds.includes(opt.id);
@@ -2021,7 +2060,7 @@ function InteractiveCell({
                             : [...selectedIds, opt.id];
                           onChange(next);
                         } else {
-                          onChange(opt.id);
+                          onChange(isChecked ? null : opt.id);
                           closePopover();
                         }
                       }}

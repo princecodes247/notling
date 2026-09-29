@@ -437,48 +437,71 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
     case 'select':
     case 'status':
       return (
-        <select
-          value={value || ''}
-          disabled={readOnly}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100"
-        >
-          <option value="">Select option...</option>
-          {prop.options?.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={value || ''}
+            disabled={readOnly}
+            onChange={(e) => onChange(e.target.value || null)}
+            className="w-full px-2 py-1 text-xs border rounded-md bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-900 dark:text-zinc-100"
+          >
+            <option value="">None / Empty</option>
+            {prop.options?.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.name}
+              </option>
+            ))}
+          </select>
+          {value && !readOnly && (
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="text-[11px] text-rose-500 hover:text-rose-600 dark:text-rose-400 shrink-0 cursor-pointer"
+              title="Clear selection"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       );
 
     case 'multi_select': {
       const selected: string[] = Array.isArray(value) ? value : [];
       return (
-        <div className="flex flex-wrap gap-1">
-          {prop.options?.map((opt) => {
-            const isChecked = selected.includes(opt.id);
-            const badge = getOptionBadgeStyles(opt.color);
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => {
-                  if (readOnly) return;
-                  const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
-                  onChange(next);
-                }}
-                className={cn(
-                  "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
-                  isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-60 hover:opacity-100",
-                  badge.className
-                )}
-                style={badge.style}
-              >
-                {isChecked ? `✓ ${opt.name}` : opt.name}
-              </button>
-            );
-          })}
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap gap-1 items-center">
+            {prop.options?.map((opt) => {
+              const isChecked = selected.includes(opt.id);
+              const badge = getOptionBadgeStyles(opt.color);
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => {
+                    if (readOnly) return;
+                    const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
+                    onChange(next);
+                  }}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
+                    isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-60 hover:opacity-100",
+                    badge.className
+                  )}
+                  style={badge.style}
+                >
+                  {isChecked ? `✓ ${opt.name}` : opt.name}
+                </button>
+              );
+            })}
+          </div>
+          {selected.length > 0 && !readOnly && (
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-[10px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer"
+            >
+              Unselect all ({selected.length})
+            </button>
+          )}
         </div>
       );
     }
