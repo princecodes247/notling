@@ -55,20 +55,11 @@ const PROPERTY_TYPES = [
   { type: 'email', label: 'Email' },
 ];
 
-const AUTO_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#64748b'];
-
-const APPLE_COLORS = [
-  { name: 'Blue', hex: '#007aff' },
-  { name: 'Purple', hex: '#af52de' },
-  { name: 'Pink', hex: '#ff2d55' },
-  { name: 'Red', hex: '#ff3b30' },
-  { name: 'Orange', hex: '#ff9500' },
-  { name: 'Yellow', hex: '#eab308' },
-  { name: 'Green', hex: '#34c759' },
-  { name: 'Teal', hex: '#30b0c7' },
-  { name: 'Indigo', hex: '#5856d6' },
-  { name: 'Slate', hex: '#64748b' },
-];
+import {
+  APPLE_COLORS,
+  AUTO_COLORS,
+  getOptionBadgeStyles,
+} from '~/lib/optionColors';
 
 export function DatabaseTableView({
   properties,
@@ -1481,6 +1472,7 @@ function OptionRowItem({
 }) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const badge = getOptionBadgeStyles(opt.color);
 
   return (
     <div
@@ -1514,42 +1506,35 @@ function OptionRowItem({
         setDraggedIndex(null);
         setDragOver(false);
       }}
-      className={`group/opt flex flex-col p-1.5 rounded border transition-transform transition-opacity transition-colors duration-150 select-none ${draggedIndex === index
-        ? 'opacity-40 border-emerald-500/80 bg-emerald-50/40 dark:bg-emerald-950/30 scale-[0.99] shadow-inner'
-        : dragOver
-          ? 'border-[#1f4d3d] bg-emerald-50/50 dark:bg-emerald-950/20'
-          : isChecked
-            ? 'bg-stone-100/90 dark:bg-zinc-800/80 border-stone-200 dark:border-zinc-700/80'
-            : 'bg-stone-50/40 dark:bg-zinc-900/40 border-stone-100 dark:border-zinc-800/60 hover:bg-stone-100 dark:hover:bg-zinc-800/60'
-        }`}
+      className={cn(
+        "group/opt flex flex-col p-1.5 rounded-lg transition-all duration-150 select-none",
+        draggedIndex === index
+          ? "opacity-40 bg-stone-100 dark:bg-zinc-800 scale-[0.99]"
+          : dragOver
+            ? "bg-stone-100 dark:bg-zinc-800"
+            : isChecked
+              ? "bg-stone-100/90 dark:bg-zinc-800/80"
+              : "hover:bg-stone-100/70 dark:hover:bg-zinc-800/50"
+      )}
     >
       <div className="flex items-center justify-between gap-1.5">
         <div className="flex items-center gap-1.5 flex-1 min-w-0">
           {/* Drag Handle */}
           <span
-            className="cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 transition-colors p-0.5 shrink-0"
+            className="cursor-grab active:cursor-grabbing text-stone-300 dark:text-zinc-600 hover:text-stone-600 dark:hover:text-zinc-300 transition-colors p-0.5 shrink-0 opacity-0 group-hover/opt:opacity-100"
             title="Drag to reorder option"
           >
             <GripVertical className="w-3.5 h-3.5" />
           </span>
 
-          {/* Color Indicator Dot / Trigger */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowColorPicker(!showColorPicker);
-            }}
-            className="w-3.5 h-3.5 rounded-full shrink-0 border border-black/10 dark:border-white/20 transition-transform hover:scale-110 cursor-pointer shadow-2xs"
-            style={{ backgroundColor: opt.color || '#007aff' }}
-            title="Change option color"
-          />
-
-          {/* Option Name / Selection Action */}
+          {/* Option Pill Badge */}
           <span
             onClick={onSelect}
-            className="text-xs font-semibold truncate cursor-pointer flex-1 tracking-tight"
-            style={{ color: opt.color || 'inherit' }}
+            className={cn(
+              "inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors cursor-pointer select-none truncate max-w-[140px]",
+              badge.className
+            )}
+            style={badge.style}
           >
             {opt.name}
           </span>
@@ -1563,10 +1548,10 @@ function OptionRowItem({
               e.stopPropagation();
               setShowColorPicker(!showColorPicker);
             }}
-            className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 opacity-0 group-hover/opt:opacity-100 transition-opacity cursor-pointer"
-            title="Pick color"
+            className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 opacity-0 group-hover/opt:opacity-100 hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 transition-all cursor-pointer"
+            title="Change color"
           >
-            <Palette className="w-3 h-3" />
+            <Palette className="w-3.5 h-3.5" />
           </button>
 
           {/* Delete Option */}
@@ -1580,7 +1565,7 @@ function OptionRowItem({
               className="p-1 rounded text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/60 opacity-0 group-hover/opt:opacity-100 transition-all cursor-pointer"
               title="Delete option"
             >
-              <Trash2 className="w-3 h-3" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
 
@@ -1589,26 +1574,33 @@ function OptionRowItem({
         </div>
       </div>
 
-      {/* Color Palette Swatches */}
+      {/* Color Palette Swatches (Clean Notion Preview Badges) */}
       {showColorPicker && (
-        <div className="mt-2 pt-2 border-t border-stone-200/60 dark:border-zinc-700/60 flex flex-wrap gap-1.5 items-center justify-center animate-in fade-in duration-100">
+        <div className="mt-2 p-2 bg-stone-50 dark:bg-zinc-900 rounded-lg border border-stone-200/70 dark:border-zinc-700/70 grid grid-cols-2 gap-1.5 animate-in fade-in duration-100">
           {APPLE_COLORS.map((color) => {
-            const isSelectedColor = opt.color === color.hex;
+            const isSelectedColor =
+              opt.color?.toLowerCase() === color.hex.toLowerCase() ||
+              opt.color?.toLowerCase() === color.name.toLowerCase();
+            const swatchBadge = getOptionBadgeStyles(color.hex);
             return (
               <button
-                key={color.hex}
+                key={color.name}
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onColorChange(color.hex);
                   setShowColorPicker(false);
                 }}
-                className={`w-5 h-5 rounded-full border transition-transform hover:scale-125 cursor-pointer flex items-center justify-center shadow-2xs ${isSelectedColor ? 'ring-2 ring-offset-1 ring-stone-900 dark:ring-white scale-110' : 'border-black/10 dark:border-white/20'
-                  }`}
-                style={{ backgroundColor: color.hex }}
+                className={cn(
+                  "w-full px-2 py-1 rounded-md text-[10px] font-medium transition-all hover:scale-[1.02] cursor-pointer flex items-center justify-between shadow-2xs",
+                  swatchBadge.className,
+                  isSelectedColor ? "ring-2 ring-stone-900 dark:ring-white font-semibold" : "opacity-90 hover:opacity-100"
+                )}
+                style={swatchBadge.style}
                 title={color.name}
               >
-                {isSelectedColor && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+                <span>{color.name}</span>
+                {isSelectedColor && <Check className="w-2.5 h-2.5 stroke-[3]" />}
               </button>
             );
           })}
@@ -1960,19 +1952,18 @@ function InteractiveCell({
             className="flex flex-wrap gap-1 items-center px-1.5 py-1 min-h-6.5 cursor-pointer rounded-md transition-colors focus:outline-none"
           >
             {selectedOpts.length > 0 ? (
-              selectedOpts.map((opt) => (
-                <span
-                  key={opt.id}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium"
-                  style={{
-                    backgroundColor: `${opt.color}20`,
-                    color: opt.color,
-                    border: `1px solid ${opt.color}40`,
-                  }}
-                >
-                  {opt.name}
-                </span>
-              ))
+              selectedOpts.map((opt) => {
+                const badge = getOptionBadgeStyles(opt.color);
+                return (
+                  <span
+                    key={opt.id}
+                    className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium transition-colors", badge.className)}
+                    style={badge.style}
+                  >
+                    {opt.name}
+                  </span>
+                );
+              })
             ) : (
               <span className="inline-flex items-center focus:outline-none gap-1.5 text-[11px] font-normal text-stone-300 dark:text-zinc-600 select-none">
                 <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 opacity-40 shrink-0" />

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
 import { Plus, Trash2, Calendar } from 'lucide-react';
+import { cn } from '#/lib/utils';
+import { getOptionBadgeStyles } from '~/lib/optionColors';
 
 interface DatabaseBoardViewProps {
   properties: DatabaseProperty[];
@@ -215,19 +217,18 @@ function KanbanCard({
             const selectedOpts = prop.options?.filter((o) => val.includes(o.id)) || [];
             return (
               <div key={prop.id} className="flex flex-wrap gap-1">
-                {selectedOpts.map((opt) => (
-                  <span
-                    key={opt.id}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium"
-                    style={{
-                      backgroundColor: `${opt.color}20`,
-                      color: opt.color,
-                      border: `1px solid ${opt.color}35`,
-                    }}
-                  >
-                    {opt.name}
-                  </span>
-                ))}
+                {selectedOpts.map((opt) => {
+                  const badge = getOptionBadgeStyles(opt.color);
+                  return (
+                    <span
+                      key={opt.id}
+                      className={cn("inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-colors", badge.className)}
+                      style={badge.style}
+                    >
+                      {opt.name}
+                    </span>
+                  );
+                })}
               </div>
             );
           }
@@ -235,15 +236,12 @@ function KanbanCard({
           if (prop.type === 'select' && typeof val === 'string') {
             const opt = prop.options?.find((o) => o.id === val);
             if (!opt) return null;
+            const badge = getOptionBadgeStyles(opt.color);
             return (
               <div key={prop.id} className="inline-block">
                 <span
-                  className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium"
-                  style={{
-                    backgroundColor: `${opt.color}20`,
-                    color: opt.color,
-                    border: `1px solid ${opt.color}35`,
-                  }}
+                  className={cn("inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium transition-colors", badge.className)}
+                  style={badge.style}
                 >
                   {opt.name}
                 </span>

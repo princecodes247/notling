@@ -6,6 +6,8 @@ import { Route as rootRoute } from './__root';
 import { PropertyTypeIcon } from '~/components/database/PropertyTypeIcon';
 import { Check, Send, Sparkles, AlertCircle } from 'lucide-react';
 import type { DatabaseProperty } from '~/db/schema';
+import { cn } from '#/lib/utils';
+import { getOptionBadgeStyles } from '~/lib/optionColors';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -247,6 +249,7 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
         <div className="flex flex-wrap gap-2 pt-1">
           {prop.options?.map((opt) => {
             const isChecked = selected.includes(opt.id);
+            const badge = getOptionBadgeStyles(opt.color);
             return (
               <button
                 key={opt.id}
@@ -255,12 +258,12 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
                   const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
                   onChange(next);
                 }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${isChecked ? 'ring-2 ring-[#1f4d3d] font-semibold' : 'opacity-70 hover:opacity-100'}`}
-                style={{
-                  backgroundColor: `${opt.color}25`,
-                  color: opt.color,
-                  border: `1px solid ${opt.color}50`,
-                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer",
+                  isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-70 hover:opacity-100",
+                  badge.className
+                )}
+                style={badge.style}
               >
                 {isChecked ? `✓ ${opt.name}` : opt.name}
               </button>

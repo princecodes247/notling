@@ -10,6 +10,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getOrCreateDatabaseItemPage } from '~/server/databases';
 import { BlockEditorInner } from '../BlockEditorInner';
+import { cn } from '#/lib/utils';
+import { getOptionBadgeStyles } from '~/lib/optionColors';
 
 interface DatabaseRowDrawerProps {
   item: DatabaseItem;
@@ -456,6 +458,7 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
         <div className="flex flex-wrap gap-1">
           {prop.options?.map((opt) => {
             const isChecked = selected.includes(opt.id);
+            const badge = getOptionBadgeStyles(opt.color);
             return (
               <button
                 key={opt.id}
@@ -465,11 +468,12 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
                   const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
                   onChange(next);
                 }}
-                className={`px-2 py-0.5 rounded text-[11px] font-medium ${isChecked ? 'ring-1 ring-[#1f4d3d]' : 'opacity-60'}`}
-                style={{
-                  backgroundColor: `${opt.color}20`,
-                  color: opt.color,
-                }}
+                className={cn(
+                  "px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer",
+                  isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-60 hover:opacity-100",
+                  badge.className
+                )}
+                style={badge.style}
               >
                 {isChecked ? `✓ ${opt.name}` : opt.name}
               </button>

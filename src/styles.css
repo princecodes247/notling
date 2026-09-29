@@ -110,6 +110,30 @@
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
+/* Notion-style database select & multi-select option badges */
+.option-badge {
+  background-color: var(--opt-bg, #f1f1ef);
+  color: var(--opt-fg, #37352f);
+  border: 1px solid var(--opt-border, transparent);
+}
+
+.dark .option-badge,
+[data-theme="dark"] .option-badge {
+  background-color: var(--opt-bg-dark, var(--opt-bg, #27272a));
+  color: var(--opt-fg-dark, var(--opt-fg, #e4e4e7));
+  border-color: var(--opt-border-dark, var(--opt-border, rgba(255, 255, 255, 0.08)));
+}
+
+.option-text {
+  color: var(--opt-fg, #37352f);
+}
+
+.dark .option-text,
+[data-theme="dark"] .option-text {
+  color: var(--opt-fg-dark, var(--opt-fg, #e4e4e7));
+}
+
+
 
 /* BlockNote Light Mode Overrides */
 .bn-container {
