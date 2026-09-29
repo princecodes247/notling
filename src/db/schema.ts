@@ -184,7 +184,10 @@ export const databases = pgTable('databases', {
   inline: boolean('inline').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  workspaceIdx: index('databases_workspace_idx').on(table.workspaceId),
+  pageIdx: index('databases_page_idx').on(table.pageId),
+}));
 
 export type Database = typeof databases.$inferSelect;
 export type NewDatabase = typeof databases.$inferInsert;
@@ -199,7 +202,9 @@ export const databaseProperties = pgTable('database_properties', {
   options: jsonb('options').$type<Array<{ id: string; name: string; color: string }>>().notNull().default([]),
   order: integer('order').notNull().default(0),
   icon: text('icon'),
-});
+}, (table) => ({
+  databaseOrderIdx: index('database_properties_db_order_idx').on(table.databaseId, table.order),
+}));
 
 export type DatabaseProperty = typeof databaseProperties.$inferSelect;
 export type NewDatabaseProperty = typeof databaseProperties.$inferInsert;
@@ -214,7 +219,11 @@ export const databaseItems = pgTable('database_items', {
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  databaseOrderIdx: index('database_items_db_order_idx').on(table.databaseId, table.order),
+  databaseCreatedIdx: index('database_items_db_created_idx').on(table.databaseId, table.createdAt),
+  pageIdx: index('database_items_page_idx').on(table.pageId),
+}));
 
 export type DatabaseItem = typeof databaseItems.$inferSelect;
 export type NewDatabaseItem = typeof databaseItems.$inferInsert;
@@ -227,7 +236,9 @@ export const databaseViews = pgTable('database_views', {
   config: jsonb('config').$type<Record<string, any>>().notNull().default({}),
   order: integer('order').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  databaseOrderIdx: index('database_views_db_order_idx').on(table.databaseId, table.order),
+}));
 
 export type DatabaseView = typeof databaseViews.$inferSelect;
 export type NewDatabaseView = typeof databaseViews.$inferInsert;
@@ -248,7 +259,9 @@ export const databaseForms = pgTable('database_forms', {
     requiredPropertyIds?: string[];
   }>().notNull().default({}),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  databaseIdx: index('database_forms_db_idx').on(table.databaseId),
+}));
 
 export type DatabaseForm = typeof databaseForms.$inferSelect;
 export type NewDatabaseForm = typeof databaseForms.$inferInsert;

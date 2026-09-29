@@ -217,14 +217,23 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
     return null;
   }
 
-  const [properties, items, views, forms] = await Promise.all([
+  const [properties, rawItems, views, forms] = await Promise.all([
     db
       .select()
       .from(databaseProperties)
       .where(eq(databaseProperties.databaseId, database.id))
       .orderBy(asc(databaseProperties.order)),
     db
-      .select()
+      .select({
+        id: databaseItems.id,
+        databaseId: databaseItems.databaseId,
+        pageId: databaseItems.pageId,
+        title: databaseItems.title,
+        properties: databaseItems.properties,
+        order: databaseItems.order,
+        createdAt: databaseItems.createdAt,
+        updatedAt: databaseItems.updatedAt,
+      })
       .from(databaseItems)
       .where(eq(databaseItems.databaseId, database.id))
       .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt)),
@@ -238,6 +247,11 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
       .from(databaseForms)
       .where(eq(databaseForms.databaseId, database.id)),
   ]);
+
+  const items: DatabaseItem[] = rawItems.map((item) => ({
+    ...item,
+    content: [],
+  }));
 
   const fullDb: FullDatabase = {
     database,
@@ -718,7 +732,32 @@ export async function deleteDatabaseItemsBulk(itemIds: string[]) {
   if (!itemIds.length) return { success: true, count: 0 };
   await assertDatabaseItemsBulkEditAccess(itemIds);
 
-  await db.delete(databaseItems).where(inArray(databaseItems.id, itemIds));
+  // Retrieve item details to clean up associated pages and invalidate cache
+  const items = await db
+    .select({ databaseId: databaseItems.databaseId, pageId: databaseItems.pageId })
+    .from(databaseItems)
+    .where(inArray(databaseItems.id, itemIds));
+
+  const pageIds = items.map((i) => i.pageId).filter(Boolean) as string[];
+  const dbIds = Array.from(new Set(items.map((i) => i.databaseId)));
+
+  const CHUNK_SIZE = 500;
+  if (pageIds.length > 0) {
+    for (let i = 0; i < pageIds.length; i += CHUNK_SIZE) {
+      const chunk = pageIds.slice(i, i + CHUNK_SIZE);
+      await db.update(pages).set({ isDeleted: true, updatedAt: new Date() }).where(inArray(pages.id, chunk));
+    }
+  }
+
+  for (let i = 0; i < itemIds.length; i += CHUNK_SIZE) {
+    const chunk = itemIds.slice(i, i + CHUNK_SIZE);
+    await db.delete(databaseItems).where(inArray(databaseItems.id, chunk));
+  }
+
+  for (const dbId of dbIds) {
+    invalidateDatabaseCaches(dbId).catch(() => {});
+  }
+
   return { success: true, count: itemIds.length };
 }
 
@@ -728,38 +767,46 @@ export async function convertPropertyType(propertyId: string, newType: string) {
   const [prop] = await db.select().from(databaseProperties).where(eq(databaseProperties.id, propertyId)).limit(1);
   if (!prop) throw new Error('Property not found');
 
-  const items = await db.select().from(databaseItems).where(eq(databaseItems.databaseId, prop.databaseId));
+  const items = await db
+    .select({ id: databaseItems.id, properties: databaseItems.properties })
+    .from(databaseItems)
+    .where(eq(databaseItems.databaseId, prop.databaseId));
 
-  const updates = items.map(async (item) => {
-    const rawVal = item.properties?.[propertyId];
-    if (rawVal === undefined || rawVal === null) return;
+  // Batch process updates in chunks of 100 to avoid overloading pool connections
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+    const chunk = items.slice(i, i + CHUNK_SIZE);
+    const updates = chunk.map(async (item) => {
+      const rawVal = item.properties?.[propertyId];
+      if (rawVal === undefined || rawVal === null) return;
 
-    let convertedVal: any = rawVal;
-    if (newType === 'number') {
-      const num = Number(rawVal);
-      convertedVal = !isNaN(num) ? num : null;
-    } else if (newType === 'text' || newType === 'url' || newType === 'email') {
-      convertedVal = String(rawVal);
-    } else if (newType === 'checkbox') {
-      convertedVal = Boolean(rawVal);
-    } else if (newType === 'multi_select') {
-      convertedVal = Array.isArray(rawVal) ? rawVal : [String(rawVal)];
-    } else if (newType === 'select' || newType === 'status') {
-      convertedVal = Array.isArray(rawVal) ? rawVal[0] : String(rawVal);
-    }
+      let convertedVal: any = rawVal;
+      if (newType === 'number') {
+        const num = Number(rawVal);
+        convertedVal = !isNaN(num) ? num : null;
+      } else if (newType === 'text' || newType === 'url' || newType === 'email') {
+        convertedVal = String(rawVal);
+      } else if (newType === 'checkbox') {
+        convertedVal = Boolean(rawVal);
+      } else if (newType === 'multi_select') {
+        convertedVal = Array.isArray(rawVal) ? rawVal : [String(rawVal)];
+      } else if (newType === 'select' || newType === 'status') {
+        convertedVal = Array.isArray(rawVal) ? rawVal[0] : String(rawVal);
+      }
 
-    await db
-      .update(databaseItems)
-      .set({
-        properties: {
-          ...item.properties,
-          [propertyId]: convertedVal,
-        },
-      })
-      .where(eq(databaseItems.id, item.id));
-  });
+      await db
+        .update(databaseItems)
+        .set({
+          properties: {
+            ...item.properties,
+            [propertyId]: convertedVal,
+          },
+        })
+        .where(eq(databaseItems.id, item.id));
+    });
 
-  await Promise.all(updates);
+    await Promise.all(updates);
+  }
 
   const [updatedProp] = await db
     .update(databaseProperties)
@@ -955,8 +1002,8 @@ export async function importDatabaseData(input: {
     .limit(1);
   let itemOrder = (lastItem?.order ?? -1) + 1;
 
-  // Process rows and batch insert pages & database items
-  const CHUNK_SIZE = 50;
+  // Process rows and batch insert pages & database items in chunks of 500
+  const CHUNK_SIZE = 500;
   for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
     const chunk = rows.slice(i, i + CHUNK_SIZE);
 
