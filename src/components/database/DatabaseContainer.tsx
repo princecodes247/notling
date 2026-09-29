@@ -192,8 +192,7 @@ export function DatabaseContainer({
       setDbTitle(initialData.database.title || 'Untitled Database');
       savedTitleRef.current = initialData.database.title || 'Untitled Database';
     }
-    queryClient.invalidateQueries({ queryKey: ['databaseItems', databaseId] });
-  }, [initialData, databaseId, queryClient]);
+  }, [initialData]);
 
   const handleSaveTitle = async () => {
     if (readOnly) return;

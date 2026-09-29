@@ -297,8 +297,28 @@ export function DatabaseTableView({
     }
   }, [handleAddNewRow, items.length, nonTitleProps.length, rowVirtualizer]);
 
-  // Client-Side Undo Stack (Cmd+Z)
-  const [undoStack, setUndoStack] = useState<Array<{ type: string; payload: any }>>([]);
+type TableUndoAction =
+  | {
+      type: 'UPDATE_CELL';
+      payload: {
+        itemId: string;
+        propId: string;
+        previousValue: any;
+      };
+    }
+  | {
+      type: 'UPDATE_TITLE';
+      payload: {
+        itemId: string;
+        previousTitle: string;
+        titlePropId?: string;
+      };
+    };
+
+const MAX_UNDO_STACK_SIZE = 50;
+
+  // Client-Side Lightweight Undo Stack (Cmd+Z)
+  const [undoStack, setUndoStack] = useState<TableUndoAction[]>([]);
 
   // Column Width Resizing State
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
@@ -417,7 +437,7 @@ export function DatabaseTableView({
     return () => window.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Handle Cmd+Z Undo
+  // Handle Cmd+Z Undo (Lightweight delta rollback)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
@@ -426,15 +446,34 @@ export function DatabaseTableView({
           const lastAction = undoStack[undoStack.length - 1];
           setUndoStack((prev) => prev.slice(0, -1));
 
-          if (lastAction.type === 'UPDATE_ITEM') {
-            onUpdateItem(lastAction.payload.itemId, lastAction.payload.previousState);
+          if (lastAction.type === 'UPDATE_CELL') {
+            const currentItem = items.find((i) => i.id === lastAction.payload.itemId);
+            if (currentItem) {
+              onUpdateItem(lastAction.payload.itemId, {
+                properties: {
+                  ...currentItem.properties,
+                  [lastAction.payload.propId]: lastAction.payload.previousValue,
+                },
+              });
+            }
+          } else if (lastAction.type === 'UPDATE_TITLE') {
+            const currentItem = items.find((i) => i.id === lastAction.payload.itemId);
+            if (currentItem) {
+              onUpdateItem(lastAction.payload.itemId, {
+                title: lastAction.payload.previousTitle,
+                properties: {
+                  ...currentItem.properties,
+                  ...(lastAction.payload.titlePropId ? { [lastAction.payload.titlePropId]: lastAction.payload.previousTitle } : {}),
+                },
+              });
+            }
           }
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoStack, onUpdateItem]);
+  }, [undoStack, onUpdateItem, items]);
 
   // Handle Column Deletion with smart data detection
   const handleRequestDeleteProperty = (prop: DatabaseProperty) => {
@@ -736,6 +775,18 @@ export function DatabaseTableView({
                   onOpenRowDrawer={onOpenRowDrawer}
                   onUpdateTitle={(newTitle) => {
                     if (newTitle !== item.title) {
+                      const prevTitle = item.title;
+                      setUndoStack((prev) => {
+                        const next = [
+                          ...prev,
+                          {
+                            type: 'UPDATE_TITLE' as const,
+                            payload: { itemId: item.id, previousTitle: prevTitle, titlePropId: titleProp?.id },
+                          },
+                        ];
+                        return next.length > MAX_UNDO_STACK_SIZE ? next.slice(next.length - MAX_UNDO_STACK_SIZE) : next;
+                      });
+
                       onUpdateItem(item.id, {
                         title: newTitle,
                         properties: {
@@ -752,14 +803,17 @@ export function DatabaseTableView({
                   }}
                   onStopEditingTitle={() => setEditingRowTitleId(null)}
                   onCellChange={(propId, newVal) => {
-                    const prevProps = { ...item.properties };
-                    setUndoStack((prev) => [
-                      ...prev,
-                      {
-                        type: 'UPDATE_ITEM',
-                        payload: { itemId: item.id, previousState: { properties: prevProps } },
-                      },
-                    ]);
+                    const prevVal = item.properties?.[propId];
+                    setUndoStack((prev) => {
+                      const next = [
+                        ...prev,
+                        {
+                          type: 'UPDATE_CELL' as const,
+                          payload: { itemId: item.id, propId, previousValue: prevVal },
+                        },
+                      ];
+                      return next.length > MAX_UNDO_STACK_SIZE ? next.slice(next.length - MAX_UNDO_STACK_SIZE) : next;
+                    });
 
                     onUpdateItem(item.id, {
                       properties: {
