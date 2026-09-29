@@ -1,6 +1,7 @@
 import { db } from '~/db';
 import { pages, workspaces, pageShares, pagePresence, users, workspaceMembers, pageViews, pageHistory, pageUpdates, pageAccessRequests, databases, databaseItems } from '~/db/schema';
 import { eq, and, or, desc, asc, isNull, lt, ne, sql, inArray } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import type { PageTreeNode } from './pages';
 import type { UserSession } from './auth';
 import { getSessionImpl } from './auth.db';
@@ -1492,22 +1493,19 @@ export async function performSoftDelete(pageId: string) {
       return { success: false };
     }
 
-    const idsToDelete: string[] = [];
-    const collectRecursive = async (id: string) => {
-      idsToDelete.push(id);
-      const children = await db.select({ id: pages.id }).from(pages).where(eq(pages.parentId, id));
-      for (const child of children) {
-        await collectRecursive(child.id);
-      }
-    };
+    // Fast single-query recursive soft delete using PostgreSQL CTE (scales instantly to 10k+ subpages/rows)
+    await db.execute(sql`
+      WITH RECURSIVE page_tree AS (
+        SELECT id FROM pages WHERE id = ${pageId}::uuid
+        UNION ALL
+        SELECT p.id FROM pages p
+        INNER JOIN page_tree pt ON p.parent_id = pt.id
+      )
+      UPDATE pages
+      SET is_deleted = true, deleted_at = NOW()
+      WHERE id IN (SELECT id FROM page_tree);
+    `);
 
-    await collectRecursive(pageId);
-    if (idsToDelete.length > 0) {
-      await db
-        .update(pages)
-        .set({ isDeleted: true, deletedAt: new Date() })
-        .where(inArray(pages.id, idsToDelete));
-    }
     await invalidatePageCaches(page.workspaceId, pageId);
     return { success: true };
   } catch (err) {
@@ -1533,22 +1531,19 @@ export async function performRestore(pageId: string) {
       return { success: false };
     }
 
-    const idsToRestore: string[] = [];
-    const collectRecursive = async (id: string) => {
-      idsToRestore.push(id);
-      const children = await db.select({ id: pages.id }).from(pages).where(eq(pages.parentId, id));
-      for (const child of children) {
-        await collectRecursive(child.id);
-      }
-    };
+    // Fast single-query recursive restore using PostgreSQL CTE
+    await db.execute(sql`
+      WITH RECURSIVE page_tree AS (
+        SELECT id FROM pages WHERE id = ${pageId}::uuid
+        UNION ALL
+        SELECT p.id FROM pages p
+        INNER JOIN page_tree pt ON p.parent_id = pt.id
+      )
+      UPDATE pages
+      SET is_deleted = false, deleted_at = NULL
+      WHERE id IN (SELECT id FROM page_tree);
+    `);
 
-    await collectRecursive(pageId);
-    if (idsToRestore.length > 0) {
-      await db
-        .update(pages)
-        .set({ isDeleted: false, deletedAt: null })
-        .where(inArray(pages.id, idsToRestore));
-    }
     await invalidatePageCaches(page.workspaceId, pageId);
     return { success: true };
   } catch (err) {
@@ -1573,6 +1568,9 @@ export async function fetchTrashPages(workspaceId: string) {
       return [];
     }
 
+    const parentPages = alias(pages, 'parent_pages');
+
+    // Return only top-level deleted items via SQL anti-join (hides nested subpages/database rows in a single indexed query)
     return await db
       .select({
         id: pages.id,
@@ -1581,7 +1579,20 @@ export async function fetchTrashPages(workspaceId: string) {
         deletedAt: pages.deletedAt,
       })
       .from(pages)
-      .where(and(eq(pages.workspaceId, targetWorkspaceId), eq(pages.isDeleted, true)))
+      .leftJoin(
+        parentPages,
+        and(
+          eq(pages.parentId, parentPages.id),
+          eq(parentPages.isDeleted, true)
+        )
+      )
+      .where(
+        and(
+          eq(pages.workspaceId, targetWorkspaceId),
+          eq(pages.isDeleted, true),
+          isNull(parentPages.id)
+        )
+      )
       .orderBy(desc(pages.deletedAt));
   } catch (err) {
     console.error('Error fetching trash pages:', err);

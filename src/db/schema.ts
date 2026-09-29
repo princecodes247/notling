@@ -49,6 +49,8 @@ export const pages = pgTable('pages', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ([
   foreignKey({ columns: [table.parentId], foreignColumns: [table.id] }).onDelete('cascade'),
+  index('pages_parent_idx').on(table.parentId),
+  index('pages_workspace_deleted_idx').on(table.workspaceId, table.isDeleted),
   index('pages_search_idx').using(
     'gin',
     sql`to_tsvector('english', coalesce(${table.title}, '') || ' ' || coalesce(${table.contentText}, ''))`
