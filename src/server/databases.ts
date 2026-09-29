@@ -8,7 +8,16 @@ export const getDatabase = createServerFn({ method: 'GET' })
   });
 
 export const getDatabaseItems = createServerFn({ method: 'GET' })
-  .validator((input: { databaseId: string; offset?: number; limit?: number; searchQuery?: string }) => input)
+  .validator((input: {
+    databaseId: string;
+    offset?: number;
+    limit?: number;
+    searchQuery?: string;
+    sortBy?: {
+      propertyId: string;
+      direction: 'asc' | 'desc';
+    };
+  }) => input)
   .handler(async ({ data }) => {
     const { fetchDatabaseItems } = await import('./databases.db');
     return fetchDatabaseItems(data);

@@ -54,12 +54,14 @@ export function DatabaseContainer({
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<{ propertyId: string; direction: 'asc' | 'desc' } | null>(null);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery.trim());
+      const trimmed = searchQuery.trim();
+      setDebouncedSearchQuery(trimmed.length >= 3 ? trimmed : '');
     }, 250);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -73,9 +75,10 @@ export function DatabaseContainer({
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetching,
     refetch: refetchItems,
   } = useInfiniteQuery({
-    queryKey: ['databaseItems', databaseId, debouncedSearchQuery],
+    queryKey: ['databaseItems', databaseId, debouncedSearchQuery, sortBy?.propertyId, sortBy?.direction],
     queryFn: async ({ pageParam = 0 }) => {
       return await getDatabaseItems({
         data: {
@@ -83,12 +86,13 @@ export function DatabaseContainer({
           offset: pageParam,
           limit: 200,
           searchQuery: debouncedSearchQuery,
+          sortBy: sortBy ? { propertyId: sortBy.propertyId, direction: sortBy.direction } : undefined,
         },
       });
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) => (lastPage?.hasMore ? lastPage.nextCursor : undefined),
-    initialData: !debouncedSearchQuery && initialData?.items
+    initialData: !debouncedSearchQuery && !sortBy && initialData?.items
       ? {
           pages: [
             {
@@ -102,6 +106,18 @@ export function DatabaseContainer({
         }
       : undefined,
   });
+
+  const [lastExecutedSearchQuery, setLastExecutedSearchQuery] = useState(debouncedSearchQuery);
+  useEffect(() => {
+    if (!isFetching) {
+      setLastExecutedSearchQuery(debouncedSearchQuery);
+    }
+  }, [isFetching, debouncedSearchQuery]);
+
+  const trimmedSearch = searchQuery.trim();
+  const isSearchDebouncing = trimmedSearch.length >= 3 && trimmedSearch !== debouncedSearchQuery;
+  const isSearchFetching = isFetching && !isFetchingNextPage && debouncedSearchQuery !== lastExecutedSearchQuery;
+  const isSearching = isSearchDebouncing || isSearchFetching;
 
   // Flattened items across loaded pages
   const allItems = useMemo(() => {
@@ -163,7 +179,7 @@ export function DatabaseContainer({
   };
 
   const updateInfiniteCache = (updater: (prevItems: DatabaseItem[]) => DatabaseItem[], totalDelta: number = 0) => {
-    queryClient.setQueryData(['databaseItems', databaseId, debouncedSearchQuery], (old: any) => {
+    queryClient.setQueryData(['databaseItems', databaseId, debouncedSearchQuery, sortBy?.propertyId, sortBy?.direction], (old: any) => {
       if (!old?.pages) return old;
       const combined: DatabaseItem[] = old.pages.flatMap((p: any) => p.items);
       const updated = updater(combined);
@@ -574,6 +590,10 @@ export function DatabaseContainer({
           onIconChange={handleUpdateIcon}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
+          isSearching={isSearching}
+          properties={dbData.properties}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
           onAddItem={() => handleAddItem()}
           onImportData={() => setIsImportModalOpen(true)}
         />
@@ -587,6 +607,9 @@ export function DatabaseContainer({
           totalCount={totalCount}
           hasNextPage={hasNextPage}
           isFetchingNextPage={isFetchingNextPage}
+          isSearching={isSearching}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
           onFetchNextPage={fetchNextPage}
           onUpdateItem={handleUpdateItem}
           onDeleteItem={handleDeleteItem}

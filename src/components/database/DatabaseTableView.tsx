@@ -22,6 +22,9 @@ import {
   AlertCircle,
   Upload,
   X,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { useDragPaint } from '~/hooks/useDragPaint';
@@ -33,6 +36,9 @@ interface DatabaseTableViewProps {
   totalCount?: number;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
+  isSearching?: boolean;
+  sortBy?: { propertyId: string; direction: 'asc' | 'desc' } | null;
+  onSortChange?: (sortBy: { propertyId: string; direction: 'asc' | 'desc' } | null) => void;
   onFetchNextPage?: () => void;
   onUpdateItem: (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => void;
   onDeleteItem: (itemId: string) => void;
@@ -72,6 +78,9 @@ export function DatabaseTableView({
   totalCount,
   hasNextPage,
   isFetchingNextPage,
+  isSearching,
+  sortBy,
+  onSortChange,
   onFetchNextPage,
   onUpdateItem,
   onDeleteItem: _onDeleteItem,
@@ -88,6 +97,21 @@ export function DatabaseTableView({
 }: DatabaseTableViewProps) {
   // Table virtual scroll container ref
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sorting helper
+  const handleToggleSort = useCallback(
+    (propId: string) => {
+      if (!onSortChange) return;
+      if (!sortBy || sortBy.propertyId !== propId) {
+        onSortChange({ propertyId: propId, direction: 'asc' });
+      } else if (sortBy.direction === 'asc') {
+        onSortChange({ propertyId: propId, direction: 'desc' });
+      } else {
+        onSortChange(null);
+      }
+    },
+    [onSortChange, sortBy]
+  );
 
   // Fast O(1) map for item lookups
   const itemsMapRef = useRef<Map<string, DatabaseItem>>(new Map());
@@ -176,7 +200,7 @@ export function DatabaseTableView({
     count: items.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => 38,
-    overscan: 12,
+    overscan: 35,
   });
 
   // Track last requested count to prevent infinite scroll loops
@@ -186,18 +210,17 @@ export function DatabaseTableView({
   const lastVirtualItemIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
 
   useEffect(() => {
-    // Reset requested tracker if item count resets (e.g. searching)
+    // Reset requested tracker if item count resets (e.g. searching or sorting)
     if (items.length < lastRequestedCountRef.current) {
       lastRequestedCountRef.current = 0;
     }
   }, [items.length]);
 
+  // Virtualizer-based pre-fetch trigger (triggers 35 items before end)
   useEffect(() => {
     if (lastVirtualItemIndex < 0 || items.length === 0) return;
-    // Only trigger when user has actually scrolled near the bottom (within 5 items of loaded end)
-    // AND we haven't already fired a request for this items.length
     if (
-      lastVirtualItemIndex >= items.length - 5 &&
+      lastVirtualItemIndex >= items.length - 35 &&
       hasNextPage &&
       !isFetchingNextPage &&
       onFetchNextPage &&
@@ -207,6 +230,28 @@ export function DatabaseTableView({
       onFetchNextPage();
     }
   }, [lastVirtualItemIndex, items.length, hasNextPage, isFetchingNextPage, onFetchNextPage]);
+
+  // Scroll depth-based proactive pre-fetch trigger (triggers at 70% scroll depth)
+  useEffect(() => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      if (
+        hasNextPage &&
+        !isFetchingNextPage &&
+        onFetchNextPage &&
+        items.length > lastRequestedCountRef.current
+      ) {
+        const { scrollTop, scrollHeight, clientHeight } = el;
+        if (scrollTop + clientHeight >= scrollHeight * 0.7) {
+          lastRequestedCountRef.current = items.length;
+          onFetchNextPage();
+        }
+      }
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [hasNextPage, isFetchingNextPage, onFetchNextPage, items.length]);
 
   const handleAddNewRow = useCallback(() => {
     shouldFocusNewRowRef.current = true;
@@ -593,6 +638,13 @@ const MAX_UNDO_STACK_SIZE = 50;
         )}
       </AnimatePresence>
 
+      {/* Search Loading Bar */}
+      {isSearching && (
+        <div className="w-full h-0.5 bg-[#1f4d3d]/20 dark:bg-emerald-500/20 overflow-hidden relative">
+          <div className="absolute top-0 bottom-0 left-0 bg-[#1f4d3d] dark:bg-emerald-400 w-1/3 animate-[indeterminate_1.2s_infinite_linear]" />
+        </div>
+      )}
+
       {/* Virtualized Scrollable Grid Table Container */}
       <div
         ref={tableContainerRef}
@@ -665,6 +717,36 @@ const MAX_UNDO_STACK_SIZE = 50;
                       {titleProp?.name || 'Name'}
                     </span>
                   )}
+
+                  {/* Title Sort Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleToggleSort('__TITLE__');
+                    }}
+                    className={cn(
+                      "p-1 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0",
+                      sortBy?.propertyId === '__TITLE__'
+                        ? "text-[#1f4d3d] dark:text-emerald-400 opacity-100"
+                        : "text-stone-400 opacity-0 group-hover:opacity-100"
+                    )}
+                    title={
+                      sortBy?.propertyId === '__TITLE__'
+                        ? `Sorted ${sortBy.direction.toUpperCase()} (Click to toggle)`
+                        : "Sort by Title"
+                    }
+                  >
+                    {sortBy?.propertyId === '__TITLE__' ? (
+                      sortBy.direction === 'asc' ? (
+                        <ArrowUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ArrowDown className="w-3.5 h-3.5" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="w-3.5 h-3.5" />
+                    )}
+                  </button>
                 </div>
 
                 <div
@@ -690,6 +772,9 @@ const MAX_UNDO_STACK_SIZE = 50;
                   handleRequestDeleteProperty={handleRequestDeleteProperty}
                   width={columnWidths[prop.id]}
                   onResizeStart={(e) => handleResizeStart(e, prop.id)}
+                  sortBy={sortBy}
+                  onToggleSort={handleToggleSort}
+                  onSetSort={onSortChange}
                 />
               ))}
 
@@ -1287,6 +1372,9 @@ function ColumnHeaderCell({
   handleRequestDeleteProperty,
   width,
   onResizeStart,
+  sortBy,
+  onToggleSort,
+  onSetSort,
 }: {
   prop: DatabaseProperty;
   readOnly: boolean;
@@ -1301,9 +1389,13 @@ function ColumnHeaderCell({
   handleRequestDeleteProperty: (prop: DatabaseProperty) => void;
   width?: number;
   onResizeStart?: (e: React.MouseEvent) => void;
+  sortBy?: { propertyId: string; direction: 'asc' | 'desc' } | null;
+  onToggleSort?: (propId: string) => void;
+  onSetSort?: (sortBy: { propertyId: string; direction: 'asc' | 'desc' } | null) => void;
 }) {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const isOpen = activeOpenMenuId === `col-${prop.id}`;
+  const isSortedThisCol = sortBy?.propertyId === prop.id;
 
   return (
     <th
@@ -1343,6 +1435,38 @@ function ColumnHeaderCell({
             >
               {prop.name}
             </span>
+          )}
+
+          {/* Column Sort Button */}
+          {onToggleSort && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleSort(prop.id);
+              }}
+              className={cn(
+                "p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-800 transition-colors cursor-pointer shrink-0",
+                isSortedThisCol
+                  ? "text-[#1f4d3d] dark:text-emerald-400 opacity-100"
+                  : "text-stone-400 opacity-0 group-hover:opacity-100"
+              )}
+              title={
+                isSortedThisCol
+                  ? `Sorted ${sortBy?.direction.toUpperCase()} (Click to toggle)`
+                  : `Sort by ${prop.name}`
+              }
+            >
+              {isSortedThisCol ? (
+                sortBy?.direction === 'asc' ? (
+                  <ArrowUp className="w-3 h-3" />
+                ) : (
+                  <ArrowDown className="w-3 h-3" />
+                )
+              ) : (
+                <ArrowUpDown className="w-3 h-3" />
+              )}
+            </button>
           )}
         </div>
 
@@ -1387,6 +1511,57 @@ function ColumnHeaderCell({
               <Edit2 className="w-3.5 h-3.5 text-stone-400" />
               <span>Rename Column</span>
             </button>
+
+            {/* Sorting Actions */}
+            {onSetSort && (
+              <>
+                <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
+                  Sort
+                </div>
+                <button
+                  onClick={() => {
+                    onSetSort({ propertyId: prop.id, direction: 'asc' });
+                    setActiveOpenMenuId(null);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all",
+                    isSortedThisCol && sortBy?.direction === 'asc'
+                      ? "bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] dark:text-emerald-400 font-semibold"
+                      : "text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60"
+                  )}
+                >
+                  <ArrowUp className="w-3.5 h-3.5 text-stone-400" />
+                  <span>Sort Ascending</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onSetSort({ propertyId: prop.id, direction: 'desc' });
+                    setActiveOpenMenuId(null);
+                  }}
+                  className={cn(
+                    "w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all",
+                    isSortedThisCol && sortBy?.direction === 'desc'
+                      ? "bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] dark:text-emerald-400 font-semibold"
+                      : "text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60"
+                  )}
+                >
+                  <ArrowDown className="w-3.5 h-3.5 text-stone-400" />
+                  <span>Sort Descending</span>
+                </button>
+                {isSortedThisCol && (
+                  <button
+                    onClick={() => {
+                      onSetSort(null);
+                      setActiveOpenMenuId(null);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-xs text-stone-500 dark:text-zinc-400 hover:bg-stone-100 dark:hover:bg-zinc-700/60 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5 text-stone-400" />
+                    <span>Clear Sort</span>
+                  </button>
+                )}
+              </>
+            )}
 
             {/* Change Column Icon Picker */}
             <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">

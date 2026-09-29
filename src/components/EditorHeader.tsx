@@ -3,9 +3,25 @@ import { createPortal } from 'react-dom';
 import { CollaboratorAvatars } from './CollaboratorAvatars';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Download01Icon, Edit02Icon, TableIcon, File01Icon, Upload01Icon } from '@hugeicons/core-free-icons';
-import { Star, Share2, MoreHorizontal, Undo, Redo, Copy, Search } from 'lucide-react';
+import {
+  Star,
+  Share2,
+  MoreHorizontal,
+  Undo,
+  Redo,
+  Copy,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  X,
+  Trash2,
+} from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
+import type { DatabaseProperty } from '~/db/schema';
+import { PropertyTypeIcon } from './database/PropertyTypeIcon';
+import { DatabasePopover } from './database/DatabasePopover';
 
 interface EditorHeaderProps {
   icon?: React.ReactNode;
@@ -25,6 +41,10 @@ interface EditorHeaderProps {
   onIconChange?: (newIcon: string | null) => void;
   searchQuery?: string;
   onSearchChange?: (q: string) => void;
+  isSearching?: boolean;
+  properties?: DatabaseProperty[];
+  sortBy?: { propertyId: string; direction: 'asc' | 'desc' } | null;
+  onSortChange?: (sortBy: { propertyId: string; direction: 'asc' | 'desc' } | null) => void;
   onAddItem?: () => void;
   onImportData?: () => void;
 }
@@ -45,6 +65,10 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   onRevertTitle,
   searchQuery,
   onSearchChange,
+  isSearching = false,
+  properties = [],
+  sortBy,
+  onSortChange,
   onAddItem: _onAddItem,
   onImportData,
 }) => {
@@ -60,7 +84,15 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
   } = useUIStore();
 
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const sortButtonRef = useRef<HTMLButtonElement>(null);
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [menuCoords, setMenuCoords] = useState<{ top: number; left: number } | null>(null);
+
+  const activeSortProp = properties?.find((p) => p.id === sortBy?.propertyId);
+  const activeSortName =
+    sortBy?.propertyId === '__TITLE__'
+      ? properties?.find((p) => p.type === 'title')?.name || 'Title'
+      : activeSortProp?.name || 'Property';
 
   const handleToggleMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -138,17 +170,185 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
       {/* Right: Actions, Search/New & Collaborators */}
       <div className="flex items-center gap-2.5 shrink-0">
         {onSearchChange !== undefined && (
-          <div className="flex items-center gap-2 mr-1">
+          <div className="flex items-center gap-1.5 mr-1">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
+              {isSearching ? (
+                <div className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none">
+                  <div className="w-3 h-3 rounded-full border border-stone-400 dark:border-zinc-500 border-t-transparent animate-spin" />
+                </div>
+              ) : (
+                <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500 pointer-events-none" />
+              )}
               <input
                 type="text"
-                placeholder="Search items..."
+                placeholder="Search (min 3 chars)..."
                 value={searchQuery || ''}
                 onChange={(e) => onSearchChange(e.target.value)}
-                className="pl-7 pr-2.5 py-1 text-xs rounded-md border border-stone-200/80 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d] w-28 sm:w-44 transition-all"
+                className="pl-7 pr-2.5 py-1 text-xs rounded-md border border-stone-200/80 dark:border-zinc-800 bg-stone-50/50 dark:bg-zinc-900/50 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-[#1f4d3d] w-32 sm:w-48 transition-all"
               />
             </div>
+
+            {/* DB Sort Popover Toggle */}
+            {onSortChange !== undefined && (
+              <div className="relative">
+                <button
+                  ref={sortButtonRef}
+                  type="button"
+                  onClick={() => setShowSortMenu(!showSortMenu)}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-colors cursor-pointer font-medium select-none",
+                    sortBy
+                      ? "bg-stone-100 dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 border border-stone-200 dark:border-zinc-700"
+                      : "text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 border border-transparent"
+                  )}
+                  title={sortBy ? `Sorted by ${activeSortName} (${sortBy.direction})` : "Sort database"}
+                >
+                  {sortBy ? (
+                    sortBy.direction === 'asc' ? (
+                      <ArrowUp className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400 shrink-0" />
+                    ) : (
+                      <ArrowDown className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400 shrink-0" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 shrink-0" />
+                  )}
+                  <span className="truncate max-w-24 sm:max-w-32">{sortBy ? activeSortName : 'Sort'}</span>
+                  {sortBy && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSortChange(null);
+                      }}
+                      className="p-0.5 rounded hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                      title="Clear sort"
+                    >
+                      <X className="w-3 h-3" />
+                    </span>
+                  )}
+                </button>
+
+                <DatabasePopover
+                  isOpen={showSortMenu}
+                  onClose={() => setShowSortMenu(false)}
+                  triggerRef={sortButtonRef}
+                  align="right"
+                  width={200}
+                >
+                  <div className="py-1 min-w-[190px] text-left">
+                    <div className="px-3 py-1 flex items-center justify-between border-b border-stone-100 dark:border-zinc-700/60 pb-1 mb-1">
+                      <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
+                        Sort by
+                      </span>
+                      {sortBy && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSortChange(null);
+                            setShowSortMenu(false);
+                          }}
+                          className="text-[10px] text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 px-1">
+                      {/* Title Property */}
+                      {(() => {
+                        const titleProp = properties?.find((p) => p.type === 'title');
+                        const isTitleSorted = sortBy?.propertyId === '__TITLE__' || (titleProp && sortBy?.propertyId === titleProp.id);
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isTitleSorted) {
+                                onSortChange({
+                                  propertyId: '__TITLE__',
+                                  direction: sortBy?.direction === 'asc' ? 'desc' : 'asc',
+                                });
+                              } else {
+                                onSortChange({ propertyId: '__TITLE__', direction: 'asc' });
+                              }
+                            }}
+                            className={clsx(
+                              "w-full px-2.5 py-1.5 text-xs rounded-md flex items-center justify-between gap-2 transition-all cursor-pointer text-left",
+                              isTitleSorted
+                                ? "bg-stone-100 dark:bg-zinc-800 font-medium text-stone-900 dark:text-zinc-100"
+                                : "text-stone-700 dark:text-zinc-300 hover:bg-stone-100/70 dark:hover:bg-zinc-800/60"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 truncate min-w-0">
+                              <PropertyTypeIcon type="title" icon={titleProp?.icon} className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span className="truncate">{titleProp?.name || 'Title'}</span>
+                            </div>
+                            {isTitleSorted && (
+                              <div className="flex items-center gap-1 shrink-0 text-[#1f4d3d] dark:text-emerald-400">
+                                {sortBy.direction === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })()}
+
+                      {/* Custom Database Properties */}
+                      {properties?.filter((p) => p.type !== 'title').map((prop) => {
+                        const isPropSorted = sortBy?.propertyId === prop.id;
+                        return (
+                          <button
+                            key={prop.id}
+                            type="button"
+                            onClick={() => {
+                              if (isPropSorted) {
+                                onSortChange({
+                                  propertyId: prop.id,
+                                  direction: sortBy?.direction === 'asc' ? 'desc' : 'asc',
+                                });
+                              } else {
+                                onSortChange({ propertyId: prop.id, direction: 'asc' });
+                              }
+                            }}
+                            className={clsx(
+                              "w-full px-2.5 py-1.5 text-xs rounded-md flex items-center justify-between gap-2 transition-all cursor-pointer text-left",
+                              isPropSorted
+                                ? "bg-stone-100 dark:bg-zinc-800 font-medium text-stone-900 dark:text-zinc-100"
+                                : "text-stone-700 dark:text-zinc-300 hover:bg-stone-100/70 dark:hover:bg-zinc-800/60"
+                            )}
+                          >
+                            <div className="flex items-center gap-2 truncate min-w-0">
+                              <PropertyTypeIcon type={prop.type} icon={prop.icon} className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span className="truncate">{prop.name}</span>
+                            </div>
+                            {isPropSorted && (
+                              <div className="flex items-center gap-1 shrink-0 text-[#1f4d3d] dark:text-emerald-400">
+                                {sortBy.direction === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Remove sort */}
+                    {sortBy && (
+                      <div className="mt-1 pt-1 border-t border-stone-100 dark:border-zinc-700/60 px-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSortChange(null);
+                            setShowSortMenu(false);
+                          }}
+                          className="w-full px-2.5 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded flex items-center gap-2 transition-colors cursor-pointer text-left"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Remove Sort</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </DatabasePopover>
+              </div>
+            )}
           </div>
         )}
         <CollaboratorAvatars

@@ -292,11 +292,15 @@ export async function fetchDatabaseItems(input: {
   offset?: number;
   limit?: number;
   searchQuery?: string;
+  sortBy?: {
+    propertyId: string;
+    direction: 'asc' | 'desc';
+  };
 }): Promise<FetchDatabaseItemsResult> {
-  const { databaseId, offset = 0, limit = 200, searchQuery } = input;
+  const { databaseId, offset = 0, limit = 200, searchQuery, sortBy } = input;
   await assertDatabaseViewAccess(databaseId);
 
-  const cleanQuery = searchQuery?.trim();
+  const cleanQuery = searchQuery?.trim() && searchQuery.trim().length >= 3 ? searchQuery.trim() : undefined;
 
   const whereClause = cleanQuery
     ? and(
@@ -307,6 +311,75 @@ export async function fetchDatabaseItems(input: {
         )
       )
     : eq(databaseItems.databaseId, databaseId);
+
+  let orderClauses: any[] = [asc(databaseItems.order), desc(databaseItems.createdAt)];
+
+  if (sortBy && sortBy.propertyId) {
+    const isAsc = sortBy.direction === 'asc';
+
+    if (sortBy.propertyId === 'title' || sortBy.propertyId === '__TITLE__') {
+      orderClauses = [
+        isAsc ? asc(databaseItems.title) : desc(databaseItems.title),
+        desc(databaseItems.createdAt),
+      ];
+    } else if (sortBy.propertyId === 'createdAt') {
+      orderClauses = [
+        isAsc ? asc(databaseItems.createdAt) : desc(databaseItems.createdAt),
+      ];
+    } else if (sortBy.propertyId === 'updatedAt') {
+      orderClauses = [
+        isAsc ? asc(databaseItems.updatedAt) : desc(databaseItems.updatedAt),
+      ];
+    } else {
+      // Find property type from databaseProperties
+      const [prop] = await db
+        .select({ type: databaseProperties.type })
+        .from(databaseProperties)
+        .where(
+          and(
+            eq(databaseProperties.id, sortBy.propertyId),
+            eq(databaseProperties.databaseId, databaseId)
+          )
+        )
+        .limit(1);
+
+      const propId = sortBy.propertyId;
+      if (prop?.type === 'title') {
+        orderClauses = [
+          isAsc ? asc(databaseItems.title) : desc(databaseItems.title),
+          desc(databaseItems.createdAt),
+        ];
+      } else if (prop?.type === 'number') {
+        orderClauses = [
+          isAsc
+            ? sql`(${databaseItems.properties}->>${propId})::numeric ASC NULLS LAST`
+            : sql`(${databaseItems.properties}->>${propId})::numeric DESC NULLS LAST`,
+          desc(databaseItems.createdAt),
+        ];
+      } else if (prop?.type === 'date') {
+        orderClauses = [
+          isAsc
+            ? sql`(${databaseItems.properties}->>${propId})::timestamp ASC NULLS LAST`
+            : sql`(${databaseItems.properties}->>${propId})::timestamp DESC NULLS LAST`,
+          desc(databaseItems.createdAt),
+        ];
+      } else if (prop?.type === 'checkbox') {
+        orderClauses = [
+          isAsc
+            ? sql`(${databaseItems.properties}->>${propId})::boolean ASC NULLS LAST`
+            : sql`(${databaseItems.properties}->>${propId})::boolean DESC NULLS LAST`,
+          desc(databaseItems.createdAt),
+        ];
+      } else {
+        orderClauses = [
+          isAsc
+            ? sql`lower(${databaseItems.properties}->>${propId}) ASC NULLS LAST`
+            : sql`lower(${databaseItems.properties}->>${propId}) DESC NULLS LAST`,
+          desc(databaseItems.createdAt),
+        ];
+      }
+    }
+  }
 
   const [countRes, rawItems] = await Promise.all([
     db
@@ -326,7 +399,7 @@ export async function fetchDatabaseItems(input: {
       })
       .from(databaseItems)
       .where(whereClause)
-      .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt))
+      .orderBy(...orderClauses)
       .limit(limit)
       .offset(offset),
   ]);
