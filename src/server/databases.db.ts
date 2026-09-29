@@ -14,7 +14,7 @@ import {
   type DatabaseView,
   type DatabaseForm,
 } from '~/db/schema';
-import { eq, asc, desc, and, or, isNull, inArray } from 'drizzle-orm';
+import { eq, asc, desc, and, or, isNull, inArray, ilike, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { fetchPage, getPageAccessLevel } from './pages.db';
 import { getSessionImpl } from './auth.db';
@@ -32,6 +32,15 @@ export interface FullDatabase {
   items: DatabaseItem[];
   views: DatabaseView[];
   forms: DatabaseForm[];
+  totalCount?: number;
+  hasMore?: boolean;
+}
+
+export interface FetchDatabaseItemsResult {
+  items: DatabaseItem[];
+  nextCursor: number | null;
+  totalCount: number;
+  hasMore: boolean;
 }
 
 export async function invalidateDatabaseCaches(
@@ -217,7 +226,7 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
     return null;
   }
 
-  const [properties, rawItems, views, forms] = await Promise.all([
+  const [properties, rawItems, views, forms, countRes] = await Promise.all([
     db
       .select()
       .from(databaseProperties)
@@ -236,7 +245,8 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
       })
       .from(databaseItems)
       .where(eq(databaseItems.databaseId, database.id))
-      .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt)),
+      .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt))
+      .limit(200),
     db
       .select()
       .from(databaseViews)
@@ -246,8 +256,13 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
       .select()
       .from(databaseForms)
       .where(eq(databaseForms.databaseId, database.id)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(databaseItems)
+      .where(eq(databaseItems.databaseId, database.id)),
   ]);
 
+  const totalCount = countRes[0]?.count ?? rawItems.length;
   const items: DatabaseItem[] = rawItems.map((item) => ({
     ...item,
     content: [],
@@ -259,6 +274,8 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
     items,
     views,
     forms,
+    totalCount,
+    hasMore: totalCount > items.length,
   };
 
   // Cache in Redis for fast access (30 min TTL)
@@ -268,6 +285,67 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
   }
 
   return fullDb;
+}
+
+export async function fetchDatabaseItems(input: {
+  databaseId: string;
+  offset?: number;
+  limit?: number;
+  searchQuery?: string;
+}): Promise<FetchDatabaseItemsResult> {
+  const { databaseId, offset = 0, limit = 200, searchQuery } = input;
+  await assertDatabaseViewAccess(databaseId);
+
+  const cleanQuery = searchQuery?.trim();
+
+  const whereClause = cleanQuery
+    ? and(
+        eq(databaseItems.databaseId, databaseId),
+        or(
+          ilike(databaseItems.title, `%${cleanQuery}%`),
+          sql`${databaseItems.properties}::text ILIKE ${'%' + cleanQuery + '%'}`
+        )
+      )
+    : eq(databaseItems.databaseId, databaseId);
+
+  const [countRes, rawItems] = await Promise.all([
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(databaseItems)
+      .where(whereClause),
+    db
+      .select({
+        id: databaseItems.id,
+        databaseId: databaseItems.databaseId,
+        pageId: databaseItems.pageId,
+        title: databaseItems.title,
+        properties: databaseItems.properties,
+        order: databaseItems.order,
+        createdAt: databaseItems.createdAt,
+        updatedAt: databaseItems.updatedAt,
+      })
+      .from(databaseItems)
+      .where(whereClause)
+      .orderBy(asc(databaseItems.order), desc(databaseItems.createdAt))
+      .limit(limit)
+      .offset(offset),
+  ]);
+
+  const totalCount = countRes[0]?.count ?? 0;
+  const items: DatabaseItem[] = rawItems.map((item) => ({
+    ...item,
+    content: [],
+  }));
+
+  const hasMore = offset + items.length < totalCount;
+  const nextCursor = hasMore ? offset + items.length : null;
+
+  return {
+    items,
+    nextCursor,
+    totalCount,
+    hasMore,
+  };
 }
 
 export async function fetchDatabasesInWorkspace(workspaceId: string): Promise<Database[]> {

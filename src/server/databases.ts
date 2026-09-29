@@ -7,6 +7,13 @@ export const getDatabase = createServerFn({ method: 'GET' })
     return fetchDatabase(data);
   });
 
+export const getDatabaseItems = createServerFn({ method: 'GET' })
+  .validator((input: { databaseId: string; offset?: number; limit?: number; searchQuery?: string }) => input)
+  .handler(async ({ data }) => {
+    const { fetchDatabaseItems } = await import('./databases.db');
+    return fetchDatabaseItems(data);
+  });
+
 export const getDatabasesInWorkspace = createServerFn({ method: 'GET' })
   .validator((workspaceId: string) => workspaceId)
   .handler(async ({ data }: { data: string }) => {

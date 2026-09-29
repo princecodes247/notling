@@ -18,6 +18,7 @@ interface DatabaseImportModalProps {
   databaseId: string;
   databaseTitle?: string;
   existingProperties: DatabaseProperty[];
+  onSuccess?: () => void;
 }
 
 type PropertyTypeOption = 'title' | 'text' | 'number' | 'select' | 'multi_select' | 'date' | 'checkbox' | 'url' | 'email';
@@ -47,6 +48,7 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
   databaseId,
   databaseTitle = 'Database',
   existingProperties,
+  onSuccess,
 }) => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -220,10 +222,17 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
         },
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
-      queryClient.invalidateQueries({ queryKey: ['databases'] });
-      queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['database', databaseId] }),
+        queryClient.invalidateQueries({ queryKey: ['databaseItems', databaseId] }),
+        queryClient.invalidateQueries({ queryKey: ['databases'] }),
+        queryClient.invalidateQueries({ queryKey: ['databasesList'] }),
+        queryClient.invalidateQueries({ queryKey: ['pageTree'] }),
+      ]);
+      if (onSuccess) {
+        onSuccess();
+      }
       handleClose();
     },
     onError: (err: any) => {

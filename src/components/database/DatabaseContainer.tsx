@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useQueryClient, useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query';
 import type { DatabaseItem, DatabaseProperty, Page } from '~/db/schema';
 import type { FullDatabase } from '~/server/databases.db';
 import { DatabaseTableView } from './DatabaseTableView';
 import { DatabaseRowDrawer } from './DatabaseRowDrawer';
 import {
+  getDatabaseItems,
   createDatabaseProperty,
   updateDatabaseProperty,
   deleteDatabaseProperty,
@@ -52,10 +53,65 @@ export function DatabaseContainer({
   const isEditingTitleRef = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery.trim());
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const databaseId = initialData.database.id;
   const targetPageId = initialData.database.pageId || initialData.database.id;
+
+  // Server-side Cursor / Infinite Scroll Query (200 rows per chunk)
+  const {
+    data: infiniteItemsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch: refetchItems,
+  } = useInfiniteQuery({
+    queryKey: ['databaseItems', databaseId, debouncedSearchQuery],
+    queryFn: async ({ pageParam = 0 }) => {
+      return await getDatabaseItems({
+        data: {
+          databaseId,
+          offset: pageParam,
+          limit: 200,
+          searchQuery: debouncedSearchQuery,
+        },
+      });
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => (lastPage?.hasMore ? lastPage.nextCursor : undefined),
+    initialData: !debouncedSearchQuery && initialData?.items
+      ? {
+          pages: [
+            {
+              items: initialData.items,
+              nextCursor: (initialData.totalCount ?? initialData.items.length) > initialData.items.length ? initialData.items.length : null,
+              totalCount: initialData.totalCount ?? initialData.items.length,
+              hasMore: (initialData.totalCount ?? initialData.items.length) > initialData.items.length,
+            },
+          ],
+          pageParams: [0],
+        }
+      : undefined,
+  });
+
+  // Flattened items across loaded pages
+  const allItems = useMemo(() => {
+    if (infiniteItemsData?.pages && infiniteItemsData.pages.length > 0) {
+      return infiniteItemsData.pages.flatMap((p) => p.items);
+    }
+    return dbData.items;
+  }, [infiniteItemsData, dbData.items]);
+
+  const totalCount = infiniteItemsData?.pages?.[0]?.totalCount ?? dbData.totalCount ?? allItems.length;
 
   const { data: pageData } = useQuery({
     queryKey: ['page', targetPageId],
@@ -106,13 +162,38 @@ export function DatabaseContainer({
     });
   };
 
+  const updateInfiniteCache = (updater: (prevItems: DatabaseItem[]) => DatabaseItem[], totalDelta: number = 0) => {
+    queryClient.setQueryData(['databaseItems', databaseId, debouncedSearchQuery], (old: any) => {
+      if (!old?.pages) return old;
+      const combined: DatabaseItem[] = old.pages.flatMap((p: any) => p.items);
+      const updated = updater(combined);
+      const newPages = [];
+      for (let i = 0; i < updated.length; i += 200) {
+        newPages.push({
+          items: updated.slice(i, i + 200),
+          nextCursor: old.pages[0]?.nextCursor,
+          totalCount: Math.max(0, (old.pages[0]?.totalCount ?? updated.length) + totalDelta),
+          hasMore: old.pages[0]?.hasMore,
+        });
+      }
+      if (newPages.length === 0) {
+        newPages.push({ items: [], nextCursor: null, totalCount: 0, hasMore: false });
+      }
+      return {
+        ...old,
+        pages: newPages,
+      };
+    });
+  };
+
   React.useEffect(() => {
     setDbData(initialData);
     if (!isEditingTitleRef.current) {
       setDbTitle(initialData.database.title || 'Untitled Database');
       savedTitleRef.current = initialData.database.title || 'Untitled Database';
     }
-  }, [initialData]);
+    queryClient.invalidateQueries({ queryKey: ['databaseItems', databaseId] });
+  }, [initialData, databaseId, queryClient]);
 
   const handleSaveTitle = async () => {
     if (readOnly) return;
@@ -170,18 +251,6 @@ export function DatabaseContainer({
     setDbTitle(savedTitleRef.current);
   };
 
-  // Filter items based on search query
-  const filteredItems = useMemo(() => {
-    if (!searchQuery.trim()) return dbData.items;
-    const q = searchQuery.toLowerCase();
-    return dbData.items.filter((item: DatabaseItem) => {
-      if (item.title.toLowerCase().includes(q)) return true;
-      return Object.values(item.properties || {}).some(
-        (val) => typeof val === 'string' && val.toLowerCase().includes(q)
-      );
-    });
-  }, [dbData.items, searchQuery]);
-
   // Handlers for Items (100% Optimistic)
   const handleAddItem = async (initialProps?: Record<string, any>) => {
     if (readOnly) return '';
@@ -208,7 +277,7 @@ export function DatabaseContainer({
       title: defaultTitle,
       properties: mergedProps,
       content: [],
-      order: dbData.items.length,
+      order: allItems.length,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -216,7 +285,9 @@ export function DatabaseContainer({
     updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: [...prev.items, optimisticItem],
+      totalCount: (prev.totalCount ?? prev.items.length) + 1,
     }));
+    updateInfiniteCache((prev) => [...prev, optimisticItem], 1);
 
     try {
       const res = await createDatabaseItem({
@@ -235,6 +306,11 @@ export function DatabaseContainer({
             item.id === tempId ? { ...item, pageId: res.pageId } : item
           ),
         }));
+        updateInfiniteCache((prev) =>
+          prev.map((item: DatabaseItem) =>
+            item.id === tempId ? { ...item, pageId: res.pageId } : item
+          )
+        );
       }
     } catch (err) {
       console.error('Failed to save row to server:', err);
@@ -256,6 +332,17 @@ export function DatabaseContainer({
           : i
       ),
     }));
+    updateInfiniteCache((prev) =>
+      prev.map((i: DatabaseItem) =>
+        i.id === itemId
+          ? {
+            ...i,
+            title: updates.title !== undefined ? updates.title : i.title,
+            properties: updates.properties !== undefined ? updates.properties : i.properties,
+          }
+          : i
+      )
+    );
 
     await updateDatabaseItem({
       data: {
@@ -270,7 +357,9 @@ export function DatabaseContainer({
     updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.filter((i: DatabaseItem) => i.id !== itemId),
+      totalCount: Math.max(0, (prev.totalCount ?? prev.items.length) - 1),
     }));
+    updateInfiniteCache((prev) => prev.filter((i) => i.id !== itemId), -1);
 
     await deleteDatabaseItem({ data: itemId });
   };
@@ -280,7 +369,9 @@ export function DatabaseContainer({
     updateLocalAndCache((prev: FullDatabase) => ({
       ...prev,
       items: prev.items.filter((i: DatabaseItem) => !itemIds.includes(i.id)),
+      totalCount: Math.max(0, (prev.totalCount ?? prev.items.length) - itemIds.length),
     }));
+    updateInfiniteCache((prev) => prev.filter((i) => !itemIds.includes(i.id)), -itemIds.length);
 
     await deleteDatabaseItemsBulk({ data: itemIds });
   };
@@ -296,6 +387,13 @@ export function DatabaseContainer({
         ...prev,
         items: newItems,
       };
+    });
+    updateInfiniteCache((prev) => {
+      if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
     });
   };
 
@@ -486,7 +584,11 @@ export function DatabaseContainer({
       <div className={hideHeader ? "max-w-7xl mx-auto px-4 sm:px-8 pb-16" : "py-2 px-4 pt-6 sm:px-8"}>
         <DatabaseTableView
           properties={dbData.properties}
-          items={filteredItems}
+          items={allItems}
+          totalCount={totalCount}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          onFetchNextPage={fetchNextPage}
           onUpdateItem={handleUpdateItem}
           onDeleteItem={handleDeleteItem}
           onDeleteItemsBulk={handleDeleteItemsBulk}
@@ -533,6 +635,11 @@ export function DatabaseContainer({
         databaseId={dbData.database.id}
         databaseTitle={dbTitle}
         existingProperties={dbData.properties}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
+          queryClient.invalidateQueries({ queryKey: ['databaseItems', databaseId] });
+          refetchItems();
+        }}
       />
 
       {/* Export Modal for Database */}

@@ -30,6 +30,10 @@ import { AnimatePresence } from 'motion/react';
 interface DatabaseTableViewProps {
   properties: DatabaseProperty[];
   items: DatabaseItem[];
+  totalCount?: number;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  onFetchNextPage?: () => void;
   onUpdateItem: (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => void;
   onDeleteItem: (itemId: string) => void;
   onDeleteItemsBulk?: (itemIds: string[]) => void;
@@ -65,6 +69,10 @@ import {
 export function DatabaseTableView({
   properties,
   items,
+  totalCount,
+  hasNextPage,
+  isFetchingNextPage,
+  onFetchNextPage,
   onUpdateItem,
   onDeleteItem: _onDeleteItem,
   onDeleteItemsBulk,
@@ -171,6 +179,35 @@ export function DatabaseTableView({
     overscan: 12,
   });
 
+  // Track last requested count to prevent infinite scroll loops
+  const lastRequestedCountRef = useRef<number>(0);
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const lastVirtualItemIndex = virtualItems.length > 0 ? virtualItems[virtualItems.length - 1].index : -1;
+
+  useEffect(() => {
+    // Reset requested tracker if item count resets (e.g. searching)
+    if (items.length < lastRequestedCountRef.current) {
+      lastRequestedCountRef.current = 0;
+    }
+  }, [items.length]);
+
+  useEffect(() => {
+    if (lastVirtualItemIndex < 0 || items.length === 0) return;
+    // Only trigger when user has actually scrolled near the bottom (within 5 items of loaded end)
+    // AND we haven't already fired a request for this items.length
+    if (
+      lastVirtualItemIndex >= items.length - 5 &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      onFetchNextPage &&
+      items.length > lastRequestedCountRef.current
+    ) {
+      lastRequestedCountRef.current = items.length;
+      onFetchNextPage();
+    }
+  }, [lastVirtualItemIndex, items.length, hasNextPage, isFetchingNextPage, onFetchNextPage]);
+
   const handleAddNewRow = useCallback(() => {
     shouldFocusNewRowRef.current = true;
     const newRowIndex = items.length;
@@ -193,8 +230,13 @@ export function DatabaseTableView({
     }
   }, [handleAddNewRow, items.length, rowVirtualizer]);
 
+  // Only focus cell if user is actively editing inside table AND not typing in search or outer inputs
   useEffect(() => {
     if (focusedCell && focusedCell.colIndex === 0 && (isEditingCell || shouldFocusNewRowRef.current)) {
+      const activeEl = document.activeElement;
+      if (activeEl && tableContainerRef.current && !tableContainerRef.current.contains(activeEl)) {
+        return;
+      }
       const targetItem = items[focusedCell.rowIndex];
       if (targetItem) {
         const el = titleInputRefs.current.get(targetItem.id);
@@ -208,8 +250,9 @@ export function DatabaseTableView({
     }
   }, [focusedCell, isEditingCell, items]);
 
+  // ONLY auto-focus new row when user explicitly clicks "New row" (shouldFocusNewRowRef)
   useEffect(() => {
-    if (!readOnly && (items.length > prevItemsLengthRef.current || shouldFocusNewRowRef.current)) {
+    if (!readOnly && shouldFocusNewRowRef.current) {
       const newRowIndex = items.length - 1;
       if (newRowIndex >= 0) {
         setFocusedCell({ rowIndex: newRowIndex, colIndex: 0 });
@@ -797,9 +840,36 @@ export function DatabaseTableView({
                 </td>
               </tr>
             )}
+
+            {/* Infinite Scroll Loading State in Table */}
+            {isFetchingNextPage && (
+              <tr>
+                <td colSpan={nonTitleProps.length + 3} className="py-2.5 px-4 text-center bg-stone-50/50 dark:bg-zinc-900/50 border-b border-stone-200/40 dark:border-zinc-800/40">
+                  <div className="flex items-center justify-center gap-2 text-xs text-stone-500 dark:text-zinc-400">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-stone-400 dark:text-zinc-500" />
+                    <span>Loading more rows...</span>
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Row Count / Pagination Status Bar */}
+      {totalCount !== undefined && totalCount > 0 && (
+        <div className="py-2 px-2 flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500 select-none">
+          <span>Showing {items.length} of {totalCount} rows</span>
+          {hasNextPage && !isFetchingNextPage && onFetchNextPage && (
+            <button
+              onClick={() => onFetchNextPage()}
+              className="text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 font-medium transition-colors cursor-pointer"
+            >
+              Load next 200 rows ↓
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Confirmation Dialog for Column Deletion */}
       {deleteConfirmProp && (
