@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Modal } from '../Modal';
-import { importDatabaseData } from '~/server/databases';
+import { importDatabaseData, startDatabaseImportJob, getDatabaseImportJobStatus } from '~/server/databases';
 import type { DatabaseProperty } from '~/db/schema';
 import { parseCSVToRecords, parseJSONToRecords, inferPropertyType, type ParsedDatabaseSource } from '~/lib/importParser';
 import { HugeiconsIcon } from '@hugeicons/react';
@@ -226,6 +226,58 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
       const totalRows = parsedData.rows.length;
       const totalChunks = Math.max(1, Math.ceil(totalRows / CLIENT_CHUNK_SIZE));
 
+      // For large datasets (2,000+ rows), dispatch to BullMQ + Redis background worker
+      if (totalRows >= 2000) {
+        setImportProgress({
+          processedRows: 0,
+          totalRows,
+          currentChunk: 0,
+          totalChunks: Math.ceil(totalRows / 500),
+        });
+
+        try {
+          const { jobId } = await startDatabaseImportJob({
+            data: {
+              databaseId,
+              mappings,
+              rows: parsedData.rows,
+            },
+          });
+
+          let isDone = false;
+          while (!isDone) {
+            await new Promise((resolve) => setTimeout(resolve, 350));
+            const jobStatus = await getDatabaseImportJobStatus({ data: jobId });
+
+            if (jobStatus.progress) {
+              setImportProgress({
+                processedRows: jobStatus.progress.processedRows,
+                totalRows: jobStatus.progress.totalRows || totalRows,
+                currentChunk: jobStatus.progress.currentChunk,
+                totalChunks: jobStatus.progress.totalChunks || Math.ceil(totalRows / 500),
+              });
+            }
+
+            if (jobStatus.status === 'completed') {
+              setImportProgress({
+                processedRows: totalRows,
+                totalRows,
+                currentChunk: jobStatus.progress?.totalChunks || Math.ceil(totalRows / 500),
+                totalChunks: jobStatus.progress?.totalChunks || Math.ceil(totalRows / 500),
+              });
+              isDone = true;
+            } else if (jobStatus.status === 'failed') {
+              throw new Error(jobStatus.error || 'Background import job failed.');
+            }
+          }
+          return;
+        } catch (queueErr: any) {
+          console.warn('[Import] Queue dispatch error, falling back to direct chunked import:', queueErr.message);
+          // Fall through to direct chunked execution if queue failed to start
+        }
+      }
+
+      // Direct chunked execution for smaller datasets (< 2,000 rows) or queue fallback
       for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
         const start = chunkIdx * CLIENT_CHUNK_SIZE;
         const end = Math.min(totalRows, (chunkIdx + 1) * CLIENT_CHUNK_SIZE);

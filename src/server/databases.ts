@@ -177,4 +177,32 @@ export const importDatabaseData = createServerFn({ method: 'POST' })
     return importFn(data);
   });
 
+export const startDatabaseImportJob = createServerFn({ method: 'POST' })
+  .validator(
+    (input: {
+      databaseId: string;
+      mappings: Array<{
+        columnName: string;
+        targetPropertyId: string;
+        newPropertyName?: string;
+        newPropertyType?: any;
+      }>;
+      rows: Record<string, any>[];
+    }) => input
+  )
+  .handler(async ({ data }) => {
+    const { enqueueImportJob } = await import('./queues/importQueue');
+    const { assertDatabaseEditAccess } = await import('./databases.db');
+    await assertDatabaseEditAccess(data.databaseId);
+    return enqueueImportJob(data);
+  });
+
+export const getDatabaseImportJobStatus = createServerFn({ method: 'GET' })
+  .validator((jobId: string) => jobId)
+  .handler(async ({ data: jobId }) => {
+    const { getImportJobStatus } = await import('./queues/importQueue');
+    return getImportJobStatus(jobId);
+  });
+
+
 
