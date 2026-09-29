@@ -158,6 +158,9 @@ export const importDatabaseData = createServerFn({ method: 'POST' })
         newPropertyType?: any;
       }>;
       rows: Record<string, any>[];
+      chunkIndex?: number;
+      totalChunks?: number;
+      isFirstChunk?: boolean;
     }) => input
   )
   .handler(async ({ data }) => {

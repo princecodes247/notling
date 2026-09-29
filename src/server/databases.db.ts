@@ -910,8 +910,11 @@ export async function importDatabaseData(input: {
   databaseId: string;
   mappings: DatabaseImportMapping[];
   rows: Record<string, any>[];
+  chunkIndex?: number;
+  totalChunks?: number;
+  isFirstChunk?: boolean;
 }) {
-  const { databaseId, mappings, rows } = input;
+  const { databaseId, mappings, rows, chunkIndex = 0, totalChunks = 1, isFirstChunk = true } = input;
   if (!rows || rows.length === 0) {
     return { success: true, count: 0, propertiesCount: 0 };
   }
@@ -923,103 +926,76 @@ export async function importDatabaseData(input: {
     throw new Error('Database not found');
   }
 
-  const existingProps = await db
-    .select()
-    .from(databaseProperties)
-    .where(eq(databaseProperties.databaseId, databaseId))
-    .orderBy(databaseProperties.order);
+  // If first chunk, create new properties and update select/multi_select options
+  if (isFirstChunk) {
+    const existingProps = await db
+      .select()
+      .from(databaseProperties)
+      .where(eq(databaseProperties.databaseId, databaseId))
+      .orderBy(databaseProperties.order);
 
-  const titleProp = existingProps.find((p) => p.type === 'title');
-  let currentMaxOrder = existingProps.reduce((max, p) => Math.max(max, p.order || 0), -1);
+    let currentMaxOrder = existingProps.reduce((max, p) => Math.max(max, p.order || 0), -1);
+    const propsToCreate: Array<{
+      id: string;
+      databaseId: string;
+      name: string;
+      type: any;
+      options: Array<{ id: string; name: string; color: string }>;
+      order: number;
+    }> = [];
+    const propOptionUpdates: Map<string, Array<{ id: string; name: string; color: string }>> = new Map();
+    const existingPropMap = new Map(existingProps.map((p) => [p.id, p]));
 
-  // Property ID mapping: colName -> targetPropertyId (or '__TITLE__')
-  const colToPropMap: Record<string, { propertyId: string; type: string; isTitle: boolean }> = {};
-  const propsToCreate: Array<{
-    id: string;
-    databaseId: string;
-    name: string;
-    type: any;
-    options: Array<{ id: string; name: string; color: string }>;
-    order: number;
-  }> = [];
-
-  const existingPropMap = new Map(existingProps.map((p) => [p.id, p]));
-  const propOptionUpdates: Map<string, Array<{ id: string; name: string; color: string }>> = new Map();
-
-  for (const mapping of mappings) {
-    const { columnName, targetPropertyId, newPropertyName, newPropertyType } = mapping;
-
-    if (!targetPropertyId || targetPropertyId === '__SKIP__') {
-      continue;
-    }
-
-    if (targetPropertyId === '__TITLE__') {
-      colToPropMap[columnName] = {
-        propertyId: titleProp ? titleProp.id : '__TITLE__',
-        type: 'title',
-        isTitle: true,
-      };
-      continue;
-    }
-
-    if (targetPropertyId === '__NEW__') {
-      const propId = randomUUID();
-      const propName = (newPropertyName || columnName).trim() || 'New Property';
-      const propType = newPropertyType || 'text';
-
-      let options: Array<{ id: string; name: string; color: string }> = [];
-      if (propType === 'select' || propType === 'multi_select') {
-        const optionSet = new Set<string>();
-        rows.forEach((r) => {
-          const val = r[columnName];
-          if (val !== undefined && val !== null && String(val).trim() !== '') {
-            if (propType === 'multi_select') {
-              String(val)
-                .split(/[,;]/)
-                .map((s) => s.trim())
-                .filter(Boolean)
-                .forEach((v) => optionSet.add(v));
-            } else {
-              optionSet.add(String(val).trim());
-            }
-          }
-        });
-
-        let colorIdx = 0;
-        options = Array.from(optionSet).map((optName) => ({
-          id: randomUUID(),
-          name: optName,
-          color: OPTION_COLORS[colorIdx++ % OPTION_COLORS.length],
-        }));
+    for (const mapping of mappings) {
+      const { columnName, targetPropertyId, newPropertyName, newPropertyType } = mapping;
+      if (!targetPropertyId || targetPropertyId === '__SKIP__' || targetPropertyId === '__TITLE__') {
+        continue;
       }
 
-      currentMaxOrder++;
-      propsToCreate.push({
-        id: propId,
-        databaseId,
-        name: propName,
-        type: propType,
-        options,
-        order: currentMaxOrder,
-      });
+      if (targetPropertyId === '__NEW__') {
+        const propId = randomUUID();
+        const propName = (newPropertyName || columnName).trim() || 'New Property';
+        const propType = newPropertyType || 'text';
 
-      colToPropMap[columnName] = {
-        propertyId: propId,
-        type: propType,
-        isTitle: false,
-      };
-    } else {
-      // Existing property
-      const prop = existingPropMap.get(targetPropertyId);
-      if (prop) {
-        colToPropMap[columnName] = {
-          propertyId: prop.id,
-          type: prop.type,
-          isTitle: prop.type === 'title',
-        };
+        let options: Array<{ id: string; name: string; color: string }> = [];
+        if (propType === 'select' || propType === 'multi_select') {
+          const optionSet = new Set<string>();
+          rows.forEach((r) => {
+            const val = r[columnName];
+            if (val !== undefined && val !== null && String(val).trim() !== '') {
+              if (propType === 'multi_select') {
+                String(val)
+                  .split(/[,;]/)
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+                  .forEach((v) => optionSet.add(v));
+              } else {
+                optionSet.add(String(val).trim());
+              }
+            }
+          });
 
-        // If select / multi_select, check if we need to auto-add new options
-        if (prop.type === 'select' || prop.type === 'multi_select') {
+          let colorIdx = 0;
+          options = Array.from(optionSet).map((optName) => ({
+            id: randomUUID(),
+            name: optName,
+            color: OPTION_COLORS[colorIdx++ % OPTION_COLORS.length],
+          }));
+        }
+
+        currentMaxOrder++;
+        propsToCreate.push({
+          id: propId,
+          databaseId,
+          name: propName,
+          type: propType,
+          options,
+          order: currentMaxOrder,
+        });
+      } else {
+        // Existing property
+        const prop = existingPropMap.get(targetPropertyId);
+        if (prop && (prop.type === 'select' || prop.type === 'multi_select')) {
           const currentOptions = [...(prop.options || [])];
           const existingNames = new Set(currentOptions.map((o) => o.name.toLowerCase()));
           let colorIdx = currentOptions.length;
@@ -1056,19 +1032,64 @@ export async function importDatabaseData(input: {
         }
       }
     }
+
+    if (propsToCreate.length > 0 || propOptionUpdates.size > 0) {
+      await db.transaction(async (tx) => {
+        if (propsToCreate.length > 0) {
+          await tx.insert(databaseProperties).values(propsToCreate);
+        }
+        for (const [propId, updatedOptions] of propOptionUpdates.entries()) {
+          await tx
+            .update(databaseProperties)
+            .set({ options: updatedOptions })
+            .where(eq(databaseProperties.id, propId));
+        }
+      });
+    }
   }
 
-  // Insert new properties
-  if (propsToCreate.length > 0) {
-    await db.insert(databaseProperties).values(propsToCreate);
-  }
+  // Load all latest properties to build colToPropMap
+  const allCurrentProps = await db
+    .select()
+    .from(databaseProperties)
+    .where(eq(databaseProperties.databaseId, databaseId))
+    .orderBy(databaseProperties.order);
 
-  // Update existing properties with new options if any
-  for (const [propId, updatedOptions] of propOptionUpdates.entries()) {
-    await db
-      .update(databaseProperties)
-      .set({ options: updatedOptions })
-      .where(eq(databaseProperties.id, propId));
+  const titleProp = allCurrentProps.find((p) => p.type === 'title');
+  const propByName = new Map(allCurrentProps.map((p) => [p.name.trim().toLowerCase(), p]));
+  const propById = new Map(allCurrentProps.map((p) => [p.id, p]));
+
+  const colToPropMap: Record<string, { propertyId: string; type: string; isTitle: boolean }> = {};
+  for (const mapping of mappings) {
+    const { columnName, targetPropertyId, newPropertyName } = mapping;
+    if (!targetPropertyId || targetPropertyId === '__SKIP__') continue;
+
+    if (targetPropertyId === '__TITLE__') {
+      colToPropMap[columnName] = {
+        propertyId: titleProp ? titleProp.id : '__TITLE__',
+        type: 'title',
+        isTitle: true,
+      };
+    } else if (targetPropertyId === '__NEW__') {
+      const propName = (newPropertyName || columnName).trim().toLowerCase();
+      const createdProp = propByName.get(propName);
+      if (createdProp) {
+        colToPropMap[columnName] = {
+          propertyId: createdProp.id,
+          type: createdProp.type,
+          isTitle: createdProp.type === 'title',
+        };
+      }
+    } else {
+      const existingProp = propById.get(targetPropertyId);
+      if (existingProp) {
+        colToPropMap[columnName] = {
+          propertyId: existingProp.id,
+          type: existingProp.type,
+          isTitle: existingProp.type === 'title',
+        };
+      }
+    }
   }
 
   // Get current max order of items
@@ -1080,10 +1101,10 @@ export async function importDatabaseData(input: {
     .limit(1);
   let itemOrder = (lastItem?.order ?? -1) + 1;
 
-  // Process rows and batch insert pages & database items in chunks of 500
-  const CHUNK_SIZE = 500;
-  for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
-    const chunk = rows.slice(i, i + CHUNK_SIZE);
+  // Process rows and batch insert pages & database items in chunked SQL transactions (500 rows per transaction batch)
+  const TRANSACTION_BATCH_SIZE = 500;
+  for (let i = 0; i < rows.length; i += TRANSACTION_BATCH_SIZE) {
+    const chunk = rows.slice(i, i + TRANSACTION_BATCH_SIZE);
 
     const pagesToInsert: Array<{
       id: string;
@@ -1177,20 +1198,24 @@ export async function importDatabaseData(input: {
       itemOrder++;
     }
 
-    if (pagesToInsert.length > 0) {
-      await db.insert(pages).values(pagesToInsert);
-    }
-    if (itemsToInsert.length > 0) {
-      await db.insert(databaseItems).values(itemsToInsert);
+    if (pagesToInsert.length > 0 && itemsToInsert.length > 0) {
+      await db.transaction(async (tx) => {
+        await tx.insert(pages).values(pagesToInsert);
+        await tx.insert(databaseItems).values(itemsToInsert);
+      });
     }
   }
 
-  invalidateDatabaseCaches(databaseId, database.workspaceId, database.pageId).catch(() => {});
+  const isLastChunk = chunkIndex === totalChunks - 1;
+  if (isLastChunk) {
+    invalidateDatabaseCaches(databaseId, database.workspaceId, database.pageId).catch(() => {});
+  }
 
   return {
     success: true,
     count: rows.length,
-    propertiesCount: propsToCreate.length,
+    chunkIndex,
+    totalChunks,
   };
 }
 

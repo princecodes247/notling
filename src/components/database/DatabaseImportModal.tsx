@@ -63,6 +63,12 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
   const [columnConfigs, setColumnConfigs] = useState<ColumnConfig[]>([]);
   const [parseError, setParseError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(true);
+  const [importProgress, setImportProgress] = useState<{
+    processedRows: number;
+    totalRows: number;
+    currentChunk: number;
+    totalChunks: number;
+  } | null>(null);
 
   const resetState = () => {
     setParsedData(null);
@@ -70,6 +76,7 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
     setParseError(null);
     setFileName(null);
     setPasteContent('');
+    setImportProgress(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -200,7 +207,9 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
     });
   };
 
-  // Import mutation
+  const CLIENT_CHUNK_SIZE = 1000;
+
+  // Import mutation with chunked batches
   const importMutation = useMutation({
     mutationFn: async () => {
       if (!parsedData || columnConfigs.length === 0) {
@@ -214,13 +223,39 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
         newPropertyType: cfg.newPropertyType,
       }));
 
-      return await importDatabaseData({
-        data: {
-          databaseId,
-          mappings,
-          rows: parsedData.rows,
-        },
-      });
+      const totalRows = parsedData.rows.length;
+      const totalChunks = Math.max(1, Math.ceil(totalRows / CLIENT_CHUNK_SIZE));
+
+      for (let chunkIdx = 0; chunkIdx < totalChunks; chunkIdx++) {
+        const start = chunkIdx * CLIENT_CHUNK_SIZE;
+        const end = Math.min(totalRows, (chunkIdx + 1) * CLIENT_CHUNK_SIZE);
+        const chunkRows = parsedData.rows.slice(start, end);
+
+        setImportProgress({
+          processedRows: start,
+          totalRows,
+          currentChunk: chunkIdx + 1,
+          totalChunks,
+        });
+
+        await importDatabaseData({
+          data: {
+            databaseId,
+            mappings,
+            rows: chunkRows,
+            chunkIndex: chunkIdx,
+            totalChunks,
+            isFirstChunk: chunkIdx === 0,
+          },
+        });
+
+        setImportProgress({
+          processedRows: end,
+          totalRows,
+          currentChunk: chunkIdx + 1,
+          totalChunks,
+        });
+      }
     },
     onSuccess: async () => {
       await Promise.all([
@@ -238,11 +273,15 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
     onError: (err: any) => {
       console.error('Import error:', err);
       setParseError(err.message || 'Failed to import data into database');
+      setImportProgress(null);
     },
   });
 
   const validRowCount = parsedData?.rows.length || 0;
   const activeMappingsCount = columnConfigs.filter((c) => c.target !== '__SKIP__').length;
+  const progressPercent = importProgress && importProgress.totalRows > 0
+    ? Math.min(100, Math.round((importProgress.processedRows / importProgress.totalRows) * 100))
+    : 0;
 
   return (
     <Modal
@@ -261,43 +300,68 @@ export const DatabaseImportModal: React.FC<DatabaseImportModalProps> = ({
       icon={<FileSpreadsheet className="w-4 h-4 text-amber-500" />}
       footer={
         parsedData ? (
-          <div className="w-full flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={resetState}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-1.5"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Choose different file</span>
-            </button>
+          <div className="w-full flex flex-col gap-2.5">
+            {importMutation.isPending && importProgress && importProgress.totalChunks > 1 && (
+              <div className="w-full flex flex-col gap-1.5 px-0.5 pb-1">
+                <div className="flex items-center justify-between text-xs text-stone-600 dark:text-zinc-300 font-medium">
+                  <span>
+                    Importing batch {importProgress.currentChunk} of {importProgress.totalChunks} ({importProgress.processedRows.toLocaleString()} / {importProgress.totalRows.toLocaleString()} rows)...
+                  </span>
+                  <span className="font-mono">{progressPercent}%</span>
+                </div>
+                <div className="w-full bg-stone-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="bg-[#1f4d3d] dark:bg-emerald-600 h-full transition-all duration-300 ease-out"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
-            <div className="flex items-center gap-2">
+            <div className="w-full flex items-center justify-between gap-3">
               <button
                 type="button"
-                onClick={handleClose}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                onClick={resetState}
+                disabled={importMutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
               >
-                Cancel
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Choose different file</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => importMutation.mutate()}
-                disabled={importMutation.isPending || activeMappingsCount === 0}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-xs transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
-              >
-                {importMutation.isPending ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Importing {validRowCount} rows...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Import {validRowCount} {validRowCount === 1 ? 'Record' : 'Records'}</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={importMutation.isPending}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-stone-600 dark:text-stone-300 hover:bg-stone-200/60 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => importMutation.mutate()}
+                  disabled={importMutation.isPending || activeMappingsCount === 0}
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-xs transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {importMutation.isPending ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>
+                        {importProgress && importProgress.totalChunks > 1
+                          ? `Importing (${progressPercent}%)...`
+                          : `Importing ${validRowCount.toLocaleString()} rows...`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Import {validRowCount.toLocaleString()} {validRowCount === 1 ? 'Record' : 'Records'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         ) : null
