@@ -1143,6 +1143,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
   // Checklist auto-sorting refs & state tracking
   const prevCheckedMapRef = useRef<Map<string, boolean>>(new Map());
   const isAutoSortingChecklistRef = useRef<boolean>(false);
+  const isPointerDownRef = useRef<boolean>(false);
+  const isPaintingRef = useRef<boolean>(false);
 
   const performServerSync = useCallback(
     async (targetPageId?: string) => {
@@ -1300,8 +1302,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     const currentBlocks = editorRef.current?.document;
     if (!currentBlocks) return;
 
-    // Auto-sort checklist run when checked state toggles in a contiguous checklist
-    if (!isAutoSortingChecklistRef.current) {
+    // Auto-sort checklist run when checked state toggles in a contiguous checklist (only when not interacting)
+    if (!isAutoSortingChecklistRef.current && !isPointerDownRef.current && !isPaintingRef.current) {
       const currentCheckedMap = new Map<string, boolean>();
       collectChecklistStates(currentBlocks, currentCheckedMap);
 
@@ -1319,8 +1321,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         sortContiguousChecklists(editorRef.current, editorRef.current.document, changedBlockId);
         setTimeout(() => {
           isAutoSortingChecklistRef.current = false;
-        }, 60);
+        }, 120);
       }
+    } else {
+      // Keep map synced during pointer interactions to prevent stale sorts later
+      const currentCheckedMap = new Map<string, boolean>();
+      collectChecklistStates(currentBlocks, currentCheckedMap);
+      prevCheckedMapRef.current = currentCheckedMap;
     }
 
     // Guard against blank blocks when initial content exists
@@ -2004,6 +2011,10 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     },
   });
 
+  useEffect(() => {
+    isPaintingRef.current = editorPaint.isPainting;
+  }, [editorPaint.isPainting]);
+
   // Drag-to-paint checklist items functionality (boundary-based high performance, state-aware inversion)
   useEffect(() => {
     if (readOnly || !editor) return;
@@ -2032,6 +2043,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       );
 
       if (isCheckboxOrItemArea && blockId) {
+        isPointerDownRef.current = true;
         const block = editor.getBlock(blockId);
         const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
         editorPaint.startPaint(blockId, currentChecked, e as any);
@@ -2039,11 +2051,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
 
     const handlePointerOver = (e: PointerEvent) => {
-      if (!editorPaint.isPainting) return;
+      if (!editorPaint.isPainting || e.buttons !== 1 || isAutoSortingChecklistRef.current) return;
       const target = e.target as HTMLElement;
       if (!target) return;
       const { blockId, checkbox } = getCheckListItemInfo(target);
-      if (blockId) {
+      if (!blockId) return;
+
+      const isCheckboxOrItemArea = !!checkbox && (
+        target === checkbox ||
+        target.closest('input[type="checkbox"]') !== null ||
+        target.classList.contains('bn-checkbox') ||
+        (!!target.closest('.bn-block-content[data-content-type="checkListItem"]') && e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 40)
+      );
+
+      if (isCheckboxOrItemArea) {
         const block = editor.getBlock(blockId);
         const currentChecked = block?.type === "checkListItem" ? block?.props.checked ?? checkbox?.checked ?? false : checkbox?.checked;
         editorPaint.paintItem(blockId, currentChecked);
@@ -2051,23 +2072,31 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
 
     const handlePointerUp = () => {
-      if (editorPaint.isPainting) {
+      const wasInteracting = isPointerDownRef.current || editorPaint.isPainting;
+      isPointerDownRef.current = false;
+      if (wasInteracting) {
         setTimeout(() => {
-          if (editor) {
+          if (editor && !isPointerDownRef.current) {
+            isAutoSortingChecklistRef.current = true;
             sortContiguousChecklists(editor, editor.document);
+            setTimeout(() => {
+              isAutoSortingChecklistRef.current = false;
+            }, 120);
           }
-        }, 30);
+        }, 60);
       }
     };
 
     window.addEventListener('pointerdown', handlePointerDown, true);
     window.addEventListener('pointerover', handlePointerOver, true);
     window.addEventListener('pointerup', handlePointerUp, true);
+    window.addEventListener('pointercancel', handlePointerUp, true);
 
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('pointerover', handlePointerOver, true);
       window.removeEventListener('pointerup', handlePointerUp, true);
+      window.removeEventListener('pointercancel', handlePointerUp, true);
     };
   }, [editor, readOnly, editorPaint]);
 
@@ -2151,74 +2180,74 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     }
   };
 
-function preselectBlockForDrag(editor: any, blockId: string | undefined) {
-  if (!editor || !blockId) return;
-  try {
-    const doc = editor.prosemirrorView?.state?.doc || editor._tiptapEditor?.state?.doc;
-    if (!doc) return;
-    let posBeforeNode: number | undefined = undefined;
-    doc.firstChild?.descendants((node: any, pos: number) => {
-      if (posBeforeNode !== undefined) return false;
-      if (node.attrs?.id === blockId) {
-        posBeforeNode = pos + 1;
-        return false;
+  function preselectBlockForDrag(editor: any, blockId: string | undefined) {
+    if (!editor || !blockId) return;
+    try {
+      const doc = editor.prosemirrorView?.state?.doc || editor._tiptapEditor?.state?.doc;
+      if (!doc) return;
+      let posBeforeNode: number | undefined = undefined;
+      doc.firstChild?.descendants((node: any, pos: number) => {
+        if (posBeforeNode !== undefined) return false;
+        if (node.attrs?.id === blockId) {
+          posBeforeNode = pos + 1;
+          return false;
+        }
+        return true;
+      });
+      if (posBeforeNode !== undefined && editor._tiptapEditor?.commands?.setNodeSelection) {
+        editor._tiptapEditor.commands.setNodeSelection(posBeforeNode);
       }
-      return true;
-    });
-    if (posBeforeNode !== undefined && editor._tiptapEditor?.commands?.setNodeSelection) {
-      editor._tiptapEditor.commands.setNodeSelection(posBeforeNode);
+    } catch (err) {
+      console.error('Error pre-selecting block for drag:', err);
     }
-  } catch (err) {
-    console.error('Error pre-selecting block for drag:', err);
   }
-}
 
-// Helper to find scrollable container ancestor
-function findScrollContainer(element: HTMLElement | null): HTMLElement | Window {
-  let parent = element?.parentElement;
-  while (parent && parent !== document.body && parent !== document.documentElement) {
-    const style = window.getComputedStyle(parent);
-    const hasScroll = parent.scrollHeight > parent.clientHeight + 10;
-    const canScroll = style.overflowY === 'auto' || style.overflowY === 'scroll';
-    if (hasScroll && canScroll) {
-      return parent;
+  // Helper to find scrollable container ancestor
+  function findScrollContainer(element: HTMLElement | null): HTMLElement | Window {
+    let parent = element?.parentElement;
+    while (parent && parent !== document.body && parent !== document.documentElement) {
+      const style = window.getComputedStyle(parent);
+      const hasScroll = parent.scrollHeight > parent.clientHeight + 10;
+      const canScroll = style.overflowY === 'auto' || style.overflowY === 'scroll';
+      if (hasScroll && canScroll) {
+        return parent;
+      }
+      parent = parent.parentElement;
     }
-    parent = parent.parentElement;
+    return window;
   }
-  return window;
-}
 
-// Compute auto-scroll speed based on cursor distance to edges
-function computeAutoScrollSpeed(container: HTMLElement | Window, clientY: number): number {
-  const edgeZone = 120; // Distance in pixels from edge to trigger auto-scroll
-  const maxSpeed = 28; // Maximum scroll speed per frame
+  // Compute auto-scroll speed based on cursor distance to edges
+  function computeAutoScrollSpeed(container: HTMLElement | Window, clientY: number): number {
+    const edgeZone = 120; // Distance in pixels from edge to trigger auto-scroll
+    const maxSpeed = 28; // Maximum scroll speed per frame
 
-  if (container === window || !(container instanceof HTMLElement)) {
-    const vh = window.innerHeight;
-    if (clientY < edgeZone && clientY >= 0) {
-      const ratio = Math.max(0, (edgeZone - clientY) / edgeZone);
+    if (container === window || !(container instanceof HTMLElement)) {
+      const vh = window.innerHeight;
+      if (clientY < edgeZone && clientY >= 0) {
+        const ratio = Math.max(0, (edgeZone - clientY) / edgeZone);
+        return -Math.max(5, Math.round(ratio * maxSpeed));
+      }
+      if (clientY > vh - edgeZone && clientY <= vh) {
+        const ratio = Math.max(0, (clientY - (vh - edgeZone)) / edgeZone);
+        return Math.max(5, Math.round(ratio * maxSpeed));
+      }
+      return 0;
+    }
+
+    const rect = container.getBoundingClientRect();
+    if (clientY < rect.top + edgeZone && clientY >= rect.top - 20) {
+      const ratio = Math.max(0, (rect.top + edgeZone - clientY) / edgeZone);
       return -Math.max(5, Math.round(ratio * maxSpeed));
     }
-    if (clientY > vh - edgeZone && clientY <= vh) {
-      const ratio = Math.max(0, (clientY - (vh - edgeZone)) / edgeZone);
+    if (clientY > rect.bottom - edgeZone && clientY <= rect.bottom + 20) {
+      const ratio = Math.max(0, (clientY - (rect.bottom - edgeZone)) / edgeZone);
       return Math.max(5, Math.round(ratio * maxSpeed));
     }
     return 0;
   }
 
-  const rect = container.getBoundingClientRect();
-  if (clientY < rect.top + edgeZone && clientY >= rect.top - 20) {
-    const ratio = Math.max(0, (rect.top + edgeZone - clientY) / edgeZone);
-    return -Math.max(5, Math.round(ratio * maxSpeed));
-  }
-  if (clientY > rect.bottom - edgeZone && clientY <= rect.bottom + 20) {
-    const ratio = Math.max(0, (clientY - (rect.bottom - edgeZone)) / edgeZone);
-    return Math.max(5, Math.round(ratio * maxSpeed));
-  }
-  return 0;
-}
-
-// Global window drag & drop event listeners in capture phase to take full control
+  // Global window drag & drop event listeners in capture phase to take full control
   useEffect(() => {
     let autoScrollRaf: number | null = null;
     let currentScrollTarget: HTMLElement | Window | null = null;
