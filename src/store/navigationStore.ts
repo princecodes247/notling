@@ -69,7 +69,7 @@ export const useNavigationStore = create<NavigationState>()(
       setActivePageId: (pageId) =>
         set((state) => (state.activePageId === pageId ? state : { activePageId: pageId })),
 
-      sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : true,
+      sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
     }),
@@ -81,6 +81,15 @@ export const useNavigationStore = create<NavigationState>()(
         sidebarOpen: state.sidebarOpen,
         pageMeta: state.pageMeta,
       }),
+      merge: (persistedState: any, currentState) => {
+        const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+        return {
+          ...currentState,
+          ...persistedState,
+          // Mobile devices must always load with the sidebar drawer closed
+          sidebarOpen: isMobile ? false : (persistedState?.sidebarOpen ?? true),
+        };
+      },
     }
   )
 );
