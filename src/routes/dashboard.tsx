@@ -480,7 +480,7 @@ function DashboardLayout() {
         onOpenSettings={() => navigate({ to: '/dashboard/settings' })}
       /> */}
 
-      <div className="h-screen w-screen bg-[#f3f2ee] dark:bg-[#121214] p-0 flex select-none relative overflow-hidden">
+      <div className="h-screen w-screen max-w-full bg-[#f3f2ee] dark:bg-[#121214] p-0 flex select-none relative overflow-hidden">
         {/* Mobile Drawer Dark Backdrop Overlay */}
         <AnimatePresence>
           {sidebarOpen && (

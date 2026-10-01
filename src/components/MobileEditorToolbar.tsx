@@ -106,15 +106,22 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
     const viewport = window.visualViewport;
 
     const updateOffset = () => {
-      const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      // Calculate how much the keyboard / system UI obscures the bottom of the viewport
+      const offset = Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
       setKeyboardOffset(offset);
     };
 
+    updateOffset();
     viewport.addEventListener('resize', updateOffset);
     viewport.addEventListener('scroll', updateOffset);
+    window.addEventListener('resize', updateOffset);
+    window.addEventListener('orientationchange', updateOffset);
+
     return () => {
       viewport.removeEventListener('resize', updateOffset);
       viewport.removeEventListener('scroll', updateOffset);
+      window.removeEventListener('resize', updateOffset);
+      window.removeEventListener('orientationchange', updateOffset);
     };
   }, []);
 
@@ -328,12 +335,12 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
           activeSheet === 'insert'
             ? 'Insert Block'
             : activeSheet === 'turnInto'
-            ? 'Turn Block Into'
-            : activeSheet === 'actions'
-            ? 'Block Actions'
-            : activeSheet === 'color'
-            ? 'Color & Highlight'
-            : undefined
+              ? 'Turn Block Into'
+              : activeSheet === 'actions'
+                ? 'Block Actions'
+                : activeSheet === 'color'
+                  ? 'Color & Highlight'
+                  : undefined
         }
         bodyClassName="p-3 flex flex-col gap-1"
       >
@@ -411,9 +418,8 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
                   key={opt.id}
                   type="button"
                   onClick={() => handleTurnInto(opt)}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors ${
-                    isCurrent ? 'bg-stone-200/70 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-zinc-100' : 'hover:bg-stone-100 dark:hover:bg-zinc-800/60 text-stone-700 dark:text-zinc-300'
-                  }`}
+                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-colors ${isCurrent ? 'bg-stone-200/70 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-zinc-100' : 'hover:bg-stone-100 dark:hover:bg-zinc-800/60 text-stone-700 dark:text-zinc-300'
+                    }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-7 h-7 rounded-lg bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 flex items-center justify-center text-stone-700 dark:text-zinc-300 shrink-0">
@@ -500,18 +506,16 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
               <button
                 type="button"
                 onClick={() => setColorMode('text')}
-                className={`flex-1 py-1.5 rounded-md text-center transition-all ${
-                  colorMode === 'text' ? 'bg-white dark:bg-zinc-700 text-stone-900 dark:text-zinc-100 font-semibold shadow-2xs' : 'text-stone-600 dark:text-zinc-400'
-                }`}
+                className={`flex-1 py-1.5 rounded-md text-center transition-all ${colorMode === 'text' ? 'bg-white dark:bg-zinc-700 text-stone-900 dark:text-zinc-100 font-semibold shadow-2xs' : 'text-stone-600 dark:text-zinc-400'
+                  }`}
               >
                 Text Color
               </button>
               <button
                 type="button"
                 onClick={() => setColorMode('bg')}
-                className={`flex-1 py-1.5 rounded-md text-center transition-all ${
-                  colorMode === 'bg' ? 'bg-white dark:bg-zinc-700 text-stone-900 dark:text-zinc-100 font-semibold shadow-2xs' : 'text-stone-600 dark:text-zinc-400'
-                }`}
+                className={`flex-1 py-1.5 rounded-md text-center transition-all ${colorMode === 'bg' ? 'bg-white dark:bg-zinc-700 text-stone-900 dark:text-zinc-100 font-semibold shadow-2xs' : 'text-stone-600 dark:text-zinc-400'
+                  }`}
               >
                 Background Highlight
               </button>
@@ -540,11 +544,16 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
 
       {/* Floating Apple-Style Docked Mobile Accessory Bar */}
       <div
-        className="md:hidden fixed left-0 right-0 z-40 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border-t border-stone-200/90 dark:border-zinc-800/90 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-2.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex items-center justify-between select-none transition-[bottom] duration-75"
-        style={{ bottom: `${keyboardOffset}px` }}
+        className={`md:hidden fixed left-0 right-0 z-40 bg-white/95 dark:bg-[#18181b]/95 backdrop-blur-xl border-t border-stone-200/90 dark:border-zinc-800/90 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] px-2.5 pt-2 flex items-center justify-between select-none ${keyboardOffset > 0 ? 'pb-2' : 'pb-[max(0.5rem,env(safe-area-inset-bottom))]'
+          }`}
+        style={{
+          bottom: `${keyboardOffset}px`,
+          willChange: 'bottom',
+          transform: 'translateZ(0)',
+        }}
       >
         {/* Scrollable Toolbar Strip */}
-        <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 min-w-0 flex-1">
+        <div className="flex items-center gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 min-w-0 flex-1 touch-pan-x overscroll-x-contain pr-1">
           {/* 1. Insert Block Button (+) */}
           <button
             type="button"
@@ -560,11 +569,10 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('editor-undo'))}
             disabled={!canUndo}
-            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shrink-0 ${
-              canUndo
-                ? 'text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95'
-                : 'text-stone-300 dark:text-zinc-700 opacity-40 cursor-not-allowed'
-            }`}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shrink-0 ${canUndo
+              ? 'text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95'
+              : 'text-stone-300 dark:text-zinc-700 opacity-40 cursor-not-allowed'
+              }`}
             aria-label="Undo"
           >
             <Undo className="w-3.5 h-3.5" />
@@ -575,11 +583,10 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('editor-redo'))}
             disabled={!canRedo}
-            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shrink-0 ${
-              canRedo
-                ? 'text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95'
-                : 'text-stone-300 dark:text-zinc-700 opacity-40 cursor-not-allowed'
-            }`}
+            className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all shrink-0 ${canRedo
+              ? 'text-stone-600 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100 dark:hover:bg-zinc-800 active:scale-95'
+              : 'text-stone-300 dark:text-zinc-700 opacity-40 cursor-not-allowed'
+              }`}
             aria-label="Redo"
           >
             <Redo className="w-3.5 h-3.5" />

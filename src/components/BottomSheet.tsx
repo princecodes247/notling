@@ -116,10 +116,15 @@ export const BottomSheet: React.FC<BottomSheetProps> = ({
             dragSnapToOrigin
             onDragEnd={handleDragEnd}
             onClick={(e) => e.stopPropagation()}
-            className={`fixed left-0 right-0 rounded-t-[24px] ${baseCardStyles} ${maxHeight} flex flex-col overflow-hidden pb-safe select-none ${className}`}
+            className={`fixed left-0 right-0 rounded-t-[24px] ${baseCardStyles} ${maxHeight} flex flex-col overflow-hidden select-none ${className} ${
+              offsetBottom > 0 ? 'pb-2' : 'pb-safe'
+            }`}
             style={{
               zIndex: zIndex + 1,
               bottom: `${offsetBottom}px`,
+              maxHeight: offsetBottom > 0 ? `calc(100dvh - ${offsetBottom}px - 1rem)` : undefined,
+              willChange: 'bottom, transform',
+              transform: 'translateZ(0)',
             }}
           >
             {/* iOS Drag Handle Pill */}
