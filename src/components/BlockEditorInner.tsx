@@ -2035,14 +2035,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       if (!target) return;
 
       const { blockId, checkbox } = getCheckListItemInfo(target);
-      const isCheckboxOrItemArea = !!checkbox && (
+      const isDirectCheckbox = !!checkbox && (
         target === checkbox ||
         target.closest('input[type="checkbox"]') !== null ||
-        target.classList.contains('bn-checkbox') ||
-        (!!target.closest('.bn-block-content[data-content-type="checkListItem"]') && e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 40)
+        target.classList.contains('bn-checkbox')
+      );
+      const isGutterArea = !isDirectCheckbox && (
+        !!target.closest('.bn-block-content[data-content-type="checkListItem"]') &&
+        e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 48
       );
 
-      if (isCheckboxOrItemArea && blockId) {
+      if ((isDirectCheckbox || isGutterArea) && blockId) {
+        if (isDirectCheckbox) {
+          e.preventDefault();
+        }
         isPointerDownRef.current = true;
         const block = editor.getBlock(blockId);
         const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
@@ -2061,7 +2067,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         target === checkbox ||
         target.closest('input[type="checkbox"]') !== null ||
         target.classList.contains('bn-checkbox') ||
-        (!!target.closest('.bn-block-content[data-content-type="checkListItem"]') && e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 40)
+        (!!target.closest('.bn-block-content[data-content-type="checkListItem"]') && e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 48)
       );
 
       if (isCheckboxOrItemArea) {
@@ -2087,16 +2093,29 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       }
     };
 
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      const checkbox = target.closest<HTMLInputElement>('input[type="checkbox"]');
+      const checkItemContent = target.closest<HTMLElement>('.bn-block-content[data-content-type="checkListItem"]');
+      if (checkbox && checkItemContent) {
+        // Prevent duplicate toggles since pointerdown already handled the state transition
+        e.preventDefault();
+      }
+    };
+
     window.addEventListener('pointerdown', handlePointerDown, true);
     window.addEventListener('pointerover', handlePointerOver, true);
     window.addEventListener('pointerup', handlePointerUp, true);
     window.addEventListener('pointercancel', handlePointerUp, true);
+    window.addEventListener('click', handleClick, true);
 
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, true);
       window.removeEventListener('pointerover', handlePointerOver, true);
       window.removeEventListener('pointerup', handlePointerUp, true);
       window.removeEventListener('pointercancel', handlePointerUp, true);
+      window.removeEventListener('click', handleClick, true);
     };
   }, [editor, readOnly, editorPaint]);
 
