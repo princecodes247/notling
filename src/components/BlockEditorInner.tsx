@@ -2034,21 +2034,29 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       const target = e.target as HTMLElement;
       if (!target) return;
 
+      // Explicitly protect text editing - never trigger checkbox toggle if clicking on text
+      if (target.closest('.bn-inline-content') || target.closest('[contenteditable="true"]')) {
+        return;
+      }
+
       const { blockId, checkbox } = getCheckListItemInfo(target);
-      const isDirectCheckbox = !!checkbox && (
+      if (!checkbox || !blockId) return;
+
+      const isDirectCheckbox =
         target === checkbox ||
         target.closest('input[type="checkbox"]') !== null ||
-        target.classList.contains('bn-checkbox')
-      );
-      const isGutterArea = !isDirectCheckbox && (
-        !!target.closest('.bn-block-content[data-content-type="checkListItem"]') &&
-        e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 48
-      );
+        target.classList.contains('bn-checkbox');
 
-      if ((isDirectCheckbox || isGutterArea) && blockId) {
-        if (isDirectCheckbox) {
-          e.preventDefault();
-        }
+      const checkboxRect = checkbox.getBoundingClientRect();
+      const isCheckboxHitArea =
+        isDirectCheckbox ||
+        (e.clientX >= checkboxRect.left - 10 &&
+          e.clientX <= checkboxRect.right + 2 &&
+          e.clientY >= checkboxRect.top - 8 &&
+          e.clientY <= checkboxRect.bottom + 8);
+
+      if (isCheckboxHitArea) {
+        e.preventDefault();
         isPointerDownRef.current = true;
         const block = editor.getBlock(blockId);
         const currentChecked = (block?.props as any)?.checked ?? checkbox?.checked ?? false;
@@ -2060,17 +2068,29 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       if (!editorPaint.isPainting || e.buttons !== 1 || isAutoSortingChecklistRef.current) return;
       const target = e.target as HTMLElement;
       if (!target) return;
-      const { blockId, checkbox } = getCheckListItemInfo(target);
-      if (!blockId) return;
 
-      const isCheckboxOrItemArea = !!checkbox && (
+      // Do not paint when hovering over text
+      if (target.closest('.bn-inline-content') || target.closest('[contenteditable="true"]')) {
+        return;
+      }
+
+      const { blockId, checkbox } = getCheckListItemInfo(target);
+      if (!checkbox || !blockId) return;
+
+      const isDirectCheckbox =
         target === checkbox ||
         target.closest('input[type="checkbox"]') !== null ||
-        target.classList.contains('bn-checkbox') ||
-        (!!target.closest('.bn-block-content[data-content-type="checkListItem"]') && e.clientX <= target.closest('.bn-block-content[data-content-type="checkListItem"]')!.getBoundingClientRect().left + 48)
-      );
+        target.classList.contains('bn-checkbox');
 
-      if (isCheckboxOrItemArea) {
+      const checkboxRect = checkbox.getBoundingClientRect();
+      const isCheckboxHitArea =
+        isDirectCheckbox ||
+        (e.clientX >= checkboxRect.left - 10 &&
+          e.clientX <= checkboxRect.right + 2 &&
+          e.clientY >= checkboxRect.top - 8 &&
+          e.clientY <= checkboxRect.bottom + 8);
+
+      if (isCheckboxHitArea) {
         const block = editor.getBlock(blockId);
         const currentChecked = block?.type === "checkListItem" ? block?.props.checked ?? checkbox?.checked ?? false : checkbox?.checked;
         editorPaint.paintItem(blockId, currentChecked);
@@ -2096,6 +2116,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       if (!target) return;
+      if (target.closest('.bn-inline-content') || target.closest('[contenteditable="true"]')) {
+        return;
+      }
       const checkbox = target.closest<HTMLInputElement>('input[type="checkbox"]');
       const checkItemContent = target.closest<HTMLElement>('.bn-block-content[data-content-type="checkListItem"]');
       if (checkbox && checkItemContent) {

@@ -419,18 +419,7 @@ body.bn-checkbox-painting .bn-block-content[data-content-type="checkListItem"] {
 .bn-block-content[data-content-type="checkListItem"] input[type="checkbox"] {
   transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, border-color 0.15s ease !important;
   cursor: pointer !important;
-  position: relative !important;
   touch-action: manipulation !important;
-}
-
-.bn-block-content[data-content-type="checkListItem"] input[type="checkbox"]::after {
-  content: "" !important;
-  position: absolute !important;
-  top: -10px !important;
-  left: -10px !important;
-  right: -10px !important;
-  bottom: -10px !important;
-  cursor: pointer !important;
 }
 
 .bn-block-content[data-content-type="checkListItem"]:hover input[type="checkbox"] {
