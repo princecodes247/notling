@@ -80,7 +80,7 @@ export const ViewConfigDrawer: React.FC<ViewConfigDrawerProps> = ({
           Layout
         </label>
         <div className="grid grid-cols-3 gap-1.5">
-          {VIEW_LAYOUT_OPTIONS.slice(0, 6).map((opt) => {
+          {VIEW_LAYOUT_OPTIONS.map((opt) => {
             const Icon = opt.icon;
             const isSelected = view.type === opt.type;
             return (
