@@ -200,7 +200,7 @@ export function DatabaseTableView({
     count: items.length,
     getScrollElement: () => tableContainerRef.current,
     estimateSize: () => 38,
-    overscan: 35,
+    overscan: 10,
   });
 
   // Track last requested count to prevent infinite scroll loops
@@ -216,11 +216,11 @@ export function DatabaseTableView({
     }
   }, [items.length]);
 
-  // Virtualizer-based pre-fetch trigger (triggers 35 items before end)
+  // Virtualizer-based pre-fetch trigger (triggers 15 items before end)
   useEffect(() => {
     if (lastVirtualItemIndex < 0 || items.length === 0) return;
     if (
-      lastVirtualItemIndex >= items.length - 35 &&
+      lastVirtualItemIndex >= items.length - 15 &&
       hasNextPage &&
       !isFetchingNextPage &&
       onFetchNextPage &&
@@ -231,7 +231,7 @@ export function DatabaseTableView({
     }
   }, [lastVirtualItemIndex, items.length, hasNextPage, isFetchingNextPage, onFetchNextPage]);
 
-  // Scroll depth-based proactive pre-fetch trigger (triggers at 70% scroll depth)
+  // Scroll depth-based proactive pre-fetch trigger (triggers at 88% scroll depth)
   useEffect(() => {
     const el = tableContainerRef.current;
     if (!el) return;
@@ -243,7 +243,7 @@ export function DatabaseTableView({
         items.length > lastRequestedCountRef.current
       ) {
         const { scrollTop, scrollHeight, clientHeight } = el;
-        if (scrollTop + clientHeight >= scrollHeight * 0.7) {
+        if (scrollTop + clientHeight >= scrollHeight * 0.88) {
           lastRequestedCountRef.current = items.length;
           onFetchNextPage();
         }
@@ -342,8 +342,8 @@ export function DatabaseTableView({
     }
   }, [handleAddNewRow, items.length, nonTitleProps.length, rowVirtualizer]);
 
-type TableUndoAction =
-  | {
+  type TableUndoAction =
+    | {
       type: 'UPDATE_CELL';
       payload: {
         itemId: string;
@@ -351,7 +351,7 @@ type TableUndoAction =
         previousValue: any;
       };
     }
-  | {
+    | {
       type: 'UPDATE_TITLE';
       payload: {
         itemId: string;
@@ -360,7 +360,7 @@ type TableUndoAction =
       };
     };
 
-const MAX_UNDO_STACK_SIZE = 50;
+  const MAX_UNDO_STACK_SIZE = 50;
 
   // Client-Side Lightweight Undo Stack (Cmd+Z)
   const [undoStack, setUndoStack] = useState<TableUndoAction[]>([]);
@@ -651,7 +651,7 @@ const MAX_UNDO_STACK_SIZE = 50;
         className="w-full overflow-auto max-h-[calc(100vh-160px)] text-xs"
       >
         <table className="w-full text-left border-collapse min-w-full">
-          <thead className="sticky top-0 z-20 bg-white/95 dark:bg-[#1c1c1f]/95 backdrop-blur-md border-b border-stone-200/80 dark:border-zinc-800/80 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
+          <thead className="sticky top-0 z-20 bg-white dark:bg-[#1c1c1f] border-b border-stone-200/80 dark:border-zinc-800/80 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
             <tr className="text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
               {!readOnly && (
@@ -802,7 +802,7 @@ const MAX_UNDO_STACK_SIZE = 50;
               const item = items[virtualRow.index];
               if (!item) return null;
               const rowIndex = virtualRow.index;
-              const isSelected = selectedItemIds.includes(item.id);
+              const isSelected = selectedItemIdsSet.current.has(item.id);
               const isFocusedRow = focusedCell?.rowIndex === rowIndex;
               const focusedColIndex = isFocusedRow ? focusedCell.colIndex : null;
               const isRowEditingCell = isFocusedRow && isEditingCell;
