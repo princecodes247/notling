@@ -275,6 +275,31 @@ export function DatabaseTableView({
     }
   }, [handleAddNewRow, items.length, rowVirtualizer]);
 
+  // Automatically scroll focused cell into view horizontally if cut off
+  const scrollFocusedCellIntoView = useCallback(() => {
+    requestAnimationFrame(() => {
+      const container = tableContainerRef.current;
+      if (!container) return;
+      const focusedEl = container.querySelector<HTMLElement>('[data-focused-cell="true"]');
+      if (focusedEl) {
+        const containerRect = container.getBoundingClientRect();
+        const cellRect = focusedEl.getBoundingClientRect();
+
+        if (cellRect.left < containerRect.left) {
+          container.scrollLeft -= (containerRect.left - cellRect.left + 48);
+        } else if (cellRect.right > containerRect.right) {
+          container.scrollLeft += (cellRect.right - containerRect.right + 48);
+        }
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (focusedCell) {
+      scrollFocusedCellIntoView();
+    }
+  }, [focusedCell, scrollFocusedCellIntoView]);
+
   // Only focus cell if user is actively editing inside table AND not typing in search or outer inputs
   useEffect(() => {
     if (focusedCell && focusedCell.colIndex === 0 && (isEditingCell || shouldFocusNewRowRef.current)) {
@@ -1235,6 +1260,7 @@ function DatabaseTableRow({
       {/* Title Cell + Open Page Button */}
       <td
         onClick={() => onFocusCell(0)}
+        data-focused-cell={isFocusedRow && focusedColIndex === 0 ? "true" : undefined}
         style={
           columnWidths['title']
             ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` }
@@ -1311,6 +1337,7 @@ function DatabaseTableRow({
           <td
             key={prop.id}
             onClick={() => onFocusCell(colIndex + 1)}
+            data-focused-cell={isCellFocused ? "true" : undefined}
             style={
               colWidth
                 ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` }
