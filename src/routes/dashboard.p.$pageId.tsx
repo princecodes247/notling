@@ -83,6 +83,23 @@ function DocumentPageRoute() {
     enabled: !!pageId,
   });
 
+  useEffect(() => {
+    if (dbData?.database) {
+      const { updateTabMeta, setPageMeta } = useUIStore.getState();
+      const dbId = dbData.database.id;
+      const pId = dbData.database.pageId || pageId;
+      const title = dbData.database.title || 'Untitled Database';
+      const icon = dbData.database.icon || '';
+
+      setPageMeta(pId, { title, icon });
+      if (dbId !== pId) {
+        setPageMeta(dbId, { title, icon });
+      }
+      updateTabMeta(pId, title, icon);
+      document.title = `${title} — Notling`;
+    }
+  }, [dbData?.database?.id, dbData?.database?.pageId, dbData?.database?.title, dbData?.database?.icon, pageId]);
+
   if (isLoading) {
     return <EditorSkeleton />;
   }

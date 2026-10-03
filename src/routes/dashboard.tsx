@@ -43,7 +43,7 @@ export const Route = createFileRoute('/dashboard')({
 
 function findNodeInTree(nodes: PageTreeNode[], id: string): PageTreeNode | null {
   for (const node of nodes) {
-    if (node.id === id) return node;
+    if (node.id === id || (node as any).databaseId === id) return node;
     if (node.children?.length) {
       const found = findNodeInTree(node.children, id);
       if (found) return found;
@@ -212,7 +212,9 @@ function DashboardLayout() {
         const resolvedTitle =
           liveMeta?.title ??
           node?.title ??
-          (existingTab?.title ? existingTab.title : 'Untitled Database');
+          (existingTab?.title && existingTab.title !== 'Untitled Database' && existingTab.title !== 'Untitled Document'
+            ? existingTab.title
+            : (node?.title || 'Untitled Database'));
         const resolvedIcon = liveMeta?.icon ?? node?.icon ?? existingTab?.icon ?? null;
 
         doOpenTab({

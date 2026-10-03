@@ -105,7 +105,7 @@ function PublicFormRouteComponent() {
   return (
     <div className="min-h-screen bg-white dark:bg-[#121214] text-stone-900 dark:text-zinc-100 flex flex-col font-sans selection:bg-stone-200 dark:selection:bg-zinc-800">
       {/* Main Form Body */}
-      <main className="flex-1 w-full max-w-xl mx-auto px-6 py-12 sm:py-20 flex flex-col justify-between">
+      <main className="flex-1 w-full max-w-3xl lg:max-w-4xl mx-auto px-6 sm:px-10 md:px-12 py-12 sm:py-20 flex flex-col justify-between">
         {submitted ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -204,7 +204,7 @@ function PublicFormRouteComponent() {
       </main>
 
       {/* Subtle Footer */}
-      <footer className="py-6 px-6 text-left max-w-xl mx-auto w-full text-xs text-stone-400 dark:text-zinc-600 select-none">
+      <footer className="py-6 px-6 sm:px-10 md:px-12 text-left max-w-3xl lg:max-w-4xl mx-auto w-full text-xs text-stone-400 dark:text-zinc-600 select-none">
         Powered by <a href="/" className="font-semibold text-stone-600 dark:text-zinc-400 hover:underline">Notling</a>
       </footer>
     </div>

@@ -93,13 +93,18 @@ function DashboardDatabaseRoute() {
       setActiveTabId(databaseId);
     }
     if (dbData?.database) {
-      const { openTabs, updateTabMeta, openTab, pageMeta } = useUIStore.getState();
+      const { openTabs, updateTabMeta, openTab, setPageMeta } = useUIStore.getState();
       const dbId = dbData.database.id;
-      const live = pageMeta[dbId] || (dbData.database.pageId ? pageMeta[dbData.database.pageId] : undefined);
-      const existing = openTabs.find((t) => t.id === dbId || t.id === dbData.database.pageId);
-      const title = live?.title ?? dbData.database.title ?? '';
-      const icon = live?.icon ?? dbData.database.icon ?? '';
+      const pageId = dbData.database.pageId;
+      const title = dbData.database.title || 'Untitled Database';
+      const icon = dbData.database.icon || '';
 
+      setPageMeta(dbId, { title, icon });
+      if (pageId && pageId !== dbId) {
+        setPageMeta(pageId, { title, icon });
+      }
+
+      const existing = openTabs.find((t) => t.id === dbId || (pageId && t.id === pageId));
       if (existing) {
         updateTabMeta(existing.id, title, icon);
       } else {
@@ -113,7 +118,7 @@ function DashboardDatabaseRoute() {
 
       document.title = `${title} — Notling`;
     }
-  }, [databaseId, dbData?.database?.id, dbData?.database?.title, dbData?.database?.icon]);
+  }, [databaseId, dbData?.database?.id, dbData?.database?.pageId, dbData?.database?.title, dbData?.database?.icon]);
 
   if (isLoading) {
     return <DatabaseSkeleton />;

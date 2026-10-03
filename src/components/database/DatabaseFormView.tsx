@@ -106,7 +106,7 @@ export function DatabaseFormView({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto py-6 px-4 sm:px-6 space-y-8 font-sans">
+    <div className="w-full max-w-3xl lg:max-w-4xl mx-auto py-8 px-4 sm:px-8 md:px-12 space-y-10 font-sans">
       {/* Top Form Header Actions Toolbar */}
       <div className="flex items-center justify-between gap-3 text-xs border-b border-stone-200/60 dark:border-zinc-800/80 pb-3 select-none">
         <div className="flex items-center gap-2 text-stone-500 dark:text-zinc-400">

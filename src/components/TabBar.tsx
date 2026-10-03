@@ -48,6 +48,7 @@ export const TabBar: React.FC<TabBarProps> = ({
     closeTabsToRight,
     closeTabsToLeft,
     closeAllTabs,
+    pageMeta,
   } = useUIStore();
 
   const [showOptionsPopover, setShowOptionsPopover] = useState(false);
@@ -300,6 +301,12 @@ export const TabBar: React.FC<TabBarProps> = ({
             const isDropTarget = dropTargetId === tab.id;
             const isDropLeft = isDropTarget && dropPosition === 'left';
             const isDropRight = isDropTarget && dropPosition === 'right';
+            const pathEndId = tab.path?.split('/').filter(Boolean).pop();
+            const liveMeta =
+              pageMeta[tab.id] ||
+              (pathEndId ? pageMeta[pathEndId] : undefined);
+            const tabTitle = liveMeta?.title !== undefined && liveMeta.title !== '' ? liveMeta.title : (tab.title || 'Untitled');
+            const tabIcon = liveMeta?.icon !== undefined ? liveMeta.icon : tab.icon;
             const isLoading = isTabLoading(tab);
 
             return (
@@ -332,8 +339,8 @@ export const TabBar: React.FC<TabBarProps> = ({
                 {/* Tab Icon */}
                 {isLoading ? (
                   <div className="w-3.5 h-3.5 rounded bg-stone-200/80 dark:bg-zinc-700/80 animate-pulse shrink-0" />
-                ) : tab.icon ? (
-                  <span className="text-xs shrink-0">{tab.icon}</span>
+                ) : tabIcon ? (
+                  <span className="text-xs shrink-0">{tabIcon}</span>
                 ) : tab.id === 'folders' ? (
                   <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
                 ) : tab.id === 'settings' ? (
@@ -351,7 +358,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                   <div className="w-20 h-3 rounded bg-stone-200/80 dark:bg-zinc-700/80 animate-pulse shrink-0 my-0.5" />
                 ) : (
                   <span className="max-w-[140px] truncate leading-none">
-                    {tab.title || 'Untitled'}
+                    {tabTitle}
                   </span>
                 )}
 
