@@ -3,11 +3,10 @@ import { createRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getPublicFormByToken, submitPublicForm } from '~/server/databases';
 import { Route as rootRoute } from './__root';
-import { PropertyTypeIcon } from '~/components/database/PropertyTypeIcon';
-import { Check, Send, Sparkles, AlertCircle } from 'lucide-react';
+import { Check, AlertCircle, RotateCcw } from 'lucide-react';
 import type { DatabaseProperty } from '~/db/schema';
 import { cn } from '#/lib/utils';
-import { getOptionBadgeStyles } from '~/lib/optionColors';
+import { motion } from 'motion/react';
 
 export const Route = createRoute({
   getParentRoute: () => rootRoute,
@@ -20,7 +19,7 @@ export const Route = createRoute({
     }
   },
   head: ({ loaderData }) => {
-    const title = loaderData?.form?.title || loaderData?.database?.title || 'Submit Form';
+    const title = loaderData?.form?.title || loaderData?.database?.title || 'Form';
     return {
       meta: [
         { title: `${title} — Notling Forms` },
@@ -50,13 +49,13 @@ function PublicFormRouteComponent() {
 
   if (!data || !data.form) {
     return (
-      <div className="min-h-screen bg-[#f3f2ee] dark:bg-[#121214] text-stone-900 dark:text-zinc-100 flex items-center justify-center p-6 font-sans">
+      <div className="min-h-screen bg-white dark:bg-[#121214] text-stone-900 dark:text-zinc-100 flex items-center justify-center p-6 font-sans">
         <div className="text-center space-y-4 max-w-sm">
-          <div className="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto">
-            <AlertCircle className="w-6 h-6" />
+          <div className="w-12 h-12 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto border border-rose-200/60 dark:border-rose-800/40">
+            <AlertCircle className="w-6 h-6 stroke-[2]" />
           </div>
-          <h2 className="text-xl font-bold">Form Not Found</h2>
-          <p className="text-xs text-stone-500 dark:text-zinc-400">
+          <h2 className="text-lg font-bold tracking-tight">Form Not Found</h2>
+          <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
             This form link is invalid, private, or has been removed by the workspace owner.
           </p>
         </div>
@@ -66,9 +65,8 @@ function PublicFormRouteComponent() {
 
   const { form, database, properties } = data;
   const settings = form.settings || {};
-  const headerColor = settings.headerColor || 'from-[#1f4d3d] to-[#123026]';
-  const submitBtnText = settings.submitButtonText || 'Submit Response';
-  const successMsg = settings.successMessage || 'Thank you! Your response has been recorded.';
+  const submitBtnText = settings.submitButtonText || 'Submit';
+  const successMsg = settings.successMessage || 'Your response has been recorded.';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,89 +93,123 @@ function PublicFormRouteComponent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f2ee] dark:bg-[#121214] text-stone-900 dark:text-zinc-100 flex flex-col justify-between p-4 md:p-12 font-sans">
-      <div className="max-w-2xl mx-auto w-full space-y-6 my-auto">
-        <div className="bg-white dark:bg-[#18181b] border border-stone-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-xl">
-          {/* Header Banner */}
-          <div className={`p-8 bg-gradient-to-r ${headerColor} text-white space-y-2`}>
-            <div className="flex items-center gap-2 text-white/80 text-xs font-medium">
-              <Sparkles className="w-4 h-4 text-emerald-300" />
-              <span>Notling Form</span>
+    <div className="min-h-screen bg-white dark:bg-[#121214] text-stone-900 dark:text-zinc-100 flex flex-col font-sans selection:bg-stone-200 dark:selection:bg-zinc-800">
+      {/* Main Form Body */}
+      <main className="flex-1 w-full max-w-xl mx-auto px-6 py-12 sm:py-20 flex flex-col justify-between">
+        {submitted ? (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="my-auto py-12 text-left space-y-5 select-none"
+          >
+            <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/40 text-[#1f4d3d] dark:text-emerald-400 rounded-full flex items-center justify-center border border-emerald-200/60 dark:border-emerald-800/40">
+              <Check className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">{form.title || database.title}</h1>
-            {form.description && (
-              <p className="text-sm text-white/90 leading-relaxed">{form.description}</p>
-            )}
-          </div>
-
-          {/* Form Content */}
-          <div className="p-8">
-            {submitted ? (
-              <div className="py-12 text-center space-y-4">
-                <div className="w-14 h-14 bg-emerald-100 dark:bg-emerald-950/80 text-[#1f4d3d] dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
-                  <Check className="w-7 h-7" />
+            <div className="space-y-1.5">
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 dark:text-white">
+                Thank you!
+              </h2>
+              <p className="text-sm text-stone-500 dark:text-zinc-400 leading-relaxed">
+                {successMsg}
+              </p>
+            </div>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmitted(false);
+                  setFormData({});
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium bg-stone-100 hover:bg-stone-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer active:scale-[0.98]"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Submit another response</span>
+              </button>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="space-y-8">
+            {/* Title & Description Header */}
+            <div className="space-y-2">
+              {database.icon && (
+                <div className="text-4xl mb-3 select-none">
+                  {database.icon}
                 </div>
-                <h2 className="text-xl font-bold text-stone-900 dark:text-zinc-100">Response Submitted!</h2>
-                <p className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm mx-auto">{successMsg}</p>
-                <button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setFormData({});
-                  }}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg bg-stone-100 dark:bg-zinc-800 border border-stone-300 dark:border-zinc-700 hover:bg-stone-200 dark:hover:bg-zinc-700 transition-colors text-stone-800 dark:text-zinc-200 cursor-pointer"
-                >
-                  Submit Another Response
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {errorMsg && (
-                  <div className="p-3 bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-lg text-xs">
-                    {errorMsg}
-                  </div>
-                )}
+              )}
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 dark:text-white leading-tight">
+                {form.title || database.title || 'Form'}
+              </h1>
+              {form.description && (
+                <p className="text-sm text-stone-500 dark:text-zinc-400 leading-relaxed whitespace-pre-line">
+                  {form.description}
+                </p>
+              )}
+            </div>
 
-                {properties.map((prop) => (
-                  <div key={prop.id} className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-stone-800 dark:text-zinc-200 flex items-center gap-1.5">
-                      <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
+            {/* Form Fields */}
+            <form onSubmit={handleSubmit} className="space-y-8 pt-2">
+              {errorMsg && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-md text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {properties.map((prop) => {
+                if (prop.type === 'created_at') return null;
+
+                return (
+                  <div key={prop.id} className="space-y-2.5">
+                    <label className="text-base sm:text-lg font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
                       <span>{prop.name}</span>
-                      {prop.type === 'title' && <span className="text-rose-500">*</span>}
+                      {prop.type === 'title' && <span className="text-rose-500 text-sm font-normal">*</span>}
                     </label>
 
-                    <PublicInput
+                    <PublicFieldInput
                       prop={prop}
                       value={formData[prop.id]}
                       onChange={(val) => setFormData((prev) => ({ ...prev, [prop.id]: val }))}
                     />
                   </div>
-                ))}
+                );
+              })}
 
-                <div className="pt-4 border-t border-stone-200/80 dark:border-zinc-800/80 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-semibold bg-[#1f4d3d] text-white hover:bg-[#183e31] shadow-md transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>{submitting ? 'Submitting...' : submitBtnText}</span>
-                  </button>
+              <div className="pt-2 space-y-6">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-md text-sm font-semibold bg-stone-900 hover:bg-stone-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 border border-transparent dark:border-zinc-700 transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+                >
+                  {submitting ? 'Submitting...' : submitBtnText}
+                </button>
+
+                <div className="text-[11px] text-stone-400 dark:text-zinc-500 space-y-1">
+                  <p>Never submit sensitive personal information, like passwords, through Notling Forms.</p>
                 </div>
-              </form>
-            )}
+              </div>
+            </form>
           </div>
-        </div>
-      </div>
+        )}
+      </main>
 
-      {/* Footer Branding */}
-      <footer className="text-center text-[11px] text-stone-400 dark:text-zinc-500 py-4">
-        Powered by <span className="font-semibold text-stone-700 dark:text-zinc-300">Notling Workspaces</span>
+      {/* Subtle Footer */}
+      <footer className="py-6 px-6 text-left max-w-xl mx-auto w-full text-xs text-stone-400 dark:text-zinc-600 select-none">
+        Powered by <a href="/" className="font-semibold text-stone-600 dark:text-zinc-400 hover:underline">Notling</a>
       </footer>
     </div>
   );
 }
 
-function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value: any; onChange: (val: any) => void }) {
+function PublicFieldInput({
+  prop,
+  value,
+  onChange,
+}: {
+  prop: DatabaseProperty;
+  value: any;
+  onChange: (val: any) => void;
+}) {
   switch (prop.type) {
     case 'title':
     case 'text':
@@ -187,8 +219,8 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           required={prop.type === 'title'}
-          placeholder={`Enter ${prop.name.toLowerCase()}...`}
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
 
@@ -198,22 +230,32 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
           type="number"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : '')}
-          placeholder="0"
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors font-mono"
         />
       );
 
     case 'checkbox':
       return (
-        <div className="flex items-center gap-2 pt-1">
-          <input
-            type="checkbox"
-            checked={Boolean(value)}
-            onChange={(e) => onChange(e.target.checked)}
-            className="bn-checkbox w-4 h-4 cursor-pointer"
-          />
-          <span className="text-xs text-stone-600 dark:text-zinc-400">Yes</span>
-        </div>
+        <label className="flex items-center gap-3 cursor-pointer group select-none pt-0.5">
+          <div
+            onClick={() => onChange(!Boolean(value))}
+            className={cn(
+              "w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0",
+              value
+                ? "border-stone-900 dark:border-white bg-stone-900 dark:bg-white text-white dark:text-zinc-900"
+                : "border-stone-400 dark:border-zinc-600 group-hover:border-stone-600 dark:group-hover:border-zinc-400"
+            )}
+          >
+            {value && <Check className="w-3 h-3 stroke-[3]" />}
+          </div>
+          <span
+            onClick={() => onChange(!Boolean(value))}
+            className="text-sm text-stone-800 dark:text-zinc-200"
+          >
+            Yes
+          </span>
+        </label>
       );
 
     case 'date':
@@ -222,64 +264,74 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
           type="date"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors cursor-pointer"
         />
       );
 
     case 'select':
     case 'status':
       return (
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value || null)}
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
-        >
-          <option value="">None / Empty</option>
-          {prop.options?.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.name}
-            </option>
-          ))}
-        </select>
+        <div className="space-y-2.5 pt-1">
+          {prop.options?.map((opt) => {
+            const isSelected = value === opt.id;
+            return (
+              <label
+                key={opt.id}
+                className="flex items-center gap-3 cursor-pointer group select-none"
+                onClick={() => onChange(isSelected ? null : opt.id)}
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0",
+                    isSelected
+                      ? "border-stone-900 dark:border-white bg-stone-900 dark:bg-white"
+                      : "border-stone-400 dark:border-zinc-600 group-hover:border-stone-600 dark:group-hover:border-zinc-400"
+                  )}
+                >
+                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-900" />}
+                </div>
+                <span className="text-sm text-stone-800 dark:text-zinc-200 group-hover:text-stone-950 dark:group-hover:text-white">
+                  {opt.name}
+                </span>
+              </label>
+            );
+          })}
+        </div>
       );
 
     case 'multi_select': {
       const selected: string[] = Array.isArray(value) ? value : [];
       return (
-        <div className="space-y-1.5 pt-1">
-          <div className="flex flex-wrap gap-2">
-            {prop.options?.map((opt) => {
-              const isChecked = selected.includes(opt.id);
-              const badge = getOptionBadgeStyles(opt.color);
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => {
-                    const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
-                    onChange(next);
-                  }}
+        <div className="space-y-2.5 pt-1">
+          {prop.options?.map((opt) => {
+            const isChecked = selected.includes(opt.id);
+            return (
+              <label
+                key={opt.id}
+                className="flex items-center gap-3 cursor-pointer group select-none"
+                onClick={() => {
+                  const next = isChecked
+                    ? selected.filter((id) => id !== opt.id)
+                    : [...selected, opt.id];
+                  onChange(next);
+                }}
+              >
+                <div
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer",
-                    isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-70 hover:opacity-100",
-                    badge.className
+                    "w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0",
+                    isChecked
+                      ? "border-stone-900 dark:border-white bg-stone-900 dark:bg-white text-white dark:text-zinc-900"
+                      : "border-stone-400 dark:border-zinc-600 group-hover:border-stone-600 dark:group-hover:border-zinc-400"
                   )}
-                  style={badge.style}
                 >
-                  {isChecked ? `✓ ${opt.name}` : opt.name}
-                </button>
-              );
-            })}
-          </div>
-          {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer"
-            >
-              Unselect all ({selected.length})
-            </button>
-          )}
+                  {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+                <span className="text-sm text-stone-800 dark:text-zinc-200 group-hover:text-stone-950 dark:group-hover:text-white">
+                  {opt.name}
+                </span>
+              </label>
+            );
+          })}
         </div>
       );
     }
@@ -290,8 +342,8 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
           type="url"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://example.com"
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+          placeholder="https://"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
 
@@ -301,8 +353,8 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
           type="email"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="email@example.com"
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
 
@@ -312,7 +364,8 @@ function PublicInput({ prop, value, onChange }: { prop: DatabaseProperty; value:
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3.5 py-2 text-xs border rounded-xl bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 focus:outline-none transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
   }

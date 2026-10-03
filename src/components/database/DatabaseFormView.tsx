@@ -1,9 +1,16 @@
 import React, { useState } from 'react';
 import type { DatabaseProperty, DatabaseForm } from '~/db/schema';
-import { PropertyTypeIcon } from './PropertyTypeIcon';
-import { Copy, Check, ExternalLink, Send, Sparkles, Settings2 } from 'lucide-react';
+import {
+  Copy,
+  Check,
+  ExternalLink,
+  SlidersHorizontal,
+  Globe,
+  Lock,
+  RotateCcw,
+} from 'lucide-react';
 import { cn } from '#/lib/utils';
-import { getOptionBadgeStyles } from '~/lib/optionColors';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface DatabaseFormViewProps {
   form?: DatabaseForm;
@@ -24,17 +31,20 @@ export function DatabaseFormView({
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [activeTab, setActiveTab] = useState<'preview' | 'settings'>('preview');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const settings = form?.settings || {};
-  const [formTitle, setFormTitle] = useState(form?.title || 'Submit Entry');
-  const [formDesc, setFormDesc] = useState(form?.description || 'Please fill out all required fields below.');
-  const [submitBtnText, setSubmitBtnText] = useState(settings.submitButtonText || 'Submit Response');
-  const [successMsg, setSuccessMsg] = useState(settings.successMessage || 'Thank you! Your response has been recorded.');
-  const [headerColor, setHeaderColor] = useState(settings.headerColor || 'from-[#1f4d3d] to-[#123026]');
+  const [formTitle, setFormTitle] = useState(form?.title || 'Untitled Form');
+  const [formDesc, setFormDesc] = useState(form?.description || '');
+  const [submitBtnText, setSubmitBtnText] = useState(settings.submitButtonText || 'Submit');
+  const [successMsg, setSuccessMsg] = useState(
+    settings.successMessage || 'Your response has been recorded.'
+  );
   const [isPublic, setIsPublic] = useState(form?.isPublic ?? true);
 
-  const publicUrl = form ? `${window.location.origin}/share/form/${form.shareToken}` : '';
+  const publicUrl = form && typeof window !== 'undefined'
+    ? `${window.location.origin}/share/form/${form.shareToken}`
+    : '';
 
   const handleCopyLink = () => {
     if (!publicUrl) return;
@@ -61,248 +71,256 @@ export function DatabaseFormView({
   const handleSaveSettings = () => {
     if (!form) return;
     onUpdateFormSettings(form.id, {
-      title: formTitle,
-      description: formDesc,
+      title: formTitle.trim() || 'Untitled Form',
+      description: formDesc.trim(),
       isPublic,
       settings: {
         ...settings,
-        submitButtonText: submitBtnText,
-        successMessage: successMsg,
-        headerColor,
+        submitButtonText: submitBtnText.trim() || 'Submit',
+        successMessage: successMsg.trim() || 'Your response has been recorded.',
       },
     });
+    setIsSettingsOpen(false);
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Top Banner & Control Bar */}
-      <div className="bg-white dark:bg-[#18181b] border border-stone-200/80 dark:border-zinc-800/80 rounded-xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-[#1f4d3d]/10 dark:bg-emerald-950/40 text-[#1f4d3d] dark:text-emerald-400 rounded-lg">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-stone-900 dark:text-zinc-100 flex items-center gap-2">
-              <span>Form View & Public Submissions</span>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${isPublic ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-400'}`}>
-                {isPublic ? 'Public Link Active' : 'Private'}
-              </span>
-            </h3>
-            <p className="text-xs text-stone-500 dark:text-zinc-400">
-              Collect submissions directly into this database using your shareable form link.
-            </p>
+    <div className="w-full max-w-xl mx-auto py-6 px-4 sm:px-6 space-y-8 font-sans">
+      {/* Top Form Header Actions Toolbar */}
+      <div className="flex items-center justify-between gap-3 text-xs border-b border-stone-200/60 dark:border-zinc-800/80 pb-3 select-none">
+        <div className="flex items-center gap-2 text-stone-500 dark:text-zinc-400">
+          <div className="flex items-center gap-1.5 font-medium">
+            {isPublic ? (
+              <>
+                <Globe className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400" />
+                <span className="text-stone-700 dark:text-zinc-300">Public form</span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5 text-stone-400" />
+                <span>Private form</span>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {!readOnly && (
-            <div className="flex bg-stone-100 dark:bg-zinc-800/80 p-0.5 rounded-lg text-xs font-medium">
-              <button
-                onClick={() => setActiveTab('preview')}
-                className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${activeTab === 'preview' ? 'bg-white dark:bg-zinc-700 shadow-2xs text-stone-900 dark:text-zinc-100 font-semibold' : 'text-stone-600 dark:text-zinc-400 hover:text-stone-900'}`}
-              >
-                Form Preview
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 cursor-pointer ${activeTab === 'settings' ? 'bg-white dark:bg-zinc-700 shadow-2xs text-stone-900 dark:text-zinc-100 font-semibold' : 'text-stone-600 dark:text-zinc-400 hover:text-stone-900'}`}
-              >
-                <Settings2 className="w-3.5 h-3.5" />
-                <span>Config</span>
-              </button>
-            </div>
-          )}
-
-          {form && (
             <button
-              onClick={handleCopyLink}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1f4d3d] dark:bg-emerald-600 text-white hover:bg-[#183e31] dark:hover:bg-emerald-500 transition-colors shadow-2xs cursor-pointer"
+              type="button"
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-medium transition-colors cursor-pointer",
+                isSettingsOpen
+                  ? "bg-stone-100 dark:bg-zinc-800 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100"
+                  : "bg-white dark:bg-zinc-900 border-stone-200 dark:border-zinc-800 text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-50 dark:hover:bg-zinc-800"
+              )}
             >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Copied!' : 'Copy Form URL'}</span>
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Settings</span>
             </button>
           )}
 
           {publicUrl && (
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="p-2 border border-stone-200 dark:border-zinc-700 rounded-lg text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
-              title="Open Standalone Form Page"
-            >
-              <ExternalLink className="w-4 h-4" />
-            </a>
+            <>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copied ? 'Copied' : 'Copy link'}</span>
+              </button>
+
+              <a
+                href={publicUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="p-1 rounded-md border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
+                title="Open standalone public form"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            </>
           )}
         </div>
       </div>
 
-      {activeTab === 'settings' && !readOnly ? (
-        /* Settings Form Tab */
-        <div className="bg-white dark:bg-[#18181b] border border-stone-200/80 dark:border-zinc-800/80 rounded-xl p-6 space-y-5 shadow-2xs">
-          <h4 className="text-base font-semibold text-stone-900 dark:text-zinc-100 border-b border-stone-200/80 dark:border-zinc-800/80 pb-3">
-            Form Customization & Settings
-          </h4>
+      {/* Settings Panel */}
+      <AnimatePresence>
+        {isSettingsOpen && !readOnly && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="overflow-hidden"
+          >
+            <div className="p-3.5 rounded-md bg-stone-50/70 dark:bg-zinc-900/50 border border-stone-200/70 dark:border-zinc-800/70 space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-stone-600 dark:text-zinc-400">
+                    Submit button label
+                  </label>
+                  <input
+                    type="text"
+                    value={submitBtnText}
+                    onChange={(e) => setSubmitBtnText(e.target.value)}
+                    placeholder="Submit"
+                    className="w-full px-2.5 py-1 rounded bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-stone-200"
+                  />
+                </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-stone-700 dark:text-zinc-300 mb-1">
-                Form Title
-              </label>
-              <input
-                type="text"
-                value={formTitle}
-                onChange={(e) => setFormTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d]"
-              />
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-stone-600 dark:text-zinc-400">
+                    Success message
+                  </label>
+                  <input
+                    type="text"
+                    value={successMsg}
+                    onChange={(e) => setSuccessMsg(e.target.value)}
+                    placeholder="Your response has been recorded."
+                    className="w-full px-2.5 py-1 rounded bg-white dark:bg-zinc-900 border border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 text-xs focus:outline-none focus:border-stone-900 dark:focus:border-stone-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-stone-200/60 dark:border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="formPublicToggle"
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    className="bn-checkbox w-3.5 h-3.5 cursor-pointer"
+                  />
+                  <label
+                    htmlFor="formPublicToggle"
+                    className="text-xs font-medium text-stone-800 dark:text-zinc-200 cursor-pointer select-none"
+                  >
+                    Allow public submissions
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSaveSettings}
+                  className="px-2.5 py-1 rounded text-xs font-medium bg-stone-900 hover:bg-stone-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 transition-colors cursor-pointer"
+                >
+                  Save
+                </button>
+              </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div>
-              <label className="block text-xs font-medium text-stone-700 dark:text-zinc-300 mb-1">
-                Submit Button Label
-              </label>
-              <input
-                type="text"
-                value={submitBtnText}
-                onChange={(e) => setSubmitBtnText(e.target.value)}
-                className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d]"
-              />
-            </div>
-          </div>
+      {/* Main Document-style Form Area */}
+      <div className="space-y-8">
+        {/* Document Title & Description */}
+        <div className="space-y-2">
+          {!readOnly ? (
+            <input
+              type="text"
+              value={formTitle}
+              onChange={(e) => setFormTitle(e.target.value)}
+              onBlur={handleSaveSettings}
+              placeholder="Untitled Form"
+              className="w-full text-3xl sm:text-4xl font-bold tracking-tight bg-transparent border-none focus:outline-none text-stone-900 dark:text-white placeholder:text-stone-300 dark:placeholder:text-zinc-600 px-0 py-0.5"
+            />
+          ) : (
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 dark:text-white">
+              {formTitle || 'Untitled Form'}
+            </h1>
+          )}
 
-          <div>
-            <label className="block text-xs font-medium text-stone-700 dark:text-zinc-300 mb-1">
-              Form Description
-            </label>
+          {!readOnly ? (
             <textarea
               rows={2}
               value={formDesc}
               onChange={(e) => setFormDesc(e.target.value)}
-              className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d]"
+              onBlur={handleSaveSettings}
+              placeholder="Fill out this form to add a new record to the database."
+              className="w-full text-sm text-stone-500 dark:text-zinc-400 bg-transparent border-none focus:outline-none placeholder:text-stone-400 dark:placeholder:text-zinc-600 px-0 resize-none leading-relaxed"
             />
-          </div>
+          ) : (
+            formDesc && (
+              <p className="text-sm text-stone-500 dark:text-zinc-400 leading-relaxed">
+                {formDesc}
+              </p>
+            )
+          )}
+        </div>
 
-          <div>
-            <label className="block text-xs font-medium text-stone-700 dark:text-zinc-300 mb-1">
-              Success Message after Submission
-            </label>
-            <input
-              type="text"
-              value={successMsg}
-              onChange={(e) => setSuccessMsg(e.target.value)}
-              className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-medium text-stone-700 dark:text-zinc-300 mb-1">
-              Header Theme Preset
-            </label>
-            <select
-              value={headerColor}
-              onChange={(e) => setHeaderColor(e.target.value)}
-              className="w-full px-3 py-2 text-xs border rounded-lg bg-white dark:bg-zinc-900 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100"
-            >
-              <option value="from-[#1f4d3d] to-[#123026]">Notling Emerald</option>
-              <option value="from-stone-900 to-stone-950">Deep Charcoal</option>
-              <option value="from-indigo-600 to-purple-600">Indigo Slate</option>
-              <option value="from-amber-600 to-orange-600">Warm Amber</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-3 pt-2">
-            <input
-              type="checkbox"
-              id="isPublicToggle"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="bn-checkbox w-4 h-4 cursor-pointer"
-            />
-            <label htmlFor="isPublicToggle" className="text-xs font-medium text-stone-800 dark:text-zinc-200">
-              Enable Public Access (Anyone with the share link can submit answers)
-            </label>
-          </div>
-
-          <div className="pt-3 flex justify-end">
+        {/* Form Body */}
+        {submitted ? (
+          <div className="py-12 text-center space-y-3 max-w-sm mx-auto select-none border-t border-stone-200/60 dark:border-zinc-800/80 pt-8">
+            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-950/60 text-[#1f4d3d] dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
+              <Check className="w-5 h-5" />
+            </div>
+            <h2 className="text-sm font-semibold text-stone-900 dark:text-zinc-100">
+              Response Submitted
+            </h2>
+            <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
+              {successMsg}
+            </p>
             <button
-              onClick={handleSaveSettings}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#1f4d3d] hover:bg-[#183e31] text-white transition-colors cursor-pointer"
+              type="button"
+              onClick={() => {
+                setSubmitted(false);
+                setFormData({});
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-800 dark:text-zinc-200 transition-colors cursor-pointer"
             >
-              Save Form Settings
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Submit another response</span>
             </button>
           </div>
-        </div>
-      ) : (
-        /* Form Live Preview */
-        <div className="bg-white dark:bg-[#18181b] border border-stone-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-lg max-w-2xl mx-auto">
-          {/* Form Header Banner */}
-          <div className={`p-8 bg-gradient-to-r ${headerColor} text-white space-y-2`}>
-            <div className="flex items-center gap-2 text-white/80 text-xs font-medium">
-              <Sparkles className="w-4 h-4" />
-              <span>Database Form</span>
+        ) : (
+          <form onSubmit={handleFormSubmit} className="space-y-8">
+            {properties.map((prop) => {
+              if (prop.type === 'created_at') return null;
+
+              return (
+                <div key={prop.id} className="space-y-2.5">
+                  <label className="text-base sm:text-lg font-bold text-stone-900 dark:text-white flex items-center gap-1.5">
+                    <span>{prop.name}</span>
+                    {prop.type === 'title' && <span className="text-rose-500 text-sm font-normal">*</span>}
+                  </label>
+
+                  <FormFieldInput
+                    prop={prop}
+                    value={formData[prop.id]}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, [prop.id]: val }))}
+                  />
+                </div>
+              );
+            })}
+
+            <div className="pt-4 flex items-center justify-start">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-5 py-2 rounded-md text-sm font-semibold bg-stone-900 hover:bg-stone-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-100 border border-transparent dark:border-zinc-700 transition-all disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+              >
+                {submitting ? 'Submitting...' : submitBtnText}
+              </button>
             </div>
-            <h2 className="text-2xl font-bold tracking-tight">{formTitle}</h2>
-            <p className="text-sm text-white/90 leading-relaxed">{formDesc}</p>
-          </div>
-
-          {/* Form Body */}
-          <div className="p-8">
-            {submitted ? (
-              <div className="py-12 text-center space-y-4">
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950/60 text-[#1f4d3d] dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
-                  <Check className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-bold text-stone-900 dark:text-zinc-100">Response Submitted!</h3>
-                <p className="text-xs text-stone-500 dark:text-zinc-400 max-w-sm mx-auto">{successMsg}</p>
-                <button
-                  onClick={() => {
-                    setSubmitted(false);
-                    setFormData({});
-                  }}
-                  className="px-4 py-2 text-xs font-medium rounded-lg border border-stone-300 dark:border-zinc-700 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
-                >
-                  Submit Another Entry
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleFormSubmit} className="space-y-5">
-                {properties.map((prop) => (
-                  <div key={prop.id} className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-stone-800 dark:text-zinc-200 flex items-center gap-1.5">
-                      <PropertyTypeIcon type={prop.type} className="w-3.5 h-3.5 text-stone-400" />
-                      <span>{prop.name}</span>
-                      {prop.type === 'title' && <span className="text-rose-500">*</span>}
-                    </label>
-
-                    <FormFieldInput
-                      prop={prop}
-                      value={formData[prop.id]}
-                      onChange={(val) => setFormData((prev) => ({ ...prev, [prop.id]: val }))}
-                    />
-                  </div>
-                ))}
-
-                <div className="pt-4 border-t border-stone-200/80 dark:border-zinc-800/80 flex justify-end">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#1f4d3d] text-white hover:bg-[#183e31] shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    <span>{submitting ? 'Submitting...' : submitBtnText}</span>
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
+          </form>
+        )}
+      </div>
     </div>
   );
 }
 
-function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; value: any; onChange: (val: any) => void }) {
+function FormFieldInput({
+  prop,
+  value,
+  onChange,
+}: {
+  prop: DatabaseProperty;
+  value: any;
+  onChange: (val: any) => void;
+}) {
   switch (prop.type) {
     case 'title':
     case 'text':
@@ -312,8 +330,8 @@ function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; val
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
           required={prop.type === 'title'}
-          placeholder={`Enter ${prop.name.toLowerCase()}...`}
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
 
@@ -323,22 +341,32 @@ function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; val
           type="number"
           value={value ?? ''}
           onChange={(e) => onChange(e.target.value !== '' ? Number(e.target.value) : '')}
-          placeholder="0"
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors font-mono"
         />
       );
 
     case 'checkbox':
       return (
-        <div className="flex items-center gap-2 pt-1">
-          <input
-            type="checkbox"
-            checked={Boolean(value)}
-            onChange={(e) => onChange(e.target.checked)}
-            className="bn-checkbox w-4 h-4 cursor-pointer"
-          />
-          <span className="text-xs text-stone-600 dark:text-zinc-400">Yes</span>
-        </div>
+        <label className="flex items-center gap-3 cursor-pointer group select-none pt-0.5">
+          <div
+            onClick={() => onChange(!Boolean(value))}
+            className={cn(
+              "w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0",
+              value
+                ? "border-stone-900 dark:border-white bg-stone-900 dark:bg-white text-white dark:text-zinc-900"
+                : "border-stone-400 dark:border-zinc-600 group-hover:border-stone-600 dark:group-hover:border-zinc-400"
+            )}
+          >
+            {value && <Check className="w-3 h-3 stroke-[3]" />}
+          </div>
+          <span
+            onClick={() => onChange(!Boolean(value))}
+            className="text-sm text-stone-800 dark:text-zinc-200"
+          >
+            Yes
+          </span>
+        </label>
       );
 
     case 'date':
@@ -347,63 +375,79 @@ function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; val
           type="date"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors cursor-pointer"
         />
       );
 
     case 'select':
     case 'status':
       return (
-        <select
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
-        >
-          <option value="">Select option...</option>
-          {prop.options?.map((opt) => (
-            <option key={opt.id} value={opt.id}>
-              {opt.name}
-            </option>
-          ))}
-        </select>
+        <div className="space-y-2.5 pt-1">
+          {prop.options?.map((opt) => {
+            const isSelected = value === opt.id;
+            return (
+              <label
+                key={opt.id}
+                className="flex items-center gap-3 cursor-pointer group select-none"
+                onClick={() => onChange(isSelected ? null : opt.id)}
+              >
+                <div
+                  className={cn(
+                    "w-4 h-4 rounded-full border flex items-center justify-center transition-colors shrink-0",
+                    isSelected
+                      ? "border-stone-900 dark:border-white bg-stone-900 dark:bg-white"
+                      : "border-stone-400 dark:border-zinc-600 group-hover:border-stone-600 dark:group-hover:border-zinc-400"
+                  )}
+                >
+                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-900" />}
+                </div>
+                <span className="text-sm text-stone-800 dark:text-zinc-200 group-hover:text-stone-950 dark:group-hover:text-white">
+                  {opt.name}
+                </span>
+              </label>
+            );
+          })}
+          {(!prop.options || prop.options.length === 0) && (
+            <p className="text-xs text-stone-400 italic">No options defined</p>
+          )}
+        </div>
       );
 
     case 'multi_select': {
       const selected: string[] = Array.isArray(value) ? value : [];
       return (
-        <div className="space-y-1.5 pt-1">
-          <div className="flex flex-wrap gap-2">
-            {prop.options?.map((opt) => {
-              const isChecked = selected.includes(opt.id);
-              const badge = getOptionBadgeStyles(opt.color);
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => {
-                    const next = isChecked ? selected.filter((id) => id !== opt.id) : [...selected, opt.id];
-                    onChange(next);
-                  }}
+        <div className="space-y-2.5 pt-1">
+          {prop.options?.map((opt) => {
+            const isChecked = selected.includes(opt.id);
+            return (
+              <label
+                key={opt.id}
+                className="flex items-center gap-3 cursor-pointer group select-none"
+                onClick={() => {
+                  const next = isChecked
+                    ? selected.filter((id) => id !== opt.id)
+                    : [...selected, opt.id];
+                  onChange(next);
+                }}
+              >
+                <div
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer",
-                    isChecked ? "ring-2 ring-[#1f4d3d] dark:ring-emerald-400 font-semibold" : "opacity-70 hover:opacity-100",
-                    badge.className
+                    "w-4 h-4 rounded border flex items-center justify-center transition-colors shrink-0",
+                    isChecked
+                      ? "border-stone-900 dark:border-white bg-stone-900 dark:bg-white text-white dark:text-zinc-900"
+                      : "border-stone-400 dark:border-zinc-600 group-hover:border-stone-600 dark:group-hover:border-zinc-400"
                   )}
-                  style={badge.style}
                 >
-                  {isChecked ? `✓ ${opt.name}` : opt.name}
-                </button>
-              );
-            })}
-          </div>
-          {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer"
-            >
-              Unselect all ({selected.length})
-            </button>
+                  {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                </div>
+                <span className="text-sm text-stone-800 dark:text-zinc-200 group-hover:text-stone-950 dark:group-hover:text-white">
+                  {opt.name}
+                </span>
+              </label>
+            );
+          })}
+          {(!prop.options || prop.options.length === 0) && (
+            <p className="text-xs text-stone-400 italic">No options defined</p>
           )}
         </div>
       );
@@ -415,8 +459,8 @@ function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; val
           type="url"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://example.com"
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
+          placeholder="https://"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
 
@@ -426,8 +470,8 @@ function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; val
           type="email"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="email@example.com"
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
 
@@ -437,7 +481,8 @@ function FormFieldInput({ prop, value, onChange }: { prop: DatabaseProperty; val
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-3 py-2 text-xs border rounded-lg bg-stone-50/60 dark:bg-zinc-900/60 border-stone-300 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:ring-2 focus:ring-[#1f4d3d] focus:bg-white dark:focus:bg-zinc-900 transition-colors"
+          placeholder="Your answer"
+          className="w-full px-3.5 py-2.5 rounded-md bg-transparent border border-stone-300 dark:border-zinc-700/80 text-stone-900 dark:text-zinc-100 placeholder:text-stone-400 dark:placeholder:text-zinc-500 text-sm focus:outline-none focus:border-stone-900 dark:focus:border-zinc-300 transition-colors"
         />
       );
   }

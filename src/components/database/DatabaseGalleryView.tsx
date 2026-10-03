@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
-import { Plus, FileText, Calendar } from 'lucide-react';
+import { Plus, FileText, Calendar, Trash2, Maximize2 } from 'lucide-react';
+import { cn } from '#/lib/utils';
+import { getOptionBadgeStyles } from '~/lib/optionColors';
 
 interface DatabaseGalleryViewProps {
   properties: DatabaseProperty[];
   items: DatabaseItem[];
   onUpdateItem: (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => void;
   onDeleteItem: (itemId: string) => void;
-  onAddItem: () => void;
+  onAddItem: (initialProps?: Record<string, any>) => void;
   onOpenRowDrawer?: (item: DatabaseItem) => void;
   readOnly?: boolean;
 }
@@ -15,50 +17,165 @@ interface DatabaseGalleryViewProps {
 export const DatabaseGalleryView: React.FC<DatabaseGalleryViewProps> = ({
   properties,
   items,
+  onUpdateItem,
+  onDeleteItem,
   onAddItem,
   onOpenRowDrawer,
   readOnly = false,
 }) => {
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+
   const statusProp = properties.find((p) => p.type === 'status' || p.type === 'select');
   const dateProp = properties.find((p) => p.type === 'date');
+  const tagProps = properties.filter((p) => p.type === 'multi_select');
 
   return (
-    <div className="w-full pb-8 select-none">
+    <div className="w-full pb-12 select-none pt-1">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {items.map((item) => {
+        {items.map((item, idx) => {
           const statusVal = statusProp ? item.properties?.[statusProp.id] : null;
+          const statusOpt = statusProp?.options?.find((o) => o.id === statusVal);
+          const statusBadge = statusOpt ? getOptionBadgeStyles(statusOpt.color) : null;
           const dateVal = dateProp ? item.properties?.[dateProp.id] : null;
+          const isEditing = editingItemId === item.id;
+
+          // Distinct subtle background gradients for gallery cards
+          const gradients = [
+            'from-amber-500/10 to-orange-500/10 dark:from-amber-950/20 dark:to-orange-950/20',
+            'from-emerald-500/10 to-teal-500/10 dark:from-emerald-950/20 dark:to-teal-950/20',
+            'from-blue-500/10 to-indigo-500/10 dark:from-blue-950/20 dark:to-indigo-950/20',
+            'from-purple-500/10 to-pink-500/10 dark:from-purple-950/20 dark:to-pink-950/20',
+            'from-rose-500/10 to-red-500/10 dark:from-rose-950/20 dark:to-red-950/20',
+          ];
+          const grad = gradients[idx % gradients.length];
 
           return (
             <div
               key={item.id}
-              onClick={() => onOpenRowDrawer?.(item)}
-              className="group flex flex-col rounded-2xl bg-stone-50/80 dark:bg-zinc-900/60 hover:bg-white dark:hover:bg-zinc-800/80 border border-stone-200/80 dark:border-zinc-800 transition-all duration-200 shadow-2xs hover:shadow-lg cursor-pointer overflow-hidden"
+              onClick={() => {
+                if (!isEditing) onOpenRowDrawer?.(item);
+              }}
+              className="group flex flex-col rounded-lg bg-white dark:bg-[#18181b] hover:border-stone-300 dark:hover:border-zinc-700 border border-stone-200/70 dark:border-zinc-800/70 transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer overflow-hidden"
             >
               {/* Card Thumbnail Banner */}
-              <div className="h-32 w-full bg-gradient-to-br from-stone-200 to-stone-300 dark:from-zinc-800 dark:to-zinc-900 flex items-center justify-center text-stone-400 dark:text-zinc-600 group-hover:scale-105 transition-transform duration-300">
-                <FileText className="w-10 h-10 opacity-40" />
+              <div className={cn("h-24 w-full bg-gradient-to-br flex items-center justify-center text-stone-400 dark:text-zinc-600 relative", grad)}>
+                <FileText className="w-7 h-7 opacity-30 group-hover:scale-105 transition-transform duration-200 text-stone-600 dark:text-zinc-400" />
+
+                {/* Top Action Overlay */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {onOpenRowDrawer && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenRowDrawer(item);
+                      }}
+                      className="p-1 rounded bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-800 text-stone-600 dark:text-zinc-300 shadow-2xs transition-colors"
+                      title="Open page"
+                    >
+                      <Maximize2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteItem(item.id);
+                      }}
+                      className="p-1 rounded bg-white/90 dark:bg-zinc-900/90 hover:bg-rose-50 dark:hover:bg-rose-950/60 text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 shadow-2xs transition-colors"
+                      title="Delete card"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Card Body */}
-              <div className="p-4 space-y-2 flex-1 flex flex-col justify-between">
+              <div className="p-3 space-y-2 flex-1 flex flex-col justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-stone-900 dark:text-zinc-100 group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
-                    {item.title || 'Untitled'}
-                  </h3>
+                  {isEditing && !readOnly ? (
+                    <input
+                      type="text"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onBlur={() => {
+                        onUpdateItem(item.id, { title: editingTitle.trim() });
+                        setEditingItemId(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.stopPropagation();
+                          onUpdateItem(item.id, { title: editingTitle.trim() });
+                          setEditingItemId(null);
+                        } else if (e.key === 'Escape') {
+                          e.stopPropagation();
+                          setEditingItemId(null);
+                        }
+                      }}
+                      className="w-full text-xs font-semibold px-1.5 py-0.5 border rounded bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 border-[#1f4d3d] focus:outline-none"
+                      autoFocus
+                    />
+                  ) : (
+                    <h3
+                      onClick={(e) => {
+                        if (!readOnly) {
+                          e.stopPropagation();
+                          setEditingItemId(item.id);
+                          setEditingTitle(item.title || '');
+                        }
+                      }}
+                      className="text-xs font-semibold text-stone-900 dark:text-zinc-100 group-hover:text-[#1f4d3d] dark:group-hover:text-emerald-400 transition-colors line-clamp-2"
+                    >
+                      {item.title || 'Untitled'}
+                    </h3>
+                  )}
                 </div>
 
                 {/* Card Property Badges */}
-                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-stone-200/60 dark:border-zinc-800/60 text-[11px]">
-                  {statusVal && (
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-medium">
-                      {statusVal}
+                <div className="space-y-1 pt-2 border-t border-stone-100 dark:border-zinc-800/60 text-[11px]">
+                  {statusVal && statusOpt && statusBadge ? (
+                    <span
+                      className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium", statusBadge.className)}
+                      style={statusBadge.style}
+                    >
+                      {statusOpt.name}
                     </span>
-                  )}
+                  ) : statusVal ? (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 text-[10px] font-medium">
+                      {String(statusVal)}
+                    </span>
+                  ) : null}
+
+                  {tagProps.map((tp) => {
+                    const val = item.properties?.[tp.id];
+                    if (!Array.isArray(val) || val.length === 0) return null;
+                    const selected = tp.options?.filter((o) => val.includes(o.id)) || [];
+                    return (
+                      <div key={tp.id} className="flex flex-wrap gap-1">
+                        {selected.map((opt) => {
+                          const badge = getOptionBadgeStyles(opt.color);
+                          return (
+                            <span
+                              key={opt.id}
+                              className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium", badge.className)}
+                              style={badge.style}
+                            >
+                              {opt.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+
                   {dateVal && (
-                    <span className="flex items-center gap-1 text-stone-500 dark:text-zinc-400">
+                    <span className="flex items-center gap-1 text-stone-400 dark:text-zinc-500 text-[10px]">
                       <Calendar className="w-3 h-3" />
-                      <span>{dateVal}</span>
+                      <span>{String(dateVal)}</span>
                     </span>
                   )}
                 </div>
@@ -71,13 +188,13 @@ export const DatabaseGalleryView: React.FC<DatabaseGalleryViewProps> = ({
         {!readOnly && (
           <button
             type="button"
-            onClick={onAddItem}
-            className="flex flex-col items-center justify-center min-h-[200px] p-6 rounded-2xl border-2 border-dashed border-stone-200 dark:border-zinc-800 hover:border-[#1f4d3d] dark:hover:border-emerald-500 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/20 text-stone-400 dark:text-zinc-500 hover:text-[#1f4d3d] dark:hover:text-emerald-400 transition-all cursor-pointer group"
+            onClick={() => onAddItem()}
+            className="flex flex-col items-center justify-center min-h-[160px] p-4 rounded-lg border border-dashed border-stone-200/80 dark:border-zinc-800 hover:border-[#1f4d3d] dark:hover:border-emerald-500 hover:bg-stone-50/50 dark:hover:bg-zinc-800/40 text-stone-400 dark:text-zinc-500 hover:text-[#1f4d3d] dark:hover:text-emerald-400 transition-all cursor-pointer group"
           >
-            <div className="p-3 rounded-full bg-stone-100 dark:bg-zinc-800 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/40 mb-2 transition-colors">
-              <Plus className="w-5 h-5" />
+            <div className="p-2.5 rounded-md bg-stone-100 dark:bg-zinc-800 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/40 mb-1.5 transition-colors">
+              <Plus className="w-4 h-4" />
             </div>
-            <span className="text-xs font-semibold">New card</span>
+            <span className="text-xs font-medium">New card</span>
           </button>
         )}
       </div>
