@@ -268,12 +268,19 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
     content: [],
   }));
 
+  const normalizedForms = (forms || []).map((f) => {
+    if (!f.title || f.title === 'Untitled Database' || f.title === 'Untitled Form') {
+      return { ...f, title: database.title || f.title };
+    }
+    return f;
+  });
+
   const fullDb: FullDatabase = {
     database,
     properties,
     items,
     views,
-    forms,
+    forms: normalizedForms,
     totalCount,
     hasMore: totalCount > items.length,
   };
@@ -594,6 +601,14 @@ export async function createNewDatabase(input: {
 export async function saveDatabase(databaseId: string, updates: Partial<{ title: string; description: string; icon: string | null; coverUrl: string }>) {
   await assertDatabaseEditAccess(databaseId);
 
+  const [existingDb] = await db
+    .select()
+    .from(databases)
+    .where(or(eq(databases.id, databaseId), eq(databases.pageId, databaseId)))
+    .limit(1);
+
+  const previousTitle = existingDb?.title;
+
   const [updated] = await db
     .update(databases)
     .set({ ...updates, updatedAt: new Date() })
@@ -601,7 +616,7 @@ export async function saveDatabase(databaseId: string, updates: Partial<{ title:
     .returning();
 
   const targetPageId = updated?.pageId || databaseId;
-  const { pages } = await import('~/db/schema');
+  const { pages, databaseForms } = await import('~/db/schema');
   await db
     .update(pages)
     .set({
@@ -610,6 +625,28 @@ export async function saveDatabase(databaseId: string, updates: Partial<{ title:
       updatedAt: new Date(),
     })
     .where(eq(pages.id, targetPageId));
+
+  // If title was updated, also update any database forms that have default titles or matched the previous title
+  if (updates.title !== undefined && updated?.id) {
+    const existingForms = await db
+      .select()
+      .from(databaseForms)
+      .where(eq(databaseForms.databaseId, updated.id));
+
+    for (const f of existingForms) {
+      if (
+        !f.title ||
+        f.title === 'Untitled Database' ||
+        f.title === 'Untitled Form' ||
+        f.title === previousTitle
+      ) {
+        await db
+          .update(databaseForms)
+          .set({ title: updates.title })
+          .where(eq(databaseForms.id, f.id));
+      }
+    }
+  }
 
   invalidateDatabaseCaches(databaseId, null, targetPageId).catch(() => {});
 

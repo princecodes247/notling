@@ -745,38 +745,7 @@ export function DatabaseContainer({
 
   return (
     <div className="flex-1 flex flex-col h-full w-full font-sans text-stone-900 dark:text-zinc-100 bg-white dark:bg-[#18181b] overflow-hidden relative">
-      {hideHeader ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-8 pb-2">
-          <div className="mb-4 flex gap-2 items-center">
-            <div className="text-3xl">{dbData.database.icon || '📊'}</div>
-            {!readOnly ? (
-              <input
-                type="text"
-                value={dbTitle}
-                onChange={(e) => {
-                  isEditingTitleRef.current = true;
-                  setDbTitle(e.target.value);
-                }}
-                onBlur={handleSaveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.currentTarget.blur();
-                  } else if (e.key === 'Escape') {
-                    handleRevertTitle();
-                    e.currentTarget.blur();
-                  }
-                }}
-                className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight bg-transparent focus:outline-none focus:bg-stone-100/80 dark:focus:bg-zinc-800/60 px-1 py-0.5 rounded-lg w-full transition-colors"
-                placeholder="Untitled Database"
-              />
-            ) : (
-              <h1 className="text-3xl sm:text-4xl font-bold text-stone-900 dark:text-stone-100 tracking-tight">
-                {dbTitle || 'Untitled Database'}
-              </h1>
-            )}
-          </div>
-        </div>
-      ) : (
+      {!hideHeader && (
         <EditorHeader
           icon={dbData.database.icon || ''}
           title={dbTitle}
@@ -803,6 +772,43 @@ export function DatabaseContainer({
           onImportData={() => setIsImportModalOpen(true)}
         />
       )}
+
+      {/* Main Database Title Header inside Canvas */}
+      <div className={cn(
+        "px-4 sm:px-8 pt-5 pb-2 shrink-0 select-none",
+        hideHeader ? "max-w-7xl mx-auto w-full pt-8" : ""
+      )}>
+        <div className="flex items-center gap-3 group">
+          <div className="text-3xl sm:text-4xl shrink-0 select-none cursor-default">
+            {dbData.database.icon || '📊'}
+          </div>
+          {!readOnly ? (
+            <input
+              type="text"
+              value={dbTitle}
+              onChange={(e) => {
+                isEditingTitleRef.current = true;
+                setDbTitle(e.target.value);
+              }}
+              onBlur={handleSaveTitle}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                } else if (e.key === 'Escape') {
+                  handleRevertTitle();
+                  e.currentTarget.blur();
+                }
+              }}
+              className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight bg-transparent hover:bg-stone-100/60 dark:hover:bg-zinc-800/40 focus:bg-stone-100/80 dark:focus:bg-zinc-800/60 focus:outline-none px-2 py-0.5 rounded-lg w-full transition-colors placeholder:text-stone-300 dark:placeholder:text-zinc-600"
+              placeholder="Untitled Database"
+            />
+          ) : (
+            <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 dark:text-stone-100 tracking-tight px-2 py-0.5">
+              {dbTitle || 'Untitled Database'}
+            </h1>
+          )}
+        </div>
+      </div>
 
       {/* View Switcher Tabs Bar */}
       <div className={cn(
@@ -1018,6 +1024,8 @@ export function DatabaseContainer({
         ) : activeView.type === 'form' ? (
           <DatabaseFormView
             form={activeForm}
+            databaseTitle={dbTitle}
+            databaseIcon={dbData.database.icon || '📊'}
             properties={dbData.properties}
             onUpdateFormSettings={handleUpdateFormSettings}
             onSubmitTestForm={handleSubmitTestForm}

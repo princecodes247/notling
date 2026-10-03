@@ -19,7 +19,12 @@ export const Route = createRoute({
     }
   },
   head: ({ loaderData }) => {
-    const title = loaderData?.form?.title || loaderData?.database?.title || 'Form';
+    const rawFormTitle = loaderData?.form?.title;
+    const rawDbTitle = loaderData?.database?.title;
+    const title =
+      rawFormTitle && rawFormTitle !== 'Untitled Database' && rawFormTitle !== 'Untitled Form'
+        ? rawFormTitle
+        : (rawDbTitle || rawFormTitle || 'Form');
     return {
       meta: [
         { title: `${title} — Notling Forms` },
@@ -67,6 +72,11 @@ function PublicFormRouteComponent() {
   const settings = form.settings || {};
   const submitBtnText = settings.submitButtonText || 'Submit';
   const successMsg = settings.successMessage || 'Your response has been recorded.';
+
+  const effectiveTitle =
+    form.title && form.title !== 'Untitled Database' && form.title !== 'Untitled Form'
+      ? form.title
+      : (database.title || form.title || 'Form');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,7 +148,7 @@ function PublicFormRouteComponent() {
                 </div>
               )}
               <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-stone-900 dark:text-white leading-tight">
-                {form.title || database.title || 'Form'}
+                {effectiveTitle}
               </h1>
               {form.description && (
                 <p className="text-sm text-stone-500 dark:text-zinc-400 leading-relaxed whitespace-pre-line">

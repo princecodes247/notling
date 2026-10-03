@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { DatabaseProperty, DatabaseForm } from '~/db/schema';
 import {
   Copy,
@@ -14,6 +14,8 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface DatabaseFormViewProps {
   form?: DatabaseForm;
+  databaseTitle?: string;
+  databaseIcon?: string;
   properties: DatabaseProperty[];
   onUpdateFormSettings: (formId: string, updates: any) => void;
   onSubmitTestForm: (properties: Record<string, any>, title?: string) => Promise<void>;
@@ -22,6 +24,8 @@ interface DatabaseFormViewProps {
 
 export function DatabaseFormView({
   form,
+  databaseTitle,
+  databaseIcon,
   properties,
   onUpdateFormSettings,
   onSubmitTestForm,
@@ -34,13 +38,31 @@ export function DatabaseFormView({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const settings = form?.settings || {};
-  const [formTitle, setFormTitle] = useState(form?.title || 'Untitled Form');
+
+  const resolvedFormTitle = useMemo(() => {
+    if (form?.title && form.title !== 'Untitled Database' && form.title !== 'Untitled Form') {
+      return form.title;
+    }
+    return databaseTitle || form?.title || 'Untitled Form';
+  }, [form?.title, databaseTitle]);
+
+  const [formTitle, setFormTitle] = useState(resolvedFormTitle);
   const [formDesc, setFormDesc] = useState(form?.description || '');
   const [submitBtnText, setSubmitBtnText] = useState(settings.submitButtonText || 'Submit');
   const [successMsg, setSuccessMsg] = useState(
     settings.successMessage || 'Your response has been recorded.'
   );
   const [isPublic, setIsPublic] = useState(form?.isPublic ?? true);
+
+  useEffect(() => {
+    setFormTitle(resolvedFormTitle);
+  }, [resolvedFormTitle]);
+
+  useEffect(() => {
+    if (form?.description !== undefined) {
+      setFormDesc(form.description || '');
+    }
+  }, [form?.description]);
 
   const publicUrl = form && typeof window !== 'undefined'
     ? `${window.location.origin}/share/form/${form.shareToken}`
@@ -218,6 +240,11 @@ export function DatabaseFormView({
       <div className="space-y-8">
         {/* Document Title & Description */}
         <div className="space-y-2">
+          {databaseIcon && (
+            <div className="text-4xl mb-1 select-none">
+              {databaseIcon}
+            </div>
+          )}
           {!readOnly ? (
             <input
               type="text"
