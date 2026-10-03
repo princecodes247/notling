@@ -73,7 +73,7 @@ function DocumentPageRoute() {
     }
   }, [pageId, page?.id, page?.title, page?.icon]);
 
-  const { data: dbData } = useQuery({
+  const { data: dbData, isLoading: isDbLoading } = useQuery({
     queryKey: ['database', pageId],
     queryFn: async () => {
       if (!pageId) return null;
@@ -100,7 +100,7 @@ function DocumentPageRoute() {
     }
   }, [dbData?.database?.id, dbData?.database?.pageId, dbData?.database?.title, dbData?.database?.icon, pageId]);
 
-  if (isLoading) {
+  if (isLoading || (isDbLoading && !dbData)) {
     return <EditorSkeleton />;
   }
 

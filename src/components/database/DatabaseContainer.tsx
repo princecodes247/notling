@@ -153,16 +153,16 @@ export function DatabaseContainer({
     getNextPageParam: (lastPage) => (lastPage?.hasMore ? lastPage.nextCursor : undefined),
     initialData: !debouncedSearchQuery && !sortBy && initialData?.items
       ? {
-          pages: [
-            {
-              items: initialData.items,
-              nextCursor: (initialData.totalCount ?? initialData.items.length) > initialData.items.length ? initialData.items.length : null,
-              totalCount: initialData.totalCount ?? initialData.items.length,
-              hasMore: (initialData.totalCount ?? initialData.items.length) > initialData.items.length,
-            },
-          ],
-          pageParams: [0],
-        }
+        pages: [
+          {
+            items: initialData.items,
+            nextCursor: (initialData.totalCount ?? initialData.items.length) > initialData.items.length ? initialData.items.length : null,
+            totalCount: initialData.totalCount ?? initialData.items.length,
+            hasMore: (initialData.totalCount ?? initialData.items.length) > initialData.items.length,
+          },
+        ],
+        pageParams: [0],
+      }
       : undefined,
   });
 
@@ -706,13 +706,13 @@ export function DatabaseContainer({
       forms: (prev.forms || []).map((f) =>
         f.id === formId
           ? {
-              ...f,
-              ...updates,
-              settings: {
-                ...(f.settings || {}),
-                ...(updates.settings || {}),
-              },
-            }
+            ...f,
+            ...updates,
+            settings: {
+              ...(f.settings || {}),
+              ...(updates.settings || {}),
+            },
+          }
           : f
       ),
     }));
@@ -812,11 +812,11 @@ export function DatabaseContainer({
 
       {/* View Switcher Tabs Bar */}
       <div className={cn(
-        "flex items-center justify-between border-b border-stone-200/80 dark:border-zinc-800/80 px-4 sm:px-8 bg-transparent select-none",
-        hideHeader ? "max-w-7xl mx-auto" : ""
+        "flex items-center justify-between mt-3 px-4 sm:px-8 bg-transparent select-none py-1",
+        hideHeader ? "max-w-7xl mx-auto w-full" : ""
       )}>
         {/* Left: Views Tab List */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 min-w-0">
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0">
           {views.map((view) => {
             const Icon = getViewIcon(view.type);
             const isActive = activeView.id === view.id;
@@ -825,8 +825,8 @@ export function DatabaseContainer({
             return (
               <div key={view.id} className="relative flex items-center shrink-0 group">
                 {isRenaming && !readOnly ? (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 shadow-2xs border border-[#1f4d3d] dark:border-emerald-500">
-                    <Icon className="w-3.5 h-3.5 text-[#1f4d3d] dark:text-emerald-400" />
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-100 dark:bg-zinc-800 border border-stone-300 dark:border-zinc-600">
+                    <Icon className="w-3.5 h-3.5 text-stone-700 dark:text-zinc-300 shrink-0" />
                     <input
                       type="text"
                       value={renamingName}
@@ -848,7 +848,7 @@ export function DatabaseContainer({
                         }
                       }}
                       autoFocus
-                      className="text-xs font-semibold bg-transparent text-stone-900 dark:text-zinc-100 focus:outline-none w-24"
+                      className="text-xs font-medium bg-transparent text-stone-900 dark:text-zinc-100 focus:outline-none w-24"
                     />
                   </div>
                 ) : (
@@ -862,14 +862,19 @@ export function DatabaseContainer({
                       }
                     }}
                     className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer",
+                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors cursor-pointer",
                       isActive
-                        ? "bg-white dark:bg-zinc-800 text-stone-900 dark:text-zinc-100 shadow-2xs border border-stone-200/80 dark:border-zinc-700 font-semibold"
-                        : "text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100/70 dark:hover:bg-zinc-800/50"
+                        ? "text-stone-900 dark:text-zinc-100 font-semibold bg-stone-100/90 dark:bg-zinc-800/80"
+                        : "text-stone-500 dark:text-zinc-400 font-medium hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100/50 dark:hover:bg-zinc-800/40"
                     )}
                   >
-                    <Icon className={cn("w-3.5 h-3.5", isActive ? "text-[#1f4d3d] dark:text-emerald-400" : "text-stone-400 dark:text-zinc-500")} />
-                    <span className="truncate max-w-[140px]">{view.name}</span>
+                    <Icon className={cn(
+                      "w-3.5 h-3.5 shrink-0 transition-colors",
+                      isActive
+                        ? "text-stone-900 dark:text-zinc-100"
+                        : "text-stone-400 dark:text-zinc-500 group-hover:text-stone-600 dark:group-hover:text-zinc-400"
+                    )} />
+                    <span className="truncate max-w-[140px] leading-none">{view.name}</span>
 
                     {/* Three-dots menu trigger on tab */}
                     {!readOnly && (
@@ -885,9 +890,10 @@ export function DatabaseContainer({
                           }
                         }}
                         className={cn(
-                          "p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity",
+                          "p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity ml-0.5",
                           isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                         )}
+                        title="View options"
                       >
                         <MoreHorizontal className="w-3 h-3" />
                       </span>
