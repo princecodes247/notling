@@ -659,7 +659,7 @@ export function DatabaseTableView({
         ref={tableContainerRef}
         className="w-full overflow-auto max-h-[calc(100vh-160px)] text-xs"
       >
-        <table className="w-full text-left border-collapse min-w-full">
+        <table className="w-full text-left border-collapse min-w-full table-fixed">
           <thead className="sticky top-0 z-20 bg-white dark:bg-[#1c1c1f] border-b border-stone-200/80 dark:border-zinc-800/80 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
             <tr className="text-[11px] font-medium text-stone-500 dark:text-zinc-400 select-none">
               {/* Checkbox Column */}
@@ -1319,7 +1319,7 @@ function DatabaseTableRow({
             className={`py-2 px-3 transition-colors ${isCellFocused ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500' : ''
               }`}
           >
-            <InteractiveCell
+            <InteractiveCellMemo
               prop={prop}
               value={val}
               readOnly={readOnly}
@@ -2033,8 +2033,11 @@ function InteractiveCell({
     }
   };
 
-  const validation = validatePropertyValue(prop.type, value);
-  const isInvalid = !validation.isValid;
+  const isInvalid =
+    (prop.type === 'number' || prop.type === 'date')
+      ? !validatePropertyValue(prop.type, value).isValid
+      : false;
+  const validationErrorMessage = isInvalid ? validatePropertyValue(prop.type, value).errorMessage : undefined;
   const cellInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -2082,7 +2085,7 @@ function InteractiveCell({
             placeholder="0"
           />
           {isInvalid && (
-            <span className="text-rose-500 px-1 shrink-0" title={validation.errorMessage}>
+            <span className="text-rose-500 px-1 shrink-0" title={validationErrorMessage}>
               <AlertCircle className="w-3.5 h-3.5" />
             </span>
           )}
@@ -2166,22 +2169,24 @@ function InteractiveCell({
             <Calendar className="w-3.5 h-3.5" />
           </button>
 
-          <DatabasePopover
-            isOpen={isPopoverOpen}
-            onClose={closePopover}
-            triggerRef={triggerRef}
-            width={270}
-          >
-            <CustomDatePicker
-              value={value}
-              onChange={(d) => {
-                onChange(d);
-                closePopover();
-              }}
+          {isPopoverOpen && (
+            <DatabasePopover
+              isOpen={isPopoverOpen}
               onClose={closePopover}
-              readOnly={readOnly}
-            />
-          </DatabasePopover>
+              triggerRef={triggerRef}
+              width={270}
+            >
+              <CustomDatePicker
+                value={value}
+                onChange={(d) => {
+                  onChange(d);
+                  closePopover();
+                }}
+                onClose={closePopover}
+                readOnly={readOnly}
+              />
+            </DatabasePopover>
+          )}
         </div>
       );
 
@@ -2191,13 +2196,17 @@ function InteractiveCell({
       const selectedIds: string[] = Array.isArray(value) ? value : value ? [value] : [];
       const selectedOpts = prop.options?.filter((o) => selectedIds.includes(o.id)) || [];
 
-      const filteredOptions = (prop.options || []).filter((opt) =>
-        opt.name.toLowerCase().includes(searchInput.toLowerCase().trim())
-      );
+      const filteredOptions = isPopoverOpen
+        ? (prop.options || []).filter((opt) =>
+          opt.name.toLowerCase().includes(searchInput.toLowerCase().trim())
+        )
+        : [];
 
-      const exactMatchExists = (prop.options || []).some(
-        (opt) => opt.name.toLowerCase() === searchInput.toLowerCase().trim()
-      );
+      const exactMatchExists = isPopoverOpen
+        ? (prop.options || []).some(
+          (opt) => opt.name.toLowerCase() === searchInput.toLowerCase().trim()
+        )
+        : false;
 
       const handleEnterKeyPress = () => {
         const query = searchInput.trim();
@@ -2302,110 +2311,112 @@ function InteractiveCell({
             )}
           </div>
 
-          <DatabasePopover
-            isOpen={isPopoverOpen}
-            onClose={closePopover}
-            triggerRef={triggerRef}
-            width={240}
-          >
-            <div className="p-1.5 space-y-2 font-sans text-left">
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
-                <input
-                  type="text"
-                  placeholder="Search or create option..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleEnterKeyPress();
-                    } else if (e.key === 'Escape') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      closePopover();
-                      if (onExitEditing) onExitEditing();
-                    }
-                  }}
-                  className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
-                  autoFocus
-                />
-              </div>
-
-              {/* Unselect / Clear Selection Action */}
-              {selectedIds.length > 0 && (
-                <div className="flex items-center justify-between px-1 text-[11px] text-stone-500 dark:text-zinc-400 border-b border-stone-100 dark:border-zinc-800/80 pb-1">
-                  <span>{selectedIds.length} selected</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onChange(prop.type === 'multi_select' ? [] : null);
-                      if (prop.type !== 'multi_select') closePopover();
+          {isPopoverOpen && (
+            <DatabasePopover
+              isOpen={isPopoverOpen}
+              onClose={closePopover}
+              triggerRef={triggerRef}
+              width={240}
+            >
+              <div className="p-1.5 space-y-2 font-sans text-left">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400 dark:text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Search or create option..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleEnterKeyPress();
+                      } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closePopover();
+                        if (onExitEditing) onExitEditing();
+                      }
                     }}
-                    className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer transition-colors"
-                  >
-                    {prop.type === 'multi_select' ? 'Unselect all' : 'Clear selection'}
-                  </button>
+                    className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
+                    autoFocus
+                  />
                 </div>
-              )}
 
-              <div className="max-h-48 overflow-y-auto space-y-1.5 no-scrollbar">
-                {filteredOptions.map((opt) => {
-                  const isChecked = selectedIds.includes(opt.id);
-                  const realIndex = (prop.options || []).findIndex((o) => o.id === opt.id);
-
-                  return (
-                    <OptionRowItem
-                      key={opt.id}
-                      opt={opt}
-                      index={realIndex}
-                      isChecked={isChecked}
-                      onSelect={() => {
-                        if (prop.type === 'multi_select') {
-                          const next = isChecked
-                            ? selectedIds.filter((id) => id !== opt.id)
-                            : [...selectedIds, opt.id];
-                          onChange(next);
-                        } else {
-                          onChange(isChecked ? null : opt.id);
-                          closePopover();
-                        }
+                {/* Unselect / Clear Selection Action */}
+                {selectedIds.length > 0 && (
+                  <div className="flex items-center justify-between px-1 text-[11px] text-stone-500 dark:text-zinc-400 border-b border-stone-100 dark:border-zinc-800/80 pb-1">
+                    <span>{selectedIds.length} selected</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(prop.type === 'multi_select' ? [] : null);
+                        if (prop.type !== 'multi_select') closePopover();
                       }}
-                      onMove={handleMoveOption}
-                      onColorChange={(newHex) => handleOptionColorChange(opt.id, newHex)}
-                      onDelete={() => handleDeleteOption(opt.id)}
-                      draggedIndex={draggedIndex}
-                      setDraggedIndex={setDraggedIndex}
-                    />
-                  );
-                })}
+                      className="text-[11px] text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 font-medium hover:underline cursor-pointer transition-colors"
+                    >
+                      {prop.type === 'multi_select' ? 'Unselect all' : 'Clear selection'}
+                    </button>
+                  </div>
+                )}
 
-                {filteredOptions.length === 0 && !searchInput.trim() && (
-                  <div className="text-[11px] text-stone-400 text-center py-2 italic">
-                    No options created yet
+                <div className="max-h-48 overflow-y-auto space-y-1.5 no-scrollbar">
+                  {filteredOptions.map((opt) => {
+                    const isChecked = selectedIds.includes(opt.id);
+                    const realIndex = (prop.options || []).findIndex((o) => o.id === opt.id);
+
+                    return (
+                      <OptionRowItem
+                        key={opt.id}
+                        opt={opt}
+                        index={realIndex}
+                        isChecked={isChecked}
+                        onSelect={() => {
+                          if (prop.type === 'multi_select') {
+                            const next = isChecked
+                              ? selectedIds.filter((id) => id !== opt.id)
+                              : [...selectedIds, opt.id];
+                            onChange(next);
+                          } else {
+                            onChange(isChecked ? null : opt.id);
+                            closePopover();
+                          }
+                        }}
+                        onMove={handleMoveOption}
+                        onColorChange={(newHex) => handleOptionColorChange(opt.id, newHex)}
+                        onDelete={() => handleDeleteOption(opt.id)}
+                        draggedIndex={draggedIndex}
+                        setDraggedIndex={setDraggedIndex}
+                      />
+                    );
+                  })}
+
+                  {filteredOptions.length === 0 && !searchInput.trim() && (
+                    <div className="text-[11px] text-stone-400 text-center py-2 italic">
+                      No options created yet
+                    </div>
+                  )}
+                </div>
+
+                {/* Explicit "+ Create '[searchInput]'" button if no exact match */}
+                {searchInput.trim() && !exactMatchExists && (
+                  <div className="pt-2 border-t border-stone-200/80 dark:border-zinc-800/80">
+                    <button
+                      onClick={() => {
+                        onAddOption(searchInput.trim());
+                        setSearchInput('');
+                        closePopover();
+                      }}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#1f4d3d] text-white rounded-lg hover:bg-[#183e31] active:scale-[0.96] transition-transform cursor-pointer shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Create "{searchInput.trim()}"</span>
+                    </button>
                   </div>
                 )}
               </div>
-
-              {/* Explicit "+ Create '[searchInput]'" button if no exact match */}
-              {searchInput.trim() && !exactMatchExists && (
-                <div className="pt-2 border-t border-stone-200/80 dark:border-zinc-800/80">
-                  <button
-                    onClick={() => {
-                      onAddOption(searchInput.trim());
-                      setSearchInput('');
-                      closePopover();
-                    }}
-                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#1f4d3d] text-white rounded-lg hover:bg-[#183e31] active:scale-[0.96] transition-transform cursor-pointer shadow-xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Create "{searchInput.trim()}"</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </DatabasePopover>
+            </DatabasePopover>
+          )}
         </div>
       );
     }
@@ -2436,7 +2447,7 @@ function InteractiveCell({
             </a>
           )}
           {isInvalid && (
-            <span className="text-rose-500 px-1 shrink-0" title={validation.errorMessage}>
+            <span className="text-rose-500 px-1 shrink-0" title={validationErrorMessage}>
               <AlertCircle className="w-3.5 h-3.5" />
             </span>
           )}
@@ -2458,7 +2469,7 @@ function InteractiveCell({
             placeholder="name@domain.com"
           />
           {isInvalid && (
-            <span className="text-rose-500 px-1 shrink-0" title={validation.errorMessage}>
+            <span className="text-rose-500 px-1 shrink-0" title={validationErrorMessage}>
               <AlertCircle className="w-3.5 h-3.5" />
             </span>
           )}
@@ -2479,3 +2490,14 @@ function InteractiveCell({
       );
   }
 }
+
+const InteractiveCellMemo = React.memo(InteractiveCell, (prev, next) => {
+  return (
+    prev.prop === next.prop &&
+    prev.value === next.value &&
+    prev.readOnly === next.readOnly &&
+    prev.isFocused === next.isFocused &&
+    prev.isEditing === next.isEditing &&
+    prev.isPopoverOpen === next.isPopoverOpen
+  );
+});
