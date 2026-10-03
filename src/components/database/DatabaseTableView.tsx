@@ -199,7 +199,7 @@ export function DatabaseTableView({
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 38,
+    estimateSize: () => 46,
     overscan: 10,
   });
 
@@ -323,6 +323,7 @@ export function DatabaseTableView({
       if (cIndex < totalCols) {
         setFocusedCell({ rowIndex: rIndex, colIndex: cIndex });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(rIndex, { align: 'auto' });
       } else if (rIndex < items.length - 1) {
         setFocusedCell({ rowIndex: rIndex + 1, colIndex: 0 });
         setIsEditingCell(false);
@@ -334,6 +335,7 @@ export function DatabaseTableView({
       if (cIndex > 0) {
         setFocusedCell({ rowIndex: rIndex, colIndex: cIndex - 1 });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(rIndex, { align: 'auto' });
       } else if (rIndex > 0) {
         setFocusedCell({ rowIndex: rIndex - 1, colIndex: totalCols - 1 });
         setIsEditingCell(false);
@@ -419,15 +421,20 @@ export function DatabaseTableView({
         rowVirtualizer.scrollToIndex(prevRow, { align: 'auto' });
       } else if (e.key === 'ArrowRight' && !isInput) {
         e.preventDefault();
-        setFocusedCell({ ...focusedCell, colIndex: Math.min(numCols - 1, focusedCell.colIndex + 1) });
+        const nextCol = Math.min(numCols - 1, focusedCell.colIndex + 1);
+        setFocusedCell({ ...focusedCell, colIndex: nextCol });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(focusedCell.rowIndex, { align: 'auto' });
       } else if (e.key === 'ArrowLeft' && !isInput) {
         e.preventDefault();
-        setFocusedCell({ ...focusedCell, colIndex: Math.max(0, focusedCell.colIndex - 1) });
+        const prevCol = Math.max(0, focusedCell.colIndex - 1);
+        setFocusedCell({ ...focusedCell, colIndex: prevCol });
         setIsEditingCell(false);
+        rowVirtualizer.scrollToIndex(focusedCell.rowIndex, { align: 'auto' });
       } else if (e.key === 'Enter' && !isInput) {
         e.preventDefault();
         setIsEditingCell(true);
+        rowVirtualizer.scrollToIndex(focusedCell.rowIndex, { align: 'auto' });
         const focusedProp = nonTitleProps[focusedCell.colIndex - 1];
         if (focusedProp && (focusedProp.type === 'select' || focusedProp.type === 'status' || focusedProp.type === 'multi_select' || focusedProp.type === 'date')) {
           const item = items[focusedCell.rowIndex];
@@ -442,6 +449,7 @@ export function DatabaseTableView({
           if (focusedCell.colIndex > 0) {
             setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex - 1 });
             setIsEditingCell(false);
+            rowVirtualizer.scrollToIndex(focusedCell.rowIndex, { align: 'auto' });
           } else if (focusedCell.rowIndex > 0) {
             const prevRow = focusedCell.rowIndex - 1;
             setFocusedCell({ rowIndex: prevRow, colIndex: numCols - 1 });
@@ -452,6 +460,7 @@ export function DatabaseTableView({
           if (focusedCell.colIndex < numCols - 1) {
             setFocusedCell({ ...focusedCell, colIndex: focusedCell.colIndex + 1 });
             setIsEditingCell(false);
+            rowVirtualizer.scrollToIndex(focusedCell.rowIndex, { align: 'auto' });
           } else if (focusedCell.rowIndex < numRows - 1) {
             const nextRow = focusedCell.rowIndex + 1;
             setFocusedCell({ rowIndex: nextRow, colIndex: 0 });
