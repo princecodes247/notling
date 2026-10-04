@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { motion } from 'motion/react';
-import type { DatabaseItem, DatabaseProperty } from '~/db/schema';
+import type { DatabaseItem, DatabaseProperty, RelationConfig } from '~/db/schema';
 import { PropertyTypeIcon } from './PropertyTypeIcon';
 import { CustomDatePicker } from './CustomDatePicker';
 import { validatePropertyValue, parseDateInput } from '~/lib/databaseValidation';
 import { DatabasePopover } from './DatabasePopover';
-import { X, Trash2, AlertCircle, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
+import { RelationPickerPopover } from './RelationPickerPopover';
+import { X, Trash2, AlertCircle, Calendar as CalendarIcon, ExternalLink, FileText, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { getOrCreateDatabaseItemPage } from '~/server/databases';
@@ -20,6 +21,8 @@ interface DatabaseRowDrawerProps {
   onUpdateItem: (itemId: string, updates: { title?: string; properties?: Record<string, any> }) => void;
   onDeleteItem: (itemId: string) => void;
   readOnly?: boolean;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  onItemCreated?: (item: any) => void;
 }
 
 export function DatabaseRowDrawer({
@@ -29,6 +32,8 @@ export function DatabaseRowDrawer({
   onUpdateItem,
   onDeleteItem,
   readOnly = false,
+  relatedItemsLookup = {},
+  onItemCreated,
 }: DatabaseRowDrawerProps) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(item.title);
@@ -154,6 +159,8 @@ export function DatabaseRowDrawer({
                       prop={prop}
                       value={val}
                       readOnly={readOnly}
+                      relatedItemsLookup={relatedItemsLookup}
+                      onItemCreated={onItemCreated}
                       onChange={(newVal) => {
                         onUpdateItem(item.id, {
                           properties: {
@@ -241,10 +248,40 @@ function RowEditorSkeleton() {
   );
 }
 
-function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: DatabaseProperty; value: any; onChange: (val: any) => void; readOnly?: boolean }) {
+function DrawerPropertyValue({
+  prop,
+  value,
+  onChange,
+  readOnly,
+  relatedItemsLookup = {},
+  onItemCreated,
+}: {
+  prop: DatabaseProperty;
+  value: any;
+  onChange: (val: any) => void;
+  readOnly?: boolean;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  onItemCreated?: (item: any) => void;
+}) {
+  const navigate = useNavigate();
   const [isDateOpen, setIsDateOpen] = useState(false);
+  const [isRelationOpen, setIsRelationOpen] = useState(false);
   const dateTriggerRef = useRef<HTMLButtonElement>(null);
+  const relationTriggerRef = useRef<HTMLDivElement>(null);
   const [inputVal, setInputVal] = useState(value !== undefined && value !== null ? String(value) : '');
+  const [localLookup, setLocalLookup] = useState<Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>>({});
+
+  const mergedLookup = useMemo(() => {
+    return { ...relatedItemsLookup, ...localLookup };
+  }, [relatedItemsLookup, localLookup]);
+
+  const handleItemCreated = (item: any) => {
+    setLocalLookup((prev) => ({
+      ...prev,
+      [item.id]: item,
+    }));
+    onItemCreated?.(item);
+  };
 
   // Validation
   const validation = validatePropertyValue(prop.type, value);
@@ -501,6 +538,79 @@ function DrawerPropertyValue({ prop, value, onChange, readOnly }: { prop: Databa
             >
               Unselect all ({selected.length})
             </button>
+          )}
+        </div>
+      );
+    }
+
+    case 'relation': {
+      const cfg = (prop.config as RelationConfig) || {};
+      const targetDbId = cfg.targetDatabaseId || '';
+      const limit = cfg.limit || 'multiple';
+      const selectedIds: string[] = Array.isArray(value) ? value : value ? [value] : [];
+
+      return (
+        <div className="space-y-1.5" ref={relationTriggerRef}>
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {selectedIds.map((id) => {
+              const meta = mergedLookup[id];
+              const title = meta?.title || 'Untitled';
+              return (
+                <span
+                  key={id}
+                  onClick={() => {
+                    if (meta?.pageId) {
+                      navigate({ to: '/dashboard/p/$pageId', params: { pageId: meta.pageId } });
+                    }
+                  }}
+                  className="group/rel inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-stone-100 hover:bg-stone-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-stone-800 dark:text-zinc-200 border border-stone-200 dark:border-zinc-700 transition-all cursor-pointer select-none"
+                >
+                  <FileText className="w-3.5 h-3.5 opacity-60 text-stone-500 shrink-0" />
+                  <span className="truncate max-w-[160px] hover:underline">{title}</span>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const next = selectedIds.filter((itemKey) => itemKey !== id);
+                        onChange(next);
+                      }}
+                      className="opacity-40 group-hover/rel:opacity-100 hover:bg-stone-300 dark:hover:bg-zinc-600 rounded p-0.5 transition-opacity cursor-pointer shrink-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+
+            {!readOnly && targetDbId && (
+              <button
+                type="button"
+                onClick={() => setIsRelationOpen(true)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs text-stone-500 hover:text-stone-800 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-800 border border-dashed border-stone-200 dark:border-zinc-700 transition-colors cursor-pointer select-none"
+              >
+                <Plus className="w-3 h-3" />
+                <span>{selectedIds.length === 0 ? 'Link record' : 'Add record'}</span>
+              </button>
+            )}
+          </div>
+
+          {isRelationOpen && targetDbId && (
+            <RelationPickerPopover
+              isOpen={isRelationOpen}
+              onClose={() => setIsRelationOpen(false)}
+              triggerRef={relationTriggerRef}
+              targetDatabaseId={targetDbId}
+              selectedIds={selectedIds}
+              limit={limit}
+              onChange={(next) => {
+                onChange(next);
+                if (limit === 'single') setIsRelationOpen(false);
+              }}
+              onItemCreated={handleItemCreated}
+              readOnly={readOnly}
+            />
           )}
         </div>
       );

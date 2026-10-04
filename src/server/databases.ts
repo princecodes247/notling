@@ -59,15 +59,15 @@ export const deleteDatabase = createServerFn({ method: 'POST' })
   });
 
 export const createDatabaseProperty = createServerFn({ method: 'POST' })
-  .validator((input: { id?: string; databaseId: string; name: string; type: string; options?: any[] }) => input)
-  .handler(async ({ data }: { data: { id?: string; databaseId: string; name: string; type: string; options?: any[] } }) => {
+  .validator((input: { id?: string; databaseId: string; name: string; type: string; options?: any[]; config?: any }) => input)
+  .handler(async ({ data }: { data: { id?: string; databaseId: string; name: string; type: string; options?: any[]; config?: any } }) => {
     const { addDatabaseProperty } = await import('./databases.db');
     return addDatabaseProperty(data.databaseId, data);
   });
 
 export const updateDatabaseProperty = createServerFn({ method: 'POST' })
-  .validator((input: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; order?: number; icon?: string | null } }) => input)
-  .handler(async ({ data }: { data: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; order?: number; icon?: string | null } } }) => {
+  .validator((input: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; config?: any; order?: number; icon?: string | null } }) => input)
+  .handler(async ({ data }: { data: { propertyId: string; updates: { name?: string; type?: string; options?: any[]; config?: any; order?: number; icon?: string | null } } }) => {
     const { updateDatabaseProperty } = await import('./databases.db');
     return updateDatabaseProperty(data.propertyId, data.updates);
   });
@@ -202,6 +202,20 @@ export const getDatabaseImportJobStatus = createServerFn({ method: 'GET' })
   .handler(async ({ data: jobId }) => {
     const { getImportJobStatus } = await import('./queues/importQueue');
     return getImportJobStatus(jobId);
+  });
+
+export const getRelationCandidates = createServerFn({ method: 'GET' })
+  .validator((input: { targetDatabaseId: string; searchQuery?: string; limit?: number }) => input)
+  .handler(async ({ data }) => {
+    const { fetchRelationCandidates } = await import('./databases.db');
+    return fetchRelationCandidates(data.targetDatabaseId, data.searchQuery, data.limit);
+  });
+
+export const createRelatedItem = createServerFn({ method: 'POST' })
+  .validator((input: { targetDatabaseId: string; title: string }) => input)
+  .handler(async ({ data }) => {
+    const { createRelatedDatabaseItem } = await import('./databases.db');
+    return createRelatedDatabaseItem(data.targetDatabaseId, data.title);
   });
 
 

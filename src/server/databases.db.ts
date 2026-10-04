@@ -13,6 +13,7 @@ import {
   type DatabaseItem,
   type DatabaseView,
   type DatabaseForm,
+  type RelationConfig,
 } from '~/db/schema';
 import { eq, asc, desc, and, or, isNull, inArray, ilike, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
@@ -34,6 +35,7 @@ export interface FullDatabase {
   forms: DatabaseForm[];
   totalCount?: number;
   hasMore?: boolean;
+  relatedItems?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null; icon?: string | null }>;
 }
 
 export interface FetchDatabaseItemsResult {
@@ -41,6 +43,80 @@ export interface FetchDatabaseItemsResult {
   nextCursor: number | null;
   totalCount: number;
   hasMore: boolean;
+  relatedItems?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null; icon?: string | null }>;
+}
+
+export async function fetchRelatedItemsMap(
+  properties: DatabaseProperty[],
+  items: DatabaseItem[]
+): Promise<Record<string, { id: string; databaseId: string; title: string; pageId?: string | null; icon?: string | null }>> {
+  const relationProps = properties.filter((p) => p.type === 'relation');
+  if (relationProps.length === 0 || items.length === 0) return {};
+
+  const idSet = new Set<string>();
+  for (const item of items) {
+    if (!item.properties) continue;
+    for (const prop of relationProps) {
+      const val = item.properties[prop.id];
+      if (Array.isArray(val)) {
+        for (const id of val) {
+          if (typeof id === 'string' && id.trim()) idSet.add(id.trim());
+        }
+      } else if (typeof val === 'string' && val.trim()) {
+        idSet.add(val.trim());
+      }
+    }
+  }
+
+  if (idSet.size === 0) return {};
+
+  const itemIds = Array.from(idSet);
+  const chunks: string[][] = [];
+  for (let i = 0; i < itemIds.length; i += 200) {
+    chunks.push(itemIds.slice(i, i + 200));
+  }
+
+  const lookup: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null; icon?: string | null }> = {};
+  for (const chunk of chunks) {
+    const rows = await db
+      .select({
+        id: databaseItems.id,
+        databaseId: databaseItems.databaseId,
+        title: databaseItems.title,
+        properties: databaseItems.properties,
+        pageId: databaseItems.pageId,
+        pageTitle: pages.title,
+        pageIcon: pages.icon,
+      })
+      .from(databaseItems)
+      .leftJoin(pages, eq(databaseItems.pageId, pages.id))
+      .where(inArray(databaseItems.id, chunk));
+
+    for (const r of rows) {
+      let bestTitle = r.title?.trim();
+      if (!bestTitle || bestTitle === 'Untitled') {
+        if (r.pageTitle?.trim() && r.pageTitle.trim() !== 'Untitled') {
+          bestTitle = r.pageTitle.trim();
+        } else if (r.properties && typeof r.properties === 'object') {
+          for (const val of Object.values(r.properties)) {
+            if (typeof val === 'string' && val.trim() && val.trim() !== 'Untitled') {
+              bestTitle = val.trim();
+              break;
+            }
+          }
+        }
+      }
+      lookup[r.id] = {
+        id: r.id,
+        databaseId: r.databaseId,
+        title: bestTitle || 'Untitled',
+        pageId: r.pageId,
+        icon: r.pageIcon || null,
+      };
+    }
+  }
+
+  return lookup;
 }
 
 export async function invalidateDatabaseCaches(
@@ -275,6 +351,8 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
     return f;
   });
 
+  const relatedItems = await fetchRelatedItemsMap(properties, items);
+
   const fullDb: FullDatabase = {
     database,
     properties,
@@ -283,6 +361,7 @@ export async function fetchDatabase(databaseId: string): Promise<FullDatabase | 
     forms: normalizedForms,
     totalCount,
     hasMore: totalCount > items.length,
+    relatedItems,
   };
 
   // Cache in Redis for fast access (30 min TTL)
@@ -420,11 +499,18 @@ export async function fetchDatabaseItems(input: {
   const hasMore = offset + items.length < totalCount;
   const nextCursor = hasMore ? offset + items.length : null;
 
+  const properties = await db
+    .select()
+    .from(databaseProperties)
+    .where(eq(databaseProperties.databaseId, input.databaseId));
+  const relatedItems = await fetchRelatedItemsMap(properties, items);
+
   return {
     items,
     nextCursor,
     totalCount,
     hasMore,
+    relatedItems,
   };
 }
 
@@ -660,7 +746,10 @@ export async function removeDatabase(databaseId: string) {
   return { success: true };
 }
 
-export async function addDatabaseProperty(databaseId: string, prop: { id?: string; name: string; type: any; options?: any[] }) {
+export async function addDatabaseProperty(
+  databaseId: string,
+  prop: { id?: string; name: string; type: any; options?: any[]; config?: any }
+) {
   await assertDatabaseEditAccess(databaseId);
 
   const [lastProp] = await db
@@ -670,15 +759,75 @@ export async function addDatabaseProperty(databaseId: string, prop: { id?: strin
     .orderBy(desc(databaseProperties.order))
     .limit(1);
   const maxOrder = lastProp ? lastProp.order : -1;
+  const newPropId = prop.id || randomUUID();
+
+  // If this is a relation property with twoWay enabled
+  if (prop.type === 'relation' && prop.config?.targetDatabaseId && prop.config?.twoWay) {
+    const targetDatabaseId = prop.config.targetDatabaseId;
+    await assertDatabaseEditAccess(targetDatabaseId);
+
+    const [currentDb] = await db.select({ title: databases.title }).from(databases).where(eq(databases.id, databaseId)).limit(1);
+    const currentTitle = currentDb?.title || 'Related Database';
+    const reciprocalPropId = randomUUID();
+
+    const [lastTargetProp] = await db
+      .select({ order: databaseProperties.order })
+      .from(databaseProperties)
+      .where(eq(databaseProperties.databaseId, targetDatabaseId))
+      .orderBy(desc(databaseProperties.order))
+      .limit(1);
+    const targetMaxOrder = lastTargetProp ? lastTargetProp.order : -1;
+
+    const reciprocalName = prop.config.twoWayPropertyName?.trim() || currentTitle || 'Related';
+
+    await db.insert(databaseProperties).values({
+      id: reciprocalPropId,
+      databaseId: targetDatabaseId,
+      name: reciprocalName,
+      type: 'relation',
+      options: [],
+      config: {
+        targetDatabaseId: databaseId,
+        limit: 'multiple',
+        twoWay: true,
+        twoWayPropertyId: newPropId,
+        twoWayPropertyName: prop.name || 'Relation',
+      },
+      order: targetMaxOrder + 1,
+    });
+
+    invalidateDatabaseCaches(targetDatabaseId).catch(() => {});
+
+    const [newProp] = await db
+      .insert(databaseProperties)
+      .values({
+        id: newPropId,
+        databaseId,
+        name: prop.name || 'Relation',
+        type: 'relation',
+        options: prop.options || [],
+        config: {
+          ...prop.config,
+          twoWay: true,
+          twoWayPropertyId: reciprocalPropId,
+        },
+        order: maxOrder + 1,
+      })
+      .returning();
+
+    invalidateDatabaseCaches(databaseId).catch(() => {});
+    return newProp;
+  }
 
   const [newProp] = await db
     .insert(databaseProperties)
     .values({
-      ...(prop.id ? { id: prop.id } : {}),
+      id: newPropId,
       databaseId,
       name: prop.name || 'New Field',
       type: prop.type || 'text',
       options: prop.options || [],
+      config: prop.config || {},
       order: maxOrder + 1,
     })
     .returning();
@@ -690,9 +839,74 @@ export async function addDatabaseProperty(databaseId: string, prop: { id?: strin
 
 export async function updateDatabaseProperty(
   propertyId: string,
-  updates: Partial<{ name: string; type: any; options: any[]; order: number; icon: string | null }>
+  updates: Partial<{ name: string; type: any; options: any[]; config: any; order: number; icon: string | null }>
 ) {
   const databaseId = await assertDatabasePropertyEditAccess(propertyId);
+
+  const [existingProp] = await db.select().from(databaseProperties).where(eq(databaseProperties.id, propertyId)).limit(1);
+
+  if (existingProp && (existingProp.type === 'relation' || updates.type === 'relation')) {
+    const existingConfig = (existingProp.config as RelationConfig) || {};
+    const newConfig = updates.config ? { ...existingConfig, ...updates.config } : existingConfig;
+    const targetDatabaseId = newConfig.targetDatabaseId || existingConfig.targetDatabaseId;
+
+    if (targetDatabaseId) {
+      // Check if twoWay was newly turned ON
+      if (newConfig.twoWay && !existingConfig.twoWay) {
+        await assertDatabaseEditAccess(targetDatabaseId);
+        const [currentDb] = await db.select({ title: databases.title }).from(databases).where(eq(databases.id, databaseId)).limit(1);
+        const currentTitle = currentDb?.title || 'Related Database';
+        const reciprocalPropId = randomUUID();
+
+        const [lastTargetProp] = await db
+          .select({ order: databaseProperties.order })
+          .from(databaseProperties)
+          .where(eq(databaseProperties.databaseId, targetDatabaseId))
+          .orderBy(desc(databaseProperties.order))
+          .limit(1);
+        const targetMaxOrder = lastTargetProp ? lastTargetProp.order : -1;
+
+        const reciprocalName = newConfig.twoWayPropertyName?.trim() || currentTitle || 'Related';
+
+        await db.insert(databaseProperties).values({
+          id: reciprocalPropId,
+          databaseId: targetDatabaseId,
+          name: reciprocalName,
+          type: 'relation',
+          options: [],
+          config: {
+            targetDatabaseId: databaseId,
+            limit: 'multiple',
+            twoWay: true,
+            twoWayPropertyId: propertyId,
+            twoWayPropertyName: updates.name || existingProp.name || 'Relation',
+          },
+          order: targetMaxOrder + 1,
+        });
+
+        updates.config = {
+          ...newConfig,
+          twoWay: true,
+          twoWayPropertyId: reciprocalPropId,
+        };
+        invalidateDatabaseCaches(targetDatabaseId).catch(() => {});
+      } else if (!newConfig.twoWay && existingConfig.twoWay && existingConfig.twoWayPropertyId) {
+        // TwoWay was turned OFF -> unlink the reciprocal property
+        await db
+          .update(databaseProperties)
+          .set({
+            config: sql`jsonb_set(coalesce(config, '{}'::jsonb), '{twoWay}', 'false'::jsonb)`,
+          })
+          .where(eq(databaseProperties.id, existingConfig.twoWayPropertyId));
+        invalidateDatabaseCaches(targetDatabaseId).catch(() => {});
+        updates.config = {
+          ...newConfig,
+          twoWay: false,
+          twoWayPropertyId: null,
+        };
+      }
+    }
+  }
 
   const [updated] = await db
     .update(databaseProperties)
@@ -706,6 +920,22 @@ export async function updateDatabaseProperty(
 
 export async function deleteDatabaseProperty(propertyId: string) {
   const databaseId = await assertDatabasePropertyEditAccess(propertyId);
+
+  const [prop] = await db.select().from(databaseProperties).where(eq(databaseProperties.id, propertyId)).limit(1);
+  if (prop && prop.type === 'relation') {
+    const cfg = prop.config as RelationConfig | undefined;
+    if (cfg?.twoWay && cfg.twoWayPropertyId) {
+      await db
+        .update(databaseProperties)
+        .set({
+          config: sql`jsonb_set(jsonb_set(coalesce(config, '{}'::jsonb), '{twoWay}', 'false'::jsonb), '{twoWayPropertyId}', 'null'::jsonb)`,
+        })
+        .where(eq(databaseProperties.id, cfg.twoWayPropertyId));
+      if (cfg.targetDatabaseId) {
+        invalidateDatabaseCaches(cfg.targetDatabaseId).catch(() => {});
+      }
+    }
+  }
 
   await db.delete(databaseProperties).where(eq(databaseProperties.id, propertyId));
   invalidateDatabaseCaches(databaseId).catch(() => {});
@@ -790,6 +1020,67 @@ export async function addDatabaseItem(databaseId: string, item: { id?: string; t
 
 export async function updateDatabaseItem(itemId: string, updates: Partial<{ title: string; properties: Record<string, any>; order: number }>) {
   const databaseId = await assertDatabaseItemEditAccess(itemId);
+
+  // Reciprocal two-way relation sync
+  if (updates.properties) {
+    const [currentItem] = await db.select().from(databaseItems).where(eq(databaseItems.id, itemId)).limit(1);
+    if (currentItem) {
+      const relationProps = await db
+        .select()
+        .from(databaseProperties)
+        .where(and(eq(databaseProperties.databaseId, databaseId), eq(databaseProperties.type, 'relation')));
+
+      for (const rProp of relationProps) {
+        const cfg = rProp.config as RelationConfig | undefined;
+        if (cfg?.twoWay && cfg.twoWayPropertyId && updates.properties[rProp.id] !== undefined) {
+          const oldRaw = currentItem.properties?.[rProp.id];
+          const newRaw = updates.properties[rProp.id];
+          const oldIds: string[] = Array.isArray(oldRaw) ? oldRaw : oldRaw ? [oldRaw] : [];
+          const newIds: string[] = Array.isArray(newRaw) ? newRaw : newRaw ? [newRaw] : [];
+
+          const addedTargetIds = newIds.filter((id) => !oldIds.includes(id));
+          const removedTargetIds = oldIds.filter((id) => !newIds.includes(id));
+          const reciprocalPropId = cfg.twoWayPropertyId;
+
+          // For each added target item: append this itemId to its reciprocalPropId
+          for (const targetId of addedTargetIds) {
+            const [targetItem] = await db.select().from(databaseItems).where(eq(databaseItems.id, targetId)).limit(1);
+            if (targetItem) {
+              const targetVals: string[] = Array.isArray(targetItem.properties?.[reciprocalPropId])
+                ? targetItem.properties[reciprocalPropId]
+                : targetItem.properties?.[reciprocalPropId] ? [targetItem.properties[reciprocalPropId]] : [];
+              if (!targetVals.includes(itemId)) {
+                const updatedTargetVals = [...targetVals, itemId];
+                await db.update(databaseItems).set({
+                  properties: { ...targetItem.properties, [reciprocalPropId]: updatedTargetVals },
+                  updatedAt: new Date(),
+                }).where(eq(databaseItems.id, targetId));
+                invalidateDatabaseCaches(targetItem.databaseId).catch(() => {});
+              }
+            }
+          }
+
+          // For each removed target item: remove this itemId from its reciprocalPropId
+          for (const targetId of removedTargetIds) {
+            const [targetItem] = await db.select().from(databaseItems).where(eq(databaseItems.id, targetId)).limit(1);
+            if (targetItem) {
+              const targetVals: string[] = Array.isArray(targetItem.properties?.[reciprocalPropId])
+                ? targetItem.properties[reciprocalPropId]
+                : targetItem.properties?.[reciprocalPropId] ? [targetItem.properties[reciprocalPropId]] : [];
+              if (targetVals.includes(itemId)) {
+                const updatedTargetVals = targetVals.filter((id) => id !== itemId);
+                await db.update(databaseItems).set({
+                  properties: { ...targetItem.properties, [reciprocalPropId]: updatedTargetVals },
+                  updatedAt: new Date(),
+                }).where(eq(databaseItems.id, targetId));
+                invalidateDatabaseCaches(targetItem.databaseId).catch(() => {});
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 
   const [updated] = await db
     .update(databaseItems)
@@ -1326,6 +1617,86 @@ export async function importDatabaseData(input: {
     count: rows.length,
     chunkIndex,
     totalChunks,
+  };
+}
+
+export async function fetchRelationCandidates(targetDatabaseId: string, searchQuery?: string, limit: number = 50) {
+  await assertDatabaseViewAccess(targetDatabaseId);
+
+  const [database] = await db.select().from(databases).where(eq(databases.id, targetDatabaseId)).limit(1);
+  if (!database) {
+    throw new Error('Target database not found');
+  }
+
+  const conditions = [eq(databaseItems.databaseId, targetDatabaseId)];
+  if (searchQuery && searchQuery.trim()) {
+    conditions.push(or(
+      ilike(databaseItems.title, `%${searchQuery.trim()}%`),
+      ilike(pages.title, `%${searchQuery.trim()}%`)
+    )!);
+  }
+
+  const items = await db
+    .select({
+      id: databaseItems.id,
+      title: databaseItems.title,
+      properties: databaseItems.properties,
+      pageId: databaseItems.pageId,
+      pageTitle: pages.title,
+      pageIcon: pages.icon,
+      databaseId: databaseItems.databaseId,
+      updatedAt: databaseItems.updatedAt,
+    })
+    .from(databaseItems)
+    .leftJoin(pages, eq(databaseItems.pageId, pages.id))
+    .where(and(...conditions))
+    .orderBy(desc(databaseItems.updatedAt))
+    .limit(limit);
+
+  const mappedItems = items.map((r) => {
+    let bestTitle = r.title?.trim();
+    if (!bestTitle || bestTitle === 'Untitled') {
+      if (r.pageTitle?.trim() && r.pageTitle.trim() !== 'Untitled') {
+        bestTitle = r.pageTitle.trim();
+      } else if (r.properties && typeof r.properties === 'object') {
+        for (const val of Object.values(r.properties)) {
+          if (typeof val === 'string' && val.trim() && val.trim() !== 'Untitled') {
+            bestTitle = val.trim();
+            break;
+          }
+        }
+      }
+    }
+    return {
+      id: r.id,
+      title: bestTitle || 'Untitled',
+      pageId: r.pageId,
+      databaseId: r.databaseId,
+      icon: r.pageIcon || null,
+      updatedAt: r.updatedAt,
+    };
+  });
+
+  return {
+    database: {
+      id: database.id,
+      title: database.title,
+      icon: database.icon,
+    },
+    items: mappedItems,
+  };
+}
+
+export async function createRelatedDatabaseItem(targetDatabaseId: string, title?: string) {
+  await assertDatabaseEditAccess(targetDatabaseId);
+  const newItem = await addDatabaseItem(targetDatabaseId, {
+    title: title?.trim() || 'Untitled',
+  });
+  return {
+    id: newItem.id,
+    title: newItem.title || 'Untitled',
+    pageId: newItem.pageId,
+    databaseId: newItem.databaseId,
   };
 }
 

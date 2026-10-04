@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient, useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query';
 import type { DatabaseItem, DatabaseProperty, Page, DatabaseView, DatabaseForm } from '~/db/schema';
@@ -80,6 +80,11 @@ export function DatabaseContainer({
   const [sortBy, setSortBy] = useState<{ propertyId: string; direction: 'asc' | 'desc' } | null>(null);
   const [selectedDrawerItem, setSelectedDrawerItem] = useState<DatabaseItem | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
+  // Map of related items lookup { [itemId]: { id, databaseId, title, pageId, icon } }
+  const [relatedItemsMap, setRelatedItemsMap] = useState<
+    Record<string, { id: string; databaseId: string; title: string; pageId?: string | null; icon?: string | null }>
+  >(initialData.relatedItems || {});
 
   // View state
   const views = useMemo<DatabaseView[]>(() => {
@@ -174,6 +179,50 @@ export function DatabaseContainer({
       setLastExecutedSearchQuery(debouncedSearchQuery);
     }
   }, [isFetching, debouncedSearchQuery]);
+
+  useEffect(() => {
+    if (initialData.relatedItems) {
+      setRelatedItemsMap((prev) => ({ ...prev, ...initialData.relatedItems }));
+    }
+  }, [initialData.relatedItems]);
+
+  useEffect(() => {
+    if (infiniteItemsData?.pages) {
+      let hasNew = false;
+      const merged = { ...relatedItemsMap };
+      for (const page of infiniteItemsData.pages) {
+        if ((page as any).relatedItems) {
+          for (const [k, v] of Object.entries((page as any).relatedItems)) {
+            if (!merged[k] || merged[k].title !== (v as any).title) {
+              merged[k] = v as any;
+              hasNew = true;
+            }
+          }
+        }
+      }
+      if (hasNew) {
+        setRelatedItemsMap(merged);
+      }
+    }
+  }, [infiniteItemsData]);
+
+  const handleRelatedItemCreated = useCallback((newItem: {
+    id: string;
+    databaseId: string;
+    title: string;
+    pageId?: string | null;
+    icon?: string | null;
+  }) => {
+    setRelatedItemsMap((prev) => {
+      if (prev[newItem.id]?.title === newItem.title && prev[newItem.id]?.pageId === newItem.pageId) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [newItem.id]: newItem,
+      };
+    });
+  }, []);
 
   const trimmedSearch = searchQuery.trim();
   const isSearchDebouncing = trimmedSearch.length >= 3 && trimmedSearch !== debouncedSearchQuery;
@@ -486,9 +535,9 @@ export function DatabaseContainer({
   };
 
   // Handlers for Properties (100% Optimistic)
-  const handleAddProperty = async (rawName: string, type: string) => {
+  const handleAddProperty = async (rawName: string, type: string, config?: any) => {
     if (readOnly) return;
-    const name = getUniquePropertyName(dbData.properties, rawName.trim() || 'Property');
+    const name = getUniquePropertyName(dbData.properties, rawName.trim() || (type === 'relation' ? 'Relation' : 'Property'));
     const tempPropId = crypto.randomUUID();
     const optimisticProp: DatabaseProperty = {
       id: tempPropId,
@@ -498,6 +547,7 @@ export function DatabaseContainer({
       options: [],
       order: dbData.properties.length,
       icon: null,
+      config: config || {},
     };
 
     updateLocalAndCache((prev: FullDatabase) => ({
@@ -512,8 +562,13 @@ export function DatabaseContainer({
           databaseId: dbData.database.id,
           name,
           type,
+          config,
         },
       });
+      if (config?.twoWay && config?.targetDatabaseId) {
+        queryClient.invalidateQueries({ queryKey: ['database', config.targetDatabaseId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['database', dbData.database.id] });
     } catch (err) {
       console.error('Failed to save property to server:', err);
     }
@@ -532,6 +587,13 @@ export function DatabaseContainer({
         updates,
       },
     });
+
+    const updatedProp = dbData.properties.find((p) => p.id === propertyId);
+    const cfg = (updates as any).config || updatedProp?.config;
+    if (cfg?.twoWay && cfg?.targetDatabaseId) {
+      queryClient.invalidateQueries({ queryKey: ['database', cfg.targetDatabaseId] });
+    }
+    queryClient.invalidateQueries({ queryKey: ['database', dbData.database.id] });
   };
 
   const handleConvertPropertyType = async (propertyId: string, targetType: string) => {
@@ -1003,6 +1065,7 @@ export function DatabaseContainer({
             onAddItem={handleAddItem}
             onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             readOnly={readOnly}
+            relatedItemsLookup={relatedItemsMap}
           />
         ) : activeView.type === 'gallery' ? (
           <DatabaseGalleryView
@@ -1013,6 +1076,7 @@ export function DatabaseContainer({
             onAddItem={handleAddItem}
             onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             readOnly={readOnly}
+            relatedItemsLookup={relatedItemsMap}
           />
         ) : activeView.type === 'list' ? (
           <DatabaseListView
@@ -1023,6 +1087,7 @@ export function DatabaseContainer({
             onAddItem={handleAddItem}
             onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             readOnly={readOnly}
+            relatedItemsLookup={relatedItemsMap}
           />
         ) : activeView.type === 'chart' ? (
           <DatabaseChartView
@@ -1082,6 +1147,11 @@ export function DatabaseContainer({
             onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             onImportData={() => setIsImportModalOpen(true)}
             readOnly={readOnly}
+            workspaceId={initialData.database.workspaceId}
+            databaseId={dbData.database.id}
+            databaseTitle={dbTitle}
+            relatedItemsLookup={relatedItemsMap}
+            onItemCreated={handleRelatedItemCreated}
           />
         )}
       </div>
@@ -1106,12 +1176,14 @@ export function DatabaseContainer({
         {selectedDrawerItem && (
           <DatabaseRowDrawer
             key={selectedDrawerItem.id}
-            item={selectedDrawerItem}
+            item={allItems.find((i) => i.id === selectedDrawerItem.id) || selectedDrawerItem}
             properties={dbData.properties}
             onClose={() => setSelectedDrawerItem(null)}
             onUpdateItem={handleUpdateItem}
             onDeleteItem={handleDeleteItem}
             readOnly={readOnly}
+            relatedItemsLookup={relatedItemsMap}
+            onItemCreated={handleRelatedItemCreated}
           />
         )}
       </AnimatePresence>

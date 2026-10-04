@@ -11,6 +11,7 @@ import {
   Heading,
   User,
   HelpCircle,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 interface PropertyTypeIconProps {
@@ -49,6 +50,8 @@ export function PropertyTypeIcon({ type, icon, className = 'w-4 h-4' }: Property
       return <Mail className={className} />;
     case 'created_at':
       return <Clock className={className} />;
+    case 'relation':
+      return <ArrowRightLeft className={className} />;
     default:
       return <HelpCircle className={className} />;
   }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
-import { Plus, FileText, Trash2, GripVertical, Edit3 } from 'lucide-react';
+import { Plus, FileText, Trash2, GripVertical, Edit3, ArrowRightLeft } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { getOptionBadgeStyles } from '~/lib/optionColors';
 
@@ -12,6 +12,7 @@ interface DatabaseListViewProps {
   onAddItem: (initialProps?: Record<string, any>) => void;
   onOpenRowDrawer?: (item: DatabaseItem) => void;
   readOnly?: boolean;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
 }
 
 export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
@@ -22,6 +23,7 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
   onAddItem,
   onOpenRowDrawer,
   readOnly = false,
+  relatedItemsLookup = {},
 }) => {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
@@ -30,6 +32,7 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
   const tagProps = properties.filter(
     (p) => p.type === 'status' || p.type === 'select' || p.type === 'multi_select'
   );
+  const relationProps = properties.filter((p) => p.type === 'relation');
 
   return (
     <div className="w-full space-y-0.5 pb-16 select-none font-sans pt-1">
@@ -149,6 +152,29 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
                 }
 
                 return null;
+              })}
+
+              {/* Relation Badges */}
+              {relationProps.map((prop) => {
+                const val = item.properties?.[prop.id];
+                if (!val) return null;
+                const ids: string[] = Array.isArray(val) ? val : [val];
+                if (ids.length === 0) return null;
+
+                return ids.map((relId) => {
+                  const rel = relatedItemsLookup[relId];
+                  const label = rel?.title || 'Untitled';
+                  return (
+                    <span
+                      key={`${prop.id}-${relId}`}
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 shrink-0 max-w-[130px]"
+                      title={`${prop.name}: ${label}`}
+                    >
+                      <ArrowRightLeft className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                      <span className="truncate">{label}</span>
+                    </span>
+                  );
+                });
               })}
 
               {/* Hover Delete Action */}

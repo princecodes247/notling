@@ -25,10 +25,13 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  ArrowRightLeft,
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { useDragPaint } from '~/hooks/useDragPaint';
 import { AnimatePresence } from 'motion/react';
+import { RelationConfigModal } from './RelationConfigModal';
+import { RelationCell } from './RelationCell';
 
 interface DatabaseTableViewProps {
   properties: DatabaseProperty[];
@@ -45,13 +48,18 @@ interface DatabaseTableViewProps {
   onDeleteItemsBulk?: (itemIds: string[]) => void;
   onReorderItems?: (fromIndex: number, toIndex: number) => void;
   onAddItem: () => void;
-  onAddProperty: (name: string, type: string) => void;
+  onAddProperty: (name: string, type: string, config?: any) => void;
   onDeleteProperty: (propertyId: string) => void;
   onConvertPropertyType?: (propertyId: string, newType: string) => void;
   onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
   onOpenRowDrawer?: (item: DatabaseItem) => void;
   onImportData?: () => void;
   readOnly?: boolean;
+  workspaceId?: string;
+  databaseId?: string;
+  databaseTitle?: string;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  onItemCreated?: (item: any) => void;
 }
 
 const PROPERTY_TYPES = [
@@ -64,6 +72,7 @@ const PROPERTY_TYPES = [
   { type: 'checkbox', label: 'Checkbox' },
   { type: 'url', label: 'URL' },
   { type: 'email', label: 'Email' },
+  { type: 'relation', label: 'Relation' },
 ];
 
 import {
@@ -94,9 +103,47 @@ export function DatabaseTableView({
   onOpenRowDrawer,
   onImportData,
   readOnly = false,
+  workspaceId = '',
+  databaseId = '',
+  databaseTitle = '',
+  relatedItemsLookup = {},
+  onItemCreated,
 }: DatabaseTableViewProps) {
   // Table virtual scroll container ref
   const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Relation modal state
+  const [isRelationModalOpen, setIsRelationModalOpen] = useState(false);
+  const [editingRelationProperty, setEditingRelationProperty] = useState<DatabaseProperty | null>(null);
+
+  const handleOpenRelationModal = useCallback((_defaultName?: string) => {
+    setEditingRelationProperty(null);
+    setIsRelationModalOpen(true);
+  }, []);
+
+  const handleEditRelation = useCallback((prop: DatabaseProperty) => {
+    setEditingRelationProperty(prop);
+    setIsRelationModalOpen(true);
+  }, []);
+
+  const handleSaveRelation = useCallback((cfg: {
+    name: string;
+    targetDatabaseId: string;
+    targetDatabaseTitle?: string;
+    twoWay: boolean;
+    twoWayPropertyName?: string;
+    limit: 'single' | 'multiple';
+  }) => {
+    if (editingRelationProperty) {
+      onUpdateProperty?.(editingRelationProperty.id, {
+        name: cfg.name,
+        type: 'relation',
+        config: cfg,
+      });
+    } else {
+      onAddProperty(cfg.name, 'relation', cfg);
+    }
+  }, [editingRelationProperty, onUpdateProperty, onAddProperty]);
 
   // Sorting helper
   const handleToggleSort = useCallback(
@@ -809,6 +856,7 @@ export function DatabaseTableView({
                   sortBy={sortBy}
                   onToggleSort={handleToggleSort}
                   onSetSort={onSortChange}
+                  onEditRelation={handleEditRelation}
                 />
               ))}
 
@@ -818,6 +866,7 @@ export function DatabaseTableView({
                   activeOpenMenuId={activeOpenMenuId}
                   setActiveOpenMenuId={setActiveOpenMenuId}
                   onAddProperty={onAddProperty}
+                  onOpenRelationModal={handleOpenRelationModal}
                 />
               )}
             </tr>
@@ -964,6 +1013,8 @@ export function DatabaseTableView({
                     if (el) titleInputRefs.current.set(item.id, el);
                     else titleInputRefs.current.delete(item.id);
                   }}
+                  relatedItemsLookup={relatedItemsLookup}
+                  onItemCreated={onItemCreated}
                 />
               );
             })}
@@ -1126,6 +1177,20 @@ export function DatabaseTableView({
           </div>
         </div>
       )}
+
+      {/* Relation Config Modal */}
+      <RelationConfigModal
+        isOpen={isRelationModalOpen}
+        onClose={() => {
+          setIsRelationModalOpen(false);
+          setEditingRelationProperty(null);
+        }}
+        workspaceId={workspaceId}
+        currentDatabaseId={databaseId}
+        currentDatabaseTitle={databaseTitle}
+        existingProperty={editingRelationProperty}
+        onSave={handleSaveRelation}
+      />
     </div>
   );
 }
@@ -1169,6 +1234,8 @@ interface DatabaseTableRowProps {
   onPropertyCheckboxMouseEnter: (propId: string) => void;
   onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
   registerTitleInputRef: (el: HTMLInputElement | null) => void;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  onItemCreated?: (item: any) => void;
 }
 
 function DatabaseTableRow({
@@ -1206,6 +1273,8 @@ function DatabaseTableRow({
   onPropertyCheckboxMouseEnter,
   onUpdateProperty,
   registerTitleInputRef,
+  relatedItemsLookup,
+  onItemCreated,
 }: DatabaseTableRowProps) {
   const isUntitledRow = !item.title || item.title === 'Untitled' || item.title.trim() === '';
   const isGhostedRow = !isEditingRowTitle && isUntitledRow;
@@ -1364,6 +1433,9 @@ function DatabaseTableRow({
               onUpdateProperty={onUpdateProperty}
               onChange={(newVal) => onCellChange(prop.id, newVal)}
               onAddOption={(newOptName) => onAddOption(prop, newOptName)}
+              relatedItemsLookup={relatedItemsLookup}
+              onItemCreated={onItemCreated}
+              onOpenRowDrawer={onOpenRowDrawer}
             />
           </td>
         );
@@ -1387,7 +1459,8 @@ const DatabaseTableRowMemo = React.memo(DatabaseTableRow, (prev, next) => {
     (prev.draggedRowIndex === prev.rowIndex) === (next.draggedRowIndex === next.rowIndex) &&
     prev.columnWidths === next.columnWidths &&
     prev.nonTitleProps === next.nonTitleProps &&
-    prev.readOnly === next.readOnly
+    prev.readOnly === next.readOnly &&
+    prev.relatedItemsLookup === next.relatedItemsLookup
   );
 });
 
@@ -1428,6 +1501,7 @@ function ColumnHeaderCell({
   sortBy?: { propertyId: string; direction: 'asc' | 'desc' } | null;
   onToggleSort?: (propId: string) => void;
   onSetSort?: (sortBy: { propertyId: string; direction: 'asc' | 'desc' } | null) => void;
+  onEditRelation?: (prop: DatabaseProperty) => void;
 }) {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const isOpen = activeOpenMenuId === `col-${prop.id}`;
@@ -1637,13 +1711,35 @@ function ColumnHeaderCell({
               )}
             </div>
 
+            {/* Edit Relation Option for Relation Properties */}
+            {prop.type === 'relation' && (
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveOpenMenuId(null);
+                  onEditRelation?.(prop);
+                }}
+                className="w-full text-left px-3 py-1.5 text-xs text-stone-700 dark:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-700/60 active:scale-[0.98] transition-all flex items-center gap-2 cursor-pointer font-medium"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-stone-400" />
+                <span>Edit relation...</span>
+              </button>
+            )}
+
             <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider mt-1.5 border-t border-stone-100 dark:border-zinc-700/60 pt-1.5">
               Change Type
             </div>
             {PROPERTY_TYPES.map((pt) => (
               <button
                 key={pt.type}
-                onClick={() => handleRequestConvertType(prop, pt.type)}
+                onClick={() => {
+                  if (pt.type === 'relation') {
+                    setActiveOpenMenuId(null);
+                    onEditRelation?.(prop);
+                  } else {
+                    handleRequestConvertType(prop, pt.type);
+                  }
+                }}
                 className={`w-full text-left px-3 py-1 text-xs flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-all ${prop.type === pt.type ? 'bg-stone-100 dark:bg-zinc-700 text-[#1f4d3d] font-semibold' : 'text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700/60'
                   }`}
               >
@@ -1672,10 +1768,12 @@ function AddPropertyHeaderCell({
   activeOpenMenuId,
   setActiveOpenMenuId,
   onAddProperty,
+  onOpenRelationModal,
 }: {
   activeOpenMenuId: string | null;
   setActiveOpenMenuId: (id: string | null) => void;
   onAddProperty: (name: string, type: string) => void;
+  onOpenRelationModal?: (defaultName?: string) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -1761,8 +1859,13 @@ function AddPropertyHeaderCell({
                     key={pt.type}
                     type="button"
                     onClick={() => {
-                      setColType(pt.type);
-                      handleCreate(pt.type);
+                      if (pt.type === 'relation') {
+                        setActiveOpenMenuId(null);
+                        onOpenRelationModal?.(colName);
+                      } else {
+                        setColType(pt.type);
+                        handleCreate(pt.type);
+                      }
                     }}
                     className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${isSelected
                       ? 'bg-stone-200/80 dark:bg-zinc-800 text-stone-950 dark:text-white font-semibold'
@@ -1967,6 +2070,9 @@ interface InteractiveCellProps {
   onSelectCell?: () => void;
   onMouseDownCheckbox?: (e: React.MouseEvent) => void;
   onMouseEnterCheckbox?: () => void;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  onItemCreated?: (item: any) => void;
+  onOpenRowDrawer?: (item: DatabaseItem) => void;
 }
 
 function InteractiveCell({
@@ -1987,6 +2093,9 @@ function InteractiveCell({
   onSelectCell,
   onMouseDownCheckbox,
   onMouseEnterCheckbox,
+  relatedItemsLookup = {},
+  onItemCreated,
+  onOpenRowDrawer,
 }: InteractiveCellProps) {
   const [localIsOpen, setLocalIsOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -2083,6 +2192,22 @@ function InteractiveCell({
   }, [isEditing]);
 
   switch (prop.type) {
+    case 'relation':
+      return (
+        <RelationCell
+          prop={prop}
+          value={value}
+          onChange={onChange}
+          relatedItemsLookup={relatedItemsLookup}
+          readOnly={readOnly}
+          isEditing={isEditing}
+          onSelectCell={onSelectCell}
+          onNavigate={onNavigate}
+          onItemCreated={onItemCreated}
+          onOpenRowDrawer={onOpenRowDrawer}
+        />
+      );
+
     case 'text':
       return (
         <input
@@ -2525,6 +2650,7 @@ const InteractiveCellMemo = React.memo(InteractiveCell, (prev, next) => {
     prev.readOnly === next.readOnly &&
     prev.isFocused === next.isFocused &&
     prev.isEditing === next.isEditing &&
-    prev.isPopoverOpen === next.isPopoverOpen
+    prev.isPopoverOpen === next.isPopoverOpen &&
+    prev.relatedItemsLookup === next.relatedItemsLookup
   );
 });

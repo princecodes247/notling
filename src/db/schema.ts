@@ -194,14 +194,25 @@ export const databases = pgTable('databases', {
 export type Database = typeof databases.$inferSelect;
 export type NewDatabase = typeof databases.$inferInsert;
 
+export interface RelationConfig {
+  targetDatabaseId: string;
+  targetDatabaseTitle?: string;
+  targetDatabaseIcon?: string;
+  twoWay?: boolean;
+  twoWayPropertyId?: string;
+  twoWayPropertyName?: string;
+  limit?: 'single' | 'multiple';
+}
+
 export const databaseProperties = pgTable('database_properties', {
   id: uuid('id').primaryKey().defaultRandom(),
   databaseId: uuid('database_id').references(() => databases.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull().default('New Property'),
   type: text('type', {
-    enum: ['title', 'text', 'number', 'select', 'multi_select', 'date', 'checkbox', 'url', 'email', 'status', 'created_at']
+    enum: ['title', 'text', 'number', 'select', 'multi_select', 'date', 'checkbox', 'url', 'email', 'status', 'created_at', 'relation']
   }).notNull().default('text'),
   options: jsonb('options').$type<Array<{ id: string; name: string; color: string }>>().notNull().default([]),
+  config: jsonb('config').$type<RelationConfig | Record<string, any>>().default({}),
   order: integer('order').notNull().default(0),
   icon: text('icon'),
 }, (table) => ({

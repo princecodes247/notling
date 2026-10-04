@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
-import { Plus, Trash2, Calendar, Maximize2, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, Calendar, Maximize2, CheckSquare, Square, ArrowRightLeft } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { getOptionBadgeStyles } from '~/lib/optionColors';
 
@@ -13,6 +13,7 @@ interface DatabaseBoardViewProps {
   onAddItem: (initialProperties?: Record<string, any>) => void;
   onOpenRowDrawer?: (item: DatabaseItem) => void;
   readOnly?: boolean;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
 }
 
 export function DatabaseBoardView({
@@ -24,6 +25,7 @@ export function DatabaseBoardView({
   onAddItem,
   onOpenRowDrawer,
   readOnly = false,
+  relatedItemsLookup = {},
 }: DatabaseBoardViewProps) {
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
@@ -165,6 +167,7 @@ export function DatabaseBoardView({
                       setDragOverColumnId(null);
                     }}
                     isBeingDragged={draggedItemId === item.id}
+                    relatedItemsLookup={relatedItemsLookup}
                   />
                 ))}
 
@@ -210,6 +213,7 @@ interface KanbanCardProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   isBeingDragged?: boolean;
+  relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
 }
 
 function KanbanCard({
@@ -224,6 +228,7 @@ function KanbanCard({
   onDragStart,
   onDragEnd,
   isBeingDragged,
+  relatedItemsLookup = {},
 }: KanbanCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(item.title || '');
@@ -231,6 +236,7 @@ function KanbanCard({
   const tagProps = properties.filter((p) => p.type === 'multi_select' || p.type === 'select');
   const dateProp = properties.find((p) => p.type === 'date');
   const checkboxProps = properties.filter((p) => p.type === 'checkbox');
+  const relationProps = properties.filter((p) => p.type === 'relation');
 
   return (
     <div
@@ -404,6 +410,33 @@ function KanbanCard({
             <span>{String(item.properties[dateProp.id])}</span>
           </div>
         )}
+
+        {/* Relation Badges */}
+        {relationProps.map((prop) => {
+          const val = item.properties?.[prop.id];
+          if (!val) return null;
+          const ids: string[] = Array.isArray(val) ? val : [val];
+          if (ids.length === 0) return null;
+
+          return (
+            <div key={prop.id} className="flex flex-wrap gap-1 items-center">
+              {ids.map((relId) => {
+                const rel = relatedItemsLookup[relId];
+                const label = rel?.title || 'Untitled';
+                return (
+                  <span
+                    key={relId}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/40 max-w-full"
+                    title={`${prop.name}: ${label}`}
+                  >
+                    <ArrowRightLeft className="w-2.5 h-2.5 shrink-0 opacity-70" />
+                    <span className="truncate max-w-[120px]">{label}</span>
+                  </span>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
 
       {/* Move card to another column selector */}

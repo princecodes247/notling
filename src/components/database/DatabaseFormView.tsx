@@ -305,7 +305,7 @@ export function DatabaseFormView({
         ) : (
           <form onSubmit={handleFormSubmit} className="space-y-8">
             {properties.map((prop) => {
-              if (prop.type === 'created_at') return null;
+              if (prop.type === 'created_at' || prop.type === 'relation') return null;
 
               return (
                 <div key={prop.id} className="space-y-2.5">
