@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDatabasesInWorkspace } from '~/server/databases';
 import type { Database, DatabaseProperty, RelationConfig } from '~/db/schema';
@@ -6,11 +6,7 @@ import {
   ArrowRightLeft,
   X,
   Search,
-  Database as DatabaseIcon,
   Check,
-  ChevronRight,
-  Sliders,
-  Layers,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 

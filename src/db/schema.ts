@@ -27,10 +27,33 @@ export const workspaces = pgTable('workspaces', {
   ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   name: text('name').notNull().default('My Workspace'),
   slug: text('slug').notNull().unique(),
+  publicHomeDocId: uuid('public_home_doc_id'),
   icon: text('icon').default('🚀'),
   description: text('description'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const workspaceCustomDomains = pgTable('workspace_custom_domains', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workspaceId: uuid('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }).notNull(),
+  domain: text('domain').notNull().unique(),
+  status: text('status', { enum: ['pending', 'verified', 'invalid'] }).notNull().default('pending'),
+  dnsTarget: text('dns_target').notNull().default('cname.notling.app'),
+  dnsRecordType: text('dns_record_type').notNull().default('CNAME'),
+  verifiedAt: timestamp('verified_at'),
+  lastCheckedAt: timestamp('last_checked_at'),
+  errorMessage: text('error_message'),
+  publicHomeDocId: uuid('public_home_doc_id'),
+  isPrimary: boolean('is_primary').notNull().default(false),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ([
+  index('workspace_custom_domains_ws_idx').on(table.workspaceId),
+  index('workspace_custom_domains_domain_idx').on(table.domain),
+]));
+
+export type WorkspaceCustomDomain = typeof workspaceCustomDomains.$inferSelect;
+export type NewWorkspaceCustomDomain = typeof workspaceCustomDomains.$inferInsert;
 
 export const pages = pgTable('pages', {
   id: uuid('id').primaryKey().defaultRandom(),

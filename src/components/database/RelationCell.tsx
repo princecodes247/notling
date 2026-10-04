@@ -2,8 +2,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import type { DatabaseProperty, RelationConfig } from '~/db/schema';
 import { RelationPickerPopover } from './RelationPickerPopover';
-import { FileText, Plus, X, ArrowUpRight } from 'lucide-react';
-import { cn } from '#/lib/utils';
+import { FileText, X } from 'lucide-react';
 
 interface RelationCellProps {
   prop: DatabaseProperty;
@@ -24,7 +23,6 @@ export function RelationCell({
   onChange,
   relatedItemsLookup = {},
   readOnly = false,
-  isEditing = false,
   onSelectCell,
   onNavigate,
   onItemCreated,

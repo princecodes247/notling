@@ -8,10 +8,7 @@ import {
   Plus,
   FileText,
   Loader2,
-  X,
-  ExternalLink,
 } from 'lucide-react';
-import { cn } from '#/lib/utils';
 
 interface RelationPickerPopoverProps {
   isOpen: boolean;

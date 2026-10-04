@@ -10,6 +10,7 @@ export interface UserSession {
   workspaceId: string;
   workspaceName?: string;
   workspaceSlug?: string;
+  workspacePublicHomeDocId?: string | null;
   workspaceIcon?: string;
   welcomePageId?: string;
   isWorkspaceOwner?: boolean;

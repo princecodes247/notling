@@ -1484,6 +1484,7 @@ function ColumnHeaderCell({
   sortBy,
   onToggleSort,
   onSetSort,
+  onEditRelation,
 }: {
   prop: DatabaseProperty;
   readOnly: boolean;
@@ -2202,7 +2203,7 @@ function InteractiveCell({
           readOnly={readOnly}
           isEditing={isEditing}
           onSelectCell={onSelectCell}
-          onNavigate={onNavigate}
+          onNavigate={onNavigate ? (rev) => onNavigate(!!rev) : undefined}
           onItemCreated={onItemCreated}
           onOpenRowDrawer={onOpenRowDrawer}
         />

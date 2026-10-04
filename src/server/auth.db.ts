@@ -502,6 +502,7 @@ export async function getSessionImpl(): Promise<UserSession | null> {
       workspaceId: workspace.id,
       workspaceName: workspace.name,
       workspaceSlug: workspace.slug,
+      workspacePublicHomeDocId: workspace.publicHomeDocId || null,
       workspaceIcon: workspace.icon || '🚀',
       welcomePageId: undefined,
       isWorkspaceOwner: workspace.ownerId === user.id,

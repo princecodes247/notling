@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Check, Building, AlertTriangle, Trash2, X, Loader2, Lock } from 'lucide-react';
+import { Users, Check, Building, AlertTriangle, Trash2, X, Loader2, Lock, Globe } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession, updateSettings, checkWorkspaceSlug, deleteWorkspace, type UserSession } from '~/server/auth';
 import { getWorkspaceUsers, inviteWorkspaceMember } from '~/server/pages';
 import { UserAvatar } from '../UserAvatar';
 import { WorkspaceAvatar } from '../WorkspaceAvatar';
+import { WorkspaceDomainsSection } from './WorkspaceDomainsSection';
 
 interface WorkspaceSettingsViewProps {
   session?: UserSession | null;
@@ -28,6 +29,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
   const isWorkspaceOwner = session?.isWorkspaceOwner !== false;
 
   // Form State
+  const [activeTab, setActiveTab] = useState<'general' | 'domains' | 'members' | 'danger'>('general');
   const [workspaceName, setWorkspaceName] = useState('');
   const [workspaceSlug, setWorkspaceSlug] = useState('');
   const [slugInfo, setSlugInfo] = useState<{ isAvailable: boolean; candidateSlug: string } | null>(null);
@@ -155,189 +157,263 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
           </div>
         </div>
 
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-1.5 border-b border-stone-200/80 dark:border-zinc-800 overflow-x-auto pb-px">
+          <button
+            type="button"
+            onClick={() => setActiveTab('general')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'general'
+                ? 'border-stone-900 dark:border-white text-stone-950 dark:text-white bg-stone-50/80 dark:bg-zinc-800/40 font-semibold'
+                : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <Building className="w-3.5 h-3.5" />
+            <span>General Profile</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('domains')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'domains'
+                ? 'border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 font-semibold'
+                : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>Domains &amp; Subdomains</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('members')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'members'
+                ? 'border-stone-900 dark:border-white text-stone-950 dark:text-white bg-stone-50/80 dark:bg-zinc-800/40 font-semibold'
+                : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Members ({workspaceUsers.length > 0 ? workspaceUsers.length : 1})</span>
+          </button>
+
+          {isWorkspaceOwner && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('danger')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                activeTab === 'danger'
+                  ? 'border-rose-600 dark:border-rose-400 text-rose-700 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/20 font-semibold'
+                  : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Danger Zone</span>
+            </button>
+          )}
+        </div>
+
         <div className="flex flex-col gap-6">
           {/* Non-owner permission banner */}
           {!isWorkspaceOwner && (
             <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-3 shadow-2xs">
               <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
               <div>
-                <span className="font-semibold">Owner Permission Required:</span> You are currently viewing this workspace as a member. Only the Workspace Owner can modify the workspace name, icon, or URL slug.
+                <span className="font-semibold">Owner Permission Required:</span> You are currently viewing this workspace as a member. Only the Workspace Owner can modify the workspace name, icon, or URL domains.
               </div>
             </div>
           )}
 
-          {/* Workspace General Details Form */}
-          <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-5">
-            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-zinc-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Building className="w-4 h-4 text-neutral-500 dark:text-zinc-400" />
-                <h2 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">Workspace Profile</h2>
-              </div>
-            </div>
-
-            <form onSubmit={handleSave} className="flex flex-col gap-5">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
-                    Workspace Name
-                  </label>
-                  <input
-                    type="text"
-                    value={workspaceName}
-                    onChange={(e) => isWorkspaceOwner && setWorkspaceName(e.target.value)}
-                    disabled={!isWorkspaceOwner}
-                    placeholder="Workspace Name"
-                    className={`w-full px-3 py-2 rounded-lg border text-xs text-neutral-900 dark:text-zinc-100 focus:outline-none ${isWorkspaceOwner
-                      ? 'border-neutral-200 dark:border-zinc-700/80 focus:ring-1 focus:ring-black dark:focus:ring-zinc-400 bg-white dark:bg-zinc-900'
-                      : 'border-neutral-200 dark:border-zinc-700/80 bg-neutral-50 dark:bg-zinc-800/50 text-neutral-500 dark:text-zinc-400 cursor-not-allowed'
-                      }`}
-                  />
+          {/* Tab 1: General Profile */}
+          {activeTab === 'general' && (
+            <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-5">
+              <div className="flex items-center justify-between border-b border-neutral-100 dark:border-zinc-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <Building className="w-4 h-4 text-neutral-500 dark:text-zinc-400" />
+                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">Workspace Profile</h2>
                 </div>
+              </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
-                    Workspace Slug / URL
-                  </label>
-                  <div className={`flex items-center rounded-lg border overflow-hidden ${isWorkspaceOwner
-                    ? 'border-neutral-200 dark:border-zinc-700/80 bg-neutral-50 dark:bg-zinc-900 focus-within:ring-1 focus-within:ring-black dark:focus-within:ring-zinc-400'
-                    : 'border-neutral-200 dark:border-zinc-700/80 bg-neutral-50 dark:bg-zinc-800/50 opacity-80 cursor-not-allowed'
-                    }`}>
-                    <span className="px-2.5 py-2 text-[11px] text-neutral-400 dark:text-zinc-500 font-mono border-r border-neutral-200 dark:border-zinc-700/80">
-                      /w/
-                    </span>
+              <form onSubmit={handleSave} className="flex flex-col gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
+                      Workspace Name
+                    </label>
                     <input
                       type="text"
-                      value={workspaceSlug}
-                      onChange={(e) => isWorkspaceOwner && setWorkspaceSlug(e.target.value)}
+                      value={workspaceName}
+                      onChange={(e) => isWorkspaceOwner && setWorkspaceName(e.target.value)}
                       disabled={!isWorkspaceOwner}
-                      placeholder="my-workspace"
-                      className="flex-1 px-2.5 py-2 text-xs font-mono text-neutral-900 dark:text-zinc-100 bg-transparent focus:outline-none disabled:cursor-not-allowed"
+                      placeholder="Workspace Name"
+                      className={`w-full px-3 py-2 rounded-lg border text-xs text-neutral-900 dark:text-zinc-100 focus:outline-none ${isWorkspaceOwner
+                        ? 'border-neutral-200 dark:border-zinc-700/80 focus:ring-1 focus:ring-black dark:focus:ring-zinc-400 bg-white dark:bg-zinc-900'
+                        : 'border-neutral-200 dark:border-zinc-700/80 bg-neutral-50 dark:bg-zinc-800/50 text-neutral-500 dark:text-zinc-400 cursor-not-allowed'
+                        }`}
                     />
-                    {workspaceSlug && (
-                      <a
-                        href={`/w/${workspaceSlug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="px-2 py-1 mr-1.5 text-[10px] font-medium text-stone-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-neutral-200/60 dark:hover:bg-zinc-800 rounded transition-colors"
-                      >
-                        Visit ↗
-                      </a>
-                    )}
                   </div>
-                  {isWorkspaceOwner && slugInfo && workspaceSlug !== session?.workspaceSlug && (
-                    <div className="text-[10px] mt-1 font-medium">
-                      {slugInfo.isAvailable ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">✓ Available</span>
-                      ) : (
-                        <span className="text-amber-600 dark:text-amber-400">⚠️ Taken — will be saved as "{slugInfo.candidateSlug}"</span>
+
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
+                      Workspace Slug / URL
+                    </label>
+                    <div className={`flex items-center rounded-lg border overflow-hidden ${isWorkspaceOwner
+                      ? 'border-neutral-200 dark:border-zinc-700/80 bg-neutral-50 dark:bg-zinc-900 focus-within:ring-1 focus-within:ring-black dark:focus-within:ring-zinc-400'
+                      : 'border-neutral-200 dark:border-zinc-700/80 bg-neutral-50 dark:bg-zinc-800/50 opacity-80 cursor-not-allowed'
+                      }`}>
+                      <span className="px-2.5 py-2 text-[11px] text-neutral-400 dark:text-zinc-500 font-mono border-r border-neutral-200 dark:border-zinc-700/80">
+                        /w/
+                      </span>
+                      <input
+                        type="text"
+                        value={workspaceSlug}
+                        onChange={(e) => isWorkspaceOwner && setWorkspaceSlug(e.target.value)}
+                        disabled={!isWorkspaceOwner}
+                        placeholder="my-workspace"
+                        className="flex-1 px-2.5 py-2 text-xs font-mono text-neutral-900 dark:text-zinc-100 bg-transparent focus:outline-none disabled:cursor-not-allowed"
+                      />
+                      {workspaceSlug && (
+                        <a
+                          href={`/w/${workspaceSlug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2 py-1 mr-1.5 text-[10px] font-medium text-stone-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:bg-neutral-200/60 dark:hover:bg-zinc-800 rounded transition-colors"
+                        >
+                          Visit ↗
+                        </a>
                       )}
                     </div>
-                  )}
-                </div>
+                    {isWorkspaceOwner && slugInfo && workspaceSlug !== session?.workspaceSlug && (
+                      <div className="text-[10px] mt-1 font-medium">
+                        {slugInfo.isAvailable ? (
+                          <span className="text-emerald-600 dark:text-emerald-400">✓ Available</span>
+                        ) : (
+                          <span className="text-amber-600 dark:text-amber-400">⚠️ Taken — will be saved as "{slugInfo.candidateSlug}"</span>
+                        )}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('domains')}
+                      className="text-[11px] text-[#1f4d3d] dark:text-emerald-400 hover:underline mt-1.5 flex items-center gap-1 cursor-pointer"
+                    >
+                      <Globe className="w-3 h-3" />
+                      <span>Configure workspace subdomain &amp; custom domains →</span>
+                    </button>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
-                    Workspace Avatar
-                  </label>
-                  <div className="flex items-center gap-2.5">
-                    <WorkspaceAvatar
-                      seed={workspaceIcon || workspaceSlug || session?.workspaceSlug || session?.workspaceId}
-                      slug={workspaceSlug || session?.workspaceSlug}
-                      name={workspaceName}
-                      size={36}
-                      showReroll={isWorkspaceOwner}
-                      onReroll={() => isWorkspaceOwner && setWorkspaceIcon('ws-' + Math.random().toString(36).substring(2, 9))}
-                    />
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-700 dark:text-zinc-300 mb-1">
+                      Workspace Avatar
+                    </label>
+                    <div className="flex items-center gap-2.5">
+                      <WorkspaceAvatar
+                        seed={workspaceIcon || workspaceSlug || session?.workspaceSlug || session?.workspaceId}
+                        slug={workspaceSlug || session?.workspaceSlug}
+                        name={workspaceName}
+                        size={36}
+                        showReroll={isWorkspaceOwner}
+                        onReroll={() => isWorkspaceOwner && setWorkspaceIcon('ws-' + Math.random().toString(36).substring(2, 9))}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {isWorkspaceOwner && (
-                <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-zinc-800">
-                  <span className="text-xs text-neutral-400 dark:text-zinc-500">
-                  </span>
+                {isWorkspaceOwner && (
+                  <div className="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-zinc-800">
+                    <span className="text-xs text-neutral-400 dark:text-zinc-500">
+                    </span>
+                    <button
+                      type="submit"
+                      disabled={updateMutation.isPending}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 disabled:opacity-50 text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+                    >
+                      {saved ? <Check className="w-3.5 h-3.5 text-white dark:text-neutral-950" /> : null}
+                      <span>{saved ? 'Saved' : updateMutation.isPending ? 'Saving...' : 'Save Workspace Settings'}</span>
+                    </button>
+                  </div>
+                )}
+              </form>
+            </div>
+          )}
+
+          {/* Tab 2: Domains & Subdomains */}
+          {activeTab === 'domains' && (
+            <WorkspaceDomainsSection session={session} isWorkspaceOwner={isWorkspaceOwner} />
+          )}
+
+          {/* Tab 3: Team Members List */}
+          {activeTab === 'members' && (
+            <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-neutral-500 dark:text-zinc-400" />
+                  <h2 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
+                    Members &amp; Roles ({workspaceUsers.length > 0 ? workspaceUsers.length : 1})
+                  </h2>
+                </div>
+                {isWorkspaceOwner && (
                   <button
-                    type="submit"
-                    disabled={updateMutation.isPending}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-black hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 disabled:opacity-50 text-xs font-medium transition-colors cursor-pointer shadow-2xs"
+                    type="button"
+                    onClick={() => {
+                      setInviteWsEmail('');
+                      setInviteWsError(null);
+                      setInviteWsSuccess(null);
+                      setIsInviteWsMemberOpen(true);
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-zinc-700/80 hover:bg-neutral-50 dark:hover:bg-zinc-800 text-neutral-800 dark:text-zinc-200 font-medium cursor-pointer transition-colors active:scale-95 flex items-center gap-1.5"
                   >
-                    {saved ? <Check className="w-3.5 h-3.5 text-white dark:text-neutral-950" /> : null}
-                    <span>{saved ? 'Saved' : updateMutation.isPending ? 'Saving...' : 'Save Workspace Settings'}</span>
+                    + Invite Workspace Member
                   </button>
-                </div>
-              )}
-            </form>
-          </div>
-
-          {/* Team Members List */}
-          <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-neutral-500 dark:text-zinc-400" />
-                <h2 className="text-sm font-semibold text-neutral-900 dark:text-zinc-100">
-                  Members &amp; Roles ({workspaceUsers.length > 0 ? workspaceUsers.length : 1})
-                </h2>
+                )}
               </div>
-              {isWorkspaceOwner && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setInviteWsEmail('');
-                    setInviteWsError(null);
-                    setInviteWsSuccess(null);
-                    setIsInviteWsMemberOpen(true);
-                  }}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-neutral-200 dark:border-zinc-700/80 hover:bg-neutral-50 dark:hover:bg-zinc-800 text-neutral-800 dark:text-zinc-200 font-medium cursor-pointer transition-colors active:scale-95 flex items-center gap-1.5"
-                >
-                  + Invite Workspace Member
-                </button>
-              )}
-            </div>
 
-            <div className="flex flex-col divide-y divide-neutral-100 dark:divide-zinc-800 rounded-lg border border-neutral-100 dark:border-zinc-800 overflow-hidden">
-              {workspaceUsers.length > 0 ? (
-                workspaceUsers.map((u) => {
-                  const isMe = u.email === session?.email || u.id === session?.userId;
-                  return (
-                    <div key={u.id} className="p-3 flex items-center justify-between bg-white dark:bg-zinc-900/40 hover:bg-neutral-50/50 dark:hover:bg-zinc-800/50 transition-colors">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <UserAvatar avatarUrl={u.avatarUrl} email={u.email} name={u.name} size={28} />
-                        <div className="flex flex-col min-w-0">
-                          <div className="text-xs font-medium text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5 truncate">
-                            <span className="truncate">{u.name || u.email.split('@')[0]}</span>
-                            {isMe && <span className="text-[10px] text-neutral-400 dark:text-zinc-500 font-normal shrink-0">(You)</span>}
+              <div className="flex flex-col divide-y divide-neutral-100 dark:divide-zinc-800 rounded-lg border border-neutral-100 dark:border-zinc-800 overflow-hidden">
+                {workspaceUsers.length > 0 ? (
+                  workspaceUsers.map((u) => {
+                    const isMe = u.email === session?.email || u.id === session?.userId;
+                    return (
+                      <div key={u.id} className="p-3 flex items-center justify-between bg-white dark:bg-zinc-900/40 hover:bg-neutral-50/50 dark:hover:bg-zinc-800/50 transition-colors">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <UserAvatar avatarUrl={u.avatarUrl} email={u.email} name={u.name} size={28} />
+                          <div className="flex flex-col min-w-0">
+                            <div className="text-xs font-medium text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5 truncate">
+                              <span className="truncate">{u.name || u.email.split('@')[0]}</span>
+                              {isMe && <span className="text-[10px] text-neutral-400 dark:text-zinc-500 font-normal shrink-0">(You)</span>}
+                            </div>
+                            <div className="text-[10px] text-neutral-400 dark:text-zinc-500 truncate">{u.email}</div>
                           </div>
-                          <div className="text-[10px] text-neutral-400 dark:text-zinc-500 truncate">{u.email}</div>
                         </div>
+                        <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300 shrink-0">
+                          {u.role || (isMe ? (session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')) : 'Member')}
+                        </span>
                       </div>
-                      <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300 shrink-0">
-                        {u.role || (isMe ? (session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')) : 'Member')}
-                      </span>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-3 flex items-center justify-between bg-white dark:bg-zinc-900/40">
-                  <div className="flex items-center gap-2.5">
-                    <UserAvatar avatarUrl={session?.avatarUrl} email={session?.email} name={session?.name} size={28} />
-                    <div>
-                      <div className="text-xs font-medium text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5">
-                        <span>{session?.name || 'User'}</span>
-                        <span className="text-[10px] text-neutral-400 dark:text-zinc-500 font-normal">(You)</span>
+                    );
+                  })
+                ) : (
+                  <div className="p-3 flex items-center justify-between bg-white dark:bg-zinc-900/40">
+                    <div className="flex items-center gap-2.5">
+                      <UserAvatar avatarUrl={session?.avatarUrl} email={session?.email} name={session?.name} size={28} />
+                      <div>
+                        <div className="text-xs font-medium text-neutral-900 dark:text-zinc-100 flex items-center gap-1.5">
+                          <span>{session?.name || 'User'}</span>
+                          <span className="text-[10px] text-neutral-400 dark:text-zinc-500 font-normal">(You)</span>
+                        </div>
+                        <div className="text-[10px] text-neutral-400 dark:text-zinc-500">{session?.email || 'No email attached'}</div>
                       </div>
-                      <div className="text-[10px] text-neutral-400 dark:text-zinc-500">{session?.email || 'No email attached'}</div>
                     </div>
+                    <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300">
+                      {session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')}
+                    </span>
                   </div>
-                  <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300">
-                    {session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')}
-                  </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Workspace Danger Zone - Delete Workspace */}
-          {isWorkspaceOwner && (
+          {/* Tab 4: Workspace Danger Zone - Delete Workspace */}
+          {activeTab === 'danger' && isWorkspaceOwner && (
             <div className="p-6 rounded-xl border border-neutral-200/90 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/60 flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
