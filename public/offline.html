@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Offline — Notling</title>
+  <style>
+    :root {
+      --bg: #fbfbfa;
+      --card-bg: #ffffff;
+      --border: #e7e5e4;
+      --text-main: #1c1917;
+      --text-muted: #78716c;
+      --accent: #18181b;
+      --accent-hover: #27272a;
+      --accent-text: #ffffff;
+      --badge-bg: #fef2f2;
+      --badge-border: #fecaca;
+      --badge-text: #b91c1c;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121214;
+        --card-bg: #18181b;
+        --border: #27272a;
+        --text-main: #f4f4f5;
+        --text-muted: #a1a1aa;
+        --accent: #f4f4f5;
+        --accent-hover: #ffffff;
+        --accent-text: #18181b;
+        --badge-bg: rgba(239, 68, 68, 0.15);
+        --badge-border: rgba(239, 68, 68, 0.3);
+        --badge-text: #f87171;
+      }
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card {
+      max-width: 440px;
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1.25rem;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .icon-wrapper {
+      width: 64px;
+      height: 64px;
+      border-radius: 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #ef4444;
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      box-shadow: 0 0 0 3px var(--card-bg);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(1.15); }
+    }
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    p {
+      font-size: 0.875rem;
+      line-height: 1.5;
+      color: var(--text-muted);
+    }
+    .tips {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 0.875rem 1rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      text-align: left;
+      width: 100%;
+      line-height: 1.4;
+    }
+    .tips ul {
+      padding-left: 1.25rem;
+      margin-top: 0.35rem;
+    }
+    .tips li {
+      margin-bottom: 0.25rem;
+    }
+    .btn {
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.625rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: var(--accent);
+      color: var(--accent-text);
+      text-decoration: none;
+    }
+    .btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: 9999px;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      color: var(--badge-text);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon-wrapper">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+        <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+      <div class="status-dot"></div>
+    </div>
+
+    <div>
+      <span class="status-badge">Offline Mode</span>
+      <h1 style="margin-top: 0.5rem;">Connection Lost</h1>
+    </div>
+
+    <p>
+      Notling couldn't connect to the server. You can still browse previously loaded pages or wait until your network reconnects.
+    </p>
+
+    <div class="tips">
+      <strong>Offline capability:</strong>
+      <ul>
+        <li>Recent pages are kept in local cache</li>
+        <li>Notling will auto-reconnect as soon as signal returns</li>
+      </ul>
+    </div>
+
+    <button id="retry-btn" class="btn" onclick="retryConnection()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+      </svg>
+      <span id="btn-text">Try Reconnecting</span>
+    </button>
+  </div>
+
+  <script>
+    function retryConnection() {
+      const btn = document.getElementById('retry-btn');
+      const text = document.getElementById('btn-text');
+      btn.style.opacity = '0.7';
+      text.textContent = 'Checking...';
+
+      if (navigator.onLine) {
+        window.location.reload();
+      } else {
+        setTimeout(() => {
+          btn.style.opacity = '1';
+          text.textContent = 'Still Offline — Try Again';
+        }, 600);
+      }
+    }
+
+    // Auto-reload when connection is restored
+    window.addEventListener('online', () => {
+      document.getElementById('btn-text').textContent = 'Reconnecting...';
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>

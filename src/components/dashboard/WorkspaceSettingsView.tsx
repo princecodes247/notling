@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Check, Building, AlertTriangle, Trash2, X, Loader2, Lock, Globe } from 'lucide-react';
+import { Users, Check, Building, AlertTriangle, Trash2, X, Loader2, Lock, Globe, Download, CheckCircle2 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePwa } from '~/context/PwaContext';
 import { getSession, updateSettings, checkWorkspaceSlug, deleteWorkspace, type UserSession } from '~/server/auth';
 import { getWorkspaceUsers, inviteWorkspaceMember } from '~/server/pages';
 import { UserAvatar } from '../UserAvatar';
@@ -27,6 +28,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
 
   // Permission Check: only workspace owner can edit workspace settings
   const isWorkspaceOwner = session?.isWorkspaceOwner !== false;
+  const { isInstalled, installApp } = usePwa();
 
   // Form State
   const [activeTab, setActiveTab] = useState<'general' | 'domains' | 'members' | 'danger'>('general');
@@ -335,6 +337,49 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
                   </div>
                 )}
               </form>
+
+              {/* PWA / App Installation Card */}
+              <div className="mt-6 pt-6 border-t border-neutral-100 dark:border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="text-xs font-semibold text-neutral-900 dark:text-zinc-100">
+                      Desktop &amp; Mobile App (PWA)
+                    </h3>
+                  </div>
+                  {isInstalled ? (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/60 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Installed
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-stone-100 text-stone-700 dark:bg-zinc-800 dark:text-zinc-300">
+                      Installable
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-lg bg-stone-50/80 dark:bg-zinc-800/40 border border-neutral-200/60 dark:border-zinc-800/60">
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-neutral-800 dark:text-zinc-200 font-medium">
+                      {isInstalled ? 'Notling is installed on this device' : 'Install Notling for instant desktop/mobile access'}
+                    </p>
+                    <p className="text-[11px] text-neutral-400 dark:text-zinc-500 leading-relaxed">
+                      Enjoy a dedicated window, offline document caching, keyboard navigation, and dock access.
+                    </p>
+                  </div>
+
+                  {!isInstalled && (
+                    <button
+                      type="button"
+                      onClick={() => installApp()}
+                      className="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-lg bg-stone-900 hover:bg-stone-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Install App</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 

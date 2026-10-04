@@ -6,6 +6,8 @@ import {
 } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '~/context/ThemeContext';
+import { PwaProvider } from '~/context/PwaContext';
+import { PwaBanner } from '~/components/pwa/PwaBanner';
 import stylesCss from '~/styles.css?url';
 import '~/styles.css';
 
@@ -54,9 +56,23 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content' },
       { title: 'Notling - The smartest way to organize your workspace' },
+      { name: 'description', content: 'The smartest way to organize your workspace, notes, documents, and public knowledge base.' },
+      { name: 'application-name', content: 'Notling' },
+      { name: 'theme-color', content: '#18181b', media: '(prefers-color-scheme: dark)' },
+      { name: 'theme-color', content: '#fbfbfa', media: '(prefers-color-scheme: light)' },
+      { name: 'mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-capable', content: 'yes' },
+      { name: 'apple-mobile-web-app-status-bar-style', content: 'default' },
+      { name: 'apple-mobile-web-app-title', content: 'Notling' },
+      { name: 'format-detection', content: 'telephone=no' },
     ],
     links: [
+      { rel: 'manifest', href: '/manifest.webmanifest' },
       { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon-32x32.png' },
+      { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16x16.png' },
+      { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+      { rel: 'apple-touch-icon', sizes: '192x192', href: '/icons/icon-192.png' },
       { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
       { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossOrigin: 'anonymous' },
       { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&display=swap' },
@@ -95,7 +111,10 @@ function RootComponent() {
       <body className="text-[var(--text-primary)] bg-[var(--bg-canvas)] font-sans antialiased selection:bg-brand-bg selection:text-brand-fg min-h-screen" suppressHydrationWarning>
         <ThemeProvider>
           <QueryClientProvider client={queryClient}>
-            <Outlet />
+            <PwaProvider>
+              <Outlet />
+              <PwaBanner />
+            </PwaProvider>
           </QueryClientProvider>
         </ThemeProvider>
         <Scripts />
