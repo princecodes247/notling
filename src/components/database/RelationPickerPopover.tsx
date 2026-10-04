@@ -62,16 +62,15 @@ export function RelationPickerPopover({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch candidates from target database with 60s staleTime for instant reopen
-  const { data, isLoading } = useQuery({
-    queryKey: ['relationCandidates', targetDatabaseId, debouncedQuery],
+  // Fetch candidates pool from target database with 60s staleTime for instant reopen
+  const { data: baseData, isLoading: isBaseLoading } = useQuery({
+    queryKey: ['relationCandidates', targetDatabaseId],
     queryFn: async () => {
       if (!targetDatabaseId) return { database: null, items: [] };
       return await getRelationCandidates({
         data: {
           targetDatabaseId,
-          searchQuery: debouncedQuery || undefined,
-          limit: 60,
+          limit: 100,
         },
       });
     },
@@ -79,13 +78,57 @@ export function RelationPickerPopover({
     staleTime: 60 * 1000,
   });
 
-  const items = data?.items || [];
-  const targetDatabase = data?.database;
+  const baseItems = useMemo(() => baseData?.items || [], [baseData?.items]);
+  const targetDatabase = baseData?.database;
+
+  // Fast 0ms local client filtering for instantaneous responsiveness
+  const filteredBaseItems = useMemo(() => {
+    if (!searchQuery.trim()) return baseItems;
+    const q = searchQuery.trim().toLowerCase();
+    return baseItems.filter((i) => (i.title || 'Untitled').toLowerCase().includes(q));
+  }, [baseItems, searchQuery]);
+
+  // Deep server search if database has 100+ items and user searches
+  const hasMoreThanBase = baseItems.length >= 100;
+  const shouldSearchServer = Boolean(debouncedQuery && hasMoreThanBase);
+
+  const { data: serverSearchData, isFetching: isSearchingServer } = useQuery({
+    queryKey: ['relationCandidates', targetDatabaseId, debouncedQuery],
+    queryFn: async () => {
+      return await getRelationCandidates({
+        data: {
+          targetDatabaseId,
+          searchQuery: debouncedQuery,
+          limit: 50,
+        },
+      });
+    },
+    enabled: isOpen && shouldSearchServer,
+    staleTime: 60 * 1000,
+    placeholderData: (prev) => prev,
+  });
+
+  // Seamlessly merge server search results with locally filtered matches
+  const displayItems = useMemo(() => {
+    if (!searchQuery.trim()) return baseItems;
+    if (!shouldSearchServer || !serverSearchData?.items) {
+      return filteredBaseItems;
+    }
+    const seen = new Set<string>();
+    const merged: typeof baseItems = [];
+    for (const item of [...serverSearchData.items, ...filteredBaseItems]) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id);
+        merged.push(item);
+      }
+    }
+    return merged;
+  }, [searchQuery, shouldSearchServer, serverSearchData?.items, filteredBaseItems, baseItems]);
 
   // Fast O(1) candidate lookup map
   const candidateLookup = useMemo(() => {
     const map = new Map<string, { id: string; title: string; pageId?: string | null; databaseId: string }>();
-    for (const item of items) {
+    for (const item of baseItems) {
       map.set(item.id, {
         id: item.id,
         title: item.title || 'Untitled',
@@ -93,8 +136,18 @@ export function RelationPickerPopover({
         databaseId: item.databaseId,
       });
     }
+    if (serverSearchData?.items) {
+      for (const item of serverSearchData.items) {
+        map.set(item.id, {
+          id: item.id,
+          title: item.title || 'Untitled',
+          pageId: item.pageId,
+          databaseId: item.databaseId,
+        });
+      }
+    }
     return map;
-  }, [items]);
+  }, [baseItems, serverSearchData?.items]);
 
   // Mutation to create new related record
   const createItemMutation = useMutation({
@@ -153,8 +206,8 @@ export function RelationPickerPopover({
   const exactMatchExists = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
-    return items.some((i) => (i.title || '').trim().toLowerCase() === q);
-  }, [items, searchQuery]);
+    return displayItems.some((i) => (i.title || '').trim().toLowerCase() === q);
+  }, [displayItems, searchQuery]);
 
   const handleCreateNew = () => {
     const title = searchQuery.trim();
@@ -183,8 +236,8 @@ export function RelationPickerPopover({
               if (e.key === 'Enter') {
                 e.preventDefault();
                 e.stopPropagation();
-                if (items.length > 0 && searchQuery.trim()) {
-                  handleToggleItem(items[0].id);
+                if (displayItems.length > 0 && searchQuery.trim()) {
+                  handleToggleItem(displayItems[0].id);
                 } else if (!exactMatchExists && searchQuery.trim()) {
                   handleCreateNew();
                 }
@@ -195,8 +248,11 @@ export function RelationPickerPopover({
                 onClose();
               }
             }}
-            className="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
+            className="w-full pl-8 pr-8 py-1.5 text-xs rounded-lg border bg-stone-50 dark:bg-zinc-900 border-stone-200 dark:border-zinc-700 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#1f4d3d]"
           />
+          {isSearchingServer && (
+            <Loader2 className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 animate-spin text-stone-400 dark:text-zinc-500 pointer-events-none" />
+          )}
         </div>
 
         {/* Selected Summary & Clear Option */}
@@ -217,17 +273,21 @@ export function RelationPickerPopover({
 
         {/* Candidate List */}
         <div className="max-h-56 overflow-y-auto space-y-0.5 no-scrollbar">
-          {isLoading ? (
+          {isBaseLoading ? (
             <div className="py-6 flex flex-col items-center justify-center gap-1 text-xs text-stone-400">
               <Loader2 className="w-4 h-4 animate-spin text-[#1f4d3d] dark:text-emerald-400" />
               <span>Loading records...</span>
             </div>
-          ) : items.length === 0 && !searchQuery.trim() ? (
+          ) : displayItems.length === 0 && !searchQuery.trim() ? (
             <div className="py-6 text-center text-xs text-stone-400 italic">
               No records in this database yet
             </div>
+          ) : displayItems.length === 0 && searchQuery.trim() ? (
+            <div className="py-6 text-center text-xs text-stone-400 italic">
+              No records matching "{searchQuery.trim()}"
+            </div>
           ) : (
-            items.map((item) => {
+            displayItems.map((item) => {
               const isChecked = selectedIds.includes(item.id);
               return (
                 <button
