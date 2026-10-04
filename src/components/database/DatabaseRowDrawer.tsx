@@ -13,6 +13,7 @@ import { getOrCreateDatabaseItemPage } from '~/server/databases';
 import { BlockEditorInner } from '../BlockEditorInner';
 import { cn } from '#/lib/utils';
 import { getOptionBadgeStyles } from '~/lib/optionColors';
+import type { DatabaseCollaborator } from '~/lib/collaboration';
 
 interface DatabaseRowDrawerProps {
   item: DatabaseItem;
@@ -23,6 +24,7 @@ interface DatabaseRowDrawerProps {
   readOnly?: boolean;
   relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
   onItemCreated?: (item: any) => void;
+  collaborators?: DatabaseCollaborator[];
 }
 
 export function DatabaseRowDrawer({
@@ -34,6 +36,7 @@ export function DatabaseRowDrawer({
   readOnly = false,
   relatedItemsLookup = {},
   onItemCreated,
+  collaborators,
 }: DatabaseRowDrawerProps) {
   const navigate = useNavigate();
   const [title, setTitle] = useState(item.title);
@@ -69,6 +72,24 @@ export function DatabaseRowDrawer({
         {/* Drawer Header */}
         <div className="p-4 pb-0 flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-semibold text-stone-500 dark:text-zinc-400">
+            {collaborators && collaborators.length > 0 && (
+              <div className="flex items-center -space-x-1.5 overflow-hidden">
+                {collaborators.map((c) => (
+                  <div
+                    key={c.clientId}
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white ring-2 ring-white dark:ring-zinc-900 shadow-xs"
+                    style={{ backgroundColor: c.color }}
+                    title={`${c.name} is viewing/editing this item`}
+                  >
+                    {c.avatarUrl ? (
+                      <img src={c.avatarUrl} alt={c.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      c.name.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

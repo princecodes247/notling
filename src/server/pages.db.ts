@@ -408,11 +408,34 @@ export interface SharedPageData {
   activeUsers: ActiveUserPresence[];
 }
 
+export async function resolveEffectivePageId(idOrPageId: string): Promise<string> {
+  if (!idOrPageId || !UUID_REGEX.test(idOrPageId)) return idOrPageId;
+  try {
+    const targetPage = await db
+      .select({ id: pages.id })
+      .from(pages)
+      .where(and(eq(pages.id, idOrPageId), eq(pages.isDeleted, false)))
+      .limit(1);
+
+    if (targetPage.length > 0) return targetPage[0].id;
+
+    const [dbRow] = await db
+      .select({ pageId: databases.pageId })
+      .from(databases)
+      .where(eq(databases.id, idOrPageId))
+      .limit(1);
+
+    if (dbRow?.pageId) return dbRow.pageId;
+  } catch { }
+  return idOrPageId;
+}
+
 export async function fetchActivePresence(pageId: string): Promise<ActiveUserPresence[]> {
+  const effectivePageId = await resolveEffectivePageId(pageId);
   const redis = getRedisClient();
   if (redis) {
     try {
-      const key = redisKeys.pagePresence(pageId);
+      const key = redisKeys.pagePresence(effectivePageId);
       const rawEntries = await redis.hgetall(key);
       const now = Date.now();
       const results: ActiveUserPresence[] = [];
@@ -460,7 +483,7 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
       })
       .from(pagePresence)
       .leftJoin(users, eq(sql`split_part(${pagePresence.email}, '#', 1)`, users.email))
-      .where(eq(pagePresence.pageId, pageId))
+      .where(eq(pagePresence.pageId, effectivePageId))
       .orderBy(asc(pagePresence.email), asc(pagePresence.id));
 
     const seen = new Set<string>();
@@ -487,6 +510,7 @@ export async function fetchActivePresence(pageId: string): Promise<ActiveUserPre
 }
 
 export async function removePagePresence(input: { pageId: string; clientId?: string }) {
+  const effectivePageId = await resolveEffectivePageId(input.pageId);
   const cid = input.clientId || 'default';
   let session = null;
   try {
@@ -500,14 +524,14 @@ export async function removePagePresence(input: { pageId: string; clientId?: str
   const redis = getRedisClient();
   if (redis) {
     try {
-      await redis.hdel(redisKeys.pagePresence(input.pageId), cleanEmail);
+      await redis.hdel(redisKeys.pagePresence(effectivePageId), cleanEmail);
     } catch { }
   }
 
   try {
     await db
       .delete(pagePresence)
-      .where(and(eq(pagePresence.pageId, input.pageId), eq(pagePresence.email, cleanEmail)));
+      .where(and(eq(pagePresence.pageId, effectivePageId), eq(pagePresence.email, cleanEmail)));
     return { success: true };
   } catch (err) {
     console.error('Error removing presence:', err);
@@ -521,6 +545,7 @@ export async function recordPagePresence(input: {
   clientId?: string;
   guestName?: string;
 }) {
+  const effectivePageId = await resolveEffectivePageId(input.pageId);
   let session = null;
   try {
     session = await getSessionImpl();
@@ -538,7 +563,7 @@ export async function recordPagePresence(input: {
   const redis = getRedisClient();
   if (redis) {
     try {
-      const key = redisKeys.pagePresence(input.pageId);
+      const key = redisKeys.pagePresence(effectivePageId);
       const presencePayload = {
         id: cid,
         email: session?.email ? session.email.trim().toLowerCase() : cleanEmail,
@@ -552,7 +577,7 @@ export async function recordPagePresence(input: {
       await redis.hset(key, cleanEmail, JSON.stringify(presencePayload));
       await redis.expire(key, 15);
 
-      return await fetchActivePresence(input.pageId);
+      return await fetchActivePresence(effectivePageId);
     } catch {
       // Fallback to database
     }
@@ -563,7 +588,7 @@ export async function recordPagePresence(input: {
     const targetPage = await db
       .select({ id: pages.id })
       .from(pages)
-      .where(and(eq(pages.id, input.pageId), eq(pages.isDeleted, false)))
+      .where(and(eq(pages.id, effectivePageId), eq(pages.isDeleted, false)))
       .limit(1);
 
     if (targetPage.length === 0) {
@@ -577,7 +602,7 @@ export async function recordPagePresence(input: {
     const existing = await db
       .select()
       .from(pagePresence)
-      .where(and(eq(pagePresence.pageId, input.pageId), eq(pagePresence.email, cleanEmail)))
+      .where(and(eq(pagePresence.pageId, effectivePageId), eq(pagePresence.email, cleanEmail)))
       .limit(1);
 
     if (existing.length > 0) {
@@ -588,7 +613,7 @@ export async function recordPagePresence(input: {
     } else {
       try {
         await db.insert(pagePresence).values({
-          pageId: input.pageId,
+          pageId: effectivePageId,
           email: cleanEmail,
           name: cleanName,
           role: input.role,
@@ -599,7 +624,7 @@ export async function recordPagePresence(input: {
       }
     }
 
-    return await fetchActivePresence(input.pageId);
+    return await fetchActivePresence(effectivePageId);
   } catch (err) {
     return [];
   }

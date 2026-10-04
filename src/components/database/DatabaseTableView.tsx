@@ -32,6 +32,7 @@ import { useDragPaint } from '~/hooks/useDragPaint';
 import { AnimatePresence } from 'motion/react';
 import { RelationConfigModal } from './RelationConfigModal';
 import { RelationCell } from './RelationCell';
+import type { DatabaseCollaborator } from '~/lib/collaboration';
 
 interface DatabaseTableViewProps {
   properties: DatabaseProperty[];
@@ -60,6 +61,8 @@ interface DatabaseTableViewProps {
   databaseTitle?: string;
   relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
   onItemCreated?: (item: any) => void;
+  collaboratorFocus?: Record<string, DatabaseCollaborator[]>;
+  onCellFocusChange?: (itemId: string | null, propId: string | null) => void;
 }
 
 const PROPERTY_TYPES = [
@@ -108,6 +111,8 @@ export function DatabaseTableView({
   databaseTitle = '',
   relatedItemsLookup = {},
   onItemCreated,
+  collaboratorFocus,
+  onCellFocusChange,
 }: DatabaseTableViewProps) {
   // Table virtual scroll container ref
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -346,6 +351,37 @@ export function DatabaseTableView({
       scrollFocusedCellIntoView();
     }
   }, [focusedCell, scrollFocusedCellIntoView]);
+
+  // Sync cell focus with live collaboration awareness
+  const lastReportedFocusRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let targetItemId: string | null = null;
+    let targetPropId: string | null = null;
+
+    if (focusedCell) {
+      const item = items[focusedCell.rowIndex];
+      if (item) {
+        targetItemId = item.id;
+        targetPropId = focusedCell.colIndex === 0 ? '__TITLE__' : (nonTitleProps[focusedCell.colIndex - 1]?.id ?? null);
+      }
+    }
+
+    const key = targetItemId && targetPropId ? `${targetItemId}:${targetPropId}` : null;
+    if (key !== lastReportedFocusRef.current) {
+      lastReportedFocusRef.current = key;
+      onCellFocusChange?.(targetItemId, targetPropId);
+    }
+  }, [focusedCell, items, nonTitleProps, onCellFocusChange]);
+
+  useEffect(() => {
+    return () => {
+      if (lastReportedFocusRef.current !== null) {
+        lastReportedFocusRef.current = null;
+        onCellFocusChange?.(null, null);
+      }
+    };
+  }, [onCellFocusChange]);
 
   // Only focus cell if user is actively editing inside table AND not typing in search or outer inputs
   useEffect(() => {
@@ -908,6 +944,7 @@ export function DatabaseTableView({
                   activeCellMenuId={activeCellMenuId}
                   isEditingRowTitle={isEditingTitle}
                   draggedRowIndex={draggedRowIndex}
+                  collaboratorFocus={collaboratorFocus}
                   rowPaintProps={rowPaint.getItemProps(item.id, isSelected)}
                   onSelectRow={() => {
                     setSelectedItemIds((prev) =>
@@ -1212,6 +1249,7 @@ interface DatabaseTableRowProps {
   activeCellMenuId: string | null;
   isEditingRowTitle: boolean;
   draggedRowIndex: number | null;
+  collaboratorFocus?: Record<string, DatabaseCollaborator[]>;
   rowPaintProps: any;
   onSelectRow: () => void;
   onDragStart: (e: React.DragEvent) => void;
@@ -1252,6 +1290,7 @@ function DatabaseTableRow({
   activeCellMenuId,
   isEditingRowTitle,
   draggedRowIndex,
+  collaboratorFocus,
   rowPaintProps,
   onDragStart,
   onDragOver,
@@ -1327,73 +1366,95 @@ function DatabaseTableRow({
       )}
 
       {/* Title Cell + Open Page Button */}
-      <td
-        onClick={() => onFocusCell(0)}
-        data-focused-cell={isFocusedRow && focusedColIndex === 0 ? "true" : undefined}
-        style={
-          columnWidths['title']
-            ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` }
-            : { width: '220px', minWidth: '160px', maxWidth: '300px' }
-        }
-        className={`py-2 px-3 font-medium transition-colors ${isFocusedRow && focusedColIndex === 0
-          ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
-          : ''
-          }`}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <input
-            ref={(el) => {
-              localTitleRef.current = el;
-              registerTitleInputRef(el);
-            }}
-            type="text"
-            defaultValue={item.title}
-            disabled={readOnly}
-            onFocus={onStartEditingTitle}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                e.stopPropagation();
-                (e.target as HTMLInputElement).blur();
-                onEnterCell(0);
-              } else if (e.key === 'Escape') {
-                e.preventDefault();
-                e.stopPropagation();
-                (e.target as HTMLInputElement).blur();
-                onExitEditing();
-              } else if (e.key === 'Tab') {
-                e.preventDefault();
-                e.stopPropagation();
-                (e.target as HTMLInputElement).blur();
-                onNavigateCell(0, e.shiftKey);
-              }
-            }}
-            onBlur={(e) => {
-              onStopEditingTitle();
-              onUpdateTitle(e.target.value);
-            }}
-            className={cn(
-              "w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-xs transition-colors focus:text-stone-900 dark:focus:text-zinc-100 focus:opacity-100 focus:font-medium",
-              isGhostedRow
-                ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
-                : "text-stone-900 dark:text-zinc-100 font-medium opacity-100"
-            )}
-            placeholder="Untitled"
-          />
+      {(() => {
+        const titleCollabs = collaboratorFocus?.[`${item.id}:__TITLE__`];
+        const titlePrimaryCollab = titleCollabs?.[0];
+        const isThisCellFocused = isFocusedRow && focusedColIndex === 0;
 
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            {onOpenRowDrawer && (
-              <button
-                onClick={() => onOpenRowDrawer(item)}
-                className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
+        const cellStyle: React.CSSProperties = columnWidths['title']
+          ? { width: `${columnWidths['title']}px`, minWidth: `${columnWidths['title']}px`, maxWidth: `${columnWidths['title']}px` }
+          : { width: '220px', minWidth: '160px', maxWidth: '300px' };
+
+        if (titlePrimaryCollab && !isThisCellFocused) {
+          cellStyle.boxShadow = `inset 0 0 0 2px ${titlePrimaryCollab.color}`;
+        }
+
+        return (
+          <td
+            onClick={() => onFocusCell(0)}
+            data-focused-cell={isThisCellFocused ? "true" : undefined}
+            style={cellStyle}
+            className={`relative py-2 px-3 font-medium transition-colors ${
+              isThisCellFocused
+                ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20'
+                : ''
+            }`}
+          >
+            {titlePrimaryCollab && !isThisCellFocused && (
+              <div
+                className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded text-[10px] font-medium text-white shadow-sm pointer-events-none z-10 truncate max-w-[120px] flex items-center gap-1 transition-opacity duration-150"
+                style={{ backgroundColor: titlePrimaryCollab.color }}
               >
-                <Maximize2 className="w-3 h-3" />
-                <span>Open</span>
-              </button>
+                <span className="w-1.5 h-1.5 rounded-full bg-white/80 shrink-0" />
+                <span className="truncate">{titlePrimaryCollab.name}</span>
+              </div>
             )}
-          </div>
-        </div>
-      </td>
+            <div className="flex items-center justify-between gap-2">
+              <input
+                ref={(el) => {
+                  localTitleRef.current = el;
+                  registerTitleInputRef(el);
+                }}
+                type="text"
+                defaultValue={item.title}
+                disabled={readOnly}
+                onFocus={onStartEditingTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    (e.target as HTMLInputElement).blur();
+                    onEnterCell(0);
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    (e.target as HTMLInputElement).blur();
+                    onExitEditing();
+                  } else if (e.key === 'Tab') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    (e.target as HTMLInputElement).blur();
+                    onNavigateCell(0, e.shiftKey);
+                  }
+                }}
+                onBlur={(e) => {
+                  onStopEditingTitle();
+                  onUpdateTitle(e.target.value);
+                }}
+                className={cn(
+                  "w-full bg-transparent border-none focus:outline-none px-1.5 py-0.5 rounded text-xs transition-colors focus:text-stone-900 dark:focus:text-zinc-100 focus:opacity-100 focus:font-medium",
+                  isGhostedRow
+                    ? "text-stone-400 dark:text-zinc-500 font-normal italic opacity-60"
+                    : "text-stone-900 dark:text-zinc-100 font-medium opacity-100"
+                )}
+                placeholder="Untitled"
+              />
+
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                {onOpenRowDrawer && (
+                  <button
+                    onClick={() => onOpenRowDrawer(item)}
+                    className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Maximize2 className="w-3 h-3" />
+                    <span>Open</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </td>
+        );
+      })()}
 
       {/* Dynamic Property Cells */}
       {nonTitleProps.map((prop, colIndex) => {
@@ -1402,19 +1463,36 @@ function DatabaseTableRow({
         const isCellFocused = isFocusedRow && focusedColIndex === colIndex + 1;
         const colWidth = columnWidths[prop.id];
 
+        const propCollabs = collaboratorFocus?.[`${item.id}:${prop.id}`];
+        const propPrimaryCollab = propCollabs?.[0];
+
+        const cellStyle: React.CSSProperties = colWidth
+          ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` }
+          : { width: '160px', minWidth: '120px', maxWidth: '200px' };
+
+        if (propPrimaryCollab && !isCellFocused) {
+          cellStyle.boxShadow = `inset 0 0 0 2px ${propPrimaryCollab.color}`;
+        }
+
         return (
           <td
             key={prop.id}
             onClick={() => onFocusCell(colIndex + 1)}
             data-focused-cell={isCellFocused ? "true" : undefined}
-            style={
-              colWidth
-                ? { width: `${colWidth}px`, minWidth: `${colWidth}px`, maxWidth: `${colWidth}px` }
-                : { width: '160px', minWidth: '120px', maxWidth: '200px' }
-            }
-            className={`py-2 px-3 transition-colors ${isCellFocused ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500' : ''
-              }`}
+            style={cellStyle}
+            className={`relative py-2 px-3 transition-colors ${
+              isCellFocused ? 'ring-2 ring-inset ring-[#1f4d3d] dark:ring-emerald-500' : ''
+            }`}
           >
+            {propPrimaryCollab && !isCellFocused && (
+              <div
+                className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded text-[10px] font-medium text-white shadow-sm pointer-events-none z-10 truncate max-w-[120px] flex items-center gap-1 transition-opacity duration-150"
+                style={{ backgroundColor: propPrimaryCollab.color }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-white/80 shrink-0" />
+                <span className="truncate">{propPrimaryCollab.name}</span>
+              </div>
+            )}
             <InteractiveCellMemo
               prop={prop}
               value={val}
@@ -1446,6 +1524,38 @@ function DatabaseTableRow({
   );
 }
 
+function areRowCollabsEqual(
+  prevFocus: Record<string, DatabaseCollaborator[]> | undefined,
+  nextFocus: Record<string, DatabaseCollaborator[]> | undefined,
+  itemId: string,
+  nonTitleProps: DatabaseProperty[]
+) {
+  if (prevFocus === nextFocus) return true;
+  const titleKey = `${itemId}:__TITLE__`;
+  const pTitle = prevFocus?.[titleKey];
+  const nTitle = nextFocus?.[titleKey];
+  if (pTitle !== nTitle) {
+    if (!pTitle || !nTitle || pTitle.length !== nTitle.length) return false;
+    for (let i = 0; i < pTitle.length; i++) {
+      if (pTitle[i].clientId !== nTitle[i].clientId || pTitle[i].color !== nTitle[i].color) return false;
+    }
+  }
+
+  for (const prop of nonTitleProps) {
+    const key = `${itemId}:${prop.id}`;
+    const pProp = prevFocus?.[key];
+    const nProp = nextFocus?.[key];
+    if (pProp !== nProp) {
+      if (!pProp || !nProp || pProp.length !== nProp.length) return false;
+      for (let i = 0; i < pProp.length; i++) {
+        if (pProp[i].clientId !== nProp[i].clientId || pProp[i].color !== nProp[i].color) return false;
+      }
+    }
+  }
+
+  return true;
+}
+
 const DatabaseTableRowMemo = React.memo(DatabaseTableRow, (prev, next) => {
   return (
     prev.item === next.item &&
@@ -1460,7 +1570,8 @@ const DatabaseTableRowMemo = React.memo(DatabaseTableRow, (prev, next) => {
     prev.columnWidths === next.columnWidths &&
     prev.nonTitleProps === next.nonTitleProps &&
     prev.readOnly === next.readOnly &&
-    prev.relatedItemsLookup === next.relatedItemsLookup
+    prev.relatedItemsLookup === next.relatedItemsLookup &&
+    areRowCollabsEqual(prev.collaboratorFocus, next.collaboratorFocus, next.item.id, next.nonTitleProps)
   );
 });
 

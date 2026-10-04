@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import * as Y from 'yjs';
 import { WebrtcProvider } from 'y-webrtc';
 
@@ -156,3 +156,276 @@ export function useCollaboration(
     showCursorLabels: 'always',
   };
 }
+
+export interface DatabaseCollaborator {
+  clientId: string;
+  name: string;
+  color: string;
+  avatarUrl?: string | null;
+  email?: string | null;
+  role: 'viewer' | 'editor';
+  activeCell?: { itemId: string; propId: string } | null;
+  activeViewId?: string | null;
+  lastPing?: Date;
+}
+
+export type DatabaseCollabAction =
+  | { type: 'UPDATE_ITEM'; itemId: string; updates: { title?: string; properties?: Record<string, any>; order?: number } }
+  | { type: 'ADD_ITEM'; item: any }
+  | { type: 'DELETE_ITEM'; itemId: string }
+  | { type: 'DELETE_ITEMS_BULK'; itemIds: string[] }
+  | { type: 'REORDER_ITEMS'; fromIndex: number; toIndex: number }
+  | { type: 'CREATE_PROPERTY'; property: any }
+  | { type: 'UPDATE_PROPERTY'; propertyId: string; updates: any }
+  | { type: 'DELETE_PROPERTY'; propertyId: string }
+  | { type: 'CREATE_VIEW'; view: any }
+  | { type: 'UPDATE_VIEW'; viewId: string; updates: any }
+  | { type: 'DELETE_VIEW'; viewId: string }
+  | { type: 'UPDATE_DATABASE_META'; updates: { title?: string; icon?: string | null } }
+  | { type: 'IMPORT_DATA'; items?: any[]; properties?: any[] };
+
+export interface DatabaseCollaborationConfig {
+  doc: Y.Doc;
+  provider: WebrtcProvider;
+  collaborators: DatabaseCollaborator[];
+  collaboratorFocus: Record<string, DatabaseCollaborator[]>;
+  broadcastAction: (action: DatabaseCollabAction) => void;
+  setActiveCell: (cell: { itemId: string; propId: string } | null) => void;
+  setActiveView: (viewId: string) => void;
+}
+
+export function useDatabaseCollaboration({
+  databaseId,
+  userDisplayName,
+  userIdentifier,
+  userAvatarUrl,
+  isViewer = false,
+  onRemoteAction,
+}: {
+  databaseId: string;
+  userDisplayName?: string | null;
+  userIdentifier?: string | null;
+  userAvatarUrl?: string | null;
+  isViewer?: boolean;
+  onRemoteAction?: (action: DatabaseCollabAction) => void;
+}): DatabaseCollaborationConfig | null {
+  const roomKey = `db-${databaseId}`;
+  const collabData = useMemo(() => {
+    if (typeof window === 'undefined' || !databaseId) return null;
+    return getOrCreateCollab(roomKey);
+  }, [roomKey, databaseId]);
+
+  useEffect(() => {
+    if (!databaseId) return;
+    return () => {
+      releaseCollab(roomKey);
+    };
+  }, [roomKey, databaseId]);
+
+  const [collaborators, setCollaborators] = useState<DatabaseCollaborator[]>([]);
+  const [collaboratorFocus, setCollaboratorFocus] = useState<Record<string, DatabaseCollaborator[]>>({});
+  const onRemoteActionRef = useRef(onRemoteAction);
+  onRemoteActionRef.current = onRemoteAction;
+
+  // Set user awareness state
+  useEffect(() => {
+    if (!collabData) return;
+    const clientId = getClientId();
+    const name = userDisplayName || userIdentifier || (isViewer ? `Guest ${clientId.slice(-4)}` : `User ${clientId.slice(-4)}`);
+    const color = getCursorColor(userIdentifier || userDisplayName || clientId);
+    const userInfo = {
+      name,
+      color,
+      avatarUrl: userAvatarUrl || null,
+      email: userIdentifier || null,
+      role: isViewer ? 'viewer' : 'editor',
+      clientId,
+    };
+    collabData.provider.awareness.setLocalStateField('user', userInfo);
+  }, [collabData, userDisplayName, userIdentifier, userAvatarUrl, isViewer]);
+
+  // Awareness observer for live collaborator presence & cell focus
+  useEffect(() => {
+    if (!collabData?.provider?.awareness) return;
+    const awareness = collabData.provider.awareness;
+    const currentCid = getClientId();
+
+    const updateFromAwareness = () => {
+      const states = awareness.getStates();
+      const nextCollabs: DatabaseCollaborator[] = [];
+      const nextFocus: Record<string, DatabaseCollaborator[]> = {};
+
+      states.forEach((state: any, clientYjsId: number) => {
+        if (clientYjsId === awareness.clientID) return;
+        if (!state || !state.user) return;
+        const user = state.user;
+        const cid = user.clientId || String(clientYjsId);
+        if (cid === currentCid) return;
+
+        const collab: DatabaseCollaborator = {
+          clientId: cid,
+          name: user.name || `User ${cid.slice(-4)}`,
+          color: user.color || getCursorColor(cid),
+          avatarUrl: user.avatarUrl || null,
+          email: user.email || null,
+          role: user.role || 'editor',
+          activeCell: state.activeCell || null,
+          activeViewId: state.activeViewId || null,
+          lastPing: new Date(),
+        };
+        nextCollabs.push(collab);
+
+        if (state.activeCell && state.activeCell.itemId) {
+          const cellKey = `${state.activeCell.itemId}:${state.activeCell.propId || '__TITLE__'}`;
+          if (!nextFocus[cellKey]) nextFocus[cellKey] = [];
+          nextFocus[cellKey].push(collab);
+
+          const rowKey = state.activeCell.itemId;
+          if (!nextFocus[rowKey]) nextFocus[rowKey] = [];
+          nextFocus[rowKey].push(collab);
+        }
+      });
+
+      setCollaborators((prev) => {
+        if (
+          prev.length === nextCollabs.length &&
+          prev.every((p, i) => {
+            const n = nextCollabs[i];
+            return (
+              p.clientId === n.clientId &&
+              p.name === n.name &&
+              p.color === n.color &&
+              p.avatarUrl === n.avatarUrl &&
+              p.activeViewId === n.activeViewId &&
+              p.activeCell?.itemId === n.activeCell?.itemId &&
+              p.activeCell?.propId === n.activeCell?.propId
+            );
+          })
+        ) {
+          return prev;
+        }
+        return nextCollabs;
+      });
+
+      setCollaboratorFocus((prev) => {
+        const prevKeys = Object.keys(prev);
+        const nextKeys = Object.keys(nextFocus);
+        if (
+          prevKeys.length === nextKeys.length &&
+          prevKeys.every((k) => {
+            const pList = prev[k];
+            const nList = nextFocus[k];
+            if (!pList || !nList || pList.length !== nList.length) return false;
+            return pList.every((collab, i) => collab.clientId === nList[i].clientId);
+          })
+        ) {
+          return prev;
+        }
+        return nextFocus;
+      });
+    };
+
+    awareness.on('change', updateFromAwareness);
+    updateFromAwareness();
+
+    return () => {
+      awareness.off('change', updateFromAwareness);
+    };
+  }, [collabData]);
+
+  // Actions Map
+  const actionsMap = useMemo(() => {
+    if (!collabData?.doc) return null;
+    return collabData.doc.getMap('db-actions');
+  }, [collabData?.doc]);
+
+  const processedActionsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!actionsMap) return;
+    const currentCid = getClientId();
+
+    const handleObserve = (event: Y.YMapEvent<any>) => {
+      event.changes.keys.forEach((change, key) => {
+        if (change.action === 'add' || change.action === 'update') {
+          const action = actionsMap.get(key) as any;
+          if (!action || !action._clientId || action._clientId === currentCid) return;
+          if (action._timestamp && Date.now() - action._timestamp > 20000) return;
+          if (processedActionsRef.current.has(action._actionId)) return;
+          processedActionsRef.current.add(action._actionId);
+          onRemoteActionRef.current?.(action);
+        }
+      });
+    };
+
+    actionsMap.observe(handleObserve);
+    return () => {
+      actionsMap.unobserve(handleObserve);
+    };
+  }, [actionsMap]);
+
+  const broadcastAction = useCallback(
+    (action: DatabaseCollabAction) => {
+      if (!actionsMap || isViewer) return;
+      const currentCid = getClientId();
+      const actionId = `${Date.now()}_${currentCid}_${Math.random().toString(36).substring(2, 8)}`;
+      const payload = {
+        ...action,
+        _actionId: actionId,
+        _clientId: currentCid,
+        _timestamp: Date.now(),
+      };
+      processedActionsRef.current.add(actionId);
+      actionsMap.set(actionId, payload);
+
+      if (actionsMap.size > 40) {
+        const cutoff = Date.now() - 30000;
+        for (const [k, v] of actionsMap.entries()) {
+          if (v && typeof v === 'object' && (v as any)._timestamp < cutoff) {
+            actionsMap.delete(k);
+          }
+        }
+      }
+    },
+    [actionsMap, isViewer]
+  );
+
+  const lastActiveCellRef = useRef<{ itemId: string; propId: string } | null>(null);
+  const setActiveCell = useCallback(
+    (cell: { itemId: string; propId: string } | null) => {
+      if (!collabData?.provider?.awareness) return;
+      const prev = lastActiveCellRef.current;
+      const isSame =
+        (!prev && !cell) ||
+        (prev && cell && prev.itemId === cell.itemId && prev.propId === cell.propId);
+      if (isSame) return;
+      lastActiveCellRef.current = cell;
+      collabData.provider.awareness.setLocalStateField('activeCell', cell);
+    },
+    [collabData?.provider?.awareness]
+  );
+
+  const lastActiveViewRef = useRef<string | null>(null);
+  const setActiveView = useCallback(
+    (viewId: string) => {
+      if (!collabData?.provider?.awareness) return;
+      if (lastActiveViewRef.current === viewId) return;
+      lastActiveViewRef.current = viewId;
+      collabData.provider.awareness.setLocalStateField('activeViewId', viewId);
+    },
+    [collabData?.provider?.awareness]
+  );
+
+  if (!collabData) return null;
+
+  return {
+    doc: collabData.doc,
+    provider: collabData.provider,
+    collaborators,
+    collaboratorFocus,
+    broadcastAction,
+    setActiveCell,
+    setActiveView,
+  };
+}
+

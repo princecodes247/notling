@@ -30,7 +30,9 @@ import {
   deleteDatabaseView,
   updateFormSettings,
 } from '~/server/databases';
-import { getPage, updatePageVisibility } from '~/server/pages';
+import { getPage, updatePageVisibility, pingPagePresence, getActivePresence, removePagePresence } from '~/server/pages';
+import { getSession } from '~/server/auth';
+import { useDatabaseCollaboration, getClientId, type DatabaseCollabAction } from '~/lib/collaboration';
 import { useUIStore } from '~/store/uiStore';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 import { EditorHeader } from '../EditorHeader';
@@ -312,6 +314,277 @@ export function DatabaseContainer({
     });
   };
 
+  // User Session
+  const { data: session } = useQuery({
+    queryKey: ['session'],
+    queryFn: () => getSession(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const userName = session?.name ?? session?.email ?? null;
+
+  // Active Collaborators from Server
+  const { data: serverActiveUsers = [] } = useQuery({
+    queryKey: ['activePresence', targetPageId],
+    queryFn: async () => {
+      if (!targetPageId) return [];
+      return await getActivePresence({ data: targetPageId });
+    },
+    refetchInterval: 10000,
+    enabled: !!targetPageId,
+  });
+
+  // Heartbeat presence ping & immediate cleanup on unmount/leave
+  useEffect(() => {
+    if (!targetPageId) return;
+    const cid = getClientId();
+    const role = readOnly ? 'viewer' : 'editor';
+    const sendPing = async () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) return;
+      try {
+        await pingPagePresence({ data: { pageId: targetPageId, role, clientId: cid } });
+      } catch { }
+    };
+    sendPing();
+    const timer = setInterval(sendPing, 15000);
+
+    const handleLeave = () => {
+      if (typeof window !== 'undefined' && !navigator.onLine) return;
+      try {
+        removePagePresence({ data: { pageId: targetPageId, clientId: cid } });
+      } catch { }
+    };
+
+    window.addEventListener('beforeunload', handleLeave);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('beforeunload', handleLeave);
+      handleLeave();
+    };
+  }, [targetPageId, readOnly]);
+
+  const handleRemoteAction = useCallback(
+    (action: DatabaseCollabAction) => {
+      switch (action.type) {
+        case 'UPDATE_ITEM': {
+          const { itemId, updates } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            items: prev.items.map((i) =>
+              i.id === itemId
+                ? {
+                    ...i,
+                    title: updates.title !== undefined ? updates.title : i.title,
+                    properties: updates.properties !== undefined ? { ...i.properties, ...updates.properties } : i.properties,
+                  }
+                : i
+            ),
+          }));
+          updateInfiniteCache((prev) =>
+            prev.map((i) =>
+              i.id === itemId
+                ? {
+                    ...i,
+                    title: updates.title !== undefined ? updates.title : i.title,
+                    properties: updates.properties !== undefined ? { ...i.properties, ...updates.properties } : i.properties,
+                  }
+                : i
+            )
+          );
+          setSelectedDrawerItem((prev) => {
+            if (prev && prev.id === itemId) {
+              return {
+                ...prev,
+                title: updates.title !== undefined ? updates.title : prev.title,
+                properties: updates.properties !== undefined ? { ...prev.properties, ...updates.properties } : prev.properties,
+              };
+            }
+            return prev;
+          });
+          break;
+        }
+        case 'ADD_ITEM': {
+          const { item } = action;
+          updateLocalAndCache((prev) => {
+            if (prev.items.some((i) => i.id === item.id)) return prev;
+            return {
+              ...prev,
+              items: [...prev.items, item],
+              totalCount: (prev.totalCount ?? prev.items.length) + 1,
+            };
+          });
+          updateInfiniteCache((prev) => {
+            if (prev.some((i) => i.id === item.id)) return prev;
+            return [...prev, item];
+          }, 1);
+          break;
+        }
+        case 'DELETE_ITEM': {
+          const { itemId } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            items: prev.items.filter((i) => i.id !== itemId),
+            totalCount: Math.max(0, (prev.totalCount ?? prev.items.length) - 1),
+          }));
+          updateInfiniteCache((prev) => prev.filter((i) => i.id !== itemId), -1);
+          setSelectedDrawerItem((prev) => (prev?.id === itemId ? null : prev));
+          break;
+        }
+        case 'DELETE_ITEMS_BULK': {
+          const { itemIds } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            items: prev.items.filter((i) => !itemIds.includes(i.id)),
+            totalCount: Math.max(0, (prev.totalCount ?? prev.items.length) - itemIds.length),
+          }));
+          updateInfiniteCache((prev) => prev.filter((i) => !itemIds.includes(i.id)), -itemIds.length);
+          setSelectedDrawerItem((prev) => (prev && itemIds.includes(prev.id) ? null : prev));
+          break;
+        }
+        case 'REORDER_ITEMS': {
+          const { fromIndex, toIndex } = action;
+          updateLocalAndCache((prev) => {
+            if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.items.length || toIndex >= prev.items.length) return prev;
+            const nextItems = [...prev.items];
+            const [moved] = nextItems.splice(fromIndex, 1);
+            nextItems.splice(toIndex, 0, moved);
+            return { ...prev, items: nextItems };
+          });
+          updateInfiniteCache((prev) => {
+            if (fromIndex < 0 || toIndex < 0 || fromIndex >= prev.length || toIndex >= prev.length) return prev;
+            const next = [...prev];
+            const [moved] = next.splice(fromIndex, 1);
+            next.splice(toIndex, 0, moved);
+            return next;
+          });
+          break;
+        }
+        case 'CREATE_PROPERTY': {
+          const { property } = action;
+          updateLocalAndCache((prev) => {
+            if (prev.properties.some((p) => p.id === property.id)) return prev;
+            return {
+              ...prev,
+              properties: [...prev.properties, property],
+            };
+          });
+          break;
+        }
+        case 'UPDATE_PROPERTY': {
+          const { propertyId, updates } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            properties: prev.properties.map((p) =>
+              p.id === propertyId ? { ...p, ...updates } : p
+            ),
+          }));
+          break;
+        }
+        case 'DELETE_PROPERTY': {
+          const { propertyId } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            properties: prev.properties.filter((p) => p.id !== propertyId),
+            items: prev.items.map((i) => {
+              if (!i.properties || !(propertyId in i.properties)) return i;
+              const nextProps = { ...i.properties };
+              delete nextProps[propertyId];
+              return { ...i, properties: nextProps };
+            }),
+          }));
+          break;
+        }
+        case 'CREATE_VIEW': {
+          const { view } = action;
+          updateLocalAndCache((prev) => {
+            if (prev.views.some((v) => v.id === view.id)) return prev;
+            return { ...prev, views: [...prev.views, view] };
+          });
+          break;
+        }
+        case 'UPDATE_VIEW': {
+          const { viewId, updates } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            views: prev.views.map((v) => (v.id === viewId ? { ...v, ...updates } : v)),
+          }));
+          break;
+        }
+        case 'DELETE_VIEW': {
+          const { viewId } = action;
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            views: prev.views.filter((v) => v.id !== viewId),
+          }));
+          break;
+        }
+        case 'UPDATE_DATABASE_META': {
+          const { updates } = action;
+          if (updates.title !== undefined) {
+            if (!isEditingTitleRef.current) {
+              setDbTitle(updates.title);
+              savedTitleRef.current = updates.title;
+            }
+          }
+          updateLocalAndCache((prev) => ({
+            ...prev,
+            database: {
+              ...prev.database,
+              ...(updates.title !== undefined ? { title: updates.title } : {}),
+              ...(updates.icon !== undefined ? { icon: updates.icon } : {}),
+            },
+          }));
+          if (updates.title) {
+            document.title = `${updates.title} — Notling`;
+          }
+          break;
+        }
+        case 'IMPORT_DATA': {
+          refetchItems();
+          queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
+          break;
+        }
+      }
+    },
+    [databaseId, queryClient, refetchItems]
+  );
+
+  const collab = useDatabaseCollaboration({
+    databaseId: initialData.database.id,
+    userDisplayName: userName,
+    userIdentifier: session?.email,
+    userAvatarUrl: session?.avatarUrl,
+    isViewer: readOnly,
+    onRemoteAction: handleRemoteAction,
+  });
+
+  const mergedActiveUsers = useMemo(() => {
+    const map = new Map<string, any>();
+    // First include server active users
+    for (const u of serverActiveUsers) {
+      const key = (u.email || u.clientId || u.id || '').toLowerCase().trim();
+      if (key) map.set(key, u);
+    }
+    // Then overlay/add live WebRTC awareness collaborators
+    if (collab?.collaborators) {
+      for (const c of collab.collaborators) {
+        const key = (c.email || c.clientId || '').toLowerCase().trim();
+        if (key) {
+          map.set(key, {
+            id: c.clientId,
+            name: c.name,
+            email: c.email || `${c.clientId}@notling.app`,
+            role: c.role,
+            avatarUrl: c.avatarUrl,
+            lastPing: c.lastPing || new Date(),
+            clientId: c.clientId,
+          });
+        }
+      }
+    }
+    return Array.from(map.values());
+  }, [serverActiveUsers, collab?.collaborators]);
+
   React.useEffect(() => {
     setDbData(initialData);
     if (!isEditingTitleRef.current) {
@@ -341,6 +614,7 @@ export function DatabaseContainer({
         title: finalTitle,
       },
     }));
+    collab?.broadcastAction({ type: 'UPDATE_DATABASE_META', updates: { title: finalTitle } });
 
     try {
       const dbId = dbData.database.id;
@@ -413,6 +687,7 @@ export function DatabaseContainer({
       totalCount: (prev.totalCount ?? prev.items.length) + 1,
     }));
     updateInfiniteCache((prev) => [...prev, optimisticItem], 1);
+    collab?.broadcastAction({ type: 'ADD_ITEM', item: optimisticItem });
 
     try {
       const res = await createDatabaseItem({
@@ -468,6 +743,7 @@ export function DatabaseContainer({
           : i
       )
     );
+    collab?.broadcastAction({ type: 'UPDATE_ITEM', itemId, updates });
 
     await updateDatabaseItem({
       data: {
@@ -485,9 +761,17 @@ export function DatabaseContainer({
       totalCount: Math.max(0, (prev.totalCount ?? prev.items.length) - 1),
     }));
     updateInfiniteCache((prev) => prev.filter((i) => i.id !== itemId), -1);
+    collab?.broadcastAction({ type: 'DELETE_ITEM', itemId });
 
     await deleteDatabaseItem({ data: itemId });
   };
+
+  const handleCellFocusChange = useCallback(
+    (itemId: string | null, propId: string | null) => {
+      collab?.setActiveCell(itemId ? { itemId, propId: propId || '__TITLE__' } : null);
+    },
+    [collab?.setActiveCell]
+  );
 
   const handleDeleteItemsBulk = async (itemIds: string[]) => {
     if (readOnly) return;
@@ -497,6 +781,7 @@ export function DatabaseContainer({
       totalCount: Math.max(0, (prev.totalCount ?? prev.items.length) - itemIds.length),
     }));
     updateInfiniteCache((prev) => prev.filter((i) => !itemIds.includes(i.id)), -itemIds.length);
+    collab?.broadcastAction({ type: 'DELETE_ITEMS_BULK', itemIds });
 
     await deleteDatabaseItemsBulk({ data: itemIds });
   };
@@ -520,6 +805,7 @@ export function DatabaseContainer({
       next.splice(toIndex, 0, moved);
       return next;
     });
+    collab?.broadcastAction({ type: 'REORDER_ITEMS', fromIndex, toIndex });
   };
 
   const getUniquePropertyName = (existingProps: DatabaseProperty[], baseName: string = 'Property'): string => {
@@ -554,6 +840,7 @@ export function DatabaseContainer({
       ...prev,
       properties: [...prev.properties, optimisticProp],
     }));
+    collab?.broadcastAction({ type: 'CREATE_PROPERTY', property: optimisticProp });
 
     try {
       await createDatabaseProperty({
@@ -580,6 +867,7 @@ export function DatabaseContainer({
       ...prev,
       properties: prev.properties.map((p: DatabaseProperty) => (p.id === propertyId ? { ...p, ...updates } : p)),
     }));
+    collab?.broadcastAction({ type: 'UPDATE_PROPERTY', propertyId, updates });
 
     await updateDatabaseProperty({
       data: {
@@ -609,6 +897,7 @@ export function DatabaseContainer({
       ...prev,
       properties: prev.properties.map((p: DatabaseProperty) => (p.id === propertyId ? { ...p, type: updatedProp.type } : p)),
     }));
+    collab?.broadcastAction({ type: 'UPDATE_PROPERTY', propertyId, updates: { type: updatedProp.type } });
   };
 
   const handleDeleteProperty = async (propertyId: string) => {
@@ -617,6 +906,7 @@ export function DatabaseContainer({
       ...prev,
       properties: prev.properties.filter((p: DatabaseProperty) => p.id !== propertyId),
     }));
+    collab?.broadcastAction({ type: 'DELETE_PROPERTY', propertyId });
 
     await deleteDatabaseProperty({ data: propertyId });
   };
@@ -631,6 +921,7 @@ export function DatabaseContainer({
         icon: iconValue,
       },
     }));
+    collab?.broadcastAction({ type: 'UPDATE_DATABASE_META', updates: { icon: iconValue } });
 
     try {
       const dbId = dbData.database.id;
@@ -687,6 +978,7 @@ export function DatabaseContainer({
       views: [...(prev.views || []), optimisticView],
     }));
     setActiveViewId(tempViewId);
+    collab?.broadcastAction({ type: 'CREATE_VIEW', view: optimisticView });
 
     try {
       const res = await createDatabaseView({
@@ -716,6 +1008,7 @@ export function DatabaseContainer({
       ...prev,
       views: (prev.views || []).map((v) => (v.id === viewId ? { ...v, ...updates } : v)),
     }));
+    collab?.broadcastAction({ type: 'UPDATE_VIEW', viewId, updates });
 
     try {
       await updateDatabaseView({
@@ -741,6 +1034,7 @@ export function DatabaseContainer({
       ...prev,
       views: (prev.views || []).filter((v) => v.id !== viewId),
     }));
+    collab?.broadcastAction({ type: 'DELETE_VIEW', viewId });
 
     if (activeViewId === viewId) {
       setActiveViewId(remainingViews[0]?.id || 'default-table-view');
@@ -814,6 +1108,8 @@ export function DatabaseContainer({
           icon={dbData.database.icon || ''}
           title={dbTitle}
           isDatabase={true}
+          activeUsers={mergedActiveUsers}
+          getClientId={getClientId}
           isReadOnly={readOnly}
           isPinned={isPinned}
           togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}
@@ -1066,6 +1362,8 @@ export function DatabaseContainer({
             onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             readOnly={readOnly}
             relatedItemsLookup={relatedItemsMap}
+            collaboratorFocus={collab?.collaboratorFocus}
+            onCellFocusChange={handleCellFocusChange}
           />
         ) : activeView.type === 'gallery' ? (
           <DatabaseGalleryView
@@ -1152,6 +1450,8 @@ export function DatabaseContainer({
             databaseTitle={dbTitle}
             relatedItemsLookup={relatedItemsMap}
             onItemCreated={handleRelatedItemCreated}
+            collaboratorFocus={collab?.collaboratorFocus}
+            onCellFocusChange={handleCellFocusChange}
           />
         )}
       </div>
@@ -1184,6 +1484,7 @@ export function DatabaseContainer({
             readOnly={readOnly}
             relatedItemsLookup={relatedItemsMap}
             onItemCreated={handleRelatedItemCreated}
+            collaborators={selectedDrawerItem ? collab?.collaboratorFocus?.[selectedDrawerItem.id] : undefined}
           />
         )}
       </AnimatePresence>
@@ -1208,6 +1509,7 @@ export function DatabaseContainer({
           queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
           queryClient.invalidateQueries({ queryKey: ['databaseItems', databaseId] });
           refetchItems();
+          collab?.broadcastAction({ type: 'IMPORT_DATA' });
         }}
       />
 

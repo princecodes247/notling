@@ -3,6 +3,7 @@ import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
 import { Plus, Trash2, Calendar, Maximize2, CheckSquare, Square, ArrowRightLeft } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { getOptionBadgeStyles } from '~/lib/optionColors';
+import type { DatabaseCollaborator } from '~/lib/collaboration';
 
 interface DatabaseBoardViewProps {
   properties: DatabaseProperty[];
@@ -14,6 +15,8 @@ interface DatabaseBoardViewProps {
   onOpenRowDrawer?: (item: DatabaseItem) => void;
   readOnly?: boolean;
   relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  collaboratorFocus?: Record<string, DatabaseCollaborator[]>;
+  onCellFocusChange?: (itemId: string | null, propId: string | null) => void;
 }
 
 export function DatabaseBoardView({
@@ -26,6 +29,8 @@ export function DatabaseBoardView({
   onOpenRowDrawer,
   readOnly = false,
   relatedItemsLookup = {},
+  collaboratorFocus,
+  onCellFocusChange,
 }: DatabaseBoardViewProps) {
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
@@ -168,6 +173,8 @@ export function DatabaseBoardView({
                     }}
                     isBeingDragged={draggedItemId === item.id}
                     relatedItemsLookup={relatedItemsLookup}
+                    cardCollaborators={collaboratorFocus?.[item.id]}
+                    onCellFocusChange={onCellFocusChange}
                   />
                 ))}
 
@@ -214,6 +221,8 @@ interface KanbanCardProps {
   onDragEnd: () => void;
   isBeingDragged?: boolean;
   relatedItemsLookup?: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null }>;
+  cardCollaborators?: DatabaseCollaborator[];
+  onCellFocusChange?: (itemId: string | null, propId: string | null) => void;
 }
 
 function KanbanCard({
@@ -229,9 +238,13 @@ function KanbanCard({
   onDragEnd,
   isBeingDragged,
   relatedItemsLookup = {},
+  cardCollaborators,
+  onCellFocusChange,
 }: KanbanCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(item.title || '');
+
+  const primaryCollab = cardCollaborators?.[0];
 
   const tagProps = properties.filter((p) => p.type === 'multi_select' || p.type === 'select');
   const dateProp = properties.find((p) => p.type === 'date');
@@ -250,11 +263,21 @@ function KanbanCard({
       onClick={() => {
         if (!isEditing) onOpenRowDrawer?.(item);
       }}
+      style={primaryCollab ? { boxShadow: `0 0 0 2px ${primaryCollab.color}` } : undefined}
       className={cn(
         "group bg-white dark:bg-[#18181b] rounded-md p-2.5 border border-stone-200/70 dark:border-zinc-800/70 shadow-2xs hover:border-stone-300 dark:hover:border-zinc-700 hover:shadow-xs transition-all cursor-pointer relative select-none",
         isBeingDragged ? "opacity-40 scale-95 border-dashed border-[#1f4d3d]" : ""
       )}
     >
+      {primaryCollab && (
+        <div
+          className="absolute -top-2.5 right-2 px-1.5 py-0.5 rounded text-[10px] font-medium text-white shadow-sm pointer-events-none z-10 truncate max-w-[120px] flex items-center gap-1 transition-opacity duration-150"
+          style={{ backgroundColor: primaryCollab.color }}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-white/80 shrink-0" />
+          <span className="truncate">{primaryCollab.name}</span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2 mb-1.5">
         {isEditing && !readOnly ? (
           <input
@@ -265,16 +288,19 @@ function KanbanCard({
             onBlur={() => {
               onUpdateItem(item.id, { title: title.trim() });
               setIsEditing(false);
+              onCellFocusChange?.(null, null);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.stopPropagation();
                 onUpdateItem(item.id, { title: title.trim() });
                 setIsEditing(false);
+                onCellFocusChange?.(null, null);
               } else if (e.key === 'Escape') {
                 e.stopPropagation();
                 setTitle(item.title || '');
                 setIsEditing(false);
+                onCellFocusChange?.(null, null);
               }
             }}
             className="w-full text-xs font-semibold px-1.5 py-0.5 border rounded bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 border-[#1f4d3d] focus:outline-none"
@@ -286,6 +312,7 @@ function KanbanCard({
               if (!readOnly) {
                 e.stopPropagation();
                 setIsEditing(true);
+                onCellFocusChange?.(item.id, '__TITLE__');
               }
             }}
             className="text-xs font-semibold text-stone-900 dark:text-zinc-100 hover:text-[#1f4d3d] dark:hover:text-emerald-400 leading-snug break-words"
