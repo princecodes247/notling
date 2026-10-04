@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { DatabaseProperty, DatabaseItem } from '~/db/schema';
-import { Plus, FileText, Calendar, Trash2, Maximize2, CheckSquare, Square } from 'lucide-react';
+import { Plus, FileText, Trash2, GripVertical, Edit3 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { getOptionBadgeStyles } from '~/lib/optionColors';
 
@@ -26,19 +26,14 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
 
-  const statusProp = properties.find((p) => p.type === 'status' || p.type === 'select');
-  const dateProp = properties.find((p) => p.type === 'date');
-  const checkboxProp = properties.find((p) => p.type === 'checkbox');
-  const tagProps = properties.filter((p) => p.type === 'multi_select');
+  // Find all badge/tag-like properties to display on the right
+  const tagProps = properties.filter(
+    (p) => p.type === 'status' || p.type === 'select' || p.type === 'multi_select'
+  );
 
   return (
-    <div className="w-full space-y-0.5 pb-12 select-none font-sans pt-1">
+    <div className="w-full space-y-0.5 pb-16 select-none font-sans pt-1">
       {items.map((item) => {
-        const statusVal = statusProp ? item.properties?.[statusProp.id] : null;
-        const statusOpt = statusProp?.options?.find((o) => o.id === statusVal);
-        const statusBadge = statusOpt ? getOptionBadgeStyles(statusOpt.color) : null;
-        const dateVal = dateProp ? item.properties?.[dateProp.id] : null;
-        const isChecked = checkboxProp ? Boolean(item.properties?.[checkboxProp.id]) : false;
         const isEditing = editingItemId === item.id;
 
         return (
@@ -47,34 +42,19 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
             onClick={() => {
               if (!isEditing) onOpenRowDrawer?.(item);
             }}
-            className="group flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-stone-100/70 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+            className="group relative flex items-center justify-between min-h-[34px] px-2 py-1 rounded-[4px] hover:bg-stone-100 dark:hover:bg-[#202020] transition-colors cursor-pointer text-stone-900 dark:text-zinc-100"
           >
-            <div className="flex items-center gap-2.5 min-w-0 flex-1">
-              {checkboxProp ? (
-                <button
-                  type="button"
-                  disabled={readOnly}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUpdateItem(item.id, {
-                      properties: {
-                        ...item.properties,
-                        [checkboxProp.id]: !isChecked,
-                      },
-                    });
-                  }}
-                  className="text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 shrink-0 cursor-pointer"
-                >
-                  {isChecked ? (
-                    <CheckSquare className="w-4 h-4 text-[#1f4d3d] dark:text-emerald-400" />
-                  ) : (
-                    <Square className="w-4 h-4" />
-                  )}
-                </button>
-              ) : (
-                <FileText className="w-3.5 h-3.5 text-stone-400 dark:text-zinc-500 shrink-0" />
-              )}
+            {/* Left Section: Drag Handle, Document Icon, Title, Quick Edit */}
+            <div className="flex items-center gap-2 min-w-0 flex-1 pr-4">
+              {/* Drag Handle on hover */}
+              <div className="opacity-0 group-hover:opacity-100 text-stone-400 dark:text-zinc-600 transition-opacity shrink-0 -ml-1">
+                <GripVertical className="w-3.5 h-3.5" />
+              </div>
 
+              {/* Document Icon */}
+              <FileText className="w-4 h-4 text-stone-400 dark:text-zinc-500 shrink-0 stroke-[1.75]" />
+
+              {/* Title / Inline Rename Input */}
               {isEditing && !readOnly ? (
                 <input
                   type="text"
@@ -95,118 +75,110 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
                       setEditingItemId(null);
                     }
                   }}
-                  className="w-full max-w-sm text-xs font-medium px-1.5 py-0.5 border rounded bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 border-[#1f4d3d] focus:outline-none"
+                  className="w-full max-w-md text-[13px] font-normal px-1.5 py-0.5 border rounded-[3px] bg-white dark:bg-zinc-900 text-stone-900 dark:text-zinc-100 border-[#1f4d3d] dark:border-emerald-500 focus:outline-none"
                   autoFocus
                 />
               ) : (
-                <span
-                  onClick={(e) => {
-                    if (!readOnly) {
-                      e.stopPropagation();
-                      setEditingItemId(item.id);
-                      setEditingTitle(item.title || '');
-                    }
-                  }}
-                  className={cn(
-                    "text-xs font-medium text-stone-900 dark:text-zinc-100 truncate transition-colors",
-                    isChecked ? "line-through opacity-60" : ""
-                  )}
-                >
+                <span className="text-[13.5px] font-normal text-stone-800 dark:text-zinc-100 truncate">
                   {item.title || 'Untitled'}
                 </span>
               )}
+
+              {/* Hover Edit / Open Trigger */}
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!readOnly) {
+                      setEditingItemId(item.id);
+                      setEditingTitle(item.title || '');
+                    } else {
+                      onOpenRowDrawer?.(item);
+                    }
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-all shrink-0 cursor-pointer"
+                  title="Edit title"
+                >
+                  <Edit3 className="w-3 h-3" />
+                </button>
+              )}
             </div>
 
-            <div className="flex items-center gap-2.5 text-xs shrink-0">
-              {statusVal && statusOpt && statusBadge ? (
-                <span
-                  className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium", statusBadge.className)}
-                  style={statusBadge.style}
-                >
-                  {statusOpt.name}
-                </span>
-              ) : statusVal ? (
-                <span className="px-1.5 py-0.5 rounded bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 text-[10px] font-medium">
-                  {String(statusVal)}
-                </span>
-              ) : null}
+            {/* Right Section: Property Badges Aligned Neatly */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {tagProps.map((prop) => {
+                const val = item.properties?.[prop.id];
+                if (!val) return null;
 
-              {tagProps.map((tp) => {
-                const val = item.properties?.[tp.id];
-                if (!Array.isArray(val) || val.length === 0) return null;
-                const selected = tp.options?.filter((o) => val.includes(o.id)) || [];
-                return (
-                  <div key={tp.id} className="hidden sm:flex items-center gap-1">
-                    {selected.slice(0, 2).map((opt) => {
-                      const badge = getOptionBadgeStyles(opt.color);
-                      return (
-                        <span
-                          key={opt.id}
-                          className={cn("inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium", badge.className)}
-                          style={badge.style}
-                        >
-                          {opt.name}
-                        </span>
-                      );
-                    })}
-                  </div>
-                );
+                if (prop.type === 'multi_select' && Array.isArray(val)) {
+                  return val.map((optName: string) => {
+                    const opt = prop.options?.find((o) => o.name === optName || o.id === optName);
+                    const badge = opt ? getOptionBadgeStyles(opt.color) : null;
+                    return (
+                      <span
+                        key={`${prop.id}-${optName}`}
+                        className={cn(
+                          "px-2 py-0.5 rounded-[4px] text-[12px] font-normal leading-tight shrink-0",
+                          badge?.className || "bg-stone-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300"
+                        )}
+                        style={badge?.style}
+                      >
+                        {opt?.name || optName}
+                      </span>
+                    );
+                  });
+                }
+
+                if (prop.type === 'select' || prop.type === 'status') {
+                  const opt = prop.options?.find((o) => o.id === val || o.name === val);
+                  if (!opt) return null;
+                  const badge = getOptionBadgeStyles(opt.color);
+                  return (
+                    <span
+                      key={prop.id}
+                      className={cn(
+                        "px-2 py-0.5 rounded-[4px] text-[12px] font-normal leading-tight shrink-0",
+                        badge.className
+                      )}
+                      style={badge.style}
+                    >
+                      {opt.name}
+                    </span>
+                  );
+                }
+
+                return null;
               })}
 
-              {dateVal && (
-                <span className="hidden sm:flex items-center gap-1 text-stone-400 dark:text-zinc-500 text-[11px]">
-                  <Calendar className="w-3 h-3" />
-                  <span>{String(dateVal)}</span>
-                </span>
+              {/* Hover Delete Action */}
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteItem(item.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700 text-stone-400 hover:text-red-600 dark:hover:text-red-400 transition-all cursor-pointer ml-1"
+                  title="Delete row"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               )}
-
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                {onOpenRowDrawer && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenRowDrawer(item);
-                    }}
-                    className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 transition-colors"
-                    title="Open page"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteItem(item.id);
-                    }}
-                    className="p-1 rounded text-stone-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                    title="Delete item"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         );
       })}
 
-      {items.length === 0 && (
-        <div className="py-12 text-center text-xs text-stone-400 dark:text-zinc-500">
-          No items in list
-        </div>
-      )}
-
+      {/* Notion-Style "+ New" Row Trigger */}
       {!readOnly && (
         <button
           type="button"
           onClick={() => onAddItem()}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100/70 dark:hover:bg-zinc-800/50 rounded-md transition-colors cursor-pointer mt-1"
+          className="flex items-center gap-2 px-2 py-1.5 rounded-[4px] text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-100/70 dark:hover:bg-[#202020] transition-colors cursor-pointer text-[13px] font-normal"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>New page</span>
+          <Plus className="w-4 h-4" />
+          <span>New</span>
         </button>
       )}
     </div>

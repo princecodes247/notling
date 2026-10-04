@@ -6,10 +6,7 @@ import {
   LayoutGrid,
   List,
   PieChart,
-  LayoutDashboard,
   Clock,
-  Newspaper,
-  Map,
   Calendar,
   FileText,
 } from 'lucide-react';
@@ -27,12 +24,9 @@ export const VIEW_LAYOUT_OPTIONS: ViewLayoutOption[] = [
   { type: 'gallery', label: 'Gallery', icon: LayoutGrid },
   { type: 'list', label: 'List', icon: List },
   { type: 'chart', label: 'Chart', icon: PieChart },
-  { type: 'form', label: 'Form', icon: FileText },
   { type: 'calendar', label: 'Calendar', icon: Calendar },
   { type: 'timeline', label: 'Timeline', icon: Clock },
-  { type: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { type: 'feed', label: 'Feed', icon: Newspaper },
-  { type: 'map', label: 'Map', icon: Map },
+  { type: 'form', label: 'Form builder', icon: FileText },
 ];
 
 interface NewViewPopoverProps {

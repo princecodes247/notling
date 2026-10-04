@@ -11,9 +11,6 @@ import { DatabaseChartView } from './DatabaseChartView';
 import { DatabaseFormView } from './DatabaseFormView';
 import { DatabaseCalendarView } from './DatabaseCalendarView';
 import { DatabaseTimelineView } from './DatabaseTimelineView';
-import { DatabaseFeedView } from './DatabaseFeedView';
-import { DatabaseMapView } from './DatabaseMapView';
-import { DatabaseDashboardView } from './DatabaseDashboardView';
 import { DatabaseRowDrawer } from './DatabaseRowDrawer';
 import { NewViewPopover, VIEW_LAYOUT_OPTIONS } from './NewViewPopover';
 import { ViewConfigDrawer } from './ViewConfigDrawer';
@@ -988,12 +985,12 @@ export function DatabaseContainer({
       <div
         className={cn(
           "flex-1 min-h-0 w-full",
-          activeView.type === 'table' || activeView.type === 'board' || activeView.type === 'calendar' || activeView.type === 'timeline' || activeView.type === 'map'
+          activeView.type === 'table' || activeView.type === 'board' || activeView.type === 'calendar' || activeView.type === 'timeline'
             ? "overflow-hidden flex flex-col"
             : "overflow-y-auto",
           hideHeader
-            ? cn("max-w-7xl mx-auto px-4 sm:px-8 pt-4", (activeView.type === 'table' || activeView.type === 'board' || activeView.type === 'calendar' || activeView.type === 'timeline' || activeView.type === 'map') ? "pb-4" : "pb-20")
-            : cn("px-4 sm:px-8 pt-2", (activeView.type === 'table' || activeView.type === 'board' || activeView.type === 'calendar' || activeView.type === 'timeline' || activeView.type === 'map') ? "pb-2" : "pb-20")
+            ? cn("max-w-7xl mx-auto px-4 sm:px-8 pt-4", (activeView.type === 'table' || activeView.type === 'board' || activeView.type === 'calendar' || activeView.type === 'timeline') ? "pb-4" : "pb-20")
+            : cn("px-4 sm:px-8 pt-2", (activeView.type === 'table' || activeView.type === 'board' || activeView.type === 'calendar' || activeView.type === 'timeline') ? "pb-2" : "pb-20")
         )}
       >
         {activeView.type === 'board' ? (
@@ -1054,36 +1051,6 @@ export function DatabaseContainer({
           />
         ) : activeView.type === 'timeline' ? (
           <DatabaseTimelineView
-            properties={dbData.properties}
-            items={allItems}
-            onUpdateItem={handleUpdateItem}
-            onDeleteItem={handleDeleteItem}
-            onAddItem={handleAddItem}
-            onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
-            readOnly={readOnly}
-          />
-        ) : activeView.type === 'feed' ? (
-          <DatabaseFeedView
-            properties={dbData.properties}
-            items={allItems}
-            onUpdateItem={handleUpdateItem}
-            onDeleteItem={handleDeleteItem}
-            onAddItem={handleAddItem}
-            onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
-            readOnly={readOnly}
-          />
-        ) : activeView.type === 'map' ? (
-          <DatabaseMapView
-            properties={dbData.properties}
-            items={allItems}
-            onUpdateItem={handleUpdateItem}
-            onDeleteItem={handleDeleteItem}
-            onAddItem={handleAddItem}
-            onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
-            readOnly={readOnly}
-          />
-        ) : activeView.type === 'dashboard' ? (
-          <DatabaseDashboardView
             properties={dbData.properties}
             items={allItems}
             onUpdateItem={handleUpdateItem}
