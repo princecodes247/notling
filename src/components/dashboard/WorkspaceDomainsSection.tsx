@@ -239,10 +239,16 @@ export function WorkspaceDomainsSection({ session, isWorkspaceOwner }: Workspace
   const isDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
   const portPart = typeof window !== 'undefined' && window.location.port ? `:${window.location.port}` : '';
   const currentSubdomain = session?.workspaceSlug || 'workspace';
+  
+  const baseDomain =
+    (typeof window !== 'undefined' && (import.meta.env.VITE_APP_DOMAIN as string)) ||
+    (typeof window !== 'undefined' && !isDev && window.location.hostname !== 'localhost'
+      ? window.location.hostname.replace(/^www\./, '')
+      : 'notling.app');
 
   const subdomainUrl = isDev
     ? `http://${currentSubdomain}.localhost${portPart}`
-    : `https://${currentSubdomain}.notling.app`;
+    : `https://${currentSubdomain}.${baseDomain}`;
 
   const handleCopySubdomain = () => {
     navigator.clipboard.writeText(subdomainUrl);
@@ -320,7 +326,7 @@ export function WorkspaceDomainsSection({ session, isWorkspaceOwner }: Workspace
                 className="flex-1 px-3 py-2 text-xs font-mono text-neutral-900 dark:text-zinc-100 bg-transparent focus:outline-none disabled:cursor-not-allowed"
               />
               <span className="px-2.5 py-2 text-[11px] text-neutral-400 dark:text-zinc-500 font-mono border-l border-neutral-200 dark:border-zinc-700/80 bg-neutral-100/60 dark:bg-zinc-800/50">
-                .notling.app
+                .{baseDomain}
               </span>
             </div>
 
