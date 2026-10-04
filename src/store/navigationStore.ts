@@ -20,6 +20,38 @@ interface NavigationState {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
+}
+
+function syncSidebarCookie(open: boolean) {
+  if (typeof document !== 'undefined') {
+    document.cookie = `notling_sidebar_open=${open ? '1' : '0'}; path=/; max-age=31536000; SameSite=Lax`;
+  }
+}
+
+function getInitialSidebarOpen(): boolean {
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)notling_sidebar_open=([01])/);
+    if (match) {
+      return match[1] === '1';
+    }
+    try {
+      const raw = localStorage.getItem('notling_navigation_state');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed?.state?.sidebarOpen === 'boolean') {
+          syncSidebarCookie(parsed.state.sidebarOpen);
+          return parsed.state.sidebarOpen;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+  return true;
 }
 
 export const useNavigationStore = create<NavigationState>()(
@@ -69,9 +101,21 @@ export const useNavigationStore = create<NavigationState>()(
       setActivePageId: (pageId) =>
         set((state) => (state.activePageId === pageId ? state : { activePageId: pageId })),
 
-      sidebarOpen: typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
-      setSidebarOpen: (open) => set({ sidebarOpen: open }),
-      toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      sidebarOpen: getInitialSidebarOpen(),
+      setSidebarOpen: (open) => {
+        syncSidebarCookie(open);
+        set({ sidebarOpen: open });
+      },
+      toggleSidebar: () =>
+        set((state) => {
+          const next = !state.sidebarOpen;
+          syncSidebarCookie(next);
+          return { sidebarOpen: next };
+        }),
+
+      mobileSidebarOpen: false,
+      setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
+      toggleMobileSidebar: () => set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
     }),
     {
       name: 'notling_navigation_state',
@@ -82,12 +126,12 @@ export const useNavigationStore = create<NavigationState>()(
         pageMeta: state.pageMeta,
       }),
       merge: (persistedState: any, currentState) => {
-        const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+        const nextSidebar = persistedState?.sidebarOpen ?? true;
+        syncSidebarCookie(nextSidebar);
         return {
           ...currentState,
           ...persistedState,
-          // Mobile devices must always load with the sidebar drawer closed
-          sidebarOpen: isMobile ? false : (persistedState?.sidebarOpen ?? true),
+          sidebarOpen: nextSidebar,
         };
       },
     }

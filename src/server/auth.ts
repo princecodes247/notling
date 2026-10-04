@@ -36,6 +36,13 @@ export const getSession = createServerFn({ method: 'GET' }).handler(async (): Pr
   return getSessionImpl();
 });
 
+// Get desktop sidebar preference from cookie for flicker-free SSR
+export const getSidebarPreference = createServerFn({ method: 'GET' }).handler(async (): Promise<boolean> => {
+  const { getCookie } = await import('@tanstack/react-start/server');
+  const val = getCookie('notling_sidebar_open');
+  return val !== '0';
+});
+
 // Email/Password Sign Up
 export const signUpWithEmail = createServerFn({ method: 'POST' })
   .validator((data: { email: string; password: string; name?: string }) => data)

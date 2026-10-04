@@ -7,12 +7,11 @@ import { CommandPalette } from '~/components/CommandPalette';
 import { CreateWorkspaceModal } from '~/components/CreateWorkspaceModal';
 import { ImportModal } from '~/components/ImportModal';
 import { MobileHeader } from '~/components/dashboard/MobileHeader';
-import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
+import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace, getSidebarPreference } from '~/server/auth';
 import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
 import { createDatabase } from '~/server/databases';
 import { updateClientPageMeta, updateClientPagePin, deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
-import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
 
@@ -27,15 +26,16 @@ export const Route = createFileRoute('/dashboard')({
         throw redirect({ to: '/onboarding' });
       }
 
-      const [userWorkspaces, treeNodes] = await Promise.all([
+      const [userWorkspaces, treeNodes, sidebarOpenPref] = await Promise.all([
         getUserWorkspaces().catch(() => []),
         session.workspaceId ? getPageTree({ data: session.workspaceId }).catch(() => []) : Promise.resolve([]),
+        getSidebarPreference().catch(() => true),
       ]);
 
-      return { session, userWorkspaces, treeNodes };
+      return { session, userWorkspaces, treeNodes, sidebarOpen: sidebarOpenPref };
     } catch (err: any) {
       if (err?.to) throw err;
-      return { session: null, userWorkspaces: [], treeNodes: [] };
+      return { session: null, userWorkspaces: [], treeNodes: [], sidebarOpen: true };
     }
   },
   component: DashboardLayout,
@@ -59,6 +59,7 @@ function DashboardLayout() {
   const queryClient = useQueryClient();
   const {
     sidebarOpen,
+    mobileSidebarOpen,
     openTabs,
     activeTabId,
     closeTab,
@@ -66,19 +67,12 @@ function DashboardLayout() {
   } = useUIStore();
 
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = React.useState(false);
-  const isMobile = useIsMobile();
 
-  React.useEffect(() => {
-    if (isMobile) {
-      useUIStore.getState().setSidebarOpen(false);
-    }
-  }, [isMobile]);
+  const isDesktopSidebarOpen = typeof window === 'undefined' ? (loaderData?.sidebarOpen ?? true) : sidebarOpen;
 
   const closeSidebarOnMobile = React.useCallback(() => {
-    if (isMobile) {
-      useUIStore.getState().setSidebarOpen(false);
-    }
-  }, [isMobile]);
+    useUIStore.getState().setMobileSidebarOpen(false);
+  }, []);
 
   // 1. Fetch Session
   const { data: session, isLoading: sessionLoading } = useQuery({
@@ -513,28 +507,28 @@ function DashboardLayout() {
       <div className="h-screen w-screen max-w-full bg-[#f3f2ee] dark:bg-[#121214] p-0 flex select-none relative overflow-hidden">
         {/* Mobile Drawer Dark Backdrop Overlay */}
         <AnimatePresence>
-          {sidebarOpen && (
+          {mobileSidebarOpen && (
             <motion.div
               key="mobile-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => useUIStore.getState().setSidebarOpen(false)}
+              onClick={closeSidebarOnMobile}
               className="fixed inset-0 bg-stone-950/45 backdrop-blur-xs z-40 md:hidden"
             />
           )}
         </AnimatePresence>
 
-        {/* Desktop & Mobile Responsive Sidebar Drawer */}
-        <AnimatePresence initial={false}>
-          {sidebarOpen && (
+        {/* Mobile Responsive Sidebar Drawer (Small screens only) */}
+        <AnimatePresence>
+          {mobileSidebarOpen && (
             <motion.div
-              key="sidebar-wrapper"
-              initial={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
-              animate={isMobile ? { x: 0, opacity: 1 } : { width: 240, opacity: 1 }}
-              exit={isMobile ? { x: '-100%', opacity: 0 } : { width: 0, opacity: 0 }}
+              key="mobile-sidebar-drawer"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
               transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
-              className="shrink-0 h-full overflow-hidden bg-[#f9f8f5] dark:bg-[#121214] md:relative fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] md:w-[240px] shadow-2xl md:shadow-none"
+              className="fixed inset-y-0 left-0 z-50 w-[85vw] max-w-[280px] h-full overflow-hidden bg-[#f9f8f5] dark:bg-[#121214] shadow-2xl md:hidden flex flex-col"
             >
               <Sidebar
                 databases={databases}
@@ -594,6 +588,74 @@ function DashboardLayout() {
                 onTogglePin={(id) => togglePinMutation.mutate(id)}
                 onDuplicatePage={(id) => duplicatePageMutation.mutate(id)}
                 onLogout={handleLogout}
+                onClose={closeSidebarOnMobile}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Desktop Docked Sidebar (Hidden on mobile via CSS) */}
+        <AnimatePresence initial={false}>
+          {isDesktopSidebarOpen && (
+            <motion.div
+              key="desktop-sidebar-wrapper"
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 240, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 34, mass: 0.7 }}
+              className="hidden md:flex shrink-0 h-full overflow-hidden bg-[#f9f8f5] dark:bg-[#121214] relative z-20 w-[240px]"
+            >
+              <Sidebar
+                databases={databases}
+                onSelectDatabase={(dbId) => {
+                  navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
+                }}
+                workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
+                session={session}
+                treeNodes={treeNodes}
+                userWorkspaces={userWorkspaces}
+                isCreatingPage={createPageMutation.isPending}
+                isLoading={treeLoading}
+                onSwitchWorkspace={(id) => {
+                  switchWorkspaceMutation.mutate(id);
+                }}
+                onOpenCreateWorkspaceModal={() => {
+                  setIsCreateWorkspaceOpen(true);
+                }}
+                trashCount={trashPages.length}
+                activeNav={activeNav}
+                onNavClick={(nav) => {
+                  if (nav === 'home') navigate({ to: '/dashboard' });
+                  else if (nav === 'folders') navigate({ to: '/dashboard/folders' });
+                  else if (nav === 'settings') navigate({ to: '/dashboard/settings' });
+                  else if (nav === 'profile') navigate({ to: '/dashboard/profile' });
+                  else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
+                }}
+                onCreatePage={(parentId) => {
+                  if (createPageMutation.isPending) return;
+                  createPageMutation.mutate(parentId);
+                }}
+                onCreateDatabase={() => {
+                  if (createDatabaseMutation.isPending) return;
+                  createDatabaseMutation.mutate();
+                }}
+                onSelectPage={(id, dbId) => {
+                  useUIStore.getState().setActivePageId(id);
+                  if (dbId) {
+                    navigate({ to: '/dashboard/db/$databaseId', params: { databaseId: dbId } });
+                  } else {
+                    navigate({ to: '/dashboard/p/$pageId', params: { pageId: id } });
+                  }
+                }}
+                onSoftDelete={(id) => softDeleteMutation.mutate(id)}
+                onUpdateMeta={(id, title, icon) => {
+                  updateClientPageMeta(queryClient, { pageId: id, title, icon });
+                  updateMetaMutation.mutate({ pageId: id, title, icon });
+                }}
+                onReorderPage={(input) => reorderPageMutation.mutate(input)}
+                onTogglePin={(id) => togglePinMutation.mutate(id)}
+                onDuplicatePage={(id) => duplicatePageMutation.mutate(id)}
+                onLogout={handleLogout}
               />
             </motion.div>
           )}
@@ -605,7 +667,7 @@ function DashboardLayout() {
           <MobileHeader
             workspaceName={session.workspaceName || `${session.name || 'Personal'}'s Workspace`}
             isCreatingPage={createPageMutation.isPending}
-            onOpenMenu={() => useUIStore.getState().setSidebarOpen(true)}
+            onOpenMenu={() => useUIStore.getState().setMobileSidebarOpen(true)}
             onOpenSearch={() => useUIStore.getState().setSearchOpen(true)}
             onCreatePage={() => !createPageMutation.isPending && createPageMutation.mutate(undefined)}
           />

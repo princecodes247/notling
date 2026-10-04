@@ -56,6 +56,7 @@ interface SidebarProps {
   onTogglePin?: (pageId: string) => void;
   onDuplicatePage?: (pageId: string) => void;
   onLogout?: () => void;
+  onClose?: () => void;
 }
 
 interface SidebarNavItemProps {
@@ -169,6 +170,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCreateDatabase,
   onSelectDatabase: _onSelectDatabase,
   onLogout: _onLogout,
+  onClose,
 }) => {
   const { toggleSearch, toggleSidebar, setImportOpen } = useUIStore();
   const [draggedPageId, setDraggedPageId] = useState<string | null>(null);
@@ -361,9 +363,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <button
           type="button"
-          onClick={toggleSidebar}
+          onClick={onClose || toggleSidebar}
           className="p-1 rounded-md text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-200/50 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer shrink-0 ml-1"
-          title="Collapse sidebar"
+          title={onClose ? "Close sidebar" : "Collapse sidebar"}
         >
           <PanelLeftClose className="w-4 h-4 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 transition-colors" />
         </button>
