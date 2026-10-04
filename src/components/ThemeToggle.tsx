@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Sun02Icon, Moon02Icon, ComputerIcon } from '@hugeicons/core-free-icons';
 import { useTheme, type ThemeMode } from '~/context/ThemeContext';
+import { AnimatedThemeToggler } from '~/components/ui/animated-theme-toggler';
+import { executeThemeTransition } from '~/lib/theme-transition';
 
 export type { ThemeMode } from '~/context/ThemeContext';
 
-
 interface ThemeToggleProps {
-  variant?: 'pill' | 'segmented' | 'icon' | 'cards';
+  variant?: 'pill' | 'segmented' | 'icon' | 'cards' | 'animated';
   className?: string;
 }
 
@@ -19,8 +21,21 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
     setMounted(true);
   }, []);
 
-  const handleSelectMode = (newMode: ThemeMode) => {
-    setMode(newMode);
+  const handleSelectMode = (newMode: ThemeMode, e?: React.MouseEvent) => {
+    if (newMode === mode) return;
+
+    let origin: { x: number; y: number } | undefined;
+    if (e) {
+      const rect = e.currentTarget.getBoundingClientRect();
+      origin = {
+        x: e.clientX || rect.left + rect.width / 2,
+        y: e.clientY || rect.top + rect.height / 2,
+      };
+    }
+
+    executeThemeTransition(() => {
+      setMode(newMode);
+    }, origin);
   };
 
   if (!mounted) return null;
@@ -41,27 +56,41 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
             <button
               key={opt.id}
               type="button"
-              onClick={() => handleSelectMode(opt.id)}
-              className={`relative flex flex-col p-4 rounded-xl text-left border transition-all cursor-pointer select-none ${
+              onClick={(e) => handleSelectMode(opt.id, e)}
+              className={`relative flex flex-col p-4 rounded-xl text-left border transition-all cursor-pointer select-none group active:scale-[0.98] ${
                 isSelected
                   ? 'bg-neutral-100/90 dark:bg-zinc-800 border-neutral-900 dark:border-white shadow-xs ring-1 ring-neutral-900/10 dark:ring-white/20'
-                  : 'bg-white dark:bg-zinc-900/50 border-neutral-200/90 dark:border-zinc-800 hover:border-neutral-300 dark:hover:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-900'
+                  : 'bg-white dark:bg-zinc-900/50 border-neutral-200/90 dark:border-zinc-800 hover:border-neutral-300 dark:hover:border-zinc-700 hover:bg-neutral-50 dark:hover:bg-zinc-900/80'
               }`}
             >
               <div className="flex items-center justify-between w-full mb-2">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  isSelected
-                    ? 'bg-neutral-900 text-white dark:bg-white dark:text-zinc-950'
-                    : 'bg-neutral-100 text-neutral-700 dark:bg-zinc-800 dark:text-zinc-300'
-                }`}>
+                <motion.div
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.94 }}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? 'bg-neutral-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs'
+                      : 'bg-neutral-100 text-neutral-700 dark:bg-zinc-800 dark:text-zinc-300 group-hover:bg-neutral-200 dark:group-hover:bg-zinc-700'
+                  }`}
+                >
                   <HugeiconsIcon icon={Icon} size={16} />
-                </div>
-                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                  isSelected
-                    ? 'border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white'
-                    : 'border-neutral-300 dark:border-zinc-700'
-                }`}>
-                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-950" />}
+                </motion.div>
+                <div
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                    isSelected
+                      ? 'border-neutral-900 dark:border-white bg-neutral-900 dark:bg-white'
+                      : 'border-neutral-300 dark:border-zinc-700 group-hover:border-neutral-400'
+                  }`}
+                >
+                  {isSelected && (
+                    <motion.div
+                      layoutId="theme-card-indicator"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                      className="w-1.5 h-1.5 rounded-full bg-white dark:bg-zinc-950"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -78,12 +107,16 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
     );
   }
 
+  if (variant === 'animated') {
+    return <AnimatedThemeToggler className={className} />;
+  }
+
   if (variant === 'icon') {
     const nextMode: ThemeMode = mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light';
     return (
       <button
         type="button"
-        onClick={() => handleSelectMode(nextMode)}
+        onClick={(e) => handleSelectMode(nextMode, e)}
         title={`Current: ${mode}. Click to switch theme.`}
         className={`w-8 h-8 rounded-lg flex items-center justify-center bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 transition-all cursor-pointer active:scale-95 ${className}`}
       >
@@ -104,7 +137,7 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
     >
       <button
         type="button"
-        onClick={() => handleSelectMode('light')}
+        onClick={(e) => handleSelectMode('light', e)}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold tracking-tight transition-all cursor-pointer ${
           mode === 'light'
             ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
@@ -117,7 +150,7 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
 
       <button
         type="button"
-        onClick={() => handleSelectMode('dark')}
+        onClick={(e) => handleSelectMode('dark', e)}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold tracking-tight transition-all cursor-pointer ${
           mode === 'dark'
             ? 'bg-stone-900 dark:bg-stone-900 text-white shadow-xs ring-1 ring-white/10'
@@ -130,7 +163,7 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
 
       <button
         type="button"
-        onClick={() => handleSelectMode('system')}
+        onClick={(e) => handleSelectMode('system', e)}
         className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold tracking-tight transition-all cursor-pointer ${
           mode === 'system'
             ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
@@ -143,3 +176,4 @@ export default function ThemeToggle({ variant = 'segmented', className = '' }: T
     </div>
   );
 }
+

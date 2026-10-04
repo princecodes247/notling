@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useTheme } from '~/context/ThemeContext';
 import { WorkspaceAvatar } from '~/components/WorkspaceAvatar';
 import { PublicBlockViewer } from '~/components/share/PublicBlockViewer';
+import { AnimatedThemeToggler } from '~/components/ui/animated-theme-toggler';
 import type { WorkspacePublicOverview } from '~/server/domains.db';
 import {
   Search,
@@ -10,8 +10,6 @@ import {
   Menu,
   X,
   ExternalLink,
-  Sun,
-  Moon,
   ShieldCheck,
   Globe,
   ArrowRight,
@@ -26,7 +24,6 @@ interface WorkspacePublicPortalProps {
 }
 
 export function WorkspacePublicPortal({ overview }: WorkspacePublicPortalProps) {
-  const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   const {
@@ -125,14 +122,7 @@ export function WorkspacePublicPortal({ overview }: WorkspacePublicPortalProps) 
 
         {/* Header Right Actions */}
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 dark:text-zinc-400 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
-            title="Toggle Theme"
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+          <AnimatedThemeToggler className="p-1.5 rounded-lg text-stone-500 hover:text-stone-900 dark:text-zinc-400 dark:hover:text-white hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors" />
 
           {!isMemberOrOwner ? (
             <button

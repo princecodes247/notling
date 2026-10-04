@@ -94,7 +94,6 @@
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -648,6 +647,23 @@ body.bn-checkbox-painting .bn-block-content[data-content-type="checkListItem"] {
 .bn-container[data-editable="false"] a {
   cursor: pointer !important;
 }
+
+/* View Transition Root Animation Override for Circular Clip Ripple */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
 
 
 
