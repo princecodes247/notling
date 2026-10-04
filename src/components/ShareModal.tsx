@@ -252,8 +252,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     }
   };
 
+  const activeVisibility = pendingVisibility || visibility;
+
   const handleRoleChange = async (shareId: string, newRole: 'editor' | 'viewer') => {
     if (pendingRoleChangeShareId) return;
+    const prevPeople = people;
+    // Optimistic update
+    setPeople((prev) =>
+      prev.map((p) => (p.id === shareId ? { ...p, role: newRole } : p))
+    );
     setPendingRoleChangeShareId(shareId);
     try {
       await updatePageShareRole({
@@ -262,13 +269,11 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           role: newRole,
         },
       });
-      setPeople((prev) =>
-        prev.map((p) => (p.id === shareId ? { ...p, role: newRole } : p))
-      );
       queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
       queryClient.invalidateQueries({ queryKey: ['page', page.id] });
     } catch (err) {
       console.error('Failed to update share role:', err);
+      setPeople(prevPeople);
     } finally {
       setPendingRoleChangeShareId(null);
     }
@@ -276,14 +281,17 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   const handleRemovePerson = async (shareId: string) => {
     if (pendingRemoveShareId) return;
+    const prevPeople = people;
+    // Optimistic update
+    setPeople((prev) => prev.filter((p) => p.id !== shareId));
     setPendingRemoveShareId(shareId);
     try {
       await removePageShare({ data: shareId });
-      setPeople((prev) => prev.filter((p) => p.id !== shareId));
       queryClient.invalidateQueries({ queryKey: ['publicPage', page.id] });
       queryClient.invalidateQueries({ queryKey: ['page', page.id] });
     } catch (err) {
       console.error('Failed to remove share:', err);
+      setPeople(prevPeople);
     } finally {
       setPendingRemoveShareId(null);
     }
@@ -302,7 +310,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   const handleCopyLink = () => {
-    const isPublic = visibility === 'public' || visibility === 'public_edit';
+    const isPublic = activeVisibility === 'public' || activeVisibility === 'public_edit';
     const isDb = Boolean((page as any).databaseId || (page as any).isDatabase);
     const dbId = (page as any).databaseId || page.id;
     const path = isPublic
@@ -601,14 +609,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               disabled={!!pendingVisibility}
               onClick={() => handleSelectVisibility('private')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'private'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${activeVisibility === 'private'
                 ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 ring-1 ring-amber-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className={`p-1 rounded ${visibility === 'private' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                  <div className={`p-1 rounded ${activeVisibility === 'private' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                     <HugeiconsIcon icon={LockIcon} size={12} />
                   </div>
                   <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Private Access</span>
@@ -625,14 +633,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               disabled={!!pendingVisibility}
               onClick={() => handleSelectVisibility('workspace')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'workspace'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${activeVisibility === 'workspace'
                 ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className={`p-1 rounded ${visibility === 'workspace' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                  <div className={`p-1 rounded ${activeVisibility === 'workspace' ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                     <HugeiconsIcon icon={Building01Icon} size={12} />
                   </div>
                   <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Workspace Members</span>
@@ -649,14 +657,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               disabled={!!pendingVisibility}
               onClick={() => handleSelectVisibility('public')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${activeVisibility === 'public'
                 ? 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700 ring-1 ring-blue-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className={`p-1 rounded ${visibility === 'public' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                  <div className={`p-1 rounded ${activeVisibility === 'public' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                     <HugeiconsIcon icon={Globe02Icon} size={12} />
                   </div>
                   <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link</span>
@@ -673,14 +681,14 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               type="button"
               disabled={!!pendingVisibility}
               onClick={() => handleSelectVisibility('public_edit')}
-              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${visibility === 'public_edit'
+              className={`p-3 rounded-lg border text-left flex flex-col gap-1.5 transition-all cursor-pointer ${activeVisibility === 'public_edit'
                 ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-300 dark:border-indigo-700 ring-1 ring-indigo-300/40 shadow-xs'
                 : 'bg-white dark:bg-[#222226] border-stone-200/80 dark:border-stone-800 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/50 dark:hover:bg-stone-800/40'
                 }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <div className={`p-1 rounded ${visibility === 'public_edit' ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
+                  <div className={`p-1 rounded ${activeVisibility === 'public_edit' ? 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}`}>
                     <HugeiconsIcon icon={Globe02Icon} size={12} />
                   </div>
                   <span className="text-xs font-semibold text-stone-900 dark:text-stone-100">Anyone with link can edit</span>

@@ -3,7 +3,7 @@ import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDatabase, deleteDatabase } from '~/server/databases';
 import { togglePinPage, duplicatePage, softDeletePage } from '~/server/pages';
-import { deleteClientDatabase } from '~/lib/pageMetaSync';
+import { deleteClientDatabase, updateClientPagePin } from '~/lib/pageMetaSync';
 import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as dashboardRoute } from './dashboard';
 import { Database as DatabaseIcon, ArrowLeft, Trash2 } from 'lucide-react';
@@ -38,9 +38,29 @@ function DashboardDatabaseRoute() {
       if (!targetPageId) return;
       return await togglePinPage({ data: { pageId: targetPageId } });
     },
+    onMutate: async () => {
+      const prevPinned = Boolean((dbData?.database as any)?.isPinned);
+      const nextPinned = !prevPinned;
+      if (targetPageId) {
+        updateClientPagePin(queryClient, targetPageId, nextPinned);
+      }
+      if (databaseId && databaseId !== targetPageId) {
+        updateClientPagePin(queryClient, databaseId, nextPinned);
+      }
+      return { prevPinned };
+    },
+    onError: (_err, _vars, context) => {
+      if (context) {
+        if (targetPageId) updateClientPagePin(queryClient, targetPageId, context.prevPinned);
+        if (databaseId && databaseId !== targetPageId) {
+          updateClientPagePin(queryClient, databaseId, context.prevPinned);
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
       queryClient.invalidateQueries({ queryKey: ['database', databaseId] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     },
   });
 
@@ -169,7 +189,9 @@ function DashboardDatabaseRoute() {
     <DatabaseContainer
       key={dbData.database.id}
       initialData={dbData}
+      isPinned={Boolean((dbData?.database as any)?.isPinned)}
       onTogglePin={() => togglePinMutation.mutate()}
+      isTogglePinPending={togglePinMutation.isPending}
       onDuplicate={() => duplicateMutation.mutate()}
       onDelete={() => deleteMutation.mutate()}
     />

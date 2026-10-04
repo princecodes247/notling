@@ -25,6 +25,7 @@ export interface FlatItem {
   databaseId?: string | null;
   parentId?: string | null;
   parentTitle?: string;
+  isPinned?: boolean;
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
   childrenCount?: number;
@@ -146,6 +147,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
           databaseId: node.databaseId,
           parentId: node.parentId,
           parentTitle,
+          isPinned: Boolean(node.isPinned),
           createdAt: node.createdAt,
           updatedAt: node.updatedAt,
           childrenCount: node.children?.length || 0,
@@ -169,6 +171,7 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
           icon: db.icon || '',
           type: 'database',
           databaseId: db.id,
+          isPinned: Boolean((db as any).isPinned),
           createdAt: db.createdAt,
           updatedAt: db.updatedAt,
         });
@@ -454,10 +457,12 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                               e.stopPropagation();
                               onTogglePin(item.id);
                             }}
-                            className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 transition-colors cursor-pointer"
-                            title="Favorite Item"
+                            className={`p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer active-press ${
+                              item.isPinned ? 'text-amber-500 hover:text-amber-600' : 'text-stone-400 hover:text-amber-500'
+                            }`}
+                            title={item.isPinned ? "Remove from Favorites" : "Favorite Item"}
                           >
-                            <Star className="w-3.5 h-3.5" />
+                            <Star className={`w-3.5 h-3.5 transition-transform ${item.isPinned ? 'fill-amber-400 text-amber-500' : ''}`} />
                           </button>
                         )}
                         {onDuplicate && (
@@ -544,10 +549,12 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                             e.stopPropagation();
                             onTogglePin(item.id);
                           }}
-                          className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-amber-500 cursor-pointer"
-                          title="Favorite Item"
+                          className={`p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 cursor-pointer active-press transition-colors ${
+                            item.isPinned ? 'text-amber-500 hover:text-amber-600' : 'text-stone-400 hover:text-amber-500'
+                          }`}
+                          title={item.isPinned ? "Remove from Favorites" : "Favorite Item"}
                         >
-                          <Star className="w-3.5 h-3.5" />
+                          <Star className={`w-3.5 h-3.5 transition-transform ${item.isPinned ? 'fill-amber-400 text-amber-500' : ''}`} />
                         </button>
                       )}
                       {onDuplicate && (

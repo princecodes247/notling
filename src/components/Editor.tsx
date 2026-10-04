@@ -22,7 +22,7 @@ import {
   duplicatePage,
   softDeletePage,
 } from '~/server/pages';
-import { updateClientPageMeta, deleteClientPage } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, deleteClientPage, updateClientPagePin, updateClientPageVisibility } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
@@ -178,8 +178,19 @@ export const Editor: React.FC<EditorProps> = ({
   const updateVisibilityMutation = useMutation({
     mutationFn: async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
       if (isReadOnly) return null;
-      setVisibility(newVisibility);
       return await updatePageVisibility({ data: { pageId: page.id, visibility: newVisibility } });
+    },
+    onMutate: async (newVisibility) => {
+      const prevVis = visibility;
+      setVisibility(newVisibility);
+      updateClientPageVisibility(queryClient, page.id, newVisibility);
+      return { prevVis };
+    },
+    onError: (_err, _newVis, context) => {
+      if (context) {
+        setVisibility(context.prevVis);
+        updateClientPageVisibility(queryClient, page.id, context.prevVis);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
@@ -189,9 +200,20 @@ export const Editor: React.FC<EditorProps> = ({
 
   const togglePinMutation = useMutation({
     mutationFn: async () => {
-      const nextPinned = !isPinned;
-      setIsPinned(nextPinned);
       return await togglePinPage({ data: { pageId: page.id } });
+    },
+    onMutate: async () => {
+      const prevPinned = isPinned;
+      const nextPinned = !prevPinned;
+      setIsPinned(nextPinned);
+      updateClientPagePin(queryClient, page.id, nextPinned);
+      return { prevPinned };
+    },
+    onError: (_err, _vars, context) => {
+      if (context) {
+        setIsPinned(context.prevPinned);
+        updateClientPagePin(queryClient, page.id, context.prevPinned);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
@@ -543,7 +565,7 @@ export const Editor: React.FC<EditorProps> = ({
         onClose={() => setShareModalOpen(false)}
         page={page}
         visibility={visibility}
-        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutateAsync(newVis)}
       />
 
       {/* Export Modal */}

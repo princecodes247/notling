@@ -1398,7 +1398,8 @@ export async function savePageMeta(input: { pageId: string; title?: string; icon
 
 export async function togglePinPageInDb(input: { pageId: string; isPinned?: boolean }) {
   try {
-    const pageList = await db.select({ isPinned: pages.isPinned }).from(pages).where(eq(pages.id, input.pageId)).limit(1);
+    const realPageId = await resolveEffectivePageId(input.pageId);
+    const pageList = await db.select({ isPinned: pages.isPinned }).from(pages).where(eq(pages.id, realPageId)).limit(1);
     if (pageList.length === 0) return null;
 
     const newPinnedState = input.isPinned !== undefined ? input.isPinned : !pageList[0].isPinned;
@@ -1406,8 +1407,10 @@ export async function togglePinPageInDb(input: { pageId: string; isPinned?: bool
     const [updated] = await db
       .update(pages)
       .set({ isPinned: newPinnedState, updatedAt: new Date() })
-      .where(eq(pages.id, input.pageId))
+      .where(eq(pages.id, realPageId))
       .returning();
+
+    invalidatePageCaches(null, realPageId).catch(() => { });
 
     return updated;
   } catch (err) {
@@ -1418,9 +1421,10 @@ export async function togglePinPageInDb(input: { pageId: string; isPinned?: bool
 
 export async function savePageVisibility(input: { pageId: string; visibility: 'private' | 'workspace' | 'public' | 'public_edit' }) {
   try {
-    const canEdit = await checkCanUserEditPage(input.pageId);
+    const realPageId = await resolveEffectivePageId(input.pageId);
+    const canEdit = await checkCanUserEditPage(realPageId);
     if (!canEdit) {
-      console.warn(`[Permission Denied] Blocked savePageVisibility for page ${input.pageId}.`);
+      console.warn(`[Permission Denied] Blocked savePageVisibility for page ${realPageId}.`);
       return null;
     }
 
@@ -1430,10 +1434,10 @@ export async function savePageVisibility(input: { pageId: string; visibility: 'p
         visibility: input.visibility,
         updatedAt: new Date(),
       })
-      .where(eq(pages.id, input.pageId))
+      .where(eq(pages.id, realPageId))
       .returning();
 
-    invalidatePageCaches(null, input.pageId).catch(() => { });
+    invalidatePageCaches(null, realPageId).catch(() => { });
 
     return updated;
   } catch (err) {

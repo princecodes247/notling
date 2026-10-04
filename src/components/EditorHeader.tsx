@@ -394,6 +394,27 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
             </>
           )}
 
+          {/* Favorite Quick Button */}
+          {togglePinMutation && (
+            <button
+              type="button"
+              onClick={() => togglePinMutation?.mutate?.()}
+              title={isPinned ? 'Remove from Favorites' : 'Add to Favorites'}
+              className={clsx(
+                'p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer active-press',
+                isPinned ? 'text-amber-500 hover:text-amber-600' : 'text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200'
+              )}
+            >
+              <Star
+                className={clsx(
+                  'w-3.5 h-3.5 transition-transform',
+                  isPinned && 'fill-amber-400 text-amber-500',
+                  togglePinMutation?.isPending && 'animate-spin'
+                )}
+              />
+            </button>
+          )}
+
           {/* Share or Request Edit Access Button */}
           {isReadOnly ? (
             <button
@@ -479,8 +500,22 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                       }}
                       className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                     >
-                      <Star className={clsx('w-3.5 h-3.5', isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400')} />
-                      <span>{isPinned ? 'Remove Favorite' : 'Add to Favorites'}</span>
+                      <Star
+                        className={clsx(
+                          'w-3.5 h-3.5',
+                          isPinned ? 'fill-amber-400 text-amber-500' : 'text-stone-500 dark:text-zinc-400',
+                          togglePinMutation?.isPending && 'animate-spin'
+                        )}
+                      />
+                      <span>
+                        {togglePinMutation?.isPending
+                          ? isPinned
+                            ? 'Removing...'
+                            : 'Adding...'
+                          : isPinned
+                            ? 'Remove Favorite'
+                            : 'Add to Favorites'}
+                      </span>
                     </button>
                   )}
 

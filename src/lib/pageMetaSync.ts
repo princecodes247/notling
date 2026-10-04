@@ -505,3 +505,183 @@ export function emptyClientTrash(queryClient: QueryClient | undefined) {
   }
 }
 
+/**
+ * Optimistically toggles or updates the pinned / favorite status of a page or database:
+ * 1. TanStack Query cache `['pageTree']` (instantly moves item to/from Favorites section in sidebar).
+ * 2. TanStack Query cache `['page', pageId]`.
+ * 3. TanStack Query cache `['database']` and `['databasesList']`.
+ * 4. TanStack Query cache `['childPages']`.
+ */
+export function updateClientPagePin(
+  queryClient: QueryClient | undefined,
+  pageId: string,
+  isPinned: boolean
+) {
+  if (!queryClient || !pageId) return;
+
+  // 1. Optimistically update ['pageTree'] recursively
+  const updateTreeNodes = (nodes: PageTreeNode[]): PageTreeNode[] => {
+    let hasChanged = false;
+    const updated = nodes.map((node) => {
+      let newNode = node;
+      if (node.id === pageId || (node.databaseId && node.databaseId === pageId)) {
+        hasChanged = true;
+        newNode = { ...node, isPinned };
+      }
+      if (node.children && node.children.length > 0) {
+        const updatedChildren = updateTreeNodes(node.children);
+        if (updatedChildren !== node.children) {
+          hasChanged = true;
+          newNode = { ...newNode, children: updatedChildren };
+        }
+      }
+      return newNode;
+    });
+    return hasChanged ? updated : nodes;
+  };
+
+  queryClient.setQueriesData<PageTreeNode[]>(
+    { queryKey: ['pageTree'] },
+    (old) => (old && Array.isArray(old) ? updateTreeNodes(old) : old)
+  );
+
+  // 2. Optimistically update ['page', pageId]
+  queryClient.setQueryData<Page>(
+    ['page', pageId],
+    (old) => (old ? { ...old, isPinned } : old)
+  );
+
+  // 3. Optimistically update ['database']
+  queryClient.setQueriesData<any>(
+    { queryKey: ['database'] },
+    (old: any) => {
+      if (!old || !old.database) return old;
+      if (old.database.id === pageId || old.database.pageId === pageId) {
+        return {
+          ...old,
+          database: {
+            ...old.database,
+            isPinned,
+          },
+        };
+      }
+      return old;
+    }
+  );
+
+  // 4. Optimistically update ['databasesList']
+  queryClient.setQueriesData<any[]>(
+    { queryKey: ['databasesList'] },
+    (old) => {
+      if (!old || !Array.isArray(old)) return old;
+      return old.map((dbItem) => {
+        if (dbItem.id === pageId || dbItem.pageId === pageId) {
+          return { ...dbItem, isPinned };
+        }
+        return dbItem;
+      });
+    }
+  );
+
+  // 5. Optimistically update ['childPages']
+  queryClient.setQueriesData<Page[]>(
+    { queryKey: ['childPages'] },
+    (old) => {
+      if (!old || !Array.isArray(old)) return old;
+      return old.map((item) => (item.id === pageId ? { ...item, isPinned } : item));
+    }
+  );
+}
+
+/**
+ * Optimistically updates the visibility (access level) of a page or database:
+ * 1. TanStack Query cache `['pageTree']` (immediately updates padlock/globe icon in sidebar and home).
+ * 2. TanStack Query cache `['page', pageId]`.
+ * 3. TanStack Query cache `['database']` and `['databasesList']`.
+ * 4. TanStack Query cache `['publicPage', pageId]`.
+ */
+export function updateClientPageVisibility(
+  queryClient: QueryClient | undefined,
+  pageId: string,
+  visibility: 'private' | 'workspace' | 'public' | 'public_edit'
+) {
+  if (!queryClient || !pageId) return;
+
+  // 1. Optimistically update ['pageTree'] recursively
+  const updateTreeNodes = (nodes: PageTreeNode[]): PageTreeNode[] => {
+    let hasChanged = false;
+    const updated = nodes.map((node) => {
+      let newNode = node;
+      if (node.id === pageId || (node.databaseId && node.databaseId === pageId)) {
+        hasChanged = true;
+        newNode = { ...node, visibility };
+      }
+      if (node.children && node.children.length > 0) {
+        const updatedChildren = updateTreeNodes(node.children);
+        if (updatedChildren !== node.children) {
+          hasChanged = true;
+          newNode = { ...newNode, children: updatedChildren };
+        }
+      }
+      return newNode;
+    });
+    return hasChanged ? updated : nodes;
+  };
+
+  queryClient.setQueriesData<PageTreeNode[]>(
+    { queryKey: ['pageTree'] },
+    (old) => (old && Array.isArray(old) ? updateTreeNodes(old) : old)
+  );
+
+  // 2. Optimistically update ['page', pageId]
+  queryClient.setQueryData<Page>(
+    ['page', pageId],
+    (old) => (old ? { ...old, visibility } : old)
+  );
+
+  // 3. Optimistically update ['database']
+  queryClient.setQueriesData<any>(
+    { queryKey: ['database'] },
+    (old: any) => {
+      if (!old || !old.database) return old;
+      if (old.database.id === pageId || old.database.pageId === pageId) {
+        return {
+          ...old,
+          database: {
+            ...old.database,
+            visibility,
+          },
+        };
+      }
+      return old;
+    }
+  );
+
+  // 4. Optimistically update ['databasesList']
+  queryClient.setQueriesData<any[]>(
+    { queryKey: ['databasesList'] },
+    (old) => {
+      if (!old || !Array.isArray(old)) return old;
+      return old.map((dbItem) => {
+        if (dbItem.id === pageId || dbItem.pageId === pageId) {
+          return { ...dbItem, visibility };
+        }
+        return dbItem;
+      });
+    }
+  );
+
+  // 5. Optimistically update ['publicPage', pageId]
+  queryClient.setQueryData(
+    ['publicPage', pageId],
+    (old: any) => {
+      if (!old || !old.page) return old;
+      return {
+        ...old,
+        page: { ...old.page, visibility },
+      };
+    }
+  );
+}
+
+

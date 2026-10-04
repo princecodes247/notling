@@ -34,7 +34,7 @@ import { getPage, updatePageVisibility, pingPagePresence, getActivePresence, rem
 import { getSession } from '~/server/auth';
 import { useDatabaseCollaboration, getClientId, type DatabaseCollabAction } from '~/lib/collaboration';
 import { useUIStore } from '~/store/uiStore';
-import { updateClientPageMeta } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, updateClientPageVisibility } from '~/lib/pageMetaSync';
 import { EditorHeader } from '../EditorHeader';
 import { ShareModal } from '../ShareModal';
 import { ExportModal } from '../ExportModal';
@@ -56,6 +56,7 @@ interface DatabaseContainerProps {
   readOnly?: boolean;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  isTogglePinPending?: boolean;
   onDuplicate?: () => void;
   onDelete?: () => void;
   hideHeader?: boolean;
@@ -66,6 +67,7 @@ export function DatabaseContainer({
   readOnly = false,
   isPinned = false,
   onTogglePin,
+  isTogglePinPending = false,
   onDuplicate,
   onDelete,
   hideHeader = false,
@@ -250,24 +252,58 @@ export function DatabaseContainer({
     enabled: !!targetPageId && isShareModalOpen,
   });
 
+  const [visibility, setVisibility] = useState<'private' | 'workspace' | 'public' | 'public_edit'>(
+    (initialData.database as any).visibility || 'workspace'
+  );
+
+  useEffect(() => {
+    if ((pageData as any)?.visibility) {
+      setVisibility((pageData as any).visibility);
+    } else if ((initialData.database as any)?.visibility) {
+      setVisibility((initialData.database as any).visibility);
+    }
+  }, [pageData, initialData.database]);
+
   const updateVisibilityMutation = useMutation({
     mutationFn: async (newVisibility: 'private' | 'workspace' | 'public' | 'public_edit') => {
       if (!targetPageId) return null;
       return await updatePageVisibility({ data: { pageId: targetPageId, visibility: newVisibility } });
     },
+    onMutate: async (newVisibility) => {
+      const prevVis = visibility;
+      setVisibility(newVisibility);
+      if (targetPageId) {
+        updateClientPageVisibility(queryClient, targetPageId, newVisibility);
+      }
+      if (initialData.database.id && initialData.database.id !== targetPageId) {
+        updateClientPageVisibility(queryClient, initialData.database.id, newVisibility);
+      }
+      return { prevVis };
+    },
+    onError: (_err, _newVis, context) => {
+      if (context) {
+        setVisibility(context.prevVis);
+        if (targetPageId) updateClientPageVisibility(queryClient, targetPageId, context.prevVis);
+        if (initialData.database.id && initialData.database.id !== targetPageId) {
+          updateClientPageVisibility(queryClient, initialData.database.id, context.prevVis);
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
       queryClient.invalidateQueries({ queryKey: ['page', targetPageId] });
       queryClient.invalidateQueries({ queryKey: ['database', initialData.database.id] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     },
   });
 
-  const sharePageObject: Page = (pageData as any) || {
+  const sharePageObject: Page = {
+    ...((pageData as any) || {}),
     id: targetPageId,
     workspaceId: initialData.database.workspaceId,
     title: dbTitle || initialData.database.title || 'Untitled Database',
     icon: dbData.database.icon || '',
-    visibility: (initialData.database as any).visibility || 'workspace',
+    visibility,
     order: 0,
     createdAt: initialData.database.createdAt,
     updatedAt: initialData.database.updatedAt,
@@ -1112,7 +1148,7 @@ export function DatabaseContainer({
           getClientId={getClientId}
           isReadOnly={readOnly}
           isPinned={isPinned}
-          togglePinMutation={onTogglePin ? { mutate: onTogglePin } : undefined}
+          togglePinMutation={onTogglePin ? { mutate: onTogglePin, isPending: isTogglePinPending } : undefined}
           duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: false } : undefined}
           onDelete={onDelete}
           onTitleChange={(newTitle) => {
@@ -1494,8 +1530,8 @@ export function DatabaseContainer({
         isOpen={isShareModalOpen}
         onClose={() => setShareModalOpen(false)}
         page={sharePageObject}
-        visibility={(sharePageObject as any).visibility || 'workspace'}
-        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutate(newVis)}
+        visibility={visibility}
+        onUpdateVisibility={(newVis) => updateVisibilityMutation.mutateAsync(newVis)}
       />
 
       {/* Import Modal */}

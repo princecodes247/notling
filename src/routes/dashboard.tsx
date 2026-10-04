@@ -10,7 +10,7 @@ import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace } from '~/server/auth';
 import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
 import { createDatabase } from '~/server/databases';
-import { updateClientPageMeta, deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, updateClientPagePin, deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -427,9 +427,37 @@ function DashboardLayout() {
     mutationFn: async (pageId: string) => {
       return await togglePinPage({ data: { pageId } });
     },
+    onMutate: async (pageId: string) => {
+      let currentPinned = false;
+      const pageTree = queryClient.getQueryData<PageTreeNode[]>(['pageTree']);
+      const findNode = (nodes: PageTreeNode[]): PageTreeNode | null => {
+        for (const n of nodes) {
+          if (n.id === pageId || n.databaseId === pageId) return n;
+          if (n.children && n.children.length > 0) {
+            const found = findNode(n.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+      if (pageTree && Array.isArray(pageTree)) {
+        const node = findNode(pageTree);
+        if (node) currentPinned = !!node.isPinned;
+      }
+      const nextPinned = !currentPinned;
+      updateClientPagePin(queryClient, pageId, nextPinned);
+      return { previousPinned: currentPinned, pageId };
+    },
+    onError: (_err, pageId, context) => {
+      if (context) {
+        updateClientPagePin(queryClient, pageId, context.previousPinned);
+      }
+    },
     onSuccess: () => {
       refetchTree();
       queryClient.invalidateQueries({ queryKey: ['page'] });
+      queryClient.invalidateQueries({ queryKey: ['database'] });
+      queryClient.invalidateQueries({ queryKey: ['databasesList'] });
     },
   });
 

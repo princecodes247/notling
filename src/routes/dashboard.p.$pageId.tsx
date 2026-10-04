@@ -105,7 +105,13 @@ function DocumentPageRoute() {
   }
 
   if (dbData) {
-    return <DatabaseContainer key={dbData.database.id} initialData={dbData} />;
+    return (
+      <DatabaseContainer
+        key={dbData.database.id}
+        initialData={dbData}
+        isPinned={Boolean((page as any)?.isPinned || (dbData.database as any)?.isPinned)}
+      />
+    );
   }
 
   if (!page) {
