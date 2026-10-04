@@ -77,39 +77,30 @@ export async function fetchRelatedItemsMap(
   }
 
   const lookup: Record<string, { id: string; databaseId: string; title: string; pageId?: string | null; icon?: string | null }> = {};
-  for (const chunk of chunks) {
-    const rows = await db
-      .select({
-        id: databaseItems.id,
-        databaseId: databaseItems.databaseId,
-        title: databaseItems.title,
-        properties: databaseItems.properties,
-        pageId: databaseItems.pageId,
-        pageTitle: pages.title,
-        pageIcon: pages.icon,
-      })
-      .from(databaseItems)
-      .leftJoin(pages, eq(databaseItems.pageId, pages.id))
-      .where(inArray(databaseItems.id, chunk));
+  const chunkResults = await Promise.all(
+    chunks.map((chunk) =>
+      db
+        .select({
+          id: databaseItems.id,
+          databaseId: databaseItems.databaseId,
+          title: databaseItems.title,
+          pageId: databaseItems.pageId,
+          pageTitle: pages.title,
+          pageIcon: pages.icon,
+        })
+        .from(databaseItems)
+        .leftJoin(pages, eq(databaseItems.pageId, pages.id))
+        .where(inArray(databaseItems.id, chunk))
+    )
+  );
 
+  for (const rows of chunkResults) {
     for (const r of rows) {
-      let bestTitle = r.title?.trim();
-      if (!bestTitle || bestTitle === 'Untitled') {
-        if (r.pageTitle?.trim() && r.pageTitle.trim() !== 'Untitled') {
-          bestTitle = r.pageTitle.trim();
-        } else if (r.properties && typeof r.properties === 'object') {
-          for (const val of Object.values(r.properties)) {
-            if (typeof val === 'string' && val.trim() && val.trim() !== 'Untitled') {
-              bestTitle = val.trim();
-              break;
-            }
-          }
-        }
-      }
+      const bestTitle = r.title?.trim() || r.pageTitle?.trim() || 'Untitled';
       lookup[r.id] = {
         id: r.id,
         databaseId: r.databaseId,
-        title: bestTitle || 'Untitled',
+        title: bestTitle,
         pageId: r.pageId,
         icon: r.pageIcon || null,
       };
@@ -125,8 +116,14 @@ export async function invalidateDatabaseCaches(
   pageId?: string | null
 ) {
   const keys: string[] = [];
-  if (databaseId) keys.push(redisKeys.database(databaseId));
-  if (pageId) keys.push(redisKeys.database(pageId));
+  if (databaseId) {
+    keys.push(redisKeys.database(databaseId));
+    keys.push(`${redisKeys.database(databaseId)}:candidates`);
+  }
+  if (pageId) {
+    keys.push(redisKeys.database(pageId));
+    keys.push(`${redisKeys.database(pageId)}:candidates`);
+  }
   if (workspaceId) {
     keys.push(redisKeys.workspaceDatabases(workspaceId));
     deleteCachePattern(`${redisKeys.workspaceTree(workspaceId)}*`).catch(() => {});
@@ -1621,50 +1618,62 @@ export async function importDatabaseData(input: {
 }
 
 export async function fetchRelationCandidates(targetDatabaseId: string, searchQuery?: string, limit: number = 50) {
-  await assertDatabaseViewAccess(targetDatabaseId);
+  const isDefaultQuery = !searchQuery || !searchQuery.trim();
+  const cacheKey = `${redisKeys.database(targetDatabaseId)}:candidates`;
 
-  const [database] = await db.select().from(databases).where(eq(databases.id, targetDatabaseId)).limit(1);
-  if (!database) {
-    throw new Error('Target database not found');
+  if (isDefaultQuery) {
+    const cached = await getCache<{ database: any; items: any[] }>(cacheKey);
+    if (cached) {
+      return cached;
+    }
   }
 
   const conditions = [eq(databaseItems.databaseId, targetDatabaseId)];
-  if (searchQuery && searchQuery.trim()) {
+  if (!isDefaultQuery) {
+    const cleanQ = searchQuery!.trim();
     conditions.push(or(
-      ilike(databaseItems.title, `%${searchQuery.trim()}%`),
-      ilike(pages.title, `%${searchQuery.trim()}%`)
+      ilike(databaseItems.title, `%${cleanQ}%`),
+      ilike(pages.title, `%${cleanQ}%`)
     )!);
   }
 
-  const items = await db
-    .select({
-      id: databaseItems.id,
-      title: databaseItems.title,
-      properties: databaseItems.properties,
-      pageId: databaseItems.pageId,
-      pageTitle: pages.title,
-      pageIcon: pages.icon,
-      databaseId: databaseItems.databaseId,
-      updatedAt: databaseItems.updatedAt,
-    })
-    .from(databaseItems)
-    .leftJoin(pages, eq(databaseItems.pageId, pages.id))
-    .where(and(...conditions))
-    .orderBy(desc(databaseItems.updatedAt))
-    .limit(limit);
+  const [_, [database], items] = await Promise.all([
+    assertDatabaseViewAccess(targetDatabaseId),
+    db
+      .select({
+        id: databases.id,
+        title: databases.title,
+        icon: databases.icon,
+      })
+      .from(databases)
+      .where(eq(databases.id, targetDatabaseId))
+      .limit(1),
+    db
+      .select({
+        id: databaseItems.id,
+        title: databaseItems.title,
+        pageId: databaseItems.pageId,
+        pageTitle: pages.title,
+        pageIcon: pages.icon,
+        databaseId: databaseItems.databaseId,
+        updatedAt: databaseItems.updatedAt,
+      })
+      .from(databaseItems)
+      .leftJoin(pages, eq(databaseItems.pageId, pages.id))
+      .where(and(...conditions))
+      .orderBy(desc(databaseItems.updatedAt))
+      .limit(limit),
+  ]);
+
+  if (!database) {
+    throw new Error('Target database not found');
+  }
 
   const mappedItems = items.map((r) => {
     let bestTitle = r.title?.trim();
     if (!bestTitle || bestTitle === 'Untitled') {
       if (r.pageTitle?.trim() && r.pageTitle.trim() !== 'Untitled') {
         bestTitle = r.pageTitle.trim();
-      } else if (r.properties && typeof r.properties === 'object') {
-        for (const val of Object.values(r.properties)) {
-          if (typeof val === 'string' && val.trim() && val.trim() !== 'Untitled') {
-            bestTitle = val.trim();
-            break;
-          }
-        }
       }
     }
     return {
@@ -1677,7 +1686,7 @@ export async function fetchRelationCandidates(targetDatabaseId: string, searchQu
     };
   });
 
-  return {
+  const result = {
     database: {
       id: database.id,
       title: database.title,
@@ -1685,6 +1694,12 @@ export async function fetchRelationCandidates(targetDatabaseId: string, searchQu
     },
     items: mappedItems,
   };
+
+  if (isDefaultQuery) {
+    setCache(cacheKey, result, 300).catch(() => {});
+  }
+
+  return result;
 }
 
 export async function createRelatedDatabaseItem(targetDatabaseId: string, title?: string) {

@@ -38,11 +38,13 @@ export function RelationPickerPopover({
 }: RelationPickerPopoverProps) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSearchQuery('');
+      setDebouncedQuery('');
       const timer = setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -52,38 +54,47 @@ export function RelationPickerPopover({
     }
   }, [isOpen]);
 
-  // Fetch candidates from target database
+  // Debounce search keystrokes (200ms) to avoid request storms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch candidates from target database with 60s staleTime for instant reopen
   const { data, isLoading } = useQuery({
-    queryKey: ['relationCandidates', targetDatabaseId, searchQuery],
+    queryKey: ['relationCandidates', targetDatabaseId, debouncedQuery],
     queryFn: async () => {
       if (!targetDatabaseId) return { database: null, items: [] };
       return await getRelationCandidates({
         data: {
           targetDatabaseId,
-          searchQuery: searchQuery.trim() || undefined,
+          searchQuery: debouncedQuery || undefined,
           limit: 60,
         },
       });
     },
     enabled: isOpen && !!targetDatabaseId,
+    staleTime: 60 * 1000,
   });
 
   const items = data?.items || [];
   const targetDatabase = data?.database;
 
-  // Register candidate items with parent lookup map so titles are never missing
-  useEffect(() => {
-    if (items.length > 0 && onItemCreated) {
-      for (const item of items) {
-        onItemCreated({
-          id: item.id,
-          title: item.title || 'Untitled',
-          pageId: item.pageId,
-          databaseId: item.databaseId,
-        });
-      }
+  // Fast O(1) candidate lookup map
+  const candidateLookup = useMemo(() => {
+    const map = new Map<string, { id: string; title: string; pageId?: string | null; databaseId: string }>();
+    for (const item of items) {
+      map.set(item.id, {
+        id: item.id,
+        title: item.title || 'Untitled',
+        pageId: item.pageId,
+        databaseId: item.databaseId,
+      });
     }
-  }, [items, onItemCreated]);
+    return map;
+  }, [items]);
 
   // Mutation to create new related record
   const createItemMutation = useMutation({
@@ -119,14 +130,9 @@ export function RelationPickerPopover({
       if (isAlreadySelected) {
         onChange([]);
       } else {
-        const itemObj = items.find((i) => i.id === itemId);
+        const itemObj = candidateLookup.get(itemId);
         if (itemObj && onItemCreated) {
-          onItemCreated({
-            id: itemObj.id,
-            title: itemObj.title || 'Untitled',
-            pageId: itemObj.pageId,
-            databaseId: itemObj.databaseId,
-          });
+          onItemCreated(itemObj);
         }
         onChange([itemId]);
         onClose();
@@ -135,14 +141,9 @@ export function RelationPickerPopover({
       if (isAlreadySelected) {
         onChange(selectedIds.filter((id) => id !== itemId));
       } else {
-        const itemObj = items.find((i) => i.id === itemId);
+        const itemObj = candidateLookup.get(itemId);
         if (itemObj && onItemCreated) {
-          onItemCreated({
-            id: itemObj.id,
-            title: itemObj.title || 'Untitled',
-            pageId: itemObj.pageId,
-            databaseId: itemObj.databaseId,
-          });
+          onItemCreated(itemObj);
         }
         onChange([...selectedIds, itemId]);
       }

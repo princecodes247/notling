@@ -235,6 +235,7 @@ export const databaseItems = pgTable('database_items', {
 }, (table) => ({
   databaseOrderIdx: index('database_items_db_order_idx').on(table.databaseId, table.order),
   databaseCreatedIdx: index('database_items_db_created_idx').on(table.databaseId, table.createdAt),
+  databaseUpdatedIdx: index('database_items_db_updated_idx').on(table.databaseId, table.updatedAt),
   pageIdx: index('database_items_page_idx').on(table.pageId),
 }));
 

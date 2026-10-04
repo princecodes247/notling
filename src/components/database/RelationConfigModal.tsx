@@ -55,7 +55,7 @@ export function RelationConfigModal({
   );
   const [searchFilter, setSearchFilter] = useState('');
 
-  // Fetch all databases in the workspace
+  // Fetch all databases in the workspace (cached for 5 min for instant open)
   const { data: workspaceDatabases = [], isLoading } = useQuery({
     queryKey: ['workspaceDatabases', workspaceId],
     queryFn: async () => {
@@ -63,6 +63,7 @@ export function RelationConfigModal({
       return await getDatabasesInWorkspace({ data: workspaceId });
     },
     enabled: isOpen && !!workspaceId,
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
