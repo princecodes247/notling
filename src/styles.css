@@ -251,6 +251,68 @@
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
+/* Marquee Drag Selection Box & States */
+.bn-marquee-selecting {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+.bn-marquee-box {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background-color: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  border-radius: 3px;
+  /* backdrop-filter: blur(0.5px); */
+}
+
+.dark .bn-marquee-box {
+  background-color: rgba(96, 165, 250, 0.16);
+  border-color: rgba(96, 165, 250, 0.55);
+}
+
+.bn-marquee-box-db {
+  position: fixed;
+  pointer-events: none;
+  z-index: 9999;
+  background-color: rgba(31, 77, 61, 0.14);
+  border: 1px solid rgba(31, 77, 61, 0.45);
+  border-radius: 3px;
+  backdrop-filter: blur(0.2px);
+}
+
+.dark .bn-marquee-box-db {
+  background-color: rgba(16, 185, 129, 0.15);
+  border-color: rgba(52, 211, 153, 0.45);
+}
+
+/* Multi-Selected Block Highlight (Notion Style) */
+.bn-block-multi-selected,
+.bn-block-multi-selected .bn-block,
+.bn-block-multi-selected .bn-block-content {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  border-radius: 4px !important;
+}
+
+.bn-block-multi-selected {
+  position: relative;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45) !important;
+  border-radius: 6px !important;
+  transition: background-color 0.08s ease, box-shadow 0.08s ease !important;
+}
+
+.dark .bn-block-multi-selected,
+.dark .bn-block-multi-selected .bn-block,
+.dark .bn-block-multi-selected .bn-block-content {
+  background-color: rgba(96, 165, 250, 0.22) !important;
+}
+
+.dark .bn-block-multi-selected {
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.55) !important;
+}
+
+
 /* Hide default ProseMirror drop cursor in favor of accurate custom drop indicator */
 .prosemirror-dropcursor-block,
 .prosemirror-dropcursor-inline {

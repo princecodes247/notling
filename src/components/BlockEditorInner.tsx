@@ -24,6 +24,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
 import { useDragPaint } from '~/hooks/useDragPaint';
+import { useMarqueeSelect } from '~/hooks/useMarqueeSelect';
 import { MobileEditorToolbar } from './MobileEditorToolbar';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { createDatabase } from '~/server/databases';
@@ -2433,15 +2434,187 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
   }, [editor, executeDrop]);
 
+  // Multi-Block Marquee Selection
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
+  const selectedBlockIdsRef = useRef<string[]>([]);
+  selectedBlockIdsRef.current = selectedBlockIds;
+
+  // Sync visual selection CSS class on DOM nodes
+  useEffect(() => {
+    const prevElements = document.querySelectorAll('.bn-block-multi-selected');
+    prevElements.forEach((el) => el.classList.remove('bn-block-multi-selected'));
+
+    selectedBlockIds.forEach((id) => {
+      const matches = document.querySelectorAll(
+        `.bn-block-outer[data-id="${id}"], [data-id="${id}"], [data-block-id="${id}"]`
+      );
+      matches.forEach((el) => {
+        const targetContainer = (el.closest('.bn-block-outer') || el.closest('.bn-block') || el) as HTMLElement;
+        targetContainer.classList.add('bn-block-multi-selected');
+      });
+    });
+
+    return () => {
+      const remaining = document.querySelectorAll('.bn-block-multi-selected');
+      remaining.forEach((el) => el.classList.remove('bn-block-multi-selected'));
+    };
+  }, [selectedBlockIds]);
+
+  const {
+    isSelecting: isMarqueeSelecting,
+    marqueeBox,
+    handlePointerDown: handleMarqueePointerDown,
+    clearSelection: clearMarqueeSelection,
+  } = useMarqueeSelect({
+    itemSelector: '.bn-block-outer, [data-id], [data-block-id]',
+    getItemId: (el) =>
+      el.getAttribute('data-id') ||
+      el.getAttribute('data-block-id') ||
+      el.querySelector('[data-id]')?.getAttribute('data-id') ||
+      el.closest('[data-id]')?.getAttribute('data-id') ||
+      null,
+    disabled: readOnly,
+    containerRef: editorContainerRef,
+    globalPointerDown: true,
+    textSelector: '.bn-inline-content, [data-content-type]',
+    ignoreSelector:
+      'input, textarea, button, select, a[href], .bn-side-menu, .bn-drag-handle, .mantine-Menu-dropdown, [role="menu"], [role="menuitem"], [role="dialog"], [data-prevent-marquee]',
+    onSelectionChange: (ids) => {
+      setSelectedBlockIds(ids);
+    },
+  });
+
+  // Handle keyboard shortcuts when multiple blocks are selected
+  useEffect(() => {
+    if (selectedBlockIds.length === 0 || !editor || readOnly) return;
+
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // 1. Delete / Backspace: remove selected blocks
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          const blocksToRemove = selectedBlockIds
+            .map((id) => editor.getBlock(id))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b));
+
+          if (blocksToRemove.length > 0) {
+            editor.removeBlocks(blocksToRemove as any);
+            handleContentChange();
+          }
+        } catch (err) {
+          console.error('Failed to remove blocks:', err);
+        }
+
+        setSelectedBlockIds([]);
+        clearMarqueeSelection();
+        return;
+      }
+
+      // 2. Escape: clear selection
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSelectedBlockIds([]);
+        clearMarqueeSelection();
+        return;
+      }
+
+      // 3. Copy (Cmd+C / Ctrl+C)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
+        e.preventDefault();
+        try {
+          const blocks = selectedBlockIds
+            .map((id) => editor.getBlock(id))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b));
+          const plainText = extractPlainTextFromBlocks(blocks);
+          if (plainText) {
+            await navigator.clipboard.writeText(plainText);
+          }
+        } catch (err) {
+          console.error('Failed to copy blocks:', err);
+        }
+        return;
+      }
+
+      // 4. Cut (Cmd+X / Ctrl+X)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'x' || e.key === 'X')) {
+        e.preventDefault();
+        try {
+          const blocks = selectedBlockIds
+            .map((id) => editor.getBlock(id))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b));
+          const plainText = extractPlainTextFromBlocks(blocks);
+          if (plainText) {
+            await navigator.clipboard.writeText(plainText);
+          }
+          if (blocks.length > 0) {
+            editor.removeBlocks(blocks as any);
+            handleContentChange();
+          }
+        } catch (err) {
+          console.error('Failed to cut blocks:', err);
+        }
+        setSelectedBlockIds([]);
+        clearMarqueeSelection();
+        return;
+      }
+
+      // 5. Duplicate (Cmd+D / Ctrl+D)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        try {
+          const blocks = selectedBlockIds
+            .map((id) => editor.getBlock(id))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b));
+
+          if (blocks.length > 0) {
+            const lastBlock = blocks[blocks.length - 1] as any;
+            const clonedBlocks = blocks.map((b: any) => {
+              const { id, ...rest } = b;
+              return { ...rest };
+            });
+            if (lastBlock?.id) {
+              editor.insertBlocks(clonedBlocks as any, lastBlock.id, 'after');
+              handleContentChange();
+            }
+          }
+        } catch (err) {
+          console.error('Failed to duplicate blocks:', err);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [selectedBlockIds, editor, readOnly, clearMarqueeSelection, handleContentChange]);
+
   return (
     <div
-      className={`min-h-[420px] ${readOnly ? 'bn-read-only cursor-default select-text' : ''}`}
-      onClick={handleContainerClick}
+      ref={editorContainerRef}
+      className={`min-h-[420px] relative ${readOnly ? 'bn-read-only cursor-default select-text' : ''}`}
+      onPointerDown={handleMarqueePointerDown}
+      onClick={(e) => {
+        if (selectedBlockIds.length > 0 && !isMarqueeSelecting) {
+          setSelectedBlockIds([]);
+          clearMarqueeSelection();
+        }
+        handleContainerClick(e);
+      }}
       onMouseDown={(e) => {
         if (!readOnly) handleMouseDown(e);
       }}
       onKeyDown={() => {
         if (!readOnly) hasUserEditedRef.current = true;
+        if (selectedBlockIds.length > 0) {
+          setSelectedBlockIds([]);
+          clearMarqueeSelection();
+        }
       }}
       onInput={() => {
         if (!readOnly) hasUserEditedRef.current = true;
@@ -2450,6 +2623,18 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         if (!readOnly) hasUserEditedRef.current = true;
       }}
     >
+      {/* Marquee Selection Rectangle Overlay */}
+      {isMarqueeSelecting && marqueeBox && (
+        <div
+          className="bn-marquee-box"
+          style={{
+            left: `${marqueeBox.left}px`,
+            top: `${marqueeBox.top}px`,
+            width: `${marqueeBox.width}px`,
+            height: `${marqueeBox.height}px`,
+          }}
+        />
+      )}
       <BlockNoteView
         editor={editor}
         editable={!readOnly}

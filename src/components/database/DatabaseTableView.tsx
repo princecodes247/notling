@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { useDragPaint } from '~/hooks/useDragPaint';
+import { useMarqueeSelect } from '~/hooks/useMarqueeSelect';
 import { AnimatePresence } from 'motion/react';
 import { RelationConfigModal } from './RelationConfigModal';
 import { RelationCell } from './RelationCell';
@@ -199,6 +200,35 @@ export function DatabaseTableView({
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const selectedItemIdsSet = useRef<Set<string>>(new Set());
   selectedItemIdsSet.current = new Set(selectedItemIds);
+
+  // Marquee Row Selection Hook
+  const {
+    isSelecting: isMarqueeSelecting,
+    marqueeBox,
+    handlePointerDown: handleMarqueePointerDown,
+    clearSelection: clearMarqueeSelection,
+  } = useMarqueeSelect({
+    itemSelector: 'tr[data-row-id]',
+    getItemId: (el) => el.getAttribute('data-row-id'),
+    disabled: readOnly,
+    containerRef: tableContainerRef,
+    ignoreSelector: 'input, textarea, button, select, [contenteditable="true"], .bn-checkbox, [data-prevent-marquee]',
+    onSelectionChange: (ids) => {
+      setSelectedItemIds(ids);
+    },
+  });
+
+  // Clear selection on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedItemIds.length > 0) {
+        setSelectedItemIds([]);
+        clearMarqueeSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItemIds.length, clearMarqueeSelection]);
 
   // Shared Paint Hook for Row Selection Checkboxes
   const rowPaint = useDragPaint<string>({
@@ -762,10 +792,24 @@ export function DatabaseTableView({
         </div>
       )}
 
+      {/* Marquee Drag Selection Overlay */}
+      {isMarqueeSelecting && marqueeBox && (
+        <div
+          className="bn-marquee-box-db"
+          style={{
+            left: `${marqueeBox.left}px`,
+            top: `${marqueeBox.top}px`,
+            width: `${marqueeBox.width}px`,
+            height: `${marqueeBox.height}px`,
+          }}
+        />
+      )}
+
       {/* Virtualized Scrollable Grid Table Container */}
       <div
         ref={tableContainerRef}
-        className="w-full overflow-auto max-h-[calc(100vh-160px)] text-xs"
+        onPointerDown={handleMarqueePointerDown}
+        className="w-full overflow-auto max-h-[calc(100vh-160px)] text-xs relative"
       >
         <table className="w-full text-left border-collapse min-w-full table-fixed">
           <thead className="sticky top-0 z-20 bg-white dark:bg-[#1c1c1f] border-b border-stone-200/80 dark:border-zinc-800/80 shadow-[0_1px_0_0_rgba(0,0,0,0.05)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)]">
@@ -1328,9 +1372,11 @@ function DatabaseTableRow({
 
   return (
     <tr
+      data-row-id={item.id}
       onDragOver={onDragOver}
       className={cn(
         "group hover:bg-stone-50/70 dark:hover:bg-zinc-800/30 transition-colors",
+        isSelected && "bg-emerald-50/50 dark:bg-emerald-950/30",
         draggedRowIndex === rowIndex ? "opacity-50 bg-stone-100 dark:bg-zinc-800" : ""
       )}
     >
