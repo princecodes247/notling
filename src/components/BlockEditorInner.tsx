@@ -2434,32 +2434,137 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
   }, [editor, executeDrop]);
 
-  // Multi-Block Marquee Selection
+  // Multi-Block Marquee Selection & Visual Overlays
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
+  const [selectedBlockRects, setSelectedBlockRects] = useState<
+    Array<{ id: string; left: number; top: number; width: number; height: number }>
+  >([]);
   const selectedBlockIdsRef = useRef<string[]>([]);
   selectedBlockIdsRef.current = selectedBlockIds;
 
-  // Sync visual selection CSS class on DOM nodes
-  useEffect(() => {
-    const prevElements = document.querySelectorAll('.bn-block-multi-selected');
-    prevElements.forEach((el) => el.classList.remove('bn-block-multi-selected'));
+  // Helper to calculate exact bounding rectangles of selected blocks (Notion-identical individual block strips)
+  const computeBlockRects = useCallback((ids: string[]) => {
+    if (ids.length === 0) {
+      setSelectedBlockRects([]);
+      return;
+    }
 
-    selectedBlockIds.forEach((id) => {
-      const matches = document.querySelectorAll(
-        `.bn-block-outer[data-id="${id}"], [data-id="${id}"], [data-block-id="${id}"]`
-      );
-      matches.forEach((el) => {
-        const targetContainer = (el.closest('.bn-block-outer') || el.closest('.bn-block') || el) as HTMLElement;
-        targetContainer.classList.add('bn-block-multi-selected');
-      });
+    const rects: Array<{ id: string; left: number; top: number; width: number; height: number }> = [];
+
+    ids.forEach((id) => {
+      const el = (
+        document.querySelector(`.bn-block-outer[data-id="${id}"], [data-id="${id}"], [data-block-id="${id}"]`) ||
+        Array.from(document.querySelectorAll('[data-id]')).find((e) => e.getAttribute('data-id') === id)
+      ) as HTMLElement | null;
+
+      if (el) {
+        const container = (el.closest('.bn-block-outer') || el.closest('.bn-block') || el) as HTMLElement;
+        const r = container.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          rects.push({
+            id,
+            left: r.left - 4,
+            top: r.top + 2,
+            width: r.width + 8,
+            height: Math.max(18, r.height - 4),
+          });
+        }
+      }
     });
 
-    return () => {
-      const remaining = document.querySelectorAll('.bn-block-multi-selected');
-      remaining.forEach((el) => el.classList.remove('bn-block-multi-selected'));
+    setSelectedBlockRects(rects);
+  }, []);
+
+  // Custom intersection calculator directly checking editor blocks and DOM
+  const getIntersectingBlocks = useCallback(
+    (box: { left: number; top: number; width: number; height: number }, isAdditive: boolean, initialIds: string[]) => {
+      const marqueeRect = {
+        left: box.left,
+        top: box.top,
+        right: box.left + box.width,
+        bottom: box.top + box.height,
+      };
+
+      const newSelected = new Set<string>(isAdditive ? initialIds : []);
+
+      // 1. Iterate over all blocks in editor.document if available
+      const docBlocks = editor?.document || [];
+      for (const block of docBlocks) {
+        if (!block?.id) continue;
+        const el = (
+          document.querySelector(`.bn-block-outer[data-id="${block.id}"], [data-id="${block.id}"], [data-block-id="${block.id}"]`) ||
+          Array.from(document.querySelectorAll('[data-id]')).find((e) => e.getAttribute('data-id') === block.id)
+        ) as HTMLElement | null;
+
+        if (el) {
+          const container = (el.closest('.bn-block-outer') || el.closest('.bn-block') || el) as HTMLElement;
+          const rect = container.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) continue;
+
+          const intersects = !(
+            rect.right < marqueeRect.left ||
+            rect.left > marqueeRect.right ||
+            rect.bottom < marqueeRect.top ||
+            rect.top > marqueeRect.bottom
+          );
+
+          if (intersects) {
+            newSelected.add(block.id);
+          }
+        }
+      }
+
+      // 2. Fallback: Check all .bn-block-outer or [data-id] DOM elements
+      if (newSelected.size === 0) {
+        const domBlocks = Array.from(document.querySelectorAll('.bn-block-outer, .bn-block, [data-id]')) as HTMLElement[];
+        for (const el of domBlocks) {
+          const id =
+            el.getAttribute('data-id') ||
+            el.getAttribute('data-block-id') ||
+            el.querySelector('[data-id]')?.getAttribute('data-id') ||
+            el.closest('[data-id]')?.getAttribute('data-id');
+          if (!id) continue;
+
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0 && rect.height === 0) continue;
+
+          const intersects = !(
+            rect.right < marqueeRect.left ||
+            rect.left > marqueeRect.right ||
+            rect.bottom < marqueeRect.top ||
+            rect.top > marqueeRect.bottom
+          );
+
+          if (intersects) {
+            newSelected.add(id);
+          }
+        }
+      }
+
+      return Array.from(newSelected);
+    },
+    [editor]
+  );
+
+  // Sync visual selection overlays whenever selectedBlockIds changes
+  useEffect(() => {
+    computeBlockRects(selectedBlockIds);
+
+    const handleUpdate = () => {
+      if (selectedBlockIdsRef.current.length > 0) {
+        computeBlockRects(selectedBlockIdsRef.current);
+      }
     };
-  }, [selectedBlockIds]);
+
+    window.addEventListener('scroll', handleUpdate, { passive: true });
+    window.addEventListener('resize', handleUpdate, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleUpdate);
+      window.removeEventListener('resize', handleUpdate);
+    };
+  }, [selectedBlockIds, computeBlockRects]);
 
   const {
     isSelecting: isMarqueeSelecting,
@@ -2467,21 +2572,19 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     handlePointerDown: handleMarqueePointerDown,
     clearSelection: clearMarqueeSelection,
   } = useMarqueeSelect({
-    itemSelector: '.bn-block-outer, [data-id], [data-block-id]',
-    getItemId: (el) =>
-      el.getAttribute('data-id') ||
-      el.getAttribute('data-block-id') ||
-      el.querySelector('[data-id]')?.getAttribute('data-id') ||
-      el.closest('[data-id]')?.getAttribute('data-id') ||
-      null,
+    getIntersectingItems: getIntersectingBlocks,
     disabled: readOnly,
-    containerRef: editorContainerRef,
     globalPointerDown: true,
     textSelector: '.bn-inline-content, [data-content-type]',
     ignoreSelector:
       'input, textarea, button, select, a[href], .bn-side-menu, .bn-drag-handle, .mantine-Menu-dropdown, [role="menu"], [role="menuitem"], [role="dialog"], [data-prevent-marquee]',
     onSelectionChange: (ids) => {
       setSelectedBlockIds(ids);
+      computeBlockRects(ids);
+    },
+    onSelectionEnd: (ids) => {
+      setSelectedBlockIds(ids);
+      computeBlockRects(ids);
     },
   });
 
@@ -2623,6 +2726,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         if (!readOnly) hasUserEditedRef.current = true;
       }}
     >
+      {/* Visual Floating Highlights for Multi-Selected Blocks */}
+      {selectedBlockRects.map((rect) => (
+        <div
+          key={rect.id}
+          className="bn-block-selection-overlay"
+          style={{
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+          }}
+        />
+      ))}
+
       {/* Marquee Selection Rectangle Overlay */}
       {isMarqueeSelecting && marqueeBox && (
         <div

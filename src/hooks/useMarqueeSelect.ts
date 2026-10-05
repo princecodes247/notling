@@ -9,7 +9,9 @@ export interface MarqueeBox {
 
 export interface UseMarqueeSelectOptions {
   /** CSS selector for selectable items */
-  itemSelector: string;
+  itemSelector?: string;
+  /** Custom intersection finder for complex editors */
+  getIntersectingItems?: (box: MarqueeBox, isAdditive: boolean, initialIds: string[]) => string[];
   /** Function to extract ID from matched DOM element. Defaults to reading data-id, data-row-id, or data-block-id */
   getItemId?: (el: HTMLElement) => string | null;
   /** Callback fired whenever selection changes */
@@ -31,11 +33,12 @@ export interface UseMarqueeSelectOptions {
 }
 
 export function useMarqueeSelect({
-  itemSelector,
+  itemSelector = '[data-id]',
+  getIntersectingItems,
   getItemId = (el) =>
     el.getAttribute('data-id') ||
-    el.getAttribute('data-row-id') ||
     el.getAttribute('data-block-id') ||
+    el.getAttribute('data-row-id') ||
     el.querySelector('[data-id]')?.getAttribute('data-id') ||
     el.closest('[data-id]')?.getAttribute('data-id') ||
     null,
@@ -63,9 +66,19 @@ export function useMarqueeSelect({
   onSelectionChangeRef.current = onSelectionChange;
   const onSelectionEndRef = useRef(onSelectionEnd);
   onSelectionEndRef.current = onSelectionEnd;
+  const getIntersectingItemsRef = useRef(getIntersectingItems);
+  getIntersectingItemsRef.current = getIntersectingItems;
 
   const calculateIntersections = useCallback(
     (box: MarqueeBox, isAdditive: boolean, initialIds: string[]) => {
+      if (getIntersectingItemsRef.current) {
+        const idArray = getIntersectingItemsRef.current(box, isAdditive, initialIds);
+        currentSelectedIdsRef.current = new Set(idArray);
+        setSelectedIds(idArray);
+        onSelectionChangeRef.current?.(idArray);
+        return;
+      }
+
       const root = containerRef?.current || document;
       const elements = Array.from(root.querySelectorAll(itemSelector)) as HTMLElement[];
       const newSelected = new Set<string>(isAdditive ? initialIds : []);

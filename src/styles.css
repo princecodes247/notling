@@ -261,15 +261,14 @@
   position: fixed;
   pointer-events: none;
   z-index: 9999;
-  background-color: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  border-radius: 3px;
-  /* backdrop-filter: blur(0.5px); */
+  background-color: rgba(35, 131, 226, 0.12);
+  border: 1px solid rgba(35, 131, 226, 0.45);
+  border-radius: 4px;
 }
 
 .dark .bn-marquee-box {
-  background-color: rgba(96, 165, 250, 0.16);
-  border-color: rgba(96, 165, 250, 0.55);
+  background-color: rgba(46, 170, 220, 0.16);
+  border-color: rgba(46, 170, 220, 0.5);
 }
 
 .bn-marquee-box-db {
@@ -278,8 +277,7 @@
   z-index: 9999;
   background-color: rgba(31, 77, 61, 0.14);
   border: 1px solid rgba(31, 77, 61, 0.45);
-  border-radius: 3px;
-  backdrop-filter: blur(0.2px);
+  border-radius: 4px;
 }
 
 .dark .bn-marquee-box-db {
@@ -287,30 +285,23 @@
   border-color: rgba(52, 211, 153, 0.45);
 }
 
-/* Multi-Selected Block Highlight (Notion Style) */
-.bn-block-multi-selected,
-.bn-block-multi-selected .bn-block,
-.bn-block-multi-selected .bn-block-content {
-  background-color: rgba(59, 130, 246, 0.15) !important;
-  border-radius: 4px !important;
+/* Multi-Selected Block Visual Floating Overlays (1:1 Notion Style - Borderless) */
+.bn-block-selection-overlay {
+  position: fixed;
+  pointer-events: none;
+  z-index: 10;
+  background-color: rgba(35, 131, 226, 0.16);
+  border: none;
+  border-radius: 4px;
+  transition: opacity 0.04s ease;
 }
 
-.bn-block-multi-selected {
-  position: relative;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.45) !important;
-  border-radius: 6px !important;
-  transition: background-color 0.08s ease, box-shadow 0.08s ease !important;
+.dark .bn-block-selection-overlay {
+  background-color: rgba(46, 170, 220, 0.2);
+  border: none;
+  border-radius: 4px;
 }
 
-.dark .bn-block-multi-selected,
-.dark .bn-block-multi-selected .bn-block,
-.dark .bn-block-multi-selected .bn-block-content {
-  background-color: rgba(96, 165, 250, 0.22) !important;
-}
-
-.dark .bn-block-multi-selected {
-  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.55) !important;
-}
 
 
 /* Hide default ProseMirror drop cursor in favor of accurate custom drop indicator */
