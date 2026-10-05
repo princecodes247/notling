@@ -100,7 +100,7 @@ export const DatabaseListView: React.FC<DatabaseListViewProps> = ({
                       onOpenRowDrawer?.(item);
                     }
                   }}
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-all shrink-0 cursor-pointer"
+                  className="opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto p-1 rounded hover:bg-stone-200/60 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-all shrink-0 cursor-pointer"
                   title="Edit title"
                 >
                   <Edit3 className="w-3 h-3" />

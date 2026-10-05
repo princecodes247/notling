@@ -1440,10 +1440,22 @@ function DatabaseTableRow({
                 placeholder="Untitled"
               />
 
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+              <div
+                className={cn(
+                  "flex items-center gap-1 transition-opacity shrink-0",
+                  isThisCellFocused
+                    ? "opacity-100 pointer-events-auto"
+                    : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+                )}
+              >
                 {onOpenRowDrawer && (
                   <button
-                    onClick={() => onOpenRowDrawer(item)}
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenRowDrawer(item);
+                    }}
                     className="px-2 py-0.5 rounded text-[11px] font-medium bg-stone-200/70 dark:bg-zinc-800 hover:bg-stone-300 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 flex items-center gap-1 cursor-pointer"
                   >
                     <Maximize2 className="w-3 h-3" />

@@ -66,7 +66,7 @@ export const DatabaseGalleryView: React.FC<DatabaseGalleryViewProps> = ({
                 <FileText className="w-7 h-7 opacity-30 group-hover:scale-105 transition-transform duration-200 text-stone-600 dark:text-zinc-400" />
 
                 {/* Top Action Overlay */}
-                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity">
                   {onOpenRowDrawer && (
                     <button
                       type="button"

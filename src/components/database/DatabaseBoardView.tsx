@@ -321,15 +321,23 @@ function KanbanCard({
           </h4>
         )}
 
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div
+          className={cn(
+            "flex items-center gap-1 transition-opacity shrink-0",
+            isEditing
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto"
+          )}
+        >
           {onOpenRowDrawer && (
             <button
               type="button"
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenRowDrawer(item);
               }}
-              className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-1 rounded text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               title="Open Page"
             >
               <Maximize2 className="w-3.5 h-3.5" />
