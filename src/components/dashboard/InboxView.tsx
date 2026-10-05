@@ -86,6 +86,19 @@ export const InboxView: React.FC = () => {
         data: { requestId, action, role: 'editor' },
       });
     },
+    onMutate: async ({ requestId }) => {
+      await queryClient.cancelQueries({ queryKey: ['allPendingAccessRequests'] });
+      const previousRequests = queryClient.getQueryData<any[]>(['allPendingAccessRequests']);
+      queryClient.setQueryData<any[]>(['allPendingAccessRequests'], (old) => {
+        return old ? old.filter((r) => r.id !== requestId) : [];
+      });
+      return { previousRequests };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousRequests) {
+        queryClient.setQueryData(['allPendingAccessRequests'], context.previousRequests);
+      }
+    },
     onSuccess: (res) => {
       if (res?.success) {
         setActionSuccess(res.message || 'Action completed.');

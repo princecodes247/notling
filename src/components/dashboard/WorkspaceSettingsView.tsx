@@ -69,6 +69,28 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
     mutationFn: async (email: string) => {
       return await inviteWorkspaceMember({ data: { workspaceId: session?.workspaceId, email } });
     },
+    onMutate: async (email: string) => {
+      await queryClient.cancelQueries({ queryKey: ['workspaceUsers', session?.workspaceId] });
+      const previousUsers = queryClient.getQueryData<any[]>(['workspaceUsers', session?.workspaceId]);
+      const optimisticUser = {
+        id: 'temp-invited-' + Date.now(),
+        email: email,
+        name: email.split('@')[0],
+        role: 'Member',
+        status: 'invited',
+        isPending: true,
+      };
+      queryClient.setQueryData<any[]>(['workspaceUsers', session?.workspaceId], (old) => {
+        return old ? [optimisticUser, ...old] : [optimisticUser];
+      });
+      return { previousUsers };
+    },
+    onError: (err: any, _vars, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['workspaceUsers', session?.workspaceId], context.previousUsers);
+      }
+      setInviteWsError(err?.message || 'Failed to invite workspace member.');
+    },
     onSuccess: (res, email) => {
       if (res?.success) {
         queryClient.invalidateQueries({ queryKey: ['workspaceUsers', session?.workspaceId] });
@@ -80,6 +102,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
         }, 1500);
       } else {
         setInviteWsError(res?.error || 'Failed to invite workspace member.');
+        queryClient.invalidateQueries({ queryKey: ['workspaceUsers', session?.workspaceId] });
       }
     },
   });
@@ -430,9 +453,16 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
                             <div className="text-[10px] text-neutral-400 dark:text-zinc-500 truncate">{u.email}</div>
                           </div>
                         </div>
-                        <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300 shrink-0">
-                          {u.role || (isMe ? (session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')) : 'Member')}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {u.isPending && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/60">
+                              Invited
+                            </span>
+                          )}
+                          <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-neutral-100 dark:bg-zinc-800 text-neutral-700 dark:text-zinc-300">
+                            {u.role || (isMe ? (session?.role || (isWorkspaceOwner ? 'Workspace Owner' : 'Member')) : 'Member')}
+                          </span>
+                        </div>
                       </div>
                     );
                   })

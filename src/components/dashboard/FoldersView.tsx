@@ -15,7 +15,7 @@ import type { PageTreeNode } from '~/server/pages';
 import type { Database } from '~/db/schema';
 import { useUIStore } from '~/store/uiStore';
 import { motion } from 'motion/react';
-import { Star, Copy, Trash2 } from 'lucide-react';
+import { Star, Copy, Trash2, Loader2 } from 'lucide-react';
 
 export interface FlatItem {
   id: string;
@@ -41,7 +41,7 @@ interface FoldersViewProps {
   onCreateDocument: (folderId?: string) => void;
   onCreateDatabase?: () => void;
   onTogglePin?: (id: string) => void;
-  onDuplicate?: (id: string) => void;
+  onDuplicate?: (id: string) => void | Promise<any>;
   onDelete?: (item: { id: string; databaseId?: string | null }) => void;
 }
 
@@ -116,6 +116,18 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
   const [filterType, setFilterType] = useState<'all' | 'page' | 'database'>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'alpha'>('newest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [pendingDuplicateId, setPendingDuplicateId] = useState<string | null>(null);
+
+  const handleDuplicateClick = async (e: React.MouseEvent, itemId: string) => {
+    e.stopPropagation();
+    if (!onDuplicate || pendingDuplicateId) return;
+    setPendingDuplicateId(itemId);
+    try {
+      await Promise.resolve(onDuplicate(itemId));
+    } finally {
+      setPendingDuplicateId(null);
+    }
+  };
 
   // Infinite Scroll state
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -468,14 +480,16 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                         {onDuplicate && (
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDuplicate(item.id);
-                            }}
-                            className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                            disabled={pendingDuplicateId === item.id}
+                            onClick={(e) => handleDuplicateClick(e, item.id)}
+                            className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                             title="Duplicate Item"
                           >
-                            <Copy className="w-3.5 h-3.5" />
+                            {pendingDuplicateId === item.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
                           </button>
                         )}
                         {onDelete && (
@@ -560,14 +574,16 @@ export const FoldersView: React.FC<FoldersViewProps> = ({
                       {onDuplicate && (
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDuplicate(item.id);
-                          }}
-                          className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 cursor-pointer"
+                          disabled={pendingDuplicateId === item.id}
+                          onClick={(e) => handleDuplicateClick(e, item.id)}
+                          className="p-1 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                           title="Duplicate Item"
                         >
-                          <Copy className="w-3.5 h-3.5" />
+                          {pendingDuplicateId === item.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
                         </button>
                       )}
                       {onDelete && (

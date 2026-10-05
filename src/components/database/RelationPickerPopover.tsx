@@ -148,27 +148,35 @@ export function RelationPickerPopover({
 
   // Mutation to create new related record
   const createItemMutation = useMutation({
-    mutationFn: async (title: string) => {
-      return await createRelatedItem({
+    mutationFn: async ({ title, tempId }: { title: string; tempId: string }) => {
+      const newItem = await createRelatedItem({
         data: {
           targetDatabaseId,
           title,
         },
       });
+      return { newItem, tempId };
     },
-    onSuccess: (newItem) => {
+    onSuccess: ({ newItem, tempId }) => {
       queryClient.invalidateQueries({ queryKey: ['relationCandidates', targetDatabaseId] });
       queryClient.invalidateQueries({ queryKey: ['database', targetDatabaseId] });
       if (onItemCreated) {
         onItemCreated(newItem);
       }
+      // Swap tempId with the real newItem.id
       if (limit === 'single') {
         onChange([newItem.id]);
-        onClose();
       } else {
-        onChange([...selectedIds, newItem.id]);
+        onChange(selectedIds.map((id) => (id === tempId ? newItem.id : id)));
       }
-      setSearchQuery('');
+    },
+    onError: (_err, { tempId }) => {
+      // Rollback optimistic tempId from selection
+      if (limit === 'single') {
+        onChange([]);
+      } else {
+        onChange(selectedIds.filter((id) => id !== tempId));
+      }
     },
   });
 
@@ -209,7 +217,24 @@ export function RelationPickerPopover({
   const handleCreateNew = () => {
     const title = searchQuery.trim();
     if (!title || createItemMutation.isPending) return;
-    createItemMutation.mutate(title);
+    const tempId = 'temp-rel-' + Date.now();
+    const tempObj = {
+      id: tempId,
+      title,
+      databaseId: targetDatabaseId,
+      pageId: null,
+    };
+    if (onItemCreated) {
+      onItemCreated(tempObj);
+    }
+    if (limit === 'single') {
+      onChange([tempId]);
+      onClose();
+    } else {
+      onChange([...selectedIds, tempId]);
+    }
+    setSearchQuery('');
+    createItemMutation.mutate({ title, tempId });
   };
 
   return (

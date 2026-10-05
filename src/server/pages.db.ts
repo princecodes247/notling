@@ -2157,6 +2157,8 @@ export interface WorkspaceUserItem {
   email: string;
   avatarUrl: string | null;
   role: string | null;
+  status?: string | null;
+  isPending?: boolean;
 }
 
 export async function fetchWorkspaceUsers(providedWorkspaceId?: string): Promise<WorkspaceUserItem[]> {

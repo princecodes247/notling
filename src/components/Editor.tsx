@@ -22,7 +22,7 @@ import {
   duplicatePage,
   softDeletePage,
 } from '~/server/pages';
-import { updateClientPageMeta, deleteClientPage, updateClientPagePin, updateClientPageVisibility } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, deleteClientPage, updateClientPagePin, updateClientPageVisibility, duplicateClientPage } from '~/lib/pageMetaSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
@@ -225,6 +225,15 @@ export const Editor: React.FC<EditorProps> = ({
     mutationFn: async () => {
       if (isReadOnly) return null;
       return await duplicatePage({ data: page.id });
+    },
+    onMutate: async () => {
+      const { tempId, previousTree } = duplicateClientPage(queryClient, page.id, page.workspaceId);
+      return { tempId, previousTree };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTree) {
+        queryClient.setQueriesData({ queryKey: ['pageTree'] }, () => context.previousTree);
+      }
     },
     onSuccess: (newPage) => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });

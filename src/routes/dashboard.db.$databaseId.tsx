@@ -3,7 +3,7 @@ import { createRoute, useNavigate } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getDatabase, deleteDatabase } from '~/server/databases';
 import { togglePinPage, duplicatePage, softDeletePage } from '~/server/pages';
-import { deleteClientDatabase, updateClientPagePin } from '~/lib/pageMetaSync';
+import { deleteClientDatabase, updateClientPagePin, duplicateClientPage } from '~/lib/pageMetaSync';
 import { DatabaseContainer } from '~/components/database/DatabaseContainer';
 import { Route as dashboardRoute } from './dashboard';
 import { Database as DatabaseIcon, ArrowLeft, Trash2 } from 'lucide-react';
@@ -69,6 +69,16 @@ function DashboardDatabaseRoute() {
     mutationFn: async () => {
       if (!targetPageId) return;
       return await duplicatePage({ data: targetPageId });
+    },
+    onMutate: async () => {
+      if (!targetPageId) return;
+      const { tempId, previousTree } = duplicateClientPage(queryClient, targetPageId, dbData?.database?.workspaceId);
+      return { tempId, previousTree };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTree) {
+        queryClient.setQueriesData({ queryKey: ['pageTree'] }, () => context.previousTree);
+      }
     },
     onSuccess: (newClonedPage) => {
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
@@ -193,6 +203,7 @@ function DashboardDatabaseRoute() {
       onTogglePin={() => togglePinMutation.mutate()}
       isTogglePinPending={togglePinMutation.isPending}
       onDuplicate={() => duplicateMutation.mutate()}
+      isDuplicating={duplicateMutation.isPending}
       onDelete={() => deleteMutation.mutate()}
     />
   );

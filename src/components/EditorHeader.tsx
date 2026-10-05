@@ -16,6 +16,7 @@ import {
   ArrowDown,
   X,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '~/store/uiStore';
@@ -530,7 +531,11 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                       disabled={isDuplicating}
                       className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer disabled:opacity-50"
                     >
-                      <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                      {isDuplicating ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-500 dark:text-zinc-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                      )}
                       <span>{isDuplicating ? 'Duplicating...' : 'Duplicate Page'}</span>
                     </button>
                   )}

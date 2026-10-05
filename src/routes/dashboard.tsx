@@ -10,7 +10,7 @@ import { MobileHeader } from '~/components/dashboard/MobileHeader';
 import { getSession, signOut, getUserWorkspaces, switchWorkspace, createWorkspace, getSidebarPreference } from '~/server/auth';
 import { getPageTree, getPage, createPage, softDeletePage, updatePageMeta, reorderPage, togglePinPage, duplicatePage, type PageTreeNode } from '~/server/pages';
 import { createDatabase } from '~/server/databases';
-import { updateClientPageMeta, updateClientPagePin, deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
+import { updateClientPageMeta, updateClientPagePin, deleteClientPage, deleteClientDatabase, createClientSubPage, duplicateClientPage, reorderClientPageTree } from '~/lib/pageMetaSync';
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
@@ -67,6 +67,7 @@ function DashboardLayout() {
   } = useUIStore();
 
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = React.useState(false);
+  const [switchingWorkspaceId, setSwitchingWorkspaceId] = React.useState<string | null>(null);
 
   const isDesktopSidebarOpen = typeof window === 'undefined' ? (loaderData?.sidebarOpen ?? true) : sidebarOpen;
 
@@ -117,11 +118,31 @@ function DashboardLayout() {
     mutationFn: async (targetWorkspaceId: string) => {
       return await switchWorkspace({ data: { workspaceId: targetWorkspaceId } });
     },
+    onMutate: async (targetWorkspaceId: string) => {
+      setSwitchingWorkspaceId(targetWorkspaceId);
+      const targetWs = userWorkspaces.find((w) => w.id === targetWorkspaceId);
+      if (targetWs) {
+        queryClient.setQueryData(['session'], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            workspaceId: targetWs.id,
+            workspaceName: targetWs.name,
+            workspaceSlug: targetWs.slug,
+            workspaceIcon: targetWs.icon,
+            role: targetWs.role,
+          };
+        });
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session'] });
       queryClient.invalidateQueries({ queryKey: ['pageTree'] });
       queryClient.invalidateQueries({ queryKey: ['userWorkspaces'] });
       queryClient.invalidateQueries({ queryKey: ['trashPages'] });
+    },
+    onSettled: () => {
+      setSwitchingWorkspaceId(null);
     },
   });
 
@@ -308,15 +329,26 @@ function DashboardLayout() {
         isCreatingPageRef.current = false;
       }
     },
+    onMutate: async (parentId?: string) => {
+      const { tempId, previousTree } = createClientSubPage(queryClient, {
+        workspaceId,
+        parentId,
+        title: 'Untitled Document',
+      });
+      return { tempId, previousTree };
+    },
+    onError: (_err, _vars, context) => {
+      isCreatingPageRef.current = false;
+      if (context?.previousTree) {
+        queryClient.setQueriesData({ queryKey: ['pageTree'] }, () => context.previousTree);
+      }
+    },
     onSuccess: (newPage) => {
       refetchTree();
       if (newPage) {
         useUIStore.getState().setActivePageId(newPage.id);
         navigate({ to: '/dashboard/p/$pageId', params: { pageId: newPage.id } });
       }
-    },
-    onError: () => {
-      isCreatingPageRef.current = false;
     },
   });
 
@@ -411,6 +443,20 @@ function DashboardLayout() {
     mutationFn: async (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => {
       return await reorderPage({ data: input });
     },
+    onMutate: async (input) => {
+      const { previousTree } = reorderClientPageTree(queryClient, {
+        pageId: input.pageId,
+        targetParentId: input.targetParentId,
+        targetOrder: input.targetOrder,
+        workspaceId,
+      });
+      return { previousTree };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTree) {
+        queryClient.setQueriesData({ queryKey: ['pageTree'] }, () => context.previousTree);
+      }
+    },
     onSuccess: () => {
       refetchTree();
     },
@@ -459,6 +505,15 @@ function DashboardLayout() {
   const duplicatePageMutation = useMutation({
     mutationFn: async (pageId: string) => {
       return await duplicatePage({ data: pageId });
+    },
+    onMutate: async (pageId: string) => {
+      const { tempId, previousTree } = duplicateClientPage(queryClient, pageId, workspaceId);
+      return { tempId, previousTree };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTree) {
+        queryClient.setQueriesData({ queryKey: ['pageTree'] }, () => context.previousTree);
+      }
     },
     onSuccess: (newPage) => {
       refetchTree();
@@ -542,8 +597,10 @@ function DashboardLayout() {
                 userWorkspaces={userWorkspaces}
                 isCreatingPage={createPageMutation.isPending}
                 isLoading={treeLoading}
-                onSwitchWorkspace={(id) => {
-                  switchWorkspaceMutation.mutate(id);
+                switchingWorkspaceId={switchingWorkspaceId}
+                isSwitchingWorkspace={switchWorkspaceMutation.isPending}
+                onSwitchWorkspace={async (id) => {
+                  await switchWorkspaceMutation.mutateAsync(id);
                   closeSidebarOnMobile();
                 }}
                 onOpenCreateWorkspaceModal={() => {
@@ -560,10 +617,11 @@ function DashboardLayout() {
                   else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
                   closeSidebarOnMobile();
                 }}
-                onCreatePage={(parentId) => {
+                onCreatePage={async (parentId) => {
                   if (createPageMutation.isPending) return;
-                  createPageMutation.mutate(parentId);
+                  const res = await createPageMutation.mutateAsync(parentId);
                   closeSidebarOnMobile();
+                  return res;
                 }}
                 onCreateDatabase={() => {
                   if (createDatabaseMutation.isPending) return;
@@ -586,7 +644,9 @@ function DashboardLayout() {
                 }}
                 onReorderPage={(input) => reorderPageMutation.mutate(input)}
                 onTogglePin={(id) => togglePinMutation.mutate(id)}
-                onDuplicatePage={(id) => duplicatePageMutation.mutate(id)}
+                onDuplicatePage={async (id) => {
+                  return await duplicatePageMutation.mutateAsync(id);
+                }}
                 onLogout={handleLogout}
                 onClose={closeSidebarOnMobile}
               />
@@ -616,8 +676,10 @@ function DashboardLayout() {
                 userWorkspaces={userWorkspaces}
                 isCreatingPage={createPageMutation.isPending}
                 isLoading={treeLoading}
-                onSwitchWorkspace={(id) => {
-                  switchWorkspaceMutation.mutate(id);
+                switchingWorkspaceId={switchingWorkspaceId}
+                isSwitchingWorkspace={switchWorkspaceMutation.isPending}
+                onSwitchWorkspace={async (id) => {
+                  await switchWorkspaceMutation.mutateAsync(id);
                 }}
                 onOpenCreateWorkspaceModal={() => {
                   setIsCreateWorkspaceOpen(true);
@@ -631,9 +693,9 @@ function DashboardLayout() {
                   else if (nav === 'profile') navigate({ to: '/dashboard/profile' });
                   else if (nav === 'trash') navigate({ to: '/dashboard/trash' });
                 }}
-                onCreatePage={(parentId) => {
+                onCreatePage={async (parentId) => {
                   if (createPageMutation.isPending) return;
-                  createPageMutation.mutate(parentId);
+                  return await createPageMutation.mutateAsync(parentId);
                 }}
                 onCreateDatabase={() => {
                   if (createDatabaseMutation.isPending) return;
@@ -654,7 +716,9 @@ function DashboardLayout() {
                 }}
                 onReorderPage={(input) => reorderPageMutation.mutate(input)}
                 onTogglePin={(id) => togglePinMutation.mutate(id)}
-                onDuplicatePage={(id) => duplicatePageMutation.mutate(id)}
+                onDuplicatePage={async (id) => {
+                  return await duplicatePageMutation.mutateAsync(id);
+                }}
                 onLogout={handleLogout}
               />
             </motion.div>

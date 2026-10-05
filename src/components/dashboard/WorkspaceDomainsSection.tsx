@@ -177,13 +177,32 @@ export function WorkspaceDomainsSection({ session, isWorkspaceOwner }: Workspace
     },
   });
 
+  const [removingDomainId, setRemovingDomainId] = useState<string | null>(null);
+
   // Remove Custom Domain Mutation
   const removeDomainMutation = useMutation({
     mutationFn: async (domainId: string) => {
+      setRemovingDomainId(domainId);
       return await removeWorkspaceCustomDomain({ data: { domainId } });
+    },
+    onMutate: async (domainId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['customDomains', workspaceId] });
+      const previousDomains = queryClient.getQueryData<any[]>(['customDomains', workspaceId]);
+      queryClient.setQueryData<any[]>(['customDomains', workspaceId], (old) => {
+        return old ? old.filter((d) => d.id !== domainId) : [];
+      });
+      return { previousDomains };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousDomains) {
+        queryClient.setQueryData(['customDomains', workspaceId], context.previousDomains);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customDomains', workspaceId] });
+    },
+    onSettled: () => {
+      setRemovingDomainId(null);
     },
   });
 
@@ -191,6 +210,24 @@ export function WorkspaceDomainsSection({ session, isWorkspaceOwner }: Workspace
   const setPrimaryMutation = useMutation({
     mutationFn: async (domainId: string) => {
       return await setPrimaryCustomDomain({ data: { domainId } });
+    },
+    onMutate: async (domainId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['customDomains', workspaceId] });
+      const previousDomains = queryClient.getQueryData<any[]>(['customDomains', workspaceId]);
+      queryClient.setQueryData<any[]>(['customDomains', workspaceId], (old) => {
+        return old
+          ? old.map((d) => ({
+              ...d,
+              isPrimary: d.id === domainId,
+            }))
+          : [];
+      });
+      return { previousDomains };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousDomains) {
+        queryClient.setQueryData(['customDomains', workspaceId], context.previousDomains);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customDomains', workspaceId] });
@@ -201,6 +238,21 @@ export function WorkspaceDomainsSection({ session, isWorkspaceOwner }: Workspace
   const updateHomeDocMutation = useMutation({
     mutationFn: async ({ domainId, docId }: { domainId: string; docId: string | null }) => {
       return await updateCustomDomainHomeDoc({ data: { domainId, publicHomeDocId: docId } });
+    },
+    onMutate: async ({ domainId, docId }) => {
+      await queryClient.cancelQueries({ queryKey: ['customDomains', workspaceId] });
+      const previousDomains = queryClient.getQueryData<any[]>(['customDomains', workspaceId]);
+      queryClient.setQueryData<any[]>(['customDomains', workspaceId], (old) => {
+        return old
+          ? old.map((d) => (d.id === domainId ? { ...d, publicHomeDocId: docId } : d))
+          : [];
+      });
+      return { previousDomains };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousDomains) {
+        queryClient.setQueryData(['customDomains', workspaceId], context.previousDomains);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customDomains', workspaceId] });
@@ -500,11 +552,15 @@ export function WorkspaceDomainsSection({ session, isWorkspaceOwner }: Workspace
                         <button
                           type="button"
                           onClick={() => removeDomainMutation.mutate(item.id)}
-                          disabled={removeDomainMutation.isPending}
-                          className="p-1 rounded text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                          disabled={removingDomainId === item.id}
+                          className="p-1 rounded text-neutral-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer disabled:opacity-60"
                           title="Remove domain"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          {removingDomainId === item.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-500" />
+                          ) : (
+                            <Trash2 className="w-3.5 h-3.5" />
+                          )}
                         </button>
                       )}
                     </div>

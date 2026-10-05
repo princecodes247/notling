@@ -26,13 +26,13 @@ import { updateClientPageMeta } from '~/lib/pageMetaSync';
 interface PageTreeItemProps {
   node: PageTreeNode;
   depth?: number;
-  onCreateChild: (parentId: string) => void;
+  onCreateChild: (parentId: string) => void | Promise<any>;
   onSelectPage: (pageId: string, databaseId?: string | null) => void;
-  onSoftDelete: (pageId: string) => void;
+  onSoftDelete: (pageId: string) => void | Promise<any>;
   onUpdateMeta: (pageId: string, title: string, icon?: string | null) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onTogglePin?: (pageId: string) => void;
-  onDuplicatePage?: (pageId: string) => void;
+  onDuplicatePage?: (pageId: string) => void | Promise<any>;
   draggedPageId?: string | null;
   setDraggedPageId?: (id: string | null) => void;
 }

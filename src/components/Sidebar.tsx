@@ -41,20 +41,22 @@ interface SidebarProps {
   databases?: Array<any>;
   isCreatingPage?: boolean;
   isLoading?: boolean;
-  onSwitchWorkspace?: (workspaceId: string) => void;
+  switchingWorkspaceId?: string | null;
+  isSwitchingWorkspace?: boolean;
+  onSwitchWorkspace?: (workspaceId: string) => void | Promise<any>;
   onOpenCreateWorkspaceModal?: () => void;
   trashCount?: number;
   activeNav?: string;
   onNavClick?: (nav: string) => void;
-  onCreatePage: (parentId?: string) => void;
+  onCreatePage: (parentId?: string) => void | Promise<any>;
   onCreateDatabase?: () => void;
   onSelectDatabase?: (databaseId: string) => void;
   onSelectPage: (pageId: string, databaseId?: string | null) => void;
-  onSoftDelete: (pageId: string) => void;
+  onSoftDelete: (pageId: string) => void | Promise<any>;
   onUpdateMeta: (pageId: string, title: string, icon?: string | null) => void;
   onReorderPage?: (input: { pageId: string; targetParentId: string | null; targetOrder: number }) => void;
   onTogglePin?: (pageId: string) => void;
-  onDuplicatePage?: (pageId: string) => void;
+  onDuplicatePage?: (pageId: string) => void | Promise<any>;
   onLogout?: () => void;
   onClose?: () => void;
 }
@@ -155,6 +157,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   databases: _databases = [],
   isCreatingPage = false,
   isLoading = false,
+  switchingWorkspaceId = null,
+  isSwitchingWorkspace = false,
   onSwitchWorkspace,
   onOpenCreateWorkspaceModal,
   trashCount,
@@ -289,17 +293,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {userWorkspaces && userWorkspaces.length > 0 ? (
                     userWorkspaces.map((ws) => {
                       const isActive = ws.id === session?.workspaceId;
+                      const isSwitchingThis = switchingWorkspaceId === ws.id;
                       return (
                         <button
                           key={ws.id}
                           type="button"
+                          disabled={isSwitchingWorkspace}
                           onClick={() => {
+                            if (isSwitchingWorkspace) return;
                             setShowWorkspaceMenu(false);
                             if (!isActive) {
                               onSwitchWorkspace?.(ws.id);
                             }
                           }}
-                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer ${isActive ? 'bg-stone-50 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-white' : 'text-stone-700 dark:text-zinc-300'
+                          className={`w-full text-left px-3 py-2 flex items-center justify-between hover:bg-stone-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${isActive ? 'bg-stone-50 dark:bg-zinc-800 font-semibold text-stone-900 dark:text-white' : 'text-stone-700 dark:text-zinc-300'
                             }`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -311,7 +318,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             />
                             <span className="truncate text-xs">{ws.name}</span>
                           </div>
-                          {isActive && <Check className="w-3.5 h-3.5 text-stone-900 dark:text-white shrink-0" />}
+                          {isSwitchingThis ? (
+                            <HugeiconsIcon icon={LoaderCircleIcon} size={14} className="animate-spin text-stone-600 dark:text-zinc-400 shrink-0" />
+                          ) : isActive ? (
+                            <Check className="w-3.5 h-3.5 text-stone-900 dark:text-white shrink-0" />
+                          ) : null}
                         </button>
                       );
                     })

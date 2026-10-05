@@ -684,4 +684,200 @@ export function updateClientPageVisibility(
   );
 }
 
+/**
+ * Optimistically creates a pending child sub-page in the page tree.
+ * Automatically expands the parent node in the sidebar.
+ */
+export function createClientSubPage(
+  queryClient: QueryClient | undefined,
+  {
+    workspaceId,
+    parentId,
+    title = 'Untitled Document',
+    icon = '📄',
+  }: {
+    workspaceId?: string;
+    parentId?: string | null;
+    title?: string;
+    icon?: string | null;
+  }
+) {
+  if (!queryClient) return { tempId: null, previousTree: undefined };
+
+  const tempId = 'temp-create-' + Date.now();
+  const newNode: PageTreeNode = {
+    id: tempId,
+    workspaceId: workspaceId || '',
+    parentId: parentId || null,
+    title,
+    icon: icon || '📄',
+    visibility: 'private',
+    order: 999999,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    children: [],
+    canEdit: true,
+    canDelete: true,
+  };
+
+  if (parentId) {
+    useUIStore.getState().setNodeExpand(parentId, true);
+  }
+
+  const insertNode = (nodes: PageTreeNode[]): PageTreeNode[] => {
+    if (!parentId) {
+      return [...nodes, newNode];
+    }
+    return nodes.map((node) => {
+      if (node.id === parentId) {
+        return {
+          ...node,
+          children: [...(node.children || []), newNode],
+        };
+      }
+      if (node.children && node.children.length > 0) {
+        return {
+          ...node,
+          children: insertNode(node.children),
+        };
+      }
+      return node;
+    });
+  };
+
+  const previousTree = queryClient.getQueryData<PageTreeNode[]>(['pageTree', workspaceId]) ||
+    queryClient.getQueryData<PageTreeNode[]>(['pageTree']);
+
+  queryClient.setQueriesData<PageTreeNode[]>(
+    { queryKey: ['pageTree'] },
+    (old) => (old && Array.isArray(old) ? insertNode(old) : [newNode])
+  );
+
+  return { tempId, previousTree };
+}
+
+/**
+ * Optimistically duplicates a page or database in the page tree and databases list.
+ */
+export function duplicateClientPage(
+  queryClient: QueryClient | undefined,
+  pageId: string,
+  workspaceId?: string
+) {
+  if (!queryClient || !pageId) return { tempId: null, previousTree: undefined, duplicatedNode: null };
+
+  const tempId = 'temp-dup-' + Date.now();
+  let duplicatedNode: PageTreeNode | null = null;
+
+  const duplicateInTree = (nodes: PageTreeNode[]): PageTreeNode[] => {
+    const result: PageTreeNode[] = [];
+    for (const node of nodes) {
+      result.push(node);
+      if (node.id === pageId || node.databaseId === pageId) {
+        duplicatedNode = {
+          ...node,
+          id: tempId,
+          title: `${node.title || 'Untitled'} (Copy)`,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          children: [],
+        };
+        result.push(duplicatedNode);
+      } else if (node.children && node.children.length > 0) {
+        node.children = duplicateInTree(node.children);
+      }
+    }
+    return result;
+  };
+
+  const previousTree = queryClient.getQueryData<PageTreeNode[]>(['pageTree', workspaceId]) ||
+    queryClient.getQueryData<PageTreeNode[]>(['pageTree']);
+
+  queryClient.setQueriesData<PageTreeNode[]>(
+    { queryKey: ['pageTree'] },
+    (old) => (old && Array.isArray(old) ? duplicateInTree(old) : old)
+  );
+
+  return { tempId, previousTree, duplicatedNode };
+}
+
+/**
+ * Optimistically reorders a page within the page tree.
+ */
+export function reorderClientPageTree(
+  queryClient: QueryClient | undefined,
+  {
+    pageId,
+    targetParentId,
+    targetOrder,
+    workspaceId,
+  }: {
+    pageId: string;
+    targetParentId: string | null;
+    targetOrder: number;
+    workspaceId?: string;
+  }
+) {
+  if (!queryClient || !pageId) return { previousTree: undefined };
+
+  const previousTree = queryClient.getQueryData<PageTreeNode[]>(['pageTree', workspaceId]) ||
+    queryClient.getQueryData<PageTreeNode[]>(['pageTree']);
+
+  let movingNode: PageTreeNode | null = null;
+
+  // 1. Remove node from previous position
+  const removeNode = (nodes: PageTreeNode[]): PageTreeNode[] => {
+    return nodes
+      .filter((node) => {
+        if (node.id === pageId) {
+          movingNode = { ...node, parentId: targetParentId, order: targetOrder };
+          return false;
+        }
+        return true;
+      })
+      .map((node) => {
+        if (node.children && node.children.length > 0) {
+          return { ...node, children: removeNode(node.children) };
+        }
+        return node;
+      });
+  };
+
+  // 2. Insert node into target position
+  const insertNode = (nodes: PageTreeNode[]): PageTreeNode[] => {
+    if (!movingNode) return nodes;
+
+    if (!targetParentId) {
+      const next = [...nodes];
+      const clampedIndex = Math.max(0, Math.min(targetOrder, next.length));
+      next.splice(clampedIndex, 0, movingNode);
+      return next;
+    }
+
+    return nodes.map((node) => {
+      if (node.id === targetParentId) {
+        const nextChildren = [...(node.children || [])];
+        const clampedIndex = Math.max(0, Math.min(targetOrder, nextChildren.length));
+        nextChildren.splice(clampedIndex, 0, movingNode!);
+        return { ...node, children: nextChildren };
+      }
+      if (node.children && node.children.length > 0) {
+        return { ...node, children: insertNode(node.children) };
+      }
+      return node;
+    });
+  };
+
+  queryClient.setQueriesData<PageTreeNode[]>(
+    { queryKey: ['pageTree'] },
+    (old) => {
+      if (!old || !Array.isArray(old)) return old;
+      const stripped = removeNode(old);
+      return insertNode(stripped);
+    }
+  );
+
+  return { previousTree };
+}
+
 

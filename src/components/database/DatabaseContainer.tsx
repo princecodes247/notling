@@ -58,6 +58,7 @@ interface DatabaseContainerProps {
   onTogglePin?: () => void;
   isTogglePinPending?: boolean;
   onDuplicate?: () => void;
+  isDuplicating?: boolean;
   onDelete?: () => void;
   hideHeader?: boolean;
 }
@@ -69,6 +70,7 @@ export function DatabaseContainer({
   onTogglePin,
   isTogglePinPending = false,
   onDuplicate,
+  isDuplicating = false,
   onDelete,
   hideHeader = false,
 }: DatabaseContainerProps) {
@@ -1149,7 +1151,7 @@ export function DatabaseContainer({
           isReadOnly={readOnly}
           isPinned={isPinned}
           togglePinMutation={onTogglePin ? { mutate: onTogglePin, isPending: isTogglePinPending } : undefined}
-          duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: false } : undefined}
+          duplicateMutation={onDuplicate ? { mutate: onDuplicate, isPending: isDuplicating } : undefined}
           onDelete={onDelete}
           onTitleChange={(newTitle) => {
             isEditingTitleRef.current = true;

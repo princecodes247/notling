@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSession } from '~/server/auth';
 import { getPageTree, createPage, togglePinPage, duplicatePage, softDeletePage } from '~/server/pages';
 import { getDatabasesInWorkspace, createDatabase, deleteDatabase } from '~/server/databases';
-import { deleteClientPage, deleteClientDatabase } from '~/lib/pageMetaSync';
+import { deleteClientPage, deleteClientDatabase, duplicateClientPage } from '~/lib/pageMetaSync';
 import { FoldersView } from '~/components/dashboard/FoldersView';
 import { Route as dashboardRoute } from './dashboard';
 
@@ -108,6 +108,15 @@ function DashboardFoldersPage() {
     mutationFn: async (id: string) => {
       return await duplicatePage({ data: id });
     },
+    onMutate: async (id: string) => {
+      const { tempId, previousTree } = duplicateClientPage(queryClient, id, workspaceId);
+      return { tempId, previousTree };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousTree) {
+        queryClient.setQueriesData({ queryKey: ['pageTree'] }, () => context.previousTree);
+      }
+    },
     onSuccess: () => {
       refetchTree();
       refetchDbs();
@@ -144,7 +153,9 @@ function DashboardFoldersPage() {
       onCreateDocument={(folderId) => createDocumentMutation.mutate(folderId)}
       onCreateDatabase={() => createDbMutation.mutate()}
       onTogglePin={(id) => togglePinMutation.mutate(id)}
-      onDuplicate={(id) => duplicateMutation.mutate(id)}
+      onDuplicate={async (id) => {
+        return await duplicateMutation.mutateAsync(id);
+      }}
       onDelete={(item) => deleteMutation.mutate(item)}
     />
   );
