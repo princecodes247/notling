@@ -298,11 +298,6 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const flyoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Lock side menu frozen while action menu is open
-  useEffect(() => {
-    freezeMenu?.();
-  }, [freezeMenu]);
-
   // Highlight active block while handle context menu is open
   useEffect(() => {
     if (!block?.id) return;
@@ -318,7 +313,7 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
   const finishAction = () => {
     try {
       applyBlockHighlight(block?.id, false, editor);
-      unfreezeMenu?.();
+      (unfreezeMenu || editor?.sideMenu?.unfreezeMenu)?.();
       editor?.focus?.();
     } catch {
       // fallback
@@ -427,6 +422,7 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
 
   // Flyout hover helpers — small delay prevents dismissal while moving mouse diagonally
   const openFlyoutMenu = (name: 'turnInto' | 'color') => {
+    freezeMenu?.();
     if (flyoutTimeoutRef.current) clearTimeout(flyoutTimeoutRef.current);
     setOpenFlyout(name);
   };
@@ -2192,6 +2188,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     if (readOnly) return;
     const target = e.target as HTMLElement;
+    if (target.closest('.bn-side-menu') || target.closest('.bn-side-menu-wrapper') || target.closest('[data-prevent-marquee]')) {
+      return;
+    }
     const blockEl =
       target.closest('[data-id]') ||
       target.closest('.bn-block-outer') ||
@@ -2222,28 +2221,6 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       }
     }
   };
-
-  function preselectBlockForDrag(editor: any, blockId: string | undefined) {
-    if (!editor || !blockId) return;
-    try {
-      const doc = editor.prosemirrorView?.state?.doc || editor._tiptapEditor?.state?.doc;
-      if (!doc) return;
-      let posBeforeNode: number | undefined = undefined;
-      doc.firstChild?.descendants((node: any, pos: number) => {
-        if (posBeforeNode !== undefined) return false;
-        if (node.attrs?.id === blockId) {
-          posBeforeNode = pos + 1;
-          return false;
-        }
-        return true;
-      });
-      if (posBeforeNode !== undefined && editor._tiptapEditor?.commands?.setNodeSelection) {
-        editor._tiptapEditor.commands.setNodeSelection(posBeforeNode);
-      }
-    } catch (err) {
-      console.error('Error pre-selecting block for drag:', err);
-    }
-  }
 
   // Helper to find scrollable container ancestor
   function findScrollContainer(element: HTMLElement | null): HTMLElement | Window {
@@ -2342,15 +2319,20 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         sideMenuView.isDragOrigin = false;
       }
       if (!draggedBlockRef.current) {
-        const target = e.target as HTMLElement;
-        const blockEl = target?.closest?.('[data-id]') as HTMLElement | null;
-        const blockId = blockEl?.getAttribute('data-id');
-        if (blockId) {
-          draggedBlockRef.current = editor.getBlock(blockId);
+        const sideMenuBlock = (editor as any)?.sideMenu?.state?.block || (editor as any)?.sideMenu?.view?.state?.block;
+        if (sideMenuBlock) {
+          draggedBlockRef.current = sideMenuBlock;
         } else {
-          const selBlock = editor.getSelection()?.blocks?.[0] || editor.getTextCursorPosition()?.block;
-          if (selBlock) {
-            draggedBlockRef.current = selBlock;
+          const target = e.target as HTMLElement;
+          const blockEl = target?.closest?.('[data-id]') as HTMLElement | null;
+          const blockId = blockEl?.getAttribute('data-id');
+          if (blockId) {
+            draggedBlockRef.current = editor.getBlock(blockId);
+          } else {
+            const selBlock = editor.getSelection()?.blocks?.[0] || editor.getTextCursorPosition()?.block;
+            if (selBlock) {
+              draggedBlockRef.current = selBlock;
+            }
           }
         }
       }
@@ -2396,15 +2378,17 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       const sideMenuView = (editor as any)?.sideMenu?.view;
       if (sideMenuView) {
         sideMenuView.isDragOrigin = false;
+        sideMenuView.menuFrozen = false;
       }
 
       executeDrop(e.clientX, e.clientY);
 
-      if (editor.prosemirrorView) {
+      if (editor?.prosemirrorView) {
         (editor.prosemirrorView as any).dragging = null;
       }
       try {
-        editor.sideMenu?.blockDragEnd?.();
+        editor?.sideMenu?.unfreezeMenu?.();
+        editor?.sideMenu?.blockDragEnd?.();
       } catch { }
       draggedBlockRef.current = null;
     };
@@ -2416,7 +2400,15 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       const sideMenuView = (editor as any)?.sideMenu?.view;
       if (sideMenuView) {
         sideMenuView.isDragOrigin = false;
+        sideMenuView.menuFrozen = false;
       }
+      if (editor?.prosemirrorView) {
+        (editor.prosemirrorView as any).dragging = null;
+      }
+      try {
+        editor?.sideMenu?.unfreezeMenu?.();
+        editor?.sideMenu?.blockDragEnd?.();
+      } catch { }
     };
 
     window.addEventListener('dragstart', handleDragStart, true);
@@ -2697,6 +2689,29 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
   }, [selectedBlockIds, editor, readOnly, clearMarqueeSelection, handleContentChange]);
 
+  const CustomDragHandleMenu = useCallback(
+    (menuProps: any) => (
+      <DragHandleMenu {...menuProps}>
+        <CustomActionMenu
+          editor={editor}
+          block={menuProps.block}
+          freezeMenu={menuProps.freezeMenu}
+          unfreezeMenu={menuProps.unfreezeMenu}
+          userName={userName}
+          pageUpdatedAt={page.updatedAt}
+          onOpenMentionModal={() => {
+            setTooltipPosition(getCursorPos());
+            setMentionSearchQuery('');
+            setMentionSelectedIndex(0);
+            setIsMentionModalOpen(true);
+          }}
+          onOpenMediaPicker={handleOpenMediaPicker}
+        />
+      </DragHandleMenu>
+    ),
+    [editor, userName, page.updatedAt, handleOpenMediaPicker, getCursorPos]
+  );
+
   return (
     <div
       ref={editorContainerRef}
@@ -2781,21 +2796,16 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             <SideMenuController
               sideMenu={(props) => (
                 <div
-                  onPointerDown={() => {
-                    if (props.block?.id) {
-                      draggedBlockRef.current = props.block;
-                      preselectBlockForDrag(editor, props.block.id);
-                    }
-                  }}
-                  onMouseDown={() => {
-                    if (props.block?.id) {
-                      draggedBlockRef.current = props.block;
-                      preselectBlockForDrag(editor, props.block.id);
-                    }
-                  }}
+                  className="bn-side-menu-wrapper"
+                  data-prevent-marquee="true"
                   onMouseEnter={() => {
-                    if (props.block?.id && !draggedBlockRef.current) {
+                    if (props.block?.id) {
                       draggedBlockRef.current = props.block;
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (!editor?.prosemirrorView || !(editor.prosemirrorView as any).dragging) {
+                      draggedBlockRef.current = null;
                     }
                   }}
                 >
@@ -2803,40 +2813,54 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
                     {...props}
                     blockDragStart={(event, block) => {
                       draggedBlockRef.current = block;
-                      preselectBlockForDrag(editor, block?.id);
-                      const sideMenuView = (editor as any)?.sideMenu?.view;
-                      if (sideMenuView) {
-                        sideMenuView.isDragOrigin = false;
-                      }
-                      props.blockDragStart(event, block);
-                      if (sideMenuView) {
-                        sideMenuView.isDragOrigin = false;
+                      if (event.dataTransfer) {
+                        try {
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('blocknote/html', block?.id || '');
+                          event.dataTransfer.setData('text/plain', block?.id || '');
+
+                          const blockEl = (document.querySelector(
+                            `.bn-block-outer[data-id="${block.id}"], [data-id="${block.id}"]`
+                          ) || document.querySelector(`[data-block-id="${block.id}"]`)) as HTMLElement | null;
+
+                          if (blockEl) {
+                            const clone = blockEl.cloneNode(true) as HTMLElement;
+                            clone.style.position = 'absolute';
+                            clone.style.top = '-9999px';
+                            clone.style.left = '-9999px';
+                            clone.style.opacity = '0.85';
+                            clone.style.pointerEvents = 'none';
+                            clone.style.width = `${Math.min(blockEl.offsetWidth || 500, 600)}px`;
+                            clone.classList.add('bn-drag-preview');
+                            document.body.appendChild(clone);
+                            event.dataTransfer.setDragImage(clone, 20, 20);
+                            setTimeout(() => {
+                              if (clone.parentNode) {
+                                clone.parentNode.removeChild(clone);
+                              }
+                            }, 0);
+                          }
+                        } catch (err) {
+                          console.error('Error during block drag start:', err);
+                        }
                       }
                     }}
                     blockDragEnd={() => {
                       removeDropIndicator();
-                      props.blockDragEnd();
                       draggedBlockRef.current = null;
+                      const sideMenuView = (editor as any)?.sideMenu?.view;
+                      if (sideMenuView) {
+                        sideMenuView.isDragOrigin = false;
+                        sideMenuView.menuFrozen = false;
+                      }
+                      if (editor?.prosemirrorView) {
+                        (editor.prosemirrorView as any).dragging = null;
+                      }
+                      try {
+                        editor?.sideMenu?.unfreezeMenu?.();
+                      } catch { }
                     }}
-                    dragHandleMenu={(menuProps) => (
-                      <DragHandleMenu {...menuProps}>
-                        <CustomActionMenu
-                          editor={props.editor}
-                          block={props.block}
-                          freezeMenu={props.freezeMenu}
-                          unfreezeMenu={props.unfreezeMenu}
-                          userName={userName}
-                          pageUpdatedAt={page.updatedAt}
-                          onOpenMentionModal={() => {
-                            setTooltipPosition(getCursorPos());
-                            setMentionSearchQuery('');
-                            setMentionSelectedIndex(0);
-                            setIsMentionModalOpen(true);
-                          }}
-                          onOpenMediaPicker={handleOpenMediaPicker}
-                        />
-                      </DragHandleMenu>
-                    )}
+                    dragHandleMenu={CustomDragHandleMenu}
                   />
                 </div>
               )}
