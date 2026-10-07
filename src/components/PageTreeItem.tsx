@@ -18,7 +18,7 @@ import { useUIStore } from '~/store/uiStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
 import { EmojiPicker } from './EmojiPicker';
-import { exportPageToMarkdown } from '~/lib/pageExport';
+import { exportPageToMarkdown, exportDatabaseToCSV } from '~/lib/pageExport';
 import { inferEmojiFromTitle, isDefaultOrInferredIcon } from '~/lib/emojiUtils';
 import { updateClientPageMeta } from '~/lib/pageMetaSync';
 
@@ -582,14 +582,31 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
                   <button
                     type="button"
                     className="w-full text-left px-3 py-1.5 hover:bg-stone-50 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
-                    onClick={(e) => {
+                    onClick={async (e) => {
                       e.stopPropagation();
                       setShowMenu(false);
-                      exportPageToMarkdown(node);
+                      if (node.databaseId) {
+                        try {
+                          const { getDatabase } = await import('~/server/databases');
+                          const dbData = await getDatabase({ data: node.databaseId });
+                          if (dbData) {
+                            exportDatabaseToCSV(dbData);
+                          }
+                        } catch (err) {
+                          console.error('Failed to export database from sidebar:', err);
+                        }
+                      } else {
+                        try {
+                          const pageData = await getPage({ data: node.id });
+                          exportPageToMarkdown(pageData || node);
+                        } catch {
+                          exportPageToMarkdown(node);
+                        }
+                      }
                     }}
                   >
                     <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
-                    Export Page
+                    {node.databaseId ? 'Export Database' : 'Export Page'}
                   </button>
                   {canDelete && (
                     <button

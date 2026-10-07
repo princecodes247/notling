@@ -194,6 +194,8 @@ function PublicDocumentPageRoute() {
         activeUsers={activeUsers}
         currentClientId={getClientId()}
         page={page}
+        isDatabase={Boolean(dbData?.database)}
+        databaseData={dbData}
         onNavigateHome={() => navigate({ to: isLoggedIn ? '/dashboard' : '/' })}
         onOpenDashboard={() => navigate({ to: dbData?.database ? '/dashboard/db/$databaseId' : '/dashboard/p/$pageId', params: { databaseId: dbData?.database?.id, pageId: page.id } as any })}
         onSignIn={handleSignInToEdit}

@@ -1,7 +1,7 @@
 import React from 'react';
 import type { DatabaseView, DatabaseProperty } from '~/db/schema';
 import { VIEW_LAYOUT_OPTIONS } from './NewViewPopover';
-import { X, Trash2 } from 'lucide-react';
+import { X, Trash2, Download } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface ViewConfigDrawerProps {
@@ -12,6 +12,7 @@ interface ViewConfigDrawerProps {
   onUpdateView: (viewId: string, updates: Partial<DatabaseView>) => void;
   onDeleteView?: (viewId: string) => void;
   canDelete?: boolean;
+  onExport?: () => void;
 }
 
 export const ViewConfigDrawer: React.FC<ViewConfigDrawerProps> = ({
@@ -22,6 +23,7 @@ export const ViewConfigDrawer: React.FC<ViewConfigDrawerProps> = ({
   onUpdateView,
   onDeleteView,
   canDelete = false,
+  onExport,
 }) => {
   if (!isOpen || !view) return null;
 
@@ -161,6 +163,23 @@ export const ViewConfigDrawer: React.FC<ViewConfigDrawerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Export Database Action */}
+      {onExport && (
+        <div className="pt-3 border-t border-stone-200/60 dark:border-zinc-800/80">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onExport();
+            }}
+            className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-200 text-xs font-medium transition-colors cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+            <span>Export database</span>
+          </button>
+        </div>
+      )}
 
       {/* Delete View Action */}
       {canDelete && onDeleteView && (

@@ -15,6 +15,8 @@ interface ShareHeaderProps {
   activeUsers?: any[];
   currentClientId: string;
   page?: any;
+  isDatabase?: boolean;
+  databaseData?: any;
   onNavigateHome: () => void;
   onOpenDashboard: () => void;
   onSignIn: () => void;
@@ -29,6 +31,8 @@ export function ShareHeader({
   activeUsers = [],
   currentClientId,
   page,
+  isDatabase = false,
+  databaseData,
   onNavigateHome,
   onOpenDashboard,
   onSignIn,
@@ -88,13 +92,13 @@ export function ShareHeader({
         <ThemeToggle variant="icon" />
 
         {/* Export Button */}
-        {page && (
+        {(page || databaseData) && (
           <button
             type="button"
             onClick={() => setIsExportOpen(true)}
             className="p-1.5 sm:px-3 sm:py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-200 text-xs font-semibold tracking-tight transition-colors cursor-pointer flex items-center gap-1.5 shrink-0"
-            aria-label="Export page"
-            title="Export Page"
+            aria-label={isDatabase ? "Export database" : "Export page"}
+            title={isDatabase ? "Export Database" : "Export Page"}
           >
             <HugeiconsIcon icon={Download01Icon} size={13} className="text-stone-600 dark:text-zinc-400" />
             <span className="hidden sm:inline">Export</span>
@@ -134,11 +138,13 @@ export function ShareHeader({
         )}
       </div>
 
-      {page && (
+      {(page || databaseData) && (
         <ExportModal
           isOpen={isExportOpen}
           onClose={() => setIsExportOpen(false)}
           page={page}
+          isDatabase={isDatabase}
+          databaseData={databaseData}
         />
       )}
     </header>

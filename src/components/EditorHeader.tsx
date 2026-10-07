@@ -473,7 +473,7 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                     className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
                   >
                     <HugeiconsIcon icon={Download01Icon} size={14} className="text-stone-500 dark:text-zinc-400" />
-                    <span>{isDatabase ? 'Export Database (CSV)' : 'Export Document'}</span>
+                    <span>{isDatabase ? 'Export Database' : 'Export Document'}</span>
                   </button>
 
                   {/* Import Data Option (for Databases) */}

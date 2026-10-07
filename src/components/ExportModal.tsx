@@ -4,7 +4,6 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import {
   Download01Icon,
   File01Icon,
-  PrinterIcon,
   CheckmarkCircle01Icon,
   TableIcon,
 } from '@hugeicons/core-free-icons';
@@ -16,6 +15,7 @@ import {
   exportDatabaseToCSV,
   exportDatabaseToJSON,
   exportDatabaseToMarkdownTable,
+  exportDatabaseToPDF,
   type ExportablePage,
 } from '~/lib/pageExport';
 
@@ -24,7 +24,7 @@ interface ExportModalProps {
   onClose: () => void;
   page?: Page | ExportablePage | null;
   isDatabase?: boolean;
-  databaseData?: { database: { title?: string | null; icon?: string | null }; properties?: any[]; items?: any[] } | null;
+  databaseData?: { database: { id?: string; title?: string | null; icon?: string | null }; properties?: any[]; items?: any[]; totalCount?: number; relatedItems?: Record<string, { title: string }> } | null;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -35,41 +35,94 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   databaseData,
 }) => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   if (!page && !databaseData) return null;
 
   const targetTitle =
     (databaseData?.database?.title || page?.title || 'Untitled').trim() || 'Untitled';
 
-  const handleExportCSV = () => {
+  const getFullDatabaseData = async () => {
+    if (!databaseData) return null;
+    const dbId = databaseData.database?.id;
+    const currentItems = databaseData.items || [];
+    const total = databaseData.totalCount ?? currentItems.length;
+
+    if (!dbId || currentItems.length >= total) {
+      return databaseData;
+    }
+
     try {
-      if (databaseData) {
-        exportDatabaseToCSV(databaseData);
+      setIsExporting(true);
+      const { getDatabaseItems } = await import('~/server/databases');
+      const res = await getDatabaseItems({
+        data: {
+          databaseId: dbId,
+          limit: Math.max(total, 5000),
+          offset: 0,
+        },
+      });
+
+      if (res?.items) {
+        return {
+          ...databaseData,
+          items: res.items,
+          relatedItems: {
+            ...databaseData.relatedItems,
+            ...(res.relatedItems || {}),
+          },
+        };
+      }
+    } catch (err) {
+      console.warn('Failed to fetch full items for export, falling back to loaded items:', err);
+    } finally {
+      setIsExporting(false);
+    }
+
+    return databaseData;
+  };
+
+  const handleExportCSV = async () => {
+    try {
+      setIsExporting(true);
+      const data = await getFullDatabaseData();
+      if (data) {
+        exportDatabaseToCSV(data);
         setSuccessMessage(`Exported "${targetTitle}" as CSV Spreadsheet (.csv)`);
         setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (err) {
       console.error('Failed to export CSV:', err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
     try {
-      if (databaseData) {
-        exportDatabaseToJSON(databaseData);
+      setIsExporting(true);
+      const data = await getFullDatabaseData();
+      if (data) {
+        exportDatabaseToJSON(data);
         setSuccessMessage(`Exported "${targetTitle}" as JSON (.json)`);
         setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (err) {
       console.error('Failed to export JSON:', err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  const handleExportMarkdown = () => {
+  const handleExportMarkdown = async () => {
     try {
+      setIsExporting(true);
       if (isDatabase && databaseData) {
-        exportDatabaseToMarkdownTable(databaseData);
-        setSuccessMessage(`Exported "${targetTitle}" as Markdown Table (.md)`);
+        const data = await getFullDatabaseData();
+        if (data) {
+          exportDatabaseToMarkdownTable(data);
+          setSuccessMessage(`Exported "${targetTitle}" as Markdown Table (.md)`);
+        }
       } else if (page) {
         exportPageToMarkdown(page);
         setSuccessMessage(`Exported "${targetTitle}" as Markdown (.md)`);
@@ -77,20 +130,33 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err) {
       console.error('Failed to export markdown:', err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     try {
-      if (page) {
-        exportPageToPDF(page);
-        setSuccessMessage(`Opened print preview for PDF export`);
+      setIsExporting(true);
+      if (isDatabase && databaseData) {
+        const data = await getFullDatabaseData();
+        if (data) {
+          await exportDatabaseToPDF(data);
+          setSuccessMessage(`Exported "${targetTitle}" as PDF (.pdf)`);
+          setTimeout(() => setSuccessMessage(null), 3000);
+        }
+      } else if (page) {
+        await exportPageToPDF(page);
+        setSuccessMessage(`Exported "${targetTitle}" as PDF (.pdf)`);
         setTimeout(() => setSuccessMessage(null), 3000);
       }
     } catch (err) {
       console.error('Failed to export PDF:', err);
+    } finally {
+      setIsExporting(false);
     }
   };
+
 
   return (
     <Modal
@@ -114,6 +180,24 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           <div className="px-3 py-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-700 dark:text-emerald-300 font-medium flex items-center gap-2 animate-in fade-in">
             <HugeiconsIcon icon={CheckmarkCircle01Icon} size={15} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
             <span>{successMessage}</span>
+          </div>
+        )}
+
+        {isDatabase && databaseData && (
+          <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-stone-50 dark:bg-zinc-800/60 border border-stone-200/80 dark:border-zinc-700/80 text-xs">
+            <span className="text-stone-600 dark:text-zinc-400 font-medium">
+              Database contents
+            </span>
+            <span className="font-semibold text-stone-800 dark:text-zinc-200">
+              {databaseData.totalCount ?? databaseData.items?.length ?? 0} records • {databaseData.properties?.length ?? 0} columns
+            </span>
+          </div>
+        )}
+
+        {isExporting && (
+          <div className="px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300 font-medium flex items-center gap-2 animate-in fade-in">
+            <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin shrink-0" />
+            <span>Preparing export data...</span>
           </div>
         )}
 
@@ -222,7 +306,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             >
               <div className="flex items-center justify-between w-full">
                 <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 group-hover:bg-stone-900 dark:group-hover:bg-stone-700 text-stone-700 dark:text-stone-300 group-hover:text-white flex items-center justify-center transition-colors">
-                  <HugeiconsIcon icon={PrinterIcon} size={16} />
+                  <HugeiconsIcon icon={Download01Icon} size={16} />
                 </div>
                 <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 group-hover:bg-stone-200 transition-colors">
                   .pdf
@@ -234,13 +318,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   PDF Document
                 </span>
                 <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-snug">
-                  Print-ready document layout with database header and metadata.
+                  Clean styled document layout with table formatting and metadata.
                 </p>
               </div>
 
               <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200 group-hover:text-stone-950 dark:group-hover:text-white">
-                <HugeiconsIcon icon={PrinterIcon} size={13} />
-                <span>Export as PDF</span>
+                <HugeiconsIcon icon={Download01Icon} size={13} />
+                <span>Download .pdf</span>
               </div>
             </button>
           </div>
@@ -284,7 +368,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             >
               <div className="flex items-center justify-between w-full">
                 <div className="w-8 h-8 rounded-lg bg-stone-100 dark:bg-stone-800 group-hover:bg-stone-900 dark:group-hover:bg-stone-700 text-stone-700 dark:text-stone-300 group-hover:text-white flex items-center justify-center transition-colors">
-                  <HugeiconsIcon icon={PrinterIcon} size={16} />
+                  <HugeiconsIcon icon={Download01Icon} size={16} />
                 </div>
                 <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 group-hover:bg-stone-200 transition-colors">
                   .pdf
@@ -296,13 +380,13 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   PDF Document
                 </span>
                 <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-snug">
-                  Formatted document layout ready for printing or saving as PDF.
+                  Clean formatted document layout ready for download as PDF.
                 </p>
               </div>
 
               <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-stone-800 dark:text-stone-200 group-hover:text-stone-950 dark:group-hover:text-white">
-                <HugeiconsIcon icon={PrinterIcon} size={13} />
-                <span>Export as PDF</span>
+                <HugeiconsIcon icon={Download01Icon} size={13} />
+                <span>Download .pdf</span>
               </div>
             </button>
           </div>

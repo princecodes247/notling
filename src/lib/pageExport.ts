@@ -270,188 +270,100 @@ export function exportPageToMarkdown(page: ExportablePage, customFilename?: stri
 }
 
 /**
- * Trigger print dialog to save page content as PDF document (.pdf)
+ * Trigger custom client-side generation and download of page as PDF (.pdf)
  */
-export function exportPageToPDF(page: ExportablePage) {
-  const pageTitle = page.title || 'Untitled Document';
-  const icon = page.icon || '';
+export async function exportPageToPDF(page: ExportablePage, customFilename?: string): Promise<void> {
+  const { exportPageToPDFCustom } = await import('./pdfExport');
+  return exportPageToPDFCustom(page, customFilename);
+}
 
-  let bodyHtml = '';
-  if (Array.isArray(page.content) && page.content.length > 0) {
-    bodyHtml = blocksToHTML(page.content);
-  } else if (typeof page.content === 'string') {
-    bodyHtml = `<p>${escapeHtml(page.content)}</p>`;
-  } else if (page.contentText) {
-    bodyHtml = `<p>${escapeHtml(page.contentText)}</p>`;
-  } else {
-    bodyHtml = '<p style="color: #78716c; font-style: italic;">Empty document.</p>';
-  }
+/**
+ * Format any database property value into a clean, human-readable display string for export
+ */
+export function formatPropertyValueForExport(
+  val: any,
+  prop: { id: string; name: string; type: string; options?: any[]; config?: any },
+  relatedItemsLookup?: Record<string, { title: string }>
+): string {
+  if (val === null || val === undefined || val === '') return '';
 
-  const printDocumentHtml = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>${escapeHtml(pageTitle)}</title>
-  <style>
-    @page {
-      size: A4;
-      margin: 18mm 20mm;
-    }
-    *, *:before, *:after {
-      box-sizing: border-box;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      color: #1c1917;
-      line-height: 1.65;
-      font-size: 13.5px;
-      margin: 0;
-      padding: 32px;
-      background: #ffffff;
-    }
-    .header-container {
-      margin-bottom: 28px;
-      padding-bottom: 16px;
-      border-bottom: 2px solid #e7e5e4;
-    }
-    .page-icon {
-      font-size: 32px;
-      margin-bottom: 8px;
-      display: block;
-    }
-    .page-title {
-      font-size: 26px;
-      font-weight: 700;
-      color: #0c0a09;
-      margin: 0;
-      letter-spacing: -0.02em;
-    }
-    h1 { font-size: 20px; font-weight: 700; margin-top: 24px; margin-bottom: 10px; color: #0c0a09; page-break-after: avoid; }
-    h2 { font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 8px; color: #1c1917; page-break-after: avoid; }
-    h3 { font-size: 14px; font-weight: 600; margin-top: 16px; margin-bottom: 6px; color: #292524; page-break-after: avoid; }
-    p { margin-top: 0; margin-bottom: 12px; color: #292524; }
-    ul, ol { margin-top: 0; margin-bottom: 12px; padding-left: 22px; }
-    li { margin-bottom: 4px; }
-    blockquote {
-      margin: 14px 0;
-      padding: 10px 18px;
-      border-left: 3.5px solid #a8a29e;
-      background-color: #f5f5f4;
-      color: #44403c;
-      font-style: italic;
-      border-radius: 0 6px 6px 0;
-    }
-    pre {
-      background-color: #1c1917;
-      color: #f5f5f4;
-      padding: 14px 18px;
-      border-radius: 8px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12px;
-      overflow-x: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-      margin: 14px 0;
-      page-break-inside: avoid;
-    }
-    code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      background-color: #f5f5f4;
-      color: #292524;
-      padding: 2px 5px;
-      border-radius: 4px;
-      font-size: 88%;
-      border: 1px solid #e7e5e4;
-    }
-    pre code {
-      background-color: transparent;
-      color: inherit;
-      padding: 0;
-      border: none;
-      font-size: 100%;
-    }
-    img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 8px;
-      margin: 14px 0;
-      page-break-inside: avoid;
-      border: 1px solid #e7e5e4;
-    }
-    .image-wrapper .caption {
-      font-size: 11px;
-      color: #78716c;
-      text-align: center;
-      margin-top: 4px;
-    }
-    .callout {
-      background: #fafaf9;
-      border: 1px solid #e7e5e4;
-      border-radius: 8px;
-      padding: 12px 16px;
-      margin: 14px 0;
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      page-break-inside: avoid;
-    }
-    .checkbox-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-    a {
-      color: #2563eb;
-      text-decoration: underline;
-    }
-    @media print {
-      body {
-        padding: 0;
+  switch (prop.type) {
+    case 'checkbox':
+      return val === true || val === 'true' ? 'Yes' : 'No';
+
+    case 'select': {
+      if (prop.options && Array.isArray(prop.options)) {
+        const opt = prop.options.find((o) => o.id === val || o.value === val);
+        if (opt) return opt.value;
       }
+      return String(val);
     }
-  </style>
-</head>
-<body>
-  <div class="header-container">
-    ${icon ? `<span class="page-icon">${icon}</span>` : ''}
-    <h1 class="page-title">${escapeHtml(pageTitle)}</h1>
-  </div>
-  <div class="content">${bodyHtml}</div>
-</body>
-</html>`;
 
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = 'none';
-
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow?.document;
-  if (!doc) return;
-
-  doc.open();
-  doc.write(printDocumentHtml);
-  doc.close();
-
-  setTimeout(() => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } catch (err) {
-      console.error('Print trigger failed:', err);
-    } finally {
-      setTimeout(() => {
-        if (document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 2000);
+    case 'status': {
+      const options = prop.options || prop.config?.options;
+      if (options && Array.isArray(options)) {
+        const opt = options.find((o: any) => o.id === val || o.value === val);
+        if (opt) return opt.value;
+      }
+      return String(val);
     }
-  }, 300);
+
+    case 'multi_select': {
+      const arr = Array.isArray(val) ? val : typeof val === 'string' ? val.split(',') : [val];
+      const labels = arr
+        .map((item) => {
+          const trimmed = String(item).trim();
+          if (prop.options && Array.isArray(prop.options)) {
+            const opt = prop.options.find((o) => o.id === trimmed || o.value === trimmed);
+            if (opt) return opt.value;
+          }
+          return trimmed;
+        })
+        .filter(Boolean);
+      return labels.join(', ');
+    }
+
+    case 'relation': {
+      const ids = Array.isArray(val) ? val : [val];
+      const titles = ids
+        .map((id) => {
+          const strId = String(id).trim();
+          if (relatedItemsLookup && relatedItemsLookup[strId]?.title) {
+            return relatedItemsLookup[strId].title;
+          }
+          return strId;
+        })
+        .filter(Boolean);
+      return titles.join(', ');
+    }
+
+    case 'date': {
+      if (typeof val === 'object' && val !== null) {
+        if (val.start && val.end) return `${val.start} -> ${val.end}`;
+        if (val.start) return String(val.start);
+      }
+      return String(val);
+    }
+
+    case 'file':
+    case 'files': {
+      if (Array.isArray(val)) {
+        return val
+          .map((f: any) => (typeof f === 'string' ? f : f?.name || f?.url || ''))
+          .filter(Boolean)
+          .join(', ');
+      }
+      if (typeof val === 'object' && val !== null) {
+        return val.name || val.url || '';
+      }
+      return String(val);
+    }
+
+    default:
+      if (Array.isArray(val)) return val.join(', ');
+      if (typeof val === 'object') return JSON.stringify(val);
+      return String(val);
+  }
 }
 
 /**
@@ -474,16 +386,24 @@ function escapeCSVCell(val: any): string {
   return str;
 }
 
+export interface ExportDatabaseData {
+  database: { title?: string | null; icon?: string | null };
+  properties?: any[];
+  items?: any[];
+  relatedItems?: Record<string, { title: string }>;
+}
+
 /**
  * Export full database records, properties, and values to CSV (.csv)
  */
 export function exportDatabaseToCSV(
-  databaseData: { database: { title?: string | null }; properties?: any[]; items?: any[] },
+  databaseData: ExportDatabaseData,
   customFilename?: string
 ) {
   const dbTitle = databaseData.database?.title || 'Untitled Database';
   const properties = [...(databaseData.properties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const items = [...(databaseData.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const relatedLookup = databaseData.relatedItems;
 
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
@@ -502,7 +422,8 @@ export function exportDatabaseToCSV(
 
     for (const prop of nonTitleProps) {
       const rawVal = item.properties?.[prop.id];
-      rowCells.push(escapeCSVCell(rawVal));
+      const formattedVal = formatPropertyValueForExport(rawVal, prop, relatedLookup);
+      rowCells.push(escapeCSVCell(formattedVal));
     }
 
     csvRows.push(rowCells.join(','));
@@ -513,7 +434,8 @@ export function exportDatabaseToCSV(
     customFilename ||
     `${dbTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'database'}.csv`;
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Include UTF-8 BOM so Microsoft Excel and other spreadsheet apps open UTF-8 correctly
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -528,12 +450,13 @@ export function exportDatabaseToCSV(
  * Export full database records to JSON format (.json)
  */
 export function exportDatabaseToJSON(
-  databaseData: { database: { title?: string | null }; properties?: any[]; items?: any[] },
+  databaseData: ExportDatabaseData,
   customFilename?: string
 ) {
   const dbTitle = databaseData.database?.title || 'Untitled Database';
   const properties = [...(databaseData.properties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const items = [...(databaseData.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const relatedLookup = databaseData.relatedItems;
 
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
@@ -543,7 +466,9 @@ export function exportDatabaseToJSON(
       title: item.title || (titleProp ? item.properties?.[titleProp.id] : '') || '',
     };
     for (const prop of nonTitleProps) {
-      record[prop.name || prop.id] = item.properties?.[prop.id] ?? null;
+      const rawVal = item.properties?.[prop.id];
+      const formattedVal = formatPropertyValueForExport(rawVal, prop, relatedLookup);
+      record[prop.name || prop.id] = formattedVal;
     }
     return record;
   });
@@ -568,13 +493,14 @@ export function exportDatabaseToJSON(
  * Export full database to Markdown table (.md)
  */
 export function exportDatabaseToMarkdownTable(
-  databaseData: { database: { title?: string | null; icon?: string | null }; properties?: any[]; items?: any[] },
+  databaseData: ExportDatabaseData,
   customFilename?: string
 ) {
   const dbTitle = databaseData.database?.title || 'Untitled Database';
   const icon = databaseData.database?.icon || '📊';
   const properties = [...(databaseData.properties || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const items = [...(databaseData.items || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const relatedLookup = databaseData.relatedItems;
 
   const titleProp = properties.find((p) => p.type === 'title');
   const nonTitleProps = properties.filter((p) => p.type !== 'title');
@@ -591,12 +517,12 @@ export function exportDatabaseToMarkdownTable(
   for (const item of items) {
     const rowCells: string[] = [];
     const titleVal = item.title || (titleProp ? item.properties?.[titleProp.id] : '') || '';
-    rowCells.push(String(titleVal).replace(/\|/g, '\\|'));
+    rowCells.push(String(titleVal).replace(/\|/g, '\\|').replace(/\n/g, ' '));
 
     for (const prop of nonTitleProps) {
       const rawVal = item.properties?.[prop.id];
-      const displayVal = Array.isArray(rawVal) ? rawVal.join(', ') : rawVal !== undefined && rawVal !== null ? String(rawVal) : '';
-      rowCells.push(displayVal.replace(/\|/g, '\\|'));
+      const displayVal = formatPropertyValueForExport(rawVal, prop, relatedLookup);
+      rowCells.push(displayVal.replace(/\|/g, '\\|').replace(/\n/g, ' '));
     }
 
     md += `| ${rowCells.join(' | ')} |\n`;
@@ -616,4 +542,16 @@ export function exportDatabaseToMarkdownTable(
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Export full database records into a clean, print-ready PDF preview table (.pdf)
+ */
+export async function exportDatabaseToPDF(
+  databaseData: ExportDatabaseData,
+  customFilename?: string
+): Promise<void> {
+  const { exportDatabaseToPDFCustom } = await import('./pdfExport');
+  return exportDatabaseToPDFCustom(databaseData, customFilename);
+}
+
 

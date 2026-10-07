@@ -1482,6 +1482,7 @@ export function DatabaseContainer({
             onUpdateProperty={handleUpdateProperty}
             onOpenRowDrawer={(item) => setSelectedDrawerItem(item)}
             onImportData={() => setIsImportModalOpen(true)}
+            onExportData={() => setExportModalOpen(true)}
             readOnly={readOnly}
             workspaceId={initialData.database.workspaceId}
             databaseId={dbData.database.id}
@@ -1505,6 +1506,7 @@ export function DatabaseContainer({
             onUpdateView={handleUpdateView}
             onDeleteView={handleDeleteView}
             canDelete={views.length > 1}
+            onExport={() => setExportModalOpen(true)}
           />
         )}
       </AnimatePresence>
@@ -1556,7 +1558,18 @@ export function DatabaseContainer({
         isOpen={isExportModalOpen}
         onClose={() => setExportModalOpen(false)}
         isDatabase={true}
-        databaseData={dbData}
+        databaseData={{
+          ...dbData,
+          database: {
+            ...dbData.database,
+            title: dbTitle || dbData.database.title,
+            icon: dbData.database.icon,
+          },
+          properties: dbData.properties,
+          items: allItems,
+          totalCount,
+          relatedItems: relatedItemsMap,
+        }}
         page={sharePageObject}
       />
     </div>

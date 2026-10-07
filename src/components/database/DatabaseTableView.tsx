@@ -21,6 +21,7 @@ import {
   AlertTriangle,
   AlertCircle,
   Upload,
+  Download,
   X,
   ArrowUp,
   ArrowDown,
@@ -56,6 +57,7 @@ interface DatabaseTableViewProps {
   onUpdateProperty?: (propertyId: string, updates: Partial<DatabaseProperty>) => void;
   onOpenRowDrawer?: (item: DatabaseItem) => void;
   onImportData?: () => void;
+  onExportData?: () => void;
   readOnly?: boolean;
   workspaceId?: string;
   databaseId?: string;
@@ -106,6 +108,7 @@ export function DatabaseTableView({
   onUpdateProperty,
   onOpenRowDrawer,
   onImportData,
+  onExportData,
   readOnly = false,
   workspaceId = '',
   databaseId = '',
@@ -1127,20 +1130,36 @@ export function DatabaseTableView({
                     >
                       New row
                     </span>
-                    {onImportData && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onImportData();
-                        }}
-                        className="text-[11px] font-medium text-stone-400 hover:text-stone-700 dark:text-zinc-500 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
-                        title="Import CSV, TSV or JSON data"
-                      >
-                        <Upload className="w-3 h-3" />
-                        <span>Import data</span>
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {onImportData && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onImportData();
+                          }}
+                          className="text-[11px] font-medium text-stone-400 hover:text-stone-700 dark:text-zinc-500 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Import CSV, TSV or JSON data"
+                        >
+                          <Upload className="w-3 h-3" />
+                          <span>Import data</span>
+                        </button>
+                      )}
+                      {onExportData && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onExportData();
+                          }}
+                          className="text-[11px] font-medium text-stone-400 hover:text-stone-700 dark:text-zinc-500 dark:hover:text-zinc-200 hover:bg-stone-200/60 dark:hover:bg-zinc-700/60 px-2 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Export database to CSV, JSON, Markdown, or PDF"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Export data</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </td>
               </tr>
