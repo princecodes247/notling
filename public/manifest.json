@@ -2,8 +2,8 @@
   "name": "Notling - Workspace & Notes",
   "short_name": "Notling",
   "description": "The smartest way to organize your workspace, notes, documents, and public knowledge base.",
-  "start_url": "/",
-  "id": "/",
+  "start_url": "/dashboard",
+  "id": "/dashboard",
   "scope": "/",
   "display": "standalone",
   "display_override": [
@@ -58,7 +58,7 @@
       "name": "Open Workspace",
       "short_name": "Workspace",
       "description": "Jump directly into your active workspace",
-      "url": "/",
+      "url": "/dashboard",
       "icons": [
         {
           "src": "/icons/icon-192.png",

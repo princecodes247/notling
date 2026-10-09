@@ -17,10 +17,12 @@ import {
 } from 'lucide-react';
 import { COMMON_LINKS } from '#/lib/constants';
 import { Link } from '@tanstack/react-router';
+import type { SessionData } from '~/lib/types';
 
 interface LandingViewProps {
   onEnterApp: () => void;
   renderWorkspacePreview?: () => React.ReactNode;
+  session?: SessionData | null;
 }
 
 const FEATURE_CARDS: FeatureCardData[] = [
@@ -59,8 +61,10 @@ const FEATURE_CARDS: FeatureCardData[] = [
 export const LandingView: React.FC<LandingViewProps> = ({
   onEnterApp,
   renderWorkspacePreview,
+  session,
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isLoggedIn = !!session;
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -76,7 +80,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   return (
     <div className="min-h-screen bg-gray-100 text-neutral-900 font-sans antialiased flex flex-col selection:bg-neutral-900 selection:text-white">
       {/* 1. Top Navbar */}
-      <LandingHeader onEnterApp={onEnterApp} />
+      <LandingHeader onEnterApp={onEnterApp} session={session} />
 
       <main className="mx-2 sm:mx-6 md:mx-10 border-x-2 border-gray-300/30">
         <section>
@@ -93,11 +97,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
               <div className="mt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3 w-full sm:w-auto px-4 sm:px-0">
                 <Link
-                  to='/dashboard'
-                  type="button"
+                  to={isLoggedIn ? '/dashboard' : '/login'}
                   className="w-full sm:w-auto px-6 py-2.5 sm:py-3 rounded bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-all shadow-sm hover:shadow flex items-center justify-center gap-2 cursor-pointer active-press"
                 >
-                  <span>Get Started</span>
+                  <span>{isLoggedIn ? 'Open Workspace →' : 'Get Started'}</span>
                 </Link>
                 <a
                   href={COMMON_LINKS.github}
