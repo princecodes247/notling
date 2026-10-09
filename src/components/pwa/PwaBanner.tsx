@@ -73,9 +73,6 @@ export function PwaBanner() {
                   <h3 className="text-xs font-semibold text-stone-900 dark:text-zinc-100">
                     Install Notling App
                   </h3>
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
-                    PWA
-                  </span>
                 </div>
                 <p className="text-[11px] text-stone-500 dark:text-zinc-400 leading-snug mt-0.5">
                   Fast native experience with offline support and standalone window.
