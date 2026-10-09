@@ -190,7 +190,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'general'
                 ? 'border-stone-900 dark:border-white text-stone-950 dark:text-white bg-stone-50/80 dark:bg-zinc-800/40 font-semibold'
-                : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+                : 'border-transparent text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100'
             }`}
           >
             <Building className="w-3.5 h-3.5" />
@@ -203,7 +203,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'domains'
                 ? 'border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-300 bg-emerald-50/50 dark:bg-emerald-950/20 font-semibold'
-                : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+                : 'border-transparent text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100'
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
@@ -216,7 +216,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
             className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'members'
                 ? 'border-stone-900 dark:border-white text-stone-950 dark:text-white bg-stone-50/80 dark:bg-zinc-800/40 font-semibold'
-                : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+                : 'border-transparent text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100'
             }`}
           >
             <Users className="w-3.5 h-3.5" />
@@ -230,7 +230,7 @@ export const WorkspaceSettingsView: React.FC<WorkspaceSettingsViewProps> = ({ se
               className={`flex items-center gap-2 px-3.5 py-2 rounded-t-lg text-xs font-medium border-b-2 transition-all cursor-pointer whitespace-nowrap ${
                 activeTab === 'danger'
                   ? 'border-rose-600 dark:border-rose-400 text-rose-700 dark:text-rose-300 bg-rose-50/50 dark:bg-rose-950/20 font-semibold'
-                  : 'border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+                  : 'border-transparent text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100'
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />

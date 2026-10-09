@@ -544,7 +544,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       onClick={() => setViewMode('diff')}
                       className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${viewMode === 'diff'
                         ? 'bg-white dark:bg-zinc-800 text-stone-900 dark:text-white shadow-2xs'
-                        : 'text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+                        : 'text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100'
                         }`}
                     >
                       <span>Changes Only</span>
@@ -559,7 +559,7 @@ export const VersionHistoryDrawer: React.FC<VersionHistoryDrawerProps> = ({
                       onClick={() => setViewMode('full')}
                       className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${viewMode === 'full'
                         ? 'bg-white dark:bg-zinc-800 text-stone-900 dark:text-white shadow-2xs'
-                        : 'text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200'
+                        : 'text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100'
                         }`}
                     >
                       <span>Full Document</span>

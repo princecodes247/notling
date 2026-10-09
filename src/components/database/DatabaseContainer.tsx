@@ -1263,14 +1263,14 @@ export function DatabaseContainer({
                       "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors cursor-pointer",
                       isActive
                         ? "text-stone-900 dark:text-zinc-100 font-semibold bg-stone-100/90 dark:bg-zinc-800/80"
-                        : "text-stone-500 dark:text-zinc-400 font-medium hover:text-stone-800 dark:hover:text-zinc-200 hover:bg-stone-100/50 dark:hover:bg-zinc-800/40"
+                        : "text-stone-600 dark:text-zinc-300 font-medium hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100/60 dark:hover:bg-zinc-800/50"
                     )}
                   >
                     <Icon className={cn(
                       "w-3.5 h-3.5 shrink-0 transition-colors",
                       isActive
                         ? "text-stone-900 dark:text-zinc-100"
-                        : "text-stone-400 dark:text-zinc-500 group-hover:text-stone-600 dark:group-hover:text-zinc-400"
+                        : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-700 dark:group-hover:text-zinc-200"
                     )} />
                     <span className="truncate max-w-[140px] leading-none">{view.name}</span>
 

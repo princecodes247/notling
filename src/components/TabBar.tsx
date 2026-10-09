@@ -262,7 +262,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         }
         className={`p-1.5 rounded-lg transition-all cursor-pointer border flex items-center justify-center shrink-0 z-10 ${isHomeActive
           ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white shadow-xs ring-1 ring-black/[0.02]'
-          : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'
+          : 'bg-transparent border-transparent text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-zinc-800/50'
           }`}
         title="Home"
       >
@@ -325,7 +325,7 @@ export const TabBar: React.FC<TabBarProps> = ({
                   ? 'opacity-40 border-dashed border-stone-400 dark:border-zinc-600 bg-stone-100 dark:bg-zinc-800'
                   : isActive
                     ? 'bg-white dark:bg-zinc-800 border-stone-200/90 dark:border-zinc-700/80 text-stone-900 dark:text-white font-semibold shadow-xs ring-1 ring-black/[0.02]'
-                    : 'bg-transparent border-transparent text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 hover:bg-stone-200/40 dark:hover:bg-zinc-800/50'
+                    : 'bg-transparent border-transparent text-stone-600 dark:text-zinc-300 font-medium hover:text-stone-900 dark:hover:text-white hover:bg-stone-200/50 dark:hover:bg-zinc-800/60'
                   }`}
               >
                 {/* Drop Indicator Lines */}
@@ -342,15 +342,15 @@ export const TabBar: React.FC<TabBarProps> = ({
                 ) : tabIcon ? (
                   <span className="text-xs shrink-0">{tabIcon}</span>
                 ) : tab.id === 'folders' ? (
-                  <HugeiconsIcon icon={Folder01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+                  <HugeiconsIcon icon={Folder01Icon} size={14} className={isActive ? "text-stone-800 dark:text-zinc-100 shrink-0" : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-800 dark:group-hover:text-zinc-200 shrink-0"} />
                 ) : tab.id === 'settings' ? (
-                  <HugeiconsIcon icon={Settings02Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+                  <HugeiconsIcon icon={Settings02Icon} size={14} className={isActive ? "text-stone-800 dark:text-zinc-100 shrink-0" : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-800 dark:group-hover:text-zinc-200 shrink-0"} />
                 ) : tab.id === 'trash' ? (
-                  <HugeiconsIcon icon={Delete02Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+                  <HugeiconsIcon icon={Delete02Icon} size={14} className={isActive ? "text-stone-800 dark:text-zinc-100 shrink-0" : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-800 dark:group-hover:text-zinc-200 shrink-0"} />
                 ) : tab.path?.includes('/db/') ? (
-                  <HugeiconsIcon icon={TableIcon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+                  <HugeiconsIcon icon={TableIcon} size={14} className={isActive ? "text-stone-800 dark:text-zinc-100 shrink-0" : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-800 dark:group-hover:text-zinc-200 shrink-0"} />
                 ) : (
-                  <HugeiconsIcon icon={File01Icon} size={14} className="text-stone-400 dark:text-zinc-500 shrink-0" />
+                  <HugeiconsIcon icon={File01Icon} size={14} className={isActive ? "text-stone-800 dark:text-zinc-100 shrink-0" : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-800 dark:group-hover:text-zinc-200 shrink-0"} />
                 )}
 
                 {/* Tab Title */}
