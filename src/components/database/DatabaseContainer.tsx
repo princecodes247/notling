@@ -47,6 +47,8 @@ import {
   Copy,
   Edit2,
   Table,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '#/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -129,6 +131,45 @@ export function DatabaseContainer({
       setActiveViewId(views[0].id);
     }
   }, [views, activeViewId]);
+
+  // View tabs scroll state & indicator
+  const viewTabsContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabsScroll = useCallback(() => {
+    const el = viewTabsContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    checkTabsScroll();
+    const el = viewTabsContainerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver(() => checkTabsScroll());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [views.length, checkTabsScroll]);
+
+  // Auto-scroll active view tab into view if needed
+  useEffect(() => {
+    if (!viewTabsContainerRef.current) return;
+    const activeEl = viewTabsContainerRef.current.querySelector('[data-active="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+    checkTabsScroll();
+  }, [activeView.id, checkTabsScroll]);
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (!viewTabsContainerRef.current) return;
+    const offset = direction === 'left' ? -180 : 180;
+    viewTabsContainerRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1210,157 +1251,198 @@ export function DatabaseContainer({
 
       {/* View Switcher Tabs Bar */}
       <div className={cn(
-        "flex items-center justify-between mt-3 px-4 sm:px-8 bg-transparent select-none py-1",
+        "flex items-center justify-between mt-3 px-4 sm:px-8 bg-transparent select-none py-1 gap-2",
         hideHeader ? "max-w-7xl mx-auto w-full" : ""
       )}>
-        {/* Left: Views Tab List */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0">
-          {views.map((view) => {
-            const Icon = getViewIcon(view.type);
-            const isActive = activeView.id === view.id;
-            const isRenaming = renamingViewId === view.id;
+        {/* Left: Views Tab List with overflow scroll & fade carets */}
+        <div className="relative flex-1 flex items-center min-w-0 overflow-hidden">
+          {/* Left Fade & Caret */}
+          {canScrollLeft && (
+            <div className="absolute left-0 top-0 bottom-0 z-10 flex items-center pr-6 bg-gradient-to-r from-white dark:from-[#18181b] via-white dark:via-[#18181b] to-transparent pointer-events-none">
+              <button
+                type="button"
+                onClick={() => scrollTabs('left')}
+                className="p-1 rounded-md text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 transition-colors pointer-events-auto cursor-pointer shadow-2xs"
+                title="Scroll views left"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
-            return (
-              <div key={view.id} className="relative flex items-center shrink-0 group">
-                {isRenaming && !readOnly ? (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-100 dark:bg-zinc-800 border border-stone-300 dark:border-zinc-600">
-                    <Icon className="w-3.5 h-3.5 text-stone-700 dark:text-zinc-300 shrink-0" />
-                    <input
-                      type="text"
-                      value={renamingName}
-                      onChange={(e) => setRenamingName(e.target.value)}
-                      onBlur={() => {
-                        if (renamingName.trim()) {
-                          handleUpdateView(view.id, { name: renamingName.trim() });
-                        }
-                        setRenamingViewId(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+          {/* Scrollable Track */}
+          <div
+            ref={viewTabsContainerRef}
+            onScroll={checkTabsScroll}
+            className="flex items-center gap-1 overflow-x-auto overflow-y-hidden whitespace-nowrap scroll-smooth w-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden no-scrollbar py-0.5 px-0.5"
+          >
+            {views.map((view) => {
+              const Icon = getViewIcon(view.type);
+              const isActive = activeView.id === view.id;
+              const isRenaming = renamingViewId === view.id;
+
+              return (
+                <div key={view.id} data-active={isActive} className="relative flex items-center shrink-0 group">
+                  {isRenaming && !readOnly ? (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-100 dark:bg-zinc-800 border border-stone-300 dark:border-zinc-600">
+                      <Icon className="w-3.5 h-3.5 text-stone-700 dark:text-zinc-300 shrink-0" />
+                      <input
+                        type="text"
+                        value={renamingName}
+                        onChange={(e) => setRenamingName(e.target.value)}
+                        onBlur={() => {
                           if (renamingName.trim()) {
                             handleUpdateView(view.id, { name: renamingName.trim() });
                           }
                           setRenamingViewId(null);
-                        } else if (e.key === 'Escape') {
-                          setRenamingViewId(null);
-                        }
-                      }}
-                      autoFocus
-                      className="text-xs font-medium bg-transparent text-stone-900 dark:text-zinc-100 focus:outline-none w-24"
-                    />
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setActiveViewId(view.id)}
-                    onDoubleClick={() => {
-                      if (!readOnly) {
-                        setRenamingViewId(view.id);
-                        setRenamingName(view.name);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors cursor-pointer",
-                      isActive
-                        ? "text-stone-900 dark:text-zinc-100 font-semibold bg-stone-100/90 dark:bg-zinc-800/80"
-                        : "text-stone-600 dark:text-zinc-300 font-medium hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100/60 dark:hover:bg-zinc-800/50"
-                    )}
-                  >
-                    <Icon className={cn(
-                      "w-3.5 h-3.5 shrink-0 transition-colors",
-                      isActive
-                        ? "text-stone-900 dark:text-zinc-100"
-                        : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-700 dark:group-hover:text-zinc-200"
-                    )} />
-                    <span className="truncate max-w-[140px] leading-none">{view.name}</span>
-
-                    {/* Three-dots menu trigger on tab */}
-                    {!readOnly && (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (activeTabMenuId === view.id) {
-                            setActiveTabMenuId(null);
-                            setTabMenuTriggerEl(null);
-                          } else {
-                            setActiveTabMenuId(view.id);
-                            setTabMenuTriggerEl(e.currentTarget);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            if (renamingName.trim()) {
+                              handleUpdateView(view.id, { name: renamingName.trim() });
+                            }
+                            setRenamingViewId(null);
+                          } else if (e.key === 'Escape') {
+                            setRenamingViewId(null);
                           }
                         }}
-                        className={cn(
-                          "p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity ml-0.5",
-                          isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-                        )}
-                        title="View options"
-                      >
-                        <MoreHorizontal className="w-3 h-3" />
-                      </span>
-                    )}
+                        autoFocus
+                        className="text-xs font-medium bg-transparent text-stone-900 dark:text-zinc-100 focus:outline-none w-24"
+                      />
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setActiveViewId(view.id)}
+                      onDoubleClick={() => {
+                        if (!readOnly) {
+                          setRenamingViewId(view.id);
+                          setRenamingName(view.name);
+                        }
+                      }}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors cursor-pointer",
+                        isActive
+                          ? "text-stone-900 dark:text-zinc-100 font-semibold bg-stone-100/90 dark:bg-zinc-800/80"
+                          : "text-stone-600 dark:text-zinc-300 font-medium hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-100/60 dark:hover:bg-zinc-800/50"
+                      )}
+                    >
+                      <Icon className={cn(
+                        "w-3.5 h-3.5 shrink-0 transition-colors",
+                        isActive
+                          ? "text-stone-900 dark:text-zinc-100"
+                          : "text-stone-500 dark:text-zinc-400 group-hover:text-stone-700 dark:group-hover:text-zinc-200"
+                      )} />
+                      <span className="truncate max-w-[140px] leading-none">{view.name}</span>
+
+                      {/* Three-dots menu trigger on tab */}
+                      {!readOnly && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (activeTabMenuId === view.id) {
+                              setActiveTabMenuId(null);
+                              setTabMenuTriggerEl(null);
+                            } else {
+                              setActiveTabMenuId(view.id);
+                              setTabMenuTriggerEl(e.currentTarget);
+                            }
+                          }}
+                          className={cn(
+                            "p-0.5 rounded hover:bg-stone-200/70 dark:hover:bg-zinc-700 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 transition-opacity ml-0.5",
+                            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          )}
+                          title="View options"
+                        >
+                          <MoreHorizontal className="w-3 h-3" />
+                        </span>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Tab Context Menu Dropdown */}
+                  {activeTabMenuId === view.id && (
+                    <TabContextMenu
+                      triggerEl={tabMenuTriggerEl}
+                      viewsCount={views.length}
+                      onClose={() => {
+                        setActiveTabMenuId(null);
+                        setTabMenuTriggerEl(null);
+                      }}
+                      onRename={() => {
+                        setActiveTabMenuId(null);
+                        setTabMenuTriggerEl(null);
+                        setRenamingViewId(view.id);
+                        setRenamingName(view.name);
+                      }}
+                      onDuplicate={() => {
+                        setActiveTabMenuId(null);
+                        setTabMenuTriggerEl(null);
+                        handleDuplicateView(view);
+                      }}
+                      onOptions={() => {
+                        setActiveTabMenuId(null);
+                        setTabMenuTriggerEl(null);
+                        setActiveViewId(view.id);
+                        setIsConfigDrawerOpen(true);
+                      }}
+                      onDelete={() => {
+                        setActiveTabMenuId(null);
+                        setTabMenuTriggerEl(null);
+                        handleDeleteView(view.id);
+                      }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Sticky Right Action Group (Plus button & right scroll indicator) */}
+            <div className="sticky right-0 z-10 flex items-center bg-white dark:bg-[#18181b] shrink-0 pl-1">
+              {/* Fade gradient leading into sticky buttons when there is more content */}
+              {canScrollRight && (
+                <div className="absolute right-full top-0 bottom-0 w-6 bg-gradient-to-r from-transparent to-white dark:to-[#18181b] pointer-events-none" />
+              )}
+
+              {/* Scroll Right Caret Button */}
+              {canScrollRight && (
+                <button
+                  type="button"
+                  onClick={() => scrollTabs('right')}
+                  className="p-1 mr-0.5 rounded-md text-stone-600 dark:text-zinc-300 hover:text-stone-900 dark:hover:text-zinc-100 hover:bg-stone-200/60 dark:hover:bg-zinc-800/60 transition-colors pointer-events-auto cursor-pointer shadow-2xs shrink-0"
+                  title="Scroll views right"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Add View '+' Trigger Button */}
+              {!readOnly && (
+                <div className="relative shrink-0">
+                  <button
+                    ref={newViewTriggerRef}
+                    type="button"
+                    onClick={() => setIsNewViewPopoverOpen(!isNewViewPopoverOpen)}
+                    className="p-1 hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-100 rounded-md transition-colors cursor-pointer flex items-center justify-center"
+                    title="Add View"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
                   </button>
-                )}
 
-                {/* Tab Context Menu Dropdown */}
-                {activeTabMenuId === view.id && (
-                  <TabContextMenu
-                    triggerEl={tabMenuTriggerEl}
-                    viewsCount={views.length}
-                    onClose={() => {
-                      setActiveTabMenuId(null);
-                      setTabMenuTriggerEl(null);
-                    }}
-                    onRename={() => {
-                      setActiveTabMenuId(null);
-                      setTabMenuTriggerEl(null);
-                      setRenamingViewId(view.id);
-                      setRenamingName(view.name);
-                    }}
-                    onDuplicate={() => {
-                      setActiveTabMenuId(null);
-                      setTabMenuTriggerEl(null);
-                      handleDuplicateView(view);
-                    }}
-                    onOptions={() => {
-                      setActiveTabMenuId(null);
-                      setTabMenuTriggerEl(null);
-                      setActiveViewId(view.id);
-                      setIsConfigDrawerOpen(true);
-                    }}
-                    onDelete={() => {
-                      setActiveTabMenuId(null);
-                      setTabMenuTriggerEl(null);
-                      handleDeleteView(view.id);
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
-
-          {/* Add View '+' Trigger Button */}
-          {!readOnly && (
-            <div className="relative shrink-0">
-              <button
-                ref={newViewTriggerRef}
-                type="button"
-                onClick={() => setIsNewViewPopoverOpen(!isNewViewPopoverOpen)}
-                className="p-1 hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-400 hover:text-stone-700 dark:hover:text-zinc-200 rounded-md transition-colors cursor-pointer"
-                title="Add View"
-              >
-                <Plus className="w-3.5 h-3.5" />
-              </button>
-
-              <AnimatePresence>
-                {isNewViewPopoverOpen && (
-                  <NewViewPopover
-                    isOpen={isNewViewPopoverOpen}
-                    onClose={() => setIsNewViewPopoverOpen(false)}
-                    onSelectLayout={handleCreateView}
-                    triggerRef={newViewTriggerRef}
-                  />
-                )}
-              </AnimatePresence>
+                  <AnimatePresence>
+                    {isNewViewPopoverOpen && (
+                      <NewViewPopover
+                        isOpen={isNewViewPopoverOpen}
+                        onClose={() => setIsNewViewPopoverOpen(false)}
+                        onSelectLayout={handleCreateView}
+                        triggerRef={newViewTriggerRef}
+                      />
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Right: View Options Trigger */}
