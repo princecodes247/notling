@@ -1,6 +1,31 @@
 {
-  "name": "tanstack-start-test",
-  "private": true,
+  "name": "notling",
+  "version": "1.0.0",
+  "description": "A blazing fast open-source Notion alternative built with TanStack Start, React 19, Yjs CRDTs, and PostgreSQL.",
+  "license": "MIT",
+  "author": "Prince Gbalam <princecodes247@gmail.com>",
+  "homepage": "https://www.notling.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/princecodes247/notling.git"
+  },
+  "bugs": {
+    "url": "https://github.com/princecodes247/notling/issues"
+  },
+  "keywords": [
+    "notion",
+    "notion-alternative",
+    "notes",
+    "workspace",
+    "open-source",
+    "tanstack-start",
+    "react-19",
+    "yjs",
+    "crdt",
+    "blocknote",
+    "drizzle-orm",
+    "postgresql"
+  ],
   "type": "module",
   "imports": {
     "#/*": "./src/*"

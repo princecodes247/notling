@@ -1,6 +1,12 @@
 # Notling 🚀
 
-Notling is a modern, high-performance, Notion-like collaborative workspace application built with **TanStack Start**, **React 19**, **Drizzle ORM**, **PostgreSQL**, and real-time **Yjs CRDT collaboration**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+[![TanStack Start](https://img.shields.io/badge/TanStack-Start-blue.svg)](https://tanstack.com/start)
+[![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue.svg)](https://www.typescriptlang.org)
+
+Notling is a blazing fast, modern, open-source Notion-like collaborative workspace application built with **TanStack Start**, **React 19**, **Drizzle ORM**, **PostgreSQL**, and real-time **Yjs CRDT collaboration**.
 
 ---
 
@@ -125,6 +131,22 @@ src/
 
 ---
 
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/princecodes247/notling/issues).
+
+Please check our [Contributing Guide](./CONTRIBUTING.md) and [Code of Conduct](./CODE_OF_CONDUCT.md) before submitting a Pull Request.
+
+---
+
+## 🔒 Security
+
+For security vulnerabilities and disclosure instructions, please see our [Security Policy](./SECURITY.md).
+
+---
+
 ## 📄 License
 
-MIT
+This project is open-source and licensed under the [MIT License](./LICENSE).
+
+Copyright (c) 2026 Prince Gbalam.
