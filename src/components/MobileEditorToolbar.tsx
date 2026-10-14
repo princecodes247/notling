@@ -29,9 +29,12 @@ import {
   Check,
   Undo,
   Redo,
+  Scissors,
+  ClipboardPaste,
 } from 'lucide-react';
 import { useIsMobile } from '~/hooks/useIsMobile';
 import { BottomSheet } from './BottomSheet';
+import { copyBlocksToClipboard, getBlocksFromClipboard } from './BlockEditorInner';
 
 interface MobileEditorToolbarProps {
   editor: any;
@@ -85,6 +88,7 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
   const [activeSheet, setActiveSheet] = useState<'insert' | 'turnInto' | 'actions' | 'color' | null>(null);
   const [colorMode, setColorMode] = useState<'text' | 'bg'>('text');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedBlock, setCopiedBlock] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
@@ -261,6 +265,64 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
       editor.focus?.();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleCopyBlock = async () => {
+    if (!currentBlock) return;
+    try {
+      await copyBlocksToClipboard([currentBlock], editor);
+      setCopiedBlock(true);
+      setTimeout(() => {
+        setCopiedBlock(false);
+        setActiveSheet(null);
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCutBlock = async () => {
+    if (!currentBlock) return;
+    try {
+      await copyBlocksToClipboard([currentBlock], editor);
+      editor.removeBlocks([currentBlock]);
+      setActiveSheet(null);
+      editor.focus?.();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handlePasteBelow = async () => {
+    if (!currentBlock) return;
+    try {
+      const blocksToInsert = await getBlocksFromClipboard(undefined, editor);
+      if (blocksToInsert && blocksToInsert.length > 0) {
+        editor.insertBlocks(blocksToInsert, currentBlock, 'after');
+      } else {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          let parsed: any[] | null = null;
+          try {
+            parsed = await editor.tryParseMarkdownToBlocks(text);
+          } catch {}
+          if (parsed && parsed.length > 0) {
+            editor.insertBlocks(parsed, currentBlock, 'after');
+          } else {
+            editor.insertBlocks(
+              [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }],
+              currentBlock,
+              'after'
+            );
+          }
+        }
+      }
+      setActiveSheet(null);
+      editor.focus?.();
+    } catch (err) {
+      console.error(err);
+      setActiveSheet(null);
     }
   };
 
@@ -456,6 +518,41 @@ export const MobileEditorToolbar: React.FC<MobileEditorToolbarProps> = ({
               <div className="flex items-center gap-3">
                 <Palette className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
                 <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">Color &amp; Highlight</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCopyBlock}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Copy className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">
+                  {copiedBlock ? 'Copied block to clipboard!' : 'Copy block'}
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCutBlock}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Scissors className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">Cut block</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handlePasteBelow}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left hover:bg-stone-100 dark:hover:bg-zinc-800/60 active:bg-stone-200/60 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <ClipboardPaste className="w-4 h-4 text-stone-500 dark:text-zinc-400" />
+                <span className="text-xs font-medium text-stone-900 dark:text-zinc-100">Paste below</span>
               </div>
             </button>
 

@@ -54,6 +54,8 @@ import {
   Sparkles as SparklesIcon,
   Table as TableIcon,
   Kanban as KanbanIcon,
+  Scissors,
+  ClipboardPaste,
 } from 'lucide-react';
 import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
 import type { SessionData } from '#/lib/types';
@@ -61,6 +63,141 @@ import type { SessionData } from '#/lib/types';
 interface BlockEditorInnerProps {
   page: Page;
   readOnly?: boolean;
+}
+
+export function cloneBlocksWithoutIds(blocks: any[]): any[] {
+  if (!Array.isArray(blocks)) return [];
+  return blocks.map((b) => {
+    if (!b || typeof b !== 'object') return b;
+    const { id, ...rest } = b;
+    if (rest.children && Array.isArray(rest.children)) {
+      rest.children = cloneBlocksWithoutIds(rest.children);
+    }
+    return rest;
+  });
+}
+
+export async function copyBlocksToClipboard(blocks: any[], editor: any): Promise<void> {
+  if (!blocks || blocks.length === 0) return;
+  const clonedBlocks = cloneBlocksWithoutIds(blocks);
+
+  (window as any).__notlingIsCustomBlockCopying = true;
+  (window as any).__notlingCopiedBlocks = clonedBlocks;
+  setTimeout(() => {
+    (window as any).__notlingIsCustomBlockCopying = false;
+  }, 300);
+
+  let plainText = extractPlainTextFromBlocks(blocks);
+  let markdown = '';
+  let html = '';
+
+  if (editor) {
+    try {
+      markdown = await editor.blocksToMarkdownLossy(blocks);
+    } catch {
+      markdown = plainText;
+    }
+    try {
+      html = await editor.blocksToHTMLLossy(blocks);
+    } catch {
+      html = markdown ? `<p>${markdown.replace(/\n/g, '<br/>')}</p>` : '';
+    }
+  }
+
+  const encodedBlocks = encodeURIComponent(JSON.stringify(clonedBlocks));
+  const wrappedHtml = `<div data-notling-blocks="${encodedBlocks}">${html || plainText}</div>`;
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+      const items: Record<string, Blob> = {
+        'text/plain': new Blob([plainText || markdown || ' '], { type: 'text/plain' }),
+        'text/html': new Blob([wrappedHtml], { type: 'text/html' }),
+      };
+      await navigator.clipboard.write([new ClipboardItem(items)]);
+      return;
+    }
+  } catch (err) {
+    console.warn('ClipboardItem write failed, falling back to writeText:', err);
+  }
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(plainText || markdown || '');
+    }
+  } catch (err) {
+    console.error('Failed to copy blocks to clipboard:', err);
+  }
+}
+
+export async function getBlocksFromClipboard(
+  e?: React.ClipboardEvent | ClipboardEvent,
+  _editor?: any
+): Promise<any[] | null> {
+  // 1. Check event clipboardData HTML for data-notling-blocks
+  let html = '';
+  if (e && e.clipboardData) {
+    try {
+      html = e.clipboardData.getData('text/html') || '';
+    } catch {
+      // fallback
+    }
+  }
+
+  if (html) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const el = doc.querySelector('[data-notling-blocks]');
+      if (el) {
+        const raw = el.getAttribute('data-notling-blocks');
+        if (raw) {
+          const parsed = JSON.parse(decodeURIComponent(raw));
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return cloneBlocksWithoutIds(parsed);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to parse data-notling-blocks from HTML:', err);
+    }
+  }
+
+  // 2. In-memory cache fallback
+  const memoryBlocks = (window as any).__notlingCopiedBlocks;
+  if (Array.isArray(memoryBlocks) && memoryBlocks.length > 0) {
+    return cloneBlocksWithoutIds(memoryBlocks);
+  }
+
+  // 3. Fallback when e is not passed: read from navigator.clipboard
+  if (!e && typeof navigator !== 'undefined' && navigator.clipboard) {
+    try {
+      if (navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          if (item.types.includes('text/html')) {
+            const blob = await item.getType('text/html');
+            const htmlText = await blob.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            const el = doc.querySelector('[data-notling-blocks]');
+            if (el) {
+              const raw = el.getAttribute('data-notling-blocks');
+              if (raw) {
+                const parsed = JSON.parse(decodeURIComponent(raw));
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  return cloneBlocksWithoutIds(parsed);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore clipboard read permission failures
+    }
+  }
+
+  return null;
 }
 
 function extractPlainTextFromBlocks(blocks: any[]): string {
@@ -279,6 +416,7 @@ interface CustomActionMenuProps {
   unfreezeMenu?: () => void;
   userName?: string | null;
   pageUpdatedAt?: Date | string | null;
+  onContentChange?: () => void;
   onOpenMentionModal?: () => void;
   onOpenMediaPicker?: (tab: 'upload' | 'link' | 'unsplash' | 'giphy') => void;
 }
@@ -290,12 +428,14 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
   unfreezeMenu,
   userName,
   pageUpdatedAt,
+  onContentChange,
   onOpenMentionModal,
   onOpenMediaPicker,
 }) => {
   const [search, setSearch] = useState('');
   const [openFlyout, setOpenFlyout] = useState<null | 'turnInto' | 'color'>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedBlock, setCopiedBlock] = useState(false);
   const flyoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Highlight active block while handle context menu is open
@@ -359,6 +499,62 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
       finishAction();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleCopyBlock = async () => {
+    try {
+      await copyBlocksToClipboard([block], editor);
+      setCopiedBlock(true);
+      setTimeout(() => {
+        setCopiedBlock(false);
+        finishAction();
+      }, 700);
+    } catch (err) {
+      console.error('Failed to copy block:', err);
+    }
+  };
+
+  const handleCutBlock = async () => {
+    try {
+      await copyBlocksToClipboard([block], editor);
+      editor.removeBlocks([block]);
+      onContentChange?.();
+      finishAction();
+    } catch (err) {
+      console.error('Failed to cut block:', err);
+    }
+  };
+
+  const handlePasteBelow = async () => {
+    try {
+      const blocksToInsert = await getBlocksFromClipboard(undefined, editor);
+      if (blocksToInsert && blocksToInsert.length > 0) {
+        editor.insertBlocks(blocksToInsert, block.id, 'after');
+        onContentChange?.();
+      } else {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          let parsed: any[] | null = null;
+          try {
+            parsed = await editor.tryParseMarkdownToBlocks(text);
+          } catch {}
+          if (parsed && parsed.length > 0) {
+            editor.insertBlocks(parsed, block.id, 'after');
+          } else {
+            editor.insertBlocks(
+              [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }],
+              block.id,
+              'after'
+            );
+          }
+          onContentChange?.();
+        }
+      }
+      finishAction();
+    } catch (err) {
+      console.error('Failed to paste below block:', err);
+      finishAction();
     }
   };
 
@@ -626,18 +822,46 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
           <span className="text-[10px] font-medium text-stone-400 group-hover:text-blue-700">Media</span>
         </button>
 
-        {/* Copy link to block */}
+        {/* Copy block */}
         <button
           type="button"
-          onClick={handleCopyLink}
+          onClick={handleCopyBlock}
           onMouseEnter={() => setOpenFlyout(null)}
           className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-neutral-100 text-neutral-800 hover:text-neutral-950 transition-colors cursor-pointer group"
         >
           <div className="flex items-center gap-2">
-            <Link className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-900" />
-            <span>{copiedLink ? 'Link copied!' : 'Copy link to block'}</span>
+            <Copy className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-900" />
+            <span>{copiedBlock ? 'Block copied!' : 'Copy block'}</span>
           </div>
-          <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘^L</kbd>
+          <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘C</kbd>
+        </button>
+
+        {/* Cut block */}
+        <button
+          type="button"
+          onClick={handleCutBlock}
+          onMouseEnter={() => setOpenFlyout(null)}
+          className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-neutral-100 text-neutral-800 hover:text-neutral-950 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <Scissors className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-900" />
+            <span>Cut block</span>
+          </div>
+          <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘X</kbd>
+        </button>
+
+        {/* Paste below */}
+        <button
+          type="button"
+          onClick={handlePasteBelow}
+          onMouseEnter={() => setOpenFlyout(null)}
+          className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-neutral-100 text-neutral-800 hover:text-neutral-950 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <ClipboardPaste className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-900" />
+            <span>Paste below</span>
+          </div>
+          <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘V</kbd>
         </button>
 
         {/* Duplicate */}
@@ -652,6 +876,20 @@ const CustomActionMenu: React.FC<CustomActionMenuProps> = ({
             <span>Duplicate</span>
           </div>
           <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘D</kbd>
+        </button>
+
+        {/* Copy link to block */}
+        <button
+          type="button"
+          onClick={handleCopyLink}
+          onMouseEnter={() => setOpenFlyout(null)}
+          className="flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-neutral-100 text-neutral-800 hover:text-neutral-950 transition-colors cursor-pointer group"
+        >
+          <div className="flex items-center gap-2">
+            <Link className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-900" />
+            <span>{copiedLink ? 'Link copied!' : 'Copy link to block'}</span>
+          </div>
+          <kbd className="text-[10px] font-mono text-neutral-400 group-hover:text-neutral-600 bg-neutral-100 px-1 py-0.5 rounded border border-neutral-200">⌘^L</kbd>
         </button>
 
         {/* Delete */}
@@ -2624,9 +2862,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           const blocks = selectedBlockIds
             .map((id) => editor.getBlock(id))
             .filter((b): b is NonNullable<typeof b> => Boolean(b));
-          const plainText = extractPlainTextFromBlocks(blocks);
-          if (plainText) {
-            await navigator.clipboard.writeText(plainText);
+          if (blocks.length > 0) {
+            await copyBlocksToClipboard(blocks, editor);
           }
         } catch (err) {
           console.error('Failed to copy blocks:', err);
@@ -2641,11 +2878,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           const blocks = selectedBlockIds
             .map((id) => editor.getBlock(id))
             .filter((b): b is NonNullable<typeof b> => Boolean(b));
-          const plainText = extractPlainTextFromBlocks(blocks);
-          if (plainText) {
-            await navigator.clipboard.writeText(plainText);
-          }
           if (blocks.length > 0) {
+            await copyBlocksToClipboard(blocks, editor);
             editor.removeBlocks(blocks as any);
             handleContentChange();
           }
@@ -2657,7 +2891,58 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         return;
       }
 
-      // 5. Duplicate (Cmd+D / Ctrl+D)
+      // 5. Paste (Cmd+V / Ctrl+V) over selected blocks
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'v' || e.key === 'V')) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const blocksToInsert = await getBlocksFromClipboard(undefined, editor);
+          if (blocksToInsert && blocksToInsert.length > 0) {
+            editor.replaceBlocks(selectedBlockIds as any, blocksToInsert);
+            setSelectedBlockIds([]);
+            clearMarqueeSelection();
+            hasUserEditedRef.current = true;
+            handleContentChange();
+            return;
+          }
+
+          // Fallback to text from clipboard
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            let parsed: any[] | null = null;
+            try {
+              parsed = await editor.tryParseMarkdownToBlocks(text);
+            } catch {}
+            if (parsed && parsed.length > 0) {
+              editor.replaceBlocks(selectedBlockIds as any, parsed);
+            } else {
+              const lines = text.split(/\r?\n/).filter(Boolean);
+              const newBlocks = lines.length > 0
+                ? lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line, styles: {} }] }))
+                : [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }];
+              editor.replaceBlocks(selectedBlockIds as any, newBlocks as any);
+            }
+            setSelectedBlockIds([]);
+            clearMarqueeSelection();
+            hasUserEditedRef.current = true;
+            handleContentChange();
+          }
+        } catch (err) {
+          console.error('Failed to paste into selected blocks:', err);
+        }
+        return;
+      }
+
+      // 6. Select All (Cmd+A / Ctrl+A)
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        const allIds = editor.document.map((b: any) => b.id);
+        setSelectedBlockIds(allIds);
+        computeBlockRects(allIds);
+        return;
+      }
+
+      // 7. Duplicate (Cmd+D / Ctrl+D)
       if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
         e.preventDefault();
         try {
@@ -2667,10 +2952,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
           if (blocks.length > 0) {
             const lastBlock = blocks[blocks.length - 1] as any;
-            const clonedBlocks = blocks.map((b: any) => {
-              const { id, ...rest } = b;
-              return { ...rest };
-            });
+            const clonedBlocks = cloneBlocksWithoutIds(blocks);
             if (lastBlock?.id) {
               editor.insertBlocks(clonedBlocks as any, lastBlock.id, 'after');
               handleContentChange();
@@ -2687,7 +2969,111 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [selectedBlockIds, editor, readOnly, clearMarqueeSelection, handleContentChange]);
+  }, [selectedBlockIds, editor, readOnly, clearMarqueeSelection, handleContentChange, computeBlockRects]);
+
+  // Handle capture-phase paste events for clean block-to-block insertion
+  useEffect(() => {
+    if (!editor || readOnly) return;
+
+    const handlePasteCapture = async (e: ClipboardEvent) => {
+      // 1. If multi-block selection is active, replace selected blocks
+      if (selectedBlockIdsRef.current.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const blocksToInsert = await getBlocksFromClipboard(e, editor);
+        if (blocksToInsert && blocksToInsert.length > 0) {
+          try {
+            editor.replaceBlocks(selectedBlockIdsRef.current as any, blocksToInsert);
+            setSelectedBlockIds([]);
+            clearMarqueeSelection();
+            hasUserEditedRef.current = true;
+            handleContentChange();
+          } catch (err) {
+            console.error('Failed to replace selected blocks on paste:', err);
+          }
+          return;
+        }
+
+        const text = e.clipboardData?.getData('text/plain') || '';
+        if (text) {
+          try {
+            let parsed: any[] | null = null;
+            try {
+              parsed = await editor.tryParseMarkdownToBlocks(text);
+            } catch {}
+            if (parsed && parsed.length > 0) {
+              editor.replaceBlocks(selectedBlockIdsRef.current as any, parsed);
+            } else {
+              const lines = text.split(/\r?\n/).filter(Boolean);
+              const newBlocks = lines.length > 0
+                ? lines.map((line) => ({ type: 'paragraph', content: [{ type: 'text', text: line, styles: {} }] }))
+                : [{ type: 'paragraph', content: [{ type: 'text', text, styles: {} }] }];
+              editor.replaceBlocks(selectedBlockIdsRef.current as any, newBlocks as any);
+            }
+            setSelectedBlockIds([]);
+            clearMarqueeSelection();
+            hasUserEditedRef.current = true;
+            handleContentChange();
+          } catch (err) {
+            console.error('Failed to paste text into selected blocks:', err);
+          }
+        }
+        return;
+      }
+
+      // 2. If block-level data was copied, paste cleanly into current block
+      const blocksToInsert = await getBlocksFromClipboard(e, editor);
+      if (blocksToInsert && blocksToInsert.length > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const cursor = editor.getTextCursorPosition();
+          const currentBlock = cursor?.block;
+          if (currentBlock) {
+            const isCurrentEmpty = isBlocksArrayEmpty([currentBlock]);
+            if (isCurrentEmpty) {
+              editor.replaceBlocks([currentBlock.id], blocksToInsert);
+            } else {
+              editor.insertBlocks(blocksToInsert, currentBlock.id, 'after');
+            }
+          } else {
+            const lastBlock = editor.document[editor.document.length - 1];
+            if (lastBlock?.id) {
+              editor.insertBlocks(blocksToInsert, lastBlock.id, 'after');
+            }
+          }
+          hasUserEditedRef.current = true;
+          handleContentChange();
+        } catch (err) {
+          console.error('Failed to paste blocks:', err);
+        }
+        return;
+      }
+    };
+
+    const handleNativeCopyOrCut = () => {
+      if ((window as any).__notlingIsCustomBlockCopying) {
+        return;
+      }
+      (window as any).__notlingCopiedBlocks = null;
+    };
+
+    const container = editorContainerRef.current;
+    if (container) {
+      container.addEventListener('paste', handlePasteCapture, true);
+    }
+    window.addEventListener('copy', handleNativeCopyOrCut, true);
+    window.addEventListener('cut', handleNativeCopyOrCut, true);
+
+    return () => {
+      if (container) {
+        container.removeEventListener('paste', handlePasteCapture, true);
+      }
+      window.removeEventListener('copy', handleNativeCopyOrCut, true);
+      window.removeEventListener('cut', handleNativeCopyOrCut, true);
+    };
+  }, [editor, readOnly, clearMarqueeSelection, handleContentChange]);
 
   const CustomDragHandleMenu = useCallback(
     (menuProps: any) => (
@@ -2699,6 +3085,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           unfreezeMenu={menuProps.unfreezeMenu}
           userName={userName}
           pageUpdatedAt={page.updatedAt}
+          onContentChange={handleContentChange}
           onOpenMentionModal={() => {
             setTooltipPosition(getCursorPos());
             setMentionSearchQuery('');
@@ -2709,7 +3096,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         />
       </DragHandleMenu>
     ),
-    [editor, userName, page.updatedAt, handleOpenMediaPicker, getCursorPos]
+    [editor, userName, page.updatedAt, handleOpenMediaPicker, getCursorPos, handleContentChange]
   );
 
   return (
@@ -2725,6 +3112,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         handleContainerClick(e);
       }}
       onMouseDown={(e) => {
+        if (selectedBlockIds.length > 0 && !isMarqueeSelecting) {
+          const target = e.target as HTMLElement;
+          if (!target.closest('.bn-marquee-box')) {
+            setSelectedBlockIds([]);
+            clearMarqueeSelection();
+          }
+        }
         if (!readOnly) handleMouseDown(e);
       }}
       onKeyDown={() => {
