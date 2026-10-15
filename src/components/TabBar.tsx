@@ -59,7 +59,7 @@ export const TabBar: React.FC<TabBarProps> = ({
       queryClient.prefetchQuery({
         queryKey: ['page', tabId],
         queryFn: async () => await getPage({ data: tabId }),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 10 * 1000,
       });
     }
   };

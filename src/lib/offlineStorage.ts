@@ -8,14 +8,26 @@ const DRAFT_PREFIX = 'notling_offline_draft_';
 
 /**
  * Retrieves the cached offline draft for a specific page from localStorage, if present.
+ * If serverUpdatedAt is provided and the server update timestamp is newer than or equal to
+ * the draft's timestamp, the draft is deemed obsolete, automatically removed, and null is returned.
  */
-export function getOfflineDraft(pageId: string | null | undefined): OfflineDraft | null {
+export function getOfflineDraft(
+  pageId: string | null | undefined,
+  serverUpdatedAt?: string | Date | null
+): OfflineDraft | null {
   if (typeof window === 'undefined' || !pageId) return null;
   try {
     const raw = localStorage.getItem(`${DRAFT_PREFIX}${pageId}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.content) && parsed.content.length > 0) {
+      if (serverUpdatedAt) {
+        const serverTime = new Date(serverUpdatedAt).getTime();
+        if (!isNaN(serverTime) && serverTime >= (parsed.timestamp || 0)) {
+          clearOfflineDraft(pageId);
+          return null;
+        }
+      }
       return parsed as OfflineDraft;
     }
   } catch (err) {
@@ -60,6 +72,9 @@ export function clearOfflineDraft(pageId: string | null | undefined): void {
 /**
  * Returns true if an offline draft exists for the given page.
  */
-export function hasOfflineDraft(pageId: string | null | undefined): boolean {
-  return getOfflineDraft(pageId) !== null;
+export function hasOfflineDraft(
+  pageId: string | null | undefined,
+  serverUpdatedAt?: string | Date | null
+): boolean {
+  return getOfflineDraft(pageId, serverUpdatedAt) !== null;
 }

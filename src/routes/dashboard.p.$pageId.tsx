@@ -41,7 +41,9 @@ function DocumentPageRoute() {
       }
       return undefined;
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5000,
+    refetchOnWindowFocus: 'always',
+    refetchOnReconnect: 'always',
   });
 
   // Synchronize Tab title, icon, active tab/page ID, and document title as soon as page data is loaded
@@ -81,6 +83,7 @@ function DocumentPageRoute() {
       return await getDatabase({ data: pageId });
     },
     enabled: !!pageId,
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -100,7 +103,7 @@ function DocumentPageRoute() {
     }
   }, [dbData?.database?.id, dbData?.database?.pageId, dbData?.database?.title, dbData?.database?.icon, pageId]);
 
-  if (isLoading || (isDbLoading && !dbData)) {
+  if (isLoading || (isDbLoading && !dbData && !page)) {
     return <EditorSkeleton />;
   }
 

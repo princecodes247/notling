@@ -23,6 +23,7 @@ import {
   softDeletePage,
 } from '~/server/pages';
 import { updateClientPageMeta, deleteClientPage, updateClientPagePin, updateClientPageVisibility, duplicateClientPage } from '~/lib/pageMetaSync';
+import { broadcastPageMetaUpdate } from '~/lib/broadcastSync';
 import { BlockEditorInner } from './BlockEditorInner';
 import { ShareModal } from './ShareModal';
 import { ExportModal } from './ExportModal';
@@ -304,6 +305,7 @@ export const Editor: React.FC<EditorProps> = ({
           await updatePageMeta({
             data: { pageId: page.id, title: t, icon: i },
           });
+          broadcastPageMetaUpdate(page.id, t, i);
           setSaveStatus('saved');
         } catch (err) {
           setSaveStatus('error');

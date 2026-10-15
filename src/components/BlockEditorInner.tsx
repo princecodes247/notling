@@ -20,6 +20,7 @@ import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { useCollaboration } from '~/lib/collaboration';
 import { getOfflineDraft, saveOfflineDraft, clearOfflineDraft, hasOfflineDraft } from '~/lib/offlineStorage';
+import { broadcastPageUpdate } from '~/lib/broadcastSync';
 import { useNavigate } from '@tanstack/react-router';
 import { useTheme } from '~/context/ThemeContext';
 import { PageMentionTooltip, type MentionSuggestionItem } from '~/components/PageMentionTooltip';
@@ -1192,7 +1193,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
   const initialContent = useMemo(() => {
     try {
-      const draft = getOfflineDraft(page.id);
+      const draft = getOfflineDraft(page.id, page.updatedAt);
       if (draft?.content && !isBlocksArrayEmpty(draft.content)) return draft.content;
 
       if (typeof page.content === 'string') {
@@ -1204,7 +1205,8 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       console.error('Failed to parse page content JSON', e);
     }
     return undefined;
-  }, [page.id, page.content]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page.id]);
 
   const editorOptions = useMemo(() => {
     const opts: any = {
@@ -1369,7 +1371,11 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
   const editorRef = useRef(editor);
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
+  const isSyncingRemoteRef = useRef<boolean>(false);
   const lastSyncedHashRef = useRef<string>(initialContent ? JSON.stringify(initialContent) : '');
+  const lastAppliedUpdatedAtRef = useRef<string | null>(
+    page.updatedAt ? new Date(page.updatedAt).toISOString() : null
+  );
 
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxWaitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1437,6 +1443,9 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         }
 
         // Synced successfully on server - update last synced hash, TanStack Query cache & clear local draft
+        if (res?.updatedAt) {
+          lastAppliedUpdatedAtRef.current = new Date(res.updatedAt).toISOString();
+        }
         lastSyncedHashRef.current = currentJson;
         queryClient.setQueryData<Page>(['page', activePageId], (old) => {
           if (!old) return old;
@@ -1444,12 +1453,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
             ...old,
             content: currentBlocks,
             contentText: plainText,
+            updatedAt: res?.updatedAt ? new Date(res.updatedAt) : old.updatedAt,
           };
         });
         clearOfflineDraft(activePageId);
         hasUserEditedRef.current = false;
+        broadcastPageUpdate(activePageId);
         setSaveStatus('saved');
-        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
       } catch (err) {
         console.error('Server sync failed:', err);
         setSaveStatus('offline');
@@ -1534,6 +1544,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
   // Point 1 & 3: Local-First Instant Writes + True Debounce (800ms pause) + Max-Wait Cap (4s)
   const handleContentChange = useCallback(() => {
+    if (isSyncingRemoteRef.current) return;
     const currentBlocks = editorRef.current?.document;
     if (!currentBlocks) return;
 
@@ -1664,10 +1675,14 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
 
     const handleUndo = () => {
+      if (readOnly) return;
       try {
         const tt = editor._tiptapEditor as any;
         if (tt?.can().undo()) {
           tt.commands.undo();
+          try {
+            editor.focus();
+          } catch { }
           emitHistoryState();
         }
       } catch (err) {
@@ -1676,10 +1691,14 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
 
     const handleRedo = () => {
+      if (readOnly) return;
       try {
         const tt = editor._tiptapEditor as any;
         if (tt?.can().redo()) {
           tt.commands.redo();
+          try {
+            editor.focus();
+          } catch { }
           emitHistoryState();
         }
       } catch (err) {
@@ -1687,8 +1706,64 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       }
     };
 
+    // Global keyboard shortcuts for Undo / Redo when the cursor is NOT focused in the block editor
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (readOnly) return;
+
+      const isMod = e.metaKey || e.ctrlKey;
+      if (!isMod || e.altKey) return;
+
+      const key = e.key.toLowerCase();
+      const isUndo = key === 'z' && !e.shiftKey;
+      const isRedo = (key === 'z' && e.shiftKey) || (key === 'y' && !e.shiftKey);
+
+      if (!isUndo && !isRedo) return;
+
+      const activeEl = document.activeElement;
+
+      // 1. If focused on a text input, textarea, or select, preserve native input undo/redo
+      if (activeEl) {
+        const tag = activeEl.tagName.toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+          return;
+        }
+        // If contentEditable element that is NOT part of the block editor
+        if ((activeEl as HTMLElement).isContentEditable && !activeEl.closest('.bn-editor')) {
+          return;
+        }
+        // If inside an open modal, dialog, or drawer, do not intercept
+        if (activeEl.closest('[role="dialog"], [data-modal], .modal, dialog, aside[role="complementary"]')) {
+          return;
+        }
+      }
+
+      // 2. If the block editor already has focus, ProseMirror's built-in keymap handles it
+      const isEditorFocused = editor.isFocused() || !!activeEl?.closest('.bn-editor');
+      if (isEditorFocused) {
+        return;
+      }
+
+      // 3. Block editor cursor is not focused: execute undo / redo on the editor
+      if (isUndo) {
+        const tt = editor._tiptapEditor as any;
+        if (tt?.can().undo()) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleUndo();
+        }
+      } else if (isRedo) {
+        const tt = editor._tiptapEditor as any;
+        if (tt?.can().redo()) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleRedo();
+        }
+      }
+    };
+
     window.addEventListener('editor-undo', handleUndo);
     window.addEventListener('editor-redo', handleRedo);
+    window.addEventListener('keydown', handleGlobalKeyDown);
 
     emitHistoryState();
 
@@ -1702,12 +1777,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     return () => {
       window.removeEventListener('editor-undo', handleUndo);
       window.removeEventListener('editor-redo', handleRedo);
+      window.removeEventListener('keydown', handleGlobalKeyDown);
       try {
         if (typeof unsubUpdate === 'function') unsubUpdate();
         if (typeof unsubSelection === 'function') unsubSelection();
       } catch { }
     };
-  }, [editor]);
+  }, [editor, readOnly]);
 
   // If editor document is blank and initialContent exists, seed from database content
   useEffect(() => {
@@ -1717,10 +1793,16 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       const currentDoc = editor.document;
       if (isBlocksArrayEmpty(currentDoc)) {
         try {
+          isSyncingRemoteRef.current = true;
           editor.replaceBlocks(currentDoc, initialContent);
           lastSyncedHashRef.current = JSON.stringify(initialContent);
         } catch (err) {
           console.error('Error seeding initial collaborative content:', err);
+        } finally {
+          setTimeout(() => {
+            isSyncingRemoteRef.current = false;
+            hasUserEditedRef.current = false;
+          }, 50);
         }
       }
     };
@@ -2192,20 +2274,60 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     };
   }, [collab?.doc, collab?.provider, page.id]);
 
-  // Sync remote block updates from DB only if collaboration is NOT active
+  // Sync remote block updates from DB when content changes elsewhere
   useEffect(() => {
-    if (collab || !editor || hasUserEditedRef.current || editor.isFocused()) return;
+    if (!editor || hasUserEditedRef.current) return;
+
+    // Fast-path: Only sync if server updatedAt is truly newer than what we have already applied
+    const currentServerTime = page.updatedAt ? new Date(page.updatedAt).toISOString() : null;
+    if (!currentServerTime || currentServerTime === lastAppliedUpdatedAtRef.current) {
+      return;
+    }
+
+    const hasActivePeers = Boolean(
+      collab?.provider?.awareness &&
+      collab.provider.awareness.getStates().size > 1
+    );
+
+    let incomingBlocks: any[] | null = null;
     try {
-      const incomingBlocks = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
-      if (Array.isArray(incomingBlocks) && incomingBlocks.length > 0) {
-        const currentJson = JSON.stringify(editor.document);
-        const incomingJson = JSON.stringify(incomingBlocks);
-        if (currentJson !== incomingJson) {
-          editor.replaceBlocks(editor.document, incomingBlocks);
-        }
-      }
+      incomingBlocks = typeof page.content === 'string' ? JSON.parse(page.content) : page.content;
+    } catch {
+      incomingBlocks = null;
+    }
+
+    if (!Array.isArray(incomingBlocks) || incomingBlocks.length === 0) {
+      lastAppliedUpdatedAtRef.current = currentServerTime;
+      return;
+    }
+
+    // If active peers are concurrently connected in the WebRTC room and editor already has content,
+    // let Yjs WebRTC handle live peer typing
+    if (hasActivePeers && !isBlocksArrayEmpty(editor.document)) {
+      lastAppliedUpdatedAtRef.current = currentServerTime;
+      return;
+    }
+
+    const incomingJson = JSON.stringify(incomingBlocks);
+    if (incomingJson === lastSyncedHashRef.current) {
+      // Content already matches our synced hash
+      lastAppliedUpdatedAtRef.current = currentServerTime;
+      return;
+    }
+
+    try {
+      isSyncingRemoteRef.current = true;
+      lastSyncedHashRef.current = incomingJson;
+      lastAppliedUpdatedAtRef.current = currentServerTime;
+      clearOfflineDraft(page.id);
+      editor.replaceBlocks(editor.document, incomingBlocks);
     } catch (err) {
       console.error('Error syncing remote blocks:', err);
+    } finally {
+      setTimeout(() => {
+        isSyncingRemoteRef.current = false;
+        hasUserEditedRef.current = false;
+      }, 50);
     }
   }, [editor, page.content, page.updatedAt, collab]);
 

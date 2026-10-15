@@ -69,7 +69,8 @@ function PublicDocumentPageRoute() {
       return await getPublicPage({ data: pageId });
     },
     enabled: !!pageId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5000,
+    refetchOnWindowFocus: 'always',
   });
 
   const { data: dbData } = useQuery({

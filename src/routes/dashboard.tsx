@@ -14,6 +14,7 @@ import { updateClientPageMeta, updateClientPagePin, deleteClientPage, deleteClie
 import { useUIStore, type TabItem } from '~/store/uiStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NetworkStatusBanner } from '~/components/NetworkStatusBanner';
+import { subscribeToTabSync } from '~/lib/broadcastSync';
 
 export const Route = createFileRoute('/dashboard')({
   loader: async () => {
@@ -310,11 +311,26 @@ function DashboardLayout() {
         queryClient.prefetchQuery({
           queryKey: ['page', t.id],
           queryFn: async () => await getPage({ data: t.id }),
-          staleTime: 5 * 60 * 1000,
+          staleTime: 10 * 1000,
         });
       }
     });
   }, [openTabs, queryClient]);
+
+  // Listen to cross-tab updates across windows/tabs to invalidate queries immediately
+  React.useEffect(() => {
+    const unsub = subscribeToTabSync((msg) => {
+      if (msg.type === 'PAGE_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['page', msg.pageId] });
+      } else if (msg.type === 'PAGE_META_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['page', msg.pageId] });
+        queryClient.invalidateQueries({ queryKey: ['pageTree'] });
+      } else if (msg.type === 'DATABASE_UPDATED') {
+        queryClient.invalidateQueries({ queryKey: ['database', msg.databaseId] });
+      }
+    });
+    return unsub;
+  }, [queryClient]);
 
   const isCreatingPageRef = React.useRef(false);
 

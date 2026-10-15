@@ -54,10 +54,10 @@ export const PageTreeItem: React.FC<PageTreeItemProps> = ({
   const { expandedNodeIds, toggleNodeExpand, setNodeExpand, activePageId } = useUIStore();
 
   const handleMouseEnter = () => {
-    queryClient.query({
+    queryClient.prefetchQuery({
       queryKey: ['page', node.id],
       queryFn: async () => await getPage({ data: node.id }),
-      staleTime: 5 * 60 * 1000,
+      staleTime: 10 * 1000,
     });
   };
   const liveMeta = useUIStore((s) => s.pageMeta[node.id]);
