@@ -47,6 +47,10 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
   const [wholeWord, setWholeWord] = useState(false);
   const [matches, setMatches] = useState<SearchMatch[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const activeIndexRef = useRef(-1);
+  activeIndexRef.current = activeIndex;
+  const matchesRef = useRef<SearchMatch[]>([]);
+  matchesRef.current = matches;
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -72,7 +76,6 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
     }
   }, [isOpen, initialMode, initialQuery, readOnly]);
 
-
   // Run search and update decorations
   const performSearch = useCallback(
     (searchQuery: string, options: SearchOptions, targetIndex?: number) => {
@@ -85,9 +88,11 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
       const doc = currentView.state.doc;
       const foundMatches = findMatchesInDoc(doc, searchQuery, options);
       setMatches(foundMatches);
+      matchesRef.current = foundMatches;
 
       if (foundMatches.length === 0) {
         setActiveIndex(-1);
+        activeIndexRef.current = -1;
         updateSearchDecorations(currentView, [], -1);
         return;
       }
@@ -95,15 +100,16 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
       let newIndex = 0;
       if (typeof targetIndex === 'number' && targetIndex >= 0 && targetIndex < foundMatches.length) {
         newIndex = targetIndex;
-      } else if (activeIndex >= 0 && activeIndex < foundMatches.length) {
-        newIndex = activeIndex;
+      } else if (activeIndexRef.current >= 0 && activeIndexRef.current < foundMatches.length) {
+        newIndex = activeIndexRef.current;
       }
 
       setActiveIndex(newIndex);
+      activeIndexRef.current = newIndex;
       updateSearchDecorations(currentView, foundMatches, newIndex);
       scrollToMatch(currentView, foundMatches[newIndex]);
     },
-    [editor, isOpen, activeIndex]
+    [editor, isOpen]
   );
 
   // Trigger search on query or option change
@@ -141,7 +147,9 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
       clearSearchDecorations(v);
     }
     setMatches([]);
+    matchesRef.current = [];
     setActiveIndex(-1);
+    activeIndexRef.current = -1;
     onClose();
     // Return focus to editor
     try {
@@ -152,45 +160,52 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
   // Navigation handlers
   const handleNextMatch = useCallback(() => {
     const v = getView();
-    if (matches.length === 0 || !v) return;
-    const nextIdx = (activeIndex + 1) % matches.length;
+    const curMatches = matchesRef.current;
+    if (curMatches.length === 0 || !v) return;
+    const nextIdx = (activeIndexRef.current + 1) % curMatches.length;
     setActiveIndex(nextIdx);
-    updateSearchDecorations(v, matches, nextIdx);
-    scrollToMatch(v, matches[nextIdx]);
-  }, [matches, activeIndex, getView]);
+    activeIndexRef.current = nextIdx;
+    updateSearchDecorations(v, curMatches, nextIdx);
+    scrollToMatch(v, curMatches[nextIdx]);
+  }, [getView]);
 
   const handlePrevMatch = useCallback(() => {
     const v = getView();
-    if (matches.length === 0 || !v) return;
-    const prevIdx = (activeIndex - 1 + matches.length) % matches.length;
+    const curMatches = matchesRef.current;
+    if (curMatches.length === 0 || !v) return;
+    const prevIdx = (activeIndexRef.current - 1 + curMatches.length) % curMatches.length;
     setActiveIndex(prevIdx);
-    updateSearchDecorations(v, matches, prevIdx);
-    scrollToMatch(v, matches[prevIdx]);
-  }, [matches, activeIndex, getView]);
+    activeIndexRef.current = prevIdx;
+    updateSearchDecorations(v, curMatches, prevIdx);
+    scrollToMatch(v, curMatches[prevIdx]);
+  }, [getView]);
 
   // Replace handlers
   const handleReplaceCurrent = useCallback(() => {
     const v = getView();
-    if (!v || matches.length === 0 || activeIndex < 0) return;
-    const currentMatch = matches[activeIndex];
+    const curMatches = matchesRef.current;
+    const curIndex = activeIndexRef.current;
+    if (!v || curMatches.length === 0 || curIndex < 0) return;
+    const currentMatch = curMatches[curIndex];
     replaceMatch(v, currentMatch, replacement);
 
     // Re-run search and stay at current index (or next match)
     setTimeout(() => {
-      performSearch(query, { caseSensitive, wholeWord }, activeIndex);
+      performSearch(query, { caseSensitive, wholeWord }, curIndex);
     }, 10);
-  }, [getView, matches, activeIndex, replacement, query, caseSensitive, wholeWord, performSearch]);
+  }, [getView, replacement, query, caseSensitive, wholeWord, performSearch]);
 
   const handleReplaceAll = useCallback(() => {
     const v = getView();
-    if (!v || matches.length === 0) return;
-    replaceAllMatches(v, matches, replacement);
+    const curMatches = matchesRef.current;
+    if (!v || curMatches.length === 0) return;
+    replaceAllMatches(v, curMatches, replacement);
 
     // Clear matches after replacing all
     setTimeout(() => {
       performSearch(query, { caseSensitive, wholeWord });
     }, 10);
-  }, [getView, matches, replacement, query, caseSensitive, wholeWord, performSearch]);
+  }, [getView, replacement, query, caseSensitive, wholeWord, performSearch]);
 
   // Keyboard navigation inside search panel
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -204,9 +219,26 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
       } else {
         handleNextMatch();
       }
-    } else if (e.key === 'ArrowDown' && isReplaceMode) {
+    } else if ((e.metaKey || e.ctrlKey) && (e.key === 'g' || e.key === 'G')) {
       e.preventDefault();
-      replaceInputRef.current?.focus();
+      if (e.shiftKey) {
+        handlePrevMatch();
+      } else {
+        handleNextMatch();
+      }
+    } else if (e.key === 'ArrowDown') {
+      if (isReplaceMode) {
+        e.preventDefault();
+        replaceInputRef.current?.focus();
+      } else {
+        e.preventDefault();
+        handleNextMatch();
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (!isReplaceMode) {
+        e.preventDefault();
+        handlePrevMatch();
+      }
     }
   };
 
@@ -245,6 +277,13 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
         if (e.key === 'Escape') {
           e.preventDefault();
           handleClose();
+        } else if ((e.metaKey || e.ctrlKey) && (e.key === 'g' || e.key === 'G')) {
+          e.preventDefault();
+          if (e.shiftKey) {
+            handlePrevMatch();
+          } else {
+            handleNextMatch();
+          }
         } else if (e.altKey && (e.key === 'c' || e.key === 'C')) {
           e.preventDefault();
           setCaseSensitive((prev) => !prev);
@@ -260,6 +299,7 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
         {!readOnly && (
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => setIsReplaceMode((prev) => !prev)}
             title={isReplaceMode ? 'Collapse Replace' : 'Expand Replace (⌘H)'}
             aria-label={isReplaceMode ? 'Collapse Replace' : 'Expand Replace'}
@@ -303,6 +343,7 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
         {/* Case Sensitive Toggle */}
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => setCaseSensitive((prev) => !prev)}
           title="Match Case (Alt+C)"
           aria-pressed={caseSensitive}
@@ -318,6 +359,7 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
         {/* Whole Word Toggle */}
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => setWholeWord((prev) => !prev)}
           title="Match Whole Word (Alt+W)"
           aria-pressed={wholeWord}
@@ -333,9 +375,10 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
         {/* Prev Match Button */}
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handlePrevMatch}
           disabled={matches.length === 0}
-          title="Previous Match (Shift+Enter)"
+          title="Previous Match (Shift+Enter, ↑)"
           aria-label="Previous Match"
           className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer active:scale-95 shrink-0"
         >
@@ -345,9 +388,10 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
         {/* Next Match Button */}
         <button
           type="button"
+          onMouseDown={(e) => e.preventDefault()}
           onClick={handleNextMatch}
           disabled={matches.length === 0}
-          title="Next Match (Enter)"
+          title="Next Match (Enter, ↓)"
           aria-label="Next Match"
           className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-600 dark:text-zinc-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer active:scale-95 shrink-0"
         >
@@ -389,6 +433,7 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
           {/* Replace Single Button */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleReplaceCurrent}
             disabled={matches.length === 0}
             title="Replace current match (Enter)"
@@ -400,6 +445,7 @@ export const FindAndReplaceBar: React.FC<FindAndReplaceBarProps> = ({
           {/* Replace All Button */}
           <button
             type="button"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleReplaceAll}
             disabled={matches.length === 0}
             title="Replace all matches (Alt+Enter)"

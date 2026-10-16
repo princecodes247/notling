@@ -209,6 +209,7 @@ export function scrollToMatch(view: EditorView, match: SearchMatch) {
     const tr = view.state.tr.setSelection(
       TextSelection.create(view.state.doc, match.from, match.to)
     );
+    tr.scrollIntoView();
     view.dispatch(tr);
   } catch {}
 
