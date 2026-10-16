@@ -726,6 +726,35 @@ body.bn-checkbox-painting .bn-block-content[data-content-type="checkListItem"] {
   z-index: 9999;
 }
 
+/* Find and Replace Search Highlights */
+.bn-search-match {
+  background-color: rgba(253, 224, 71, 0.6);
+  color: inherit;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.dark .bn-search-match {
+  background-color: rgba(202, 138, 4, 0.45);
+  color: inherit;
+}
+
+.bn-search-match-active {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px #d97706, 0 1px 3px rgba(0, 0, 0, 0.25);
+  font-weight: 500;
+}
+
+.dark .bn-search-match-active {
+  background-color: #f59e0b !important;
+  color: #000000 !important;
+  box-shadow: 0 0 0 2px #fbbf24, 0 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+
 
 
 

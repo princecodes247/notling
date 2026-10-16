@@ -59,6 +59,7 @@ import {
   ClipboardPaste,
 } from 'lucide-react';
 import { MediaPickerModal, type MediaInsertPayload } from '~/components/MediaPickerModal';
+import { FindAndReplaceBar } from './editor/FindAndReplaceBar';
 import type { SessionData } from '#/lib/types';
 
 interface BlockEditorInnerProps {
@@ -1110,6 +1111,11 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
   const [mediaPickerInitialTab, setMediaPickerInitialTab] = useState<'upload' | 'link' | 'unsplash' | 'giphy'>('upload');
   const [mediaPickerPosition, setMediaPickerPosition] = useState<{ top: number; left: number } | null>(null);
 
+  // Find and replace states
+  const [isFindOpen, setIsFindOpen] = useState(false);
+  const [findMode, setFindMode] = useState<'find' | 'replace'>('find');
+  const [findInitialQuery, setFindInitialQuery] = useState('');
+
   const getCursorPos = () => {
     try {
       const sel = window.getSelection();
@@ -1784,6 +1790,57 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
       } catch { }
     };
   }, [editor, readOnly]);
+
+  // Handle Find and Replace shortcuts and events
+  const handleOpenFindReplace = useCallback(
+    (mode: 'find' | 'replace' = 'find') => {
+      let selectedText = '';
+      try {
+        selectedText = editor.getSelectedText?.() || window.getSelection()?.toString() || '';
+      } catch {}
+
+      setFindMode(mode);
+      if (selectedText && selectedText.trim()) {
+        setFindInitialQuery(selectedText.trim());
+      }
+      setIsFindOpen(true);
+    },
+    [editor]
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Hijack Cmd+F (Find) or Cmd+H (Replace)
+      const isFind = (e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'f' || e.key === 'F');
+      const isReplace = (e.metaKey || e.ctrlKey) && !e.shiftKey && (e.key === 'h' || e.key === 'H');
+
+      if (!isFind && !isReplace) return;
+
+      const activeEl = document.activeElement;
+      if (activeEl) {
+        // If typing inside an input/textarea of another modal or dialog, don't hijack
+        const isOtherModal = activeEl.closest('[role="dialog"], [data-modal], .modal, dialog');
+        if (isOtherModal) return;
+      }
+
+      e.preventDefault();
+      e.stopPropagation();
+      handleOpenFindReplace(isReplace ? 'replace' : 'find');
+    };
+
+    const handleCustomOpen = (e: Event) => {
+      const customEvent = e as CustomEvent<{ mode?: 'find' | 'replace' }>;
+      handleOpenFindReplace(customEvent.detail?.mode || 'find');
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('open-find-replace', handleCustomOpen);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('open-find-replace', handleCustomOpen);
+    };
+  }, [handleOpenFindReplace]);
 
   // If editor document is blank and initialContent exists, seed from database content
   useEffect(() => {
@@ -3397,6 +3454,15 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           }}
         />
       )}
+
+      <FindAndReplaceBar
+        editor={editor}
+        isOpen={isFindOpen}
+        initialMode={findMode}
+        initialQuery={findInitialQuery}
+        readOnly={readOnly}
+        onClose={() => setIsFindOpen(false)}
+      />
 
       <PageMentionTooltip
         isOpen={isMentionModalOpen}

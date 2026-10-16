@@ -391,8 +391,21 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                 <Redo className="w-3.5 h-3.5" />
               </button>
 
-              <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800 mr-2" />
+              <div className="h-4 w-px bg-stone-200 dark:bg-zinc-800 mr-1" />
             </>
+          )}
+
+          {/* Find in page Quick Button */}
+          {!isDatabase && (
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-find-replace', { detail: { mode: 'find' } }))}
+              aria-label="Find in page (Cmd+F)"
+              title="Find in page (⌘F)"
+              className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 transition-colors cursor-pointer active:scale-95"
+            >
+              <Search className="w-3.5 h-3.5" />
+            </button>
           )}
 
           {/* Favorite Quick Button */}
@@ -463,6 +476,24 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({
                   className="fixed w-44 bg-white dark:bg-[#18181b] border border-stone-200 dark:border-zinc-800 rounded-xl shadow-xl py-1.5 z-50 text-xs flex flex-col animate-in fade-in-50 duration-100"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  {/* Find in page */}
+                  {!isDatabase && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowHeaderMenu(false);
+                        window.dispatchEvent(new CustomEvent('open-find-replace', { detail: { mode: 'find' } }));
+                      }}
+                      className="w-full text-left px-3 py-1.5 hover:bg-stone-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-stone-700 dark:text-zinc-300 font-medium cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Search className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
+                        <span>Find in page</span>
+                      </div>
+                      <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-mono">⌘F</span>
+                    </button>
+                  )}
+
                   {/* Export Option */}
                   <button
                     type="button"
