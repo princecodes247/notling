@@ -60,8 +60,19 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Register Service Worker
+    // Register Service Worker (Production Only)
     if ('serviceWorker' in navigator) {
+      if (import.meta.env.DEV) {
+        // In local development, unregister lingering service workers to prevent
+        // caching of dynamic Vite HMR chunks and 504 Outdated Optimize Dep errors
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister();
+          }
+        });
+        return;
+      }
+
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .then((reg) => {

@@ -41,8 +41,38 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Helper to safely cache responses without failing on unsupported schemes (like chrome-extension://)
+async function safeCachePut(cacheName, request, response) {
+  if (!request.url.startsWith('http://') && !request.url.startsWith('https://')) return;
+  try {
+    const cache = await caches.open(cacheName);
+    await cache.put(request, response);
+  } catch {
+    // Ignore cache put failures silently (e.g. unsupported scheme, quota, opaque)
+  }
+}
+
+// In development / localhost, immediately unregister self and purge caches
+if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+  self.addEventListener('install', () => {
+    self.skipWaiting();
+  });
+  self.addEventListener('activate', (event) => {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .then(() => self.registration.unregister())
+        .then(() => self.clients.claim())
+    );
+  });
+}
+
 // Fetch handler
 self.addEventListener('fetch', (event) => {
+  // If running on localhost or 127.0.0.1, bypass all interception entirely
+  if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
+    return;
+  }
+
   const { request } = event;
 
   // Only handle GET requests
@@ -50,13 +80,18 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
 
-  // Ignore internal Vite dev/HMR requests, web socket, or dev extensions
+  // Ignore non-http/https requests (e.g. chrome-extension://, blob:, data:)
+  if (!url.protocol.startsWith('http')) return;
+
+  // Ignore internal Vite dev/HMR requests, node_modules, optimizer chunks, or web sockets
   if (
-    url.pathname.startsWith('/@vite/') ||
-    url.pathname.startsWith('/@fs/') ||
-    url.pathname.startsWith('/@id/') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.includes('/node_modules/') ||
     url.pathname.includes('__vite') ||
     url.pathname.startsWith('/_server') ||
+    url.searchParams.has('v') ||
+    url.searchParams.has('t') ||
     url.protocol === 'ws:' ||
     url.protocol === 'wss:'
   ) {
@@ -70,8 +105,7 @@ self.addEventListener('fetch', (event) => {
         .then((response) => {
           // If valid response, clone and cache the page
           if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            safeCachePut(CACHE_NAME, request, response.clone());
           }
           return response;
         })
@@ -103,8 +137,7 @@ self.addEventListener('fetch', (event) => {
         if (cachedResponse) return cachedResponse;
         return fetch(request).then((response) => {
           if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            safeCachePut(CACHE_NAME, request, response.clone());
           }
           return response;
         });
@@ -131,8 +164,7 @@ self.addEventListener('fetch', (event) => {
         const fetchPromise = fetch(request)
           .then((networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
-              const clone = networkResponse.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+              safeCachePut(CACHE_NAME, request, networkResponse.clone());
             }
             return networkResponse;
           })
@@ -144,8 +176,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Default: Network fetch
-  event.respondWith(fetch(request));
+  // Default: Network fetch with error catch
+  event.respondWith(
+    fetch(request).catch(() => {
+      if (request.mode === 'navigate') {
+        return caches.match(OFFLINE_URL);
+      }
+      return new Response(null, { status: 504, statusText: 'Gateway Timeout' });
+    })
+  );
 });
 
 // Skip waiting message handler

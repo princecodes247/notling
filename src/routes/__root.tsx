@@ -106,6 +106,28 @@ function RootComponent() {
             __html: THEME_INIT_SCRIPT,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then(function(regs) {
+                    for (var i = 0; i < regs.length; i++) {
+                      regs[i].unregister();
+                    }
+                  });
+                }
+                if ('caches' in window) {
+                  caches.keys().then(function(names) {
+                    for (var i = 0; i < names.length; i++) {
+                      caches.delete(names[i]);
+                    }
+                  });
+                }
+              }
+            `,
+          }}
+        />
         <HeadContent />
       </head>
       <body className="text-[var(--text-primary)] bg-[var(--bg-canvas)] font-sans antialiased selection:bg-brand-bg selection:text-brand-fg min-h-screen" suppressHydrationWarning>
