@@ -6,7 +6,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
-import { yjsSignalingPlugin } from './src/server/signalingPlugin'
+import { yjsSignalingPlugin } from './src/server/signalingPlugin.ts'
 
 function removePrefersColorSchemeDark(css: string): string {
   const target = '@media (prefers-color-scheme: dark)'
@@ -52,7 +52,14 @@ const devTailwindDarkModeFix = () => ({
 const config = defineConfig({
   resolve: {
     tsconfigPaths: true,
-    // dedupe: ['react', 'react-dom'],
+    // dedupe: [
+    //   'react',
+    //   'react-dom',
+    //   'react/jsx-runtime',
+    //   'react/jsx-dev-runtime',
+    //   '@tanstack/react-router',
+    //   '@tanstack/react-start',
+    // ],
   },
   server: {
     hmr: {
@@ -60,8 +67,17 @@ const config = defineConfig({
     },
   },
   optimizeDeps: {
-    // include: ['react', 'react-dom', '@tanstack/react-router', '@tanstack/react-start'],
-    exclude: ['pg', 'drizzle-orm'],
+    include: [
+      'react',
+      'react-dom',
+      'react/jsx-runtime',
+      'react/jsx-dev-runtime',
+      '@tanstack/react-router',
+      '@tanstack/react-query',
+      'seroval',
+      'jspdf',
+    ],
+    exclude: ['@tanstack/react-start', 'pg', 'drizzle-orm'],
   },
   plugins: [
     devtools(),
