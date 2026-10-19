@@ -14,10 +14,43 @@ import {
   ChevronLeft,
   Github,
   Star,
+  ChevronDown,
 } from 'lucide-react';
 import { COMMON_LINKS } from '#/lib/constants';
 import { Link } from '@tanstack/react-router';
 import type { SessionData } from '~/lib/types';
+
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
+const FAQS: FAQItem[] = [
+  {
+    question: 'What is Notling?',
+    answer: 'Notling is a fast, open-source Notion alternative engineered for distraction-free note-taking, project documentation, and knowledge management. It combines a block-based rich text editor with real-time collaboration, nested page trees, and spreadsheet-like database tables.',
+  },
+  {
+    question: 'How does real-time collaboration work in Notling?',
+    answer: 'Notling uses Yjs Conflict-Free Replicated Data Types (CRDTs) paired with WebRTC signaling. Changes sync peer-to-peer in real time with zero merge conflicts, allowing teams to edit documents concurrently with presence awareness and live peer cursors.',
+  },
+  {
+    question: 'Does Notling work offline?',
+    answer: 'Yes. Notling is built as a progressive web app (PWA) with client-side caching. You can write, read, and organize your workspace offline, and your changes will automatically sync once your internet connection is restored.',
+  },
+  {
+    question: 'What blocks and database views does Notling support?',
+    answer: 'Notling supports headings, task lists, code blocks with syntax highlighting, blockquotes, callouts, and inline tables. You can also create dedicated databases with custom column types (text, numbers, selects, dates, status) and switch between table views and form collections.',
+  },
+  {
+    question: 'Can I export my notes and documents?',
+    answer: 'Yes. You have complete data ownership. With a single click, you can export any page or database to standard Markdown (.md) or styled PDF files.',
+  },
+  {
+    question: 'How is my data stored and protected?',
+    answer: 'Your notes and databases are stored in your private workspace backed by PostgreSQL and encrypted in transit. You retain complete ownership of your content, and you can export all your data at any time.',
+  },
+];
 
 interface LandingViewProps {
   onEnterApp: () => void;
@@ -211,9 +244,64 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </p>
           </div>
         </section>
+
+        {/* 6. Frequently Asked Questions (GEO / AI Discoverability) */}
+        <section id="faq" className="py-16 sm:py-24 px-4 sm:px-12 bg-white border-t border-neutral-200/80">
+          <div className="max-w-3xl mx-auto flex flex-col gap-8 sm:gap-10">
+            <div className="text-center flex flex-col gap-2.5 sm:gap-3">
+              <span className="text-[11px] font-semibold tracking-wider text-brand-600 uppercase">
+                Frequently Asked Questions
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-medium text-neutral-950 tracking-tight">
+                Everything you need to know about Notling
+              </h2>
+              <p className="text-xs sm:text-sm text-neutral-500 max-w-lg mx-auto leading-relaxed">
+                Learn how Notling compares to traditional workspaces, handles real-time sync, and protects your data privacy.
+              </p>
+            </div>
+
+            <div className="flex flex-col divide-y divide-neutral-200/80 border-y border-neutral-200/80">
+              {FAQS.map((faq, idx) => (
+                <details
+                  key={idx}
+                  className="group py-4.5 sm:py-5 text-left transition-colors open:bg-neutral-50/50 px-2 sm:px-3 rounded-lg"
+                >
+                  <summary className="flex items-center justify-between gap-4 font-medium text-xs sm:text-sm text-neutral-900 cursor-pointer list-none select-none">
+                    <span>{faq.question}</span>
+                    <span className="shrink-0 text-neutral-400 group-open:rotate-180 transition-transform duration-200">
+                      <ChevronDown className="w-4 h-4" />
+                    </span>
+                  </summary>
+                  <p className="mt-3 text-xs sm:text-sm text-neutral-600 leading-relaxed pr-6">
+                    {faq.answer}
+                  </p>
+                </details>
+              ))}
+            </div>
+
+            {/* Embedded FAQPage Schema for AI Engines */}
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  '@context': 'https://schema.org',
+                  '@type': 'FAQPage',
+                  mainEntity: FAQS.map((faq) => ({
+                    '@type': 'Question',
+                    name: faq.question,
+                    acceptedAnswer: {
+                      '@type': 'Answer',
+                      text: faq.answer,
+                    },
+                  })),
+                }),
+              }}
+            />
+          </div>
+        </section>
       </main>
 
-      {/* 6. Footer */}
+      {/* 7. Footer */}
       <Footer />
     </div>
   );

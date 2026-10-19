@@ -1,0 +1,46 @@
+# Allow all major search engines and AI crawlers
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /auth/
+
+# Explicit rules for AI Search Engines & Retrieval Crawlers
+User-agent: GPTBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /auth/
+
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /dashboard/
+Disallow: /onboarding
+Disallow: /api/
+Disallow: /auth/
+
+# Sitemaps and AI Documentation
+Sitemap: https://www.notling.app/sitemap.xml

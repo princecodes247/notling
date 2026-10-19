@@ -1,0 +1,27 @@
+# Notling
+
+> A fast, open-source, local-first Notion alternative built with React 19, TanStack Start, Yjs CRDTs, and PostgreSQL.
+
+## Overview
+Notling is a distraction-free, high-performance workspace designed for notes, docs, databases, and knowledge bases. It combines block-based rich text editing with real-time peer-to-peer collaboration, offline PWA capabilities, and database tables.
+
+## Core Capabilities
+- **Block-Based Editor**: Slash commands, markdown shortcuts, rich text formatting, nested lists, callouts, tables, and code blocks.
+- **Real-Time Collaboration**: Multi-user concurrent editing powered by Yjs Conflict-Free Replicated Data Types (CRDTs) and WebRTC signaling.
+- **Database & Spreadsheets**: Flexible database views with customizable columns, row filtering, sorting, and form collection.
+- **Local-First & Offline Ready**: Progressive Web App (PWA) with client-side caching, background sync, and offline persistence.
+- **Knowledge Organization**: Unlimited nested page hierarchies, workspace switching, folder grouping, and instant fuzzy search.
+- **Data Portability**: Full data ownership with one-click export to Markdown and PDF.
+- **Find and Replace**: In-document keyboard navigation and batch search/replace.
+
+## Tech Stack
+- Frontend: React 19, TanStack Router, TanStack Query, Tailwind CSS, BlockNote, ProseMirror, Lucide & HugeIcons
+- Backend: TanStack Start, Nitro, PostgreSQL, Drizzle ORM
+- Sync & Realtime: Yjs, WebRTC, BroadcastChannel
+
+## Links
+- Website: https://www.notling.app
+- Source Code: https://github.com/princecodes247/notling
+- Issues & Roadmap: https://github.com/princecodes247/notling/issues
+- Privacy Policy: https://www.notling.app/privacy
+- Terms of Service: https://www.notling.app/terms
