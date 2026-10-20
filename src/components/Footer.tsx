@@ -224,6 +224,14 @@ export function Footer() {
               <Github className="w-3.5 h-3.5 text-neutral-800" />
               <span>GitHub</span>
             </a>
+            <a
+              href="https://www.producthunt.com/products/notling?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-notling"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-neutral-950 transition-colors inline-flex items-center gap-1.5"
+            >
+              <span>Product Hunt</span>
+            </a>
             <button
               type="button"
               onClick={scrollToTop}
