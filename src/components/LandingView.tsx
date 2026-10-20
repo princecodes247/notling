@@ -150,7 +150,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </div>
 
               {/* Product Hunt Badge */}
-              <div className="pt-2 sm:pt-3 flex items-center justify-center">
+              {/* <div className="pt-2 sm:pt-3 flex items-center justify-center">
                 <a
                   href="https://www.producthunt.com/products/notling?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-notling"
                   target="_blank"
@@ -163,7 +163,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     className="w-37.5 sm:w-45 h-auto block"
                   />
                 </a>
-              </div>
+              </div> */}
             </div>
 
             {/* 3. Live Workspace Frame Preview */}
