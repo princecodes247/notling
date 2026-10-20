@@ -10,6 +10,7 @@ import { PwaProvider } from '~/context/PwaContext';
 import { PwaBanner } from '~/components/pwa/PwaBanner';
 import stylesCss from '~/styles.css?url';
 import '~/styles.css';
+import { RootErrorComponent } from '~/components/RootErrorComponent';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -142,15 +143,7 @@ export const Route = createRootRoute({
       <a href="/" className="text-sm text-neutral-900 underline hover:text-black">Return to Workspace</a>
     </div>
   ),
-  errorComponent: ({ error }: { error: any }) => (
-    <div className="h-screen w-screen bg-[#eef2f6] dark:bg-zinc-900 flex flex-col items-center justify-center text-neutral-600 dark:text-zinc-400 gap-3 p-4">
-      <h2 className="text-xl font-bold text-neutral-900 dark:text-white">Something went wrong</h2>
-      <p className="text-sm max-w-md text-center">{error?.message || 'An unexpected error occurred.'}</p>
-      <a href="/" className="text-sm text-neutral-900 dark:text-white underline hover:opacity-80 mt-2">
-        Return to Workspace
-      </a>
-    </div>
-  ),
+  errorComponent: RootErrorComponent,
   component: RootComponent,
 });
 
