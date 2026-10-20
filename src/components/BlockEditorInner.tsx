@@ -14,7 +14,8 @@ import { filterSuggestionItems } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import '@blocknote/mantine/style.css';
 import type { Page } from '~/db/schema';
-import { useUIStore } from '~/store/uiStore';
+import { useStatusStore } from '~/store/statusStore';
+import { useNavigationStore } from '~/store/navigationStore';
 import { updatePageContent, syncPageUpdate, type PageTreeNode, type WorkspaceUserItem } from '~/server/pages';
 import { getSession } from '~/server/auth';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -230,6 +231,27 @@ function isBlocksArrayEmpty(blocks: any[]): boolean {
     }
   }
   return false;
+}
+
+// Canonical JSON serializer that recursively sorts object keys so that
+// Postgres jsonb-reordered objects match JavaScript-ordered objects deterministically.
+function canonicalJson(obj: any): string {
+  if (obj === null || typeof obj !== 'object') {
+    return JSON.stringify(obj);
+  }
+  if (Array.isArray(obj)) {
+    return '[' + obj.map(canonicalJson).join(',') + ']';
+  }
+  const keys = Object.keys(obj).sort();
+  return '{' + keys.map((k) => JSON.stringify(k) + ':' + canonicalJson(obj[k])).join(',') + '}';
+}
+
+function areBlocksEqual(a: any[] | null | undefined, b: any[] | null | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  if (a.length !== b.length) return false;
+  return canonicalJson(a) === canonicalJson(b);
 }
 
 function getBlockStats(block: any): { words: number; chars: number } {
@@ -1099,7 +1121,8 @@ function updateDropIndicator(
 export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOnly = false }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { setSaveStatus, setActivePageId } = useUIStore();
+  const setSaveStatus = useStatusStore((s) => s.setSaveStatus);
+  const setActivePageId = useNavigationStore((s) => s.setActivePageId);
   const [isMentionModalOpen, setIsMentionModalOpen] = useState(false);
   const [mentionSearchQuery, setMentionSearchQuery] = useState('');
   const [mentionSelectedIndex, setMentionSelectedIndex] = useState(0);
@@ -1378,7 +1401,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
   const pageIdRef = useRef(page.id);
   const hasUserEditedRef = useRef<boolean>(false);
   const isSyncingRemoteRef = useRef<boolean>(false);
-  const lastSyncedHashRef = useRef<string>(initialContent ? JSON.stringify(initialContent) : '');
+  const lastSyncedHashRef = useRef<string>(initialContent ? canonicalJson(initialContent) : '');
   const lastAppliedUpdatedAtRef = useRef<string | null>(
     page.updatedAt ? new Date(page.updatedAt).toISOString() : null
   );
@@ -1410,7 +1433,7 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
         const currentBlocks = editorRef.current?.document;
         if (!currentBlocks) return;
 
-        const currentJson = JSON.stringify(currentBlocks);
+        const currentJson = canonicalJson(currentBlocks);
 
         // Point 2: Server Diffing / Hash Check
         // Skip network HTTP call if document content JSON is identical to last synced server state
@@ -1463,8 +1486,13 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
           };
         });
         clearOfflineDraft(activePageId);
-        hasUserEditedRef.current = false;
-        broadcastPageUpdate(activePageId);
+
+        // Only mark hasUserEdited as false if no newer keystrokes occurred while network request was in-flight
+        const latestBlocks = editorRef.current?.document;
+        if (latestBlocks && canonicalJson(latestBlocks) === currentJson) {
+          hasUserEditedRef.current = false;
+        }
+        broadcastPageUpdate(activePageId, res?.updatedAt ? new Date(res.updatedAt).toISOString() : undefined);
         setSaveStatus('saved');
       } catch (err) {
         console.error('Server sync failed:', err);
@@ -2333,11 +2361,21 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
 
   // Sync remote block updates from DB when content changes elsewhere
   useEffect(() => {
-    if (!editor || hasUserEditedRef.current) return;
+    if (!editor) return;
 
-    // Fast-path: Only sync if server updatedAt is truly newer than what we have already applied
-    const currentServerTime = page.updatedAt ? new Date(page.updatedAt).toISOString() : null;
-    if (!currentServerTime || currentServerTime === lastAppliedUpdatedAtRef.current) {
+    // Fast-path 1: NEVER replace the active document if the user is focused/typing in the editor or has unsaved edits
+    const isEditorFocused = Boolean(
+      editor.isFocused?.() ||
+      (typeof document !== 'undefined' && editor.domElement && editor.domElement.contains(document.activeElement))
+    );
+    if (isEditorFocused || hasUserEditedRef.current) {
+      return;
+    }
+
+    // Fast-path 2: Only sync if server updatedAt is truly newer than what we have already applied
+    const currentServerTime = page.updatedAt ? new Date(page.updatedAt).getTime() : 0;
+    const lastAppliedTime = lastAppliedUpdatedAtRef.current ? new Date(lastAppliedUpdatedAtRef.current).getTime() : 0;
+    if (!currentServerTime || currentServerTime <= lastAppliedTime) {
       return;
     }
 
@@ -2354,28 +2392,34 @@ export const BlockEditorInner: React.FC<BlockEditorInnerProps> = ({ page, readOn
     }
 
     if (!Array.isArray(incomingBlocks) || incomingBlocks.length === 0) {
-      lastAppliedUpdatedAtRef.current = currentServerTime;
+      lastAppliedUpdatedAtRef.current = page.updatedAt ? new Date(page.updatedAt).toISOString() : null;
       return;
     }
 
     // If active peers are concurrently connected in the WebRTC room and editor already has content,
     // let Yjs WebRTC handle live peer typing
     if (hasActivePeers && !isBlocksArrayEmpty(editor.document)) {
-      lastAppliedUpdatedAtRef.current = currentServerTime;
+      lastAppliedUpdatedAtRef.current = page.updatedAt ? new Date(page.updatedAt).toISOString() : null;
       return;
     }
 
-    const incomingJson = JSON.stringify(incomingBlocks);
-    if (incomingJson === lastSyncedHashRef.current) {
-      // Content already matches our synced hash
-      lastAppliedUpdatedAtRef.current = currentServerTime;
+    const incomingCanonical = canonicalJson(incomingBlocks);
+    if (incomingCanonical === lastSyncedHashRef.current || areBlocksEqual(editor.document, incomingBlocks)) {
+      // Content already matches our synced hash or current in-memory document
+      lastSyncedHashRef.current = incomingCanonical;
+      lastAppliedUpdatedAtRef.current = page.updatedAt ? new Date(page.updatedAt).toISOString() : null;
+      return;
+    }
+
+    // Re-verify that user didn't focus into editor while parsing JSON
+    if (editor.isFocused?.() || hasUserEditedRef.current) {
       return;
     }
 
     try {
       isSyncingRemoteRef.current = true;
-      lastSyncedHashRef.current = incomingJson;
-      lastAppliedUpdatedAtRef.current = currentServerTime;
+      lastSyncedHashRef.current = incomingCanonical;
+      lastAppliedUpdatedAtRef.current = page.updatedAt ? new Date(page.updatedAt).toISOString() : null;
       clearOfflineDraft(page.id);
       editor.replaceBlocks(editor.document, incomingBlocks);
     } catch (err) {

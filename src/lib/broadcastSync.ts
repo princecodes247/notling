@@ -5,9 +5,13 @@
  */
 
 export type TabSyncMessage =
-  | { type: 'PAGE_UPDATED'; pageId: string; updatedAt?: string | number }
-  | { type: 'PAGE_META_UPDATED'; pageId: string; title?: string; icon?: string | null }
-  | { type: 'DATABASE_UPDATED'; databaseId: string };
+  | { type: 'PAGE_UPDATED'; pageId: string; updatedAt?: string | number; senderTabId?: string }
+  | { type: 'PAGE_META_UPDATED'; pageId: string; title?: string; icon?: string | null; senderTabId?: string }
+  | { type: 'DATABASE_UPDATED'; databaseId: string; senderTabId?: string };
+
+const TAB_ID = typeof window !== 'undefined'
+  ? Math.random().toString(36).slice(2) + Date.now().toString(36)
+  : '';
 
 let channel: BroadcastChannel | null = null;
 
@@ -27,7 +31,7 @@ function getChannel(): BroadcastChannel | null {
 export function broadcastPageUpdate(pageId: string, updatedAt?: string | number): void {
   const ch = getChannel();
   if (ch) {
-    ch.postMessage({ type: 'PAGE_UPDATED', pageId, updatedAt });
+    ch.postMessage({ type: 'PAGE_UPDATED', pageId, updatedAt, senderTabId: TAB_ID });
   }
 }
 
@@ -38,14 +42,14 @@ export function broadcastPageMetaUpdate(
 ): void {
   const ch = getChannel();
   if (ch) {
-    ch.postMessage({ type: 'PAGE_META_UPDATED', pageId, title, icon });
+    ch.postMessage({ type: 'PAGE_META_UPDATED', pageId, title, icon, senderTabId: TAB_ID });
   }
 }
 
 export function broadcastDatabaseUpdate(databaseId: string): void {
   const ch = getChannel();
   if (ch) {
-    ch.postMessage({ type: 'DATABASE_UPDATED', databaseId });
+    ch.postMessage({ type: 'DATABASE_UPDATED', databaseId, senderTabId: TAB_ID });
   }
 }
 
@@ -54,6 +58,10 @@ export function subscribeToTabSync(onMessage: (msg: TabSyncMessage) => void): ()
   if (!ch) return () => {};
   const handler = (event: MessageEvent<TabSyncMessage>) => {
     if (event.data && typeof event.data === 'object' && 'type' in event.data) {
+      if (event.data.senderTabId && event.data.senderTabId === TAB_ID) {
+        // Ignore self-broadcasts within the same tab
+        return;
+      }
       onMessage(event.data);
     }
   };

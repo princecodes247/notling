@@ -142,19 +142,26 @@ export function useCollaboration(
     }
   }, [collabData, userDisplayName, userIdentifier, isViewer]);
 
-  if (!collabData) return null;
+  const clientId = collabData ? getClientId() : '';
+  const name = useMemo(
+    () => userDisplayName || userIdentifier || (isViewer ? `Guest ${clientId.slice(-4)}` : `User ${clientId.slice(-4)}`),
+    [userDisplayName, userIdentifier, isViewer, clientId]
+  );
+  const color = useMemo(
+    () => getCursorColor(userIdentifier || userDisplayName || clientId),
+    [userIdentifier, userDisplayName, clientId]
+  );
 
-  const clientId = getClientId();
-  const name = userDisplayName || userIdentifier || (isViewer ? `Guest ${clientId.slice(-4)}` : `User ${clientId.slice(-4)}`);
-  const color = getCursorColor(userIdentifier || userDisplayName || clientId);
-
-  return {
-    doc: collabData.doc,
-    provider: collabData.provider,
-    fragment: collabData.fragment,
-    user: { name, color },
-    showCursorLabels: 'always',
-  };
+  return useMemo(() => {
+    if (!collabData) return null;
+    return {
+      doc: collabData.doc,
+      provider: collabData.provider,
+      fragment: collabData.fragment,
+      user: { name, color },
+      showCursorLabels: 'always',
+    };
+  }, [collabData, name, color]);
 }
 
 export interface DatabaseCollaborator {

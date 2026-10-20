@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Page } from '~/db/schema';
-import { useUIStore } from '~/store/uiStore';
+import { useStatusStore } from '~/store/statusStore';
+import { useNavigationStore } from '~/store/navigationStore';
+import { useModalStore } from '~/store/modalStore';
 import { HugeiconsIcon } from '@hugeicons/react';
 import {
   PlusSignIcon,
@@ -50,6 +52,40 @@ function formatRelativeTime(dateInput?: string | Date | null): string {
   return `${diffDays}d ago`;
 }
 
+const SaveStatusBadge: React.FC = () => {
+  const saveStatus = useStatusStore((s) => s.saveStatus);
+  if (saveStatus === 'saving') {
+    return (
+      <span className="flex items-center gap-1 text-stone-500 font-medium">
+        <HugeiconsIcon icon={LoaderCircleIcon} size={12} className="animate-spin text-stone-600" />
+        <span>Saving...</span>
+      </span>
+    );
+  }
+  if (saveStatus === 'offline') {
+    return (
+      <span className="flex items-center gap-1 text-amber-600 font-medium">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+        <span>Saved Locally</span>
+      </span>
+    );
+  }
+  if (saveStatus === 'error') {
+    return (
+      <span className="flex items-center gap-1 text-red-500 font-medium">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+        <span>Save Error</span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-stone-500 font-medium">
+      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
+      <span>Saved</span>
+    </span>
+  );
+};
+
 interface EditorProps {
   page: Page & { canEdit?: boolean };
   onTitleOrIconChange?: (title: string, icon: string | null) => void;
@@ -64,22 +100,19 @@ export const Editor: React.FC<EditorProps> = ({
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const {
-    saveStatus,
-    setSaveStatus,
-    setActivePageId,
-    isShareModalOpen,
-    setShareModalOpen,
-    isExportModalOpen,
-    setExportModalOpen,
-    isHistoryDrawerOpen,
-    setHistoryDrawerOpen,
-    isRequestAccessOpen,
-    setRequestAccessOpen,
-    showEmojiPicker,
-    setShowEmojiPicker,
-    setHistoryState,
-  } = useUIStore();
+  const setSaveStatus = useStatusStore((s) => s.setSaveStatus);
+  const setHistoryState = useStatusStore((s) => s.setHistoryState);
+  const setActivePageId = useNavigationStore((s) => s.setActivePageId);
+  const isShareModalOpen = useModalStore((s) => s.isShareModalOpen);
+  const setShareModalOpen = useModalStore((s) => s.setShareModalOpen);
+  const isExportModalOpen = useModalStore((s) => s.isExportModalOpen);
+  const setExportModalOpen = useModalStore((s) => s.setExportModalOpen);
+  const isHistoryDrawerOpen = useModalStore((s) => s.isHistoryDrawerOpen);
+  const setHistoryDrawerOpen = useModalStore((s) => s.setHistoryDrawerOpen);
+  const isRequestAccessOpen = useModalStore((s) => s.isRequestAccessOpen);
+  const setRequestAccessOpen = useModalStore((s) => s.setRequestAccessOpen);
+  const showEmojiPicker = useModalStore((s) => s.showEmojiPicker);
+  const setShowEmojiPicker = useModalStore((s) => s.setShowEmojiPicker);
   const [title, setTitle] = useState(page.title);
   const [icon, setIcon] = useState(page.icon || undefined);
   const [isCustomIcon, setIsCustomIcon] = useState(() => !isDefaultOrInferredIcon(page.icon, page.title));
@@ -466,32 +499,7 @@ export const Editor: React.FC<EditorProps> = ({
                 <span>Updated {formatRelativeTime((page as any).updatedAt || (page as any).createdAt)}</span>
               </span>
               <span>&bull;</span>
-              {saveStatus === 'saving' ? (
-                <span className="flex items-center gap-1 text-stone-500 font-medium">
-                  <HugeiconsIcon icon={LoaderCircleIcon} size={12} className="animate-spin text-stone-600" />
-                  <span>Saving...</span>
-                </span>
-              ) : saveStatus === 'saved' ? (
-                <span className="flex items-center gap-1 text-stone-500 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)] shrink-0" />
-                  <span>Saved</span>
-                </span>
-              ) : saveStatus === 'offline' ? (
-                <span className="flex items-center gap-1 text-amber-600 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                  <span>Saved Locally</span>
-                </span>
-              ) : saveStatus === 'error' ? (
-                <span className="flex items-center gap-1 text-red-500 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
-                  <span>Save Error</span>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-stone-500 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span>Saved</span>
-                </span>
-              )}
+              <SaveStatusBadge />
             </div>
           </div>
 
